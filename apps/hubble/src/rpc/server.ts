@@ -41,7 +41,7 @@ import {
   HubResult,
   HubAsyncResult,
 } from "@farcaster/hub-nodejs";
-import { err, ok, Result, ResultAsync } from "neverthrow";
+import { err, Ok, ok, Result, ResultAsync } from "neverthrow";
 import { APP_NICKNAME, APP_VERSION, HubInterface } from "../hubble.js";
 import { GossipNode } from "../network/p2p/gossipNode.js";
 import { NodeMetadata } from "../network/sync/merkleTrie.js";
@@ -64,8 +64,12 @@ import { AddressInfo } from "net";
 import * as net from "node:net";
 import axios from "axios";
 import { fidFromEvent } from "../storage/stores/storeEventHandler.js";
+import { sendUnaryData, ServerUnaryCall } from "@grpc/grpc-js";
+import { TransactionRequest } from "viem";
+import { ServerSurfaceCall } from "@grpc/grpc-js/build/src/server-call.js";
 
 const HUBEVENTS_READER_TIMEOUT = 1 * 60 * 60 * 1000; // 1 hour
+const VALID_X_FORWARDED_FOR_HEADER_REGEX = /^([0-9]{1,3}(\.[0-9]{1,3}){3})(, [0-9]{1,3}(\.[0-9]{1,3}){3})*$/;
 
 export const DEFAULT_SUBSCRIBE_PERIP_LIMIT = 4; // Max 4 subscriptions per IP
 export const DEFAULT_SUBSCRIBE_GLOBAL_LIMIT = 4096; // Max 4096 subscriptions globally
@@ -75,6 +79,19 @@ export const DEFAULT_SERVER_INTERNET_ADDRESS_IPV4 = "0.0.0.0";
 export type RpcUsers = Map<string, string[]>;
 
 const log = logger.child({ component: "gRPCServer" });
+
+const xForwardedForValidator = <TRequest, TResponse>(
+  call: ServerUnaryCall<TRequest, TResponse>,
+  callback: sendUnaryData<TResponse>,
+) => {
+  const xForwardedFor = call.metadata.get("x-forwarded-for");
+  if (xForwardedFor && !VALID_X_FORWARDED_FOR_HEADER_REGEX.test(xForwardedFor.toString())) {
+    const err = new HubError("bad_request", "Invalid X-Forwarded-For header");
+    callback(toServiceError(err), null);
+    return false;
+  }
+  return true;
+};
 
 // Check if the user is authenticated via the metadata
 export const authenticateUser = (metadata: Metadata, rpcUsers: RpcUsers): HubResult<boolean> => {
@@ -267,6 +284,45 @@ export const getRPCUsersFromAuthString = (rpcAuth?: string): Map<string, string[
   return rpcUsers;
 };
 
+function extractIP(call: ServerSurfaceCall, trustXForwardedFor: boolean): Result<string, ServiceError> {
+  let ip = "";
+  if (trustXForwardedFor) {
+    const xffHeader = call.metadata.get("x-forwarded-for").toString();
+    if (xffHeader !== "") {
+      if (!VALID_X_FORWARDED_FOR_HEADER_REGEX.test(xffHeader)) {
+        const invalidHeaderErr = new HubError("bad_request", "Invalid X-Forwarded-For header");
+        return err(toServiceError(invalidHeaderErr));
+      }
+
+      const ips = xffHeader.split(",");
+      if (!ips || ips.length === 0) {
+        const invalidHeaderErr = new HubError("bad_request", "Invalid X-Forwarded-For header");
+        return err(toServiceError(invalidHeaderErr));
+      }
+
+      ip = ips[0] ?? "";
+    }
+  }
+
+  if (ip === "") {
+    const result = Result.fromThrowable(
+      () => call.getPeer(),
+      (e) => {
+        const error = e as Error;
+        const peerError = new HubError("unavailable", `Failed to get peer address: ${error.message}`);
+        return err(toServiceError(peerError));
+      },
+    )();
+    if (result.isErr()) {
+      return result.error;
+    } else {
+      ip = result.value;
+    }
+  }
+
+  return ok(ip);
+}
+
 /**
  * Limit the number of simultaneous connections to the RPC server by
  * a single IP address.
@@ -330,6 +386,7 @@ export default class Server {
   private grpcServer: GrpcServer;
   private listenIp: string;
   private port: number;
+  private readonly trustXForwardedFor: boolean = false;
 
   private impl: HubServiceServer;
 
@@ -347,6 +404,7 @@ export default class Server {
     rpcAuth?: string,
     rpcRateLimit?: number,
     rpcSubscribePerIpLimit?: number,
+    trustXForwardedFor?: boolean,
   ) {
     this.hub = hub;
     this.engine = engine;
@@ -366,6 +424,10 @@ export default class Server {
 
     this.impl = this.makeImpl();
     this.grpcServer.addService(HubServiceService, this.impl);
+
+    // trust X-Forwarded-For header is useful for hubs that sit behind application layer proxies,
+    // where the IP origin may appear from a single address, but the X-Forwarded-For header contains the original IP
+    this.trustXForwardedFor = trustXForwardedFor ?? false;
 
     // Submit message are rate limited by default to 20k per minute
     const rateLimitPerMinute = SUBMIT_MESSAGE_RATE_LIMIT;
@@ -439,6 +501,26 @@ export default class Server {
 
   public clearRateLimiters() {
     this.subscribeIpLimiter.clear();
+  }
+
+  private async rateLimitInterceptor<TRequest, TResponse>(
+    call: ServerUnaryCall<TRequest, TResponse>,
+    _callback: sendUnaryData<TResponse>,
+  ): Promise<ResultAsync<void, ServiceError>> {
+    const ipResult = extractIP(call, this.trustXForwardedFor);
+    if (ipResult.isErr()) {
+      return err(ipResult.error);
+    }
+
+    const ip = ipResult.value;
+    // Check for rate limits
+    const rateLimitResult = await rateLimitByIp(ip, this.submitMessageRateLimiter);
+    if (rateLimitResult.isErr()) {
+      const limitExceededErr = toServiceError(new HubError("unavailable", "API rate limit exceeded"));
+      return err(limitExceededErr);
+    }
+
+    return ok(undefined);
   }
 
   getImpl(): HubServiceServer {
@@ -668,10 +750,10 @@ export default class Server {
         )().unwrapOr("unavailable");
 
         // Check for rate limits
-        const rateLimitResult = await rateLimitByIp(peer, this.submitMessageRateLimiter);
+        const rateLimitResult = await this.rateLimitInterceptor(call, callback);
         if (rateLimitResult.isErr()) {
           logger.warn({ peer }, "submitMessage rate limited");
-          callback(toServiceError(new HubError("unavailable", "API rate limit exceeded")));
+          callback(rateLimitResult.error);
           return;
         }
 
@@ -1231,12 +1313,13 @@ export default class Server {
       },
       subscribe: async (stream) => {
         const { request } = stream;
-        const peer = Result.fromThrowable(
-          () => stream.getPeer(),
-          (e) => {
-            log.error({ err: e }, "subscribe: error getting peer");
-          },
-        )().unwrapOr("unknown peer:port");
+        const peerResult = extractIP(stream, this.trustXForwardedFor);
+        if (peerResult.isErr()) {
+          log.error({ err: peerResult.error }, "subscribe: error getting peer");
+          stream.destroy(new Error("could not get peer"));
+          return;
+        }
+        const peer = peerResult.value;
 
         // Check if username/password authenticates. If it does, we'll allow the connection
         // regardless of rate limits.

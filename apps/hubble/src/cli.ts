@@ -29,6 +29,7 @@ import { GetCallerIdentityCommand, STSClient } from "@aws-sdk/client-sts";
 import axios from "axios";
 import { snapshotURLAndMetadata } from "./utils/snapshot.js";
 import { DEFAULT_DIAGNOSTIC_REPORT_URL, initDiagnosticReporter } from "./utils/diagnosticReport.js";
+import * as process from "node:process";
 
 /** A CLI to accept options from the user and start the Hub */
 
@@ -124,6 +125,10 @@ app
   .option(
     "--rpc-rate-limit <number>",
     "RPC rate limit for peers specified in rpm. Set to -1 for none. (default: 20k/min)",
+  )
+  .option(
+    "--trust-x-forwarded-for-header",
+    "Enable the use of the X-Forwarded-For header for IP rate limiting. (default: disabled)",
   )
   .option("--rpc-subscribe-per-ip-limit <number>", "Maximum RPC subscriptions per IP address. (default: 4)")
   .option("--admin-server-enabled", "Enable the admin server. (default: disabled)")
@@ -377,6 +382,16 @@ app
       rpcRateLimit = hubConfig.rpcRateLimit;
     }
 
+    // Read the trustXForwardedForHeader flag
+    let trustXForwardedForHeader;
+    if (cliOptions.trustXForwardedForHeader) {
+      trustXForwardedForHeader = cliOptions.trustXForwardedForHeader;
+    } else if (process.env["TRUST_X_FORWARDED_FOR_HEADER"]) {
+      trustXForwardedForHeader = process.env["TRUST_X_FORWARDED_FOR_HEADER"] === "true";
+    } else {
+      trustXForwardedForHeader = hubConfig.trustXForwardedForHeader ?? false;
+    }
+
     // Metrics
     const statsDServer = cliOptions.statsdMetricsServer ?? hubConfig.statsdMetricsServer;
     if (statsDServer) {
@@ -544,6 +559,7 @@ app
       httpCorsOrigin: cliOptions.httpCorsOrigin ?? hubConfig.httpCorsOrigin ?? "*",
       rpcAuth,
       rpcRateLimit,
+      trustXForwardedForHeader,
       rpcSubscribePerIpLimit: cliOptions.rpcSubscribePerIpLimit ?? hubConfig.rpcSubscribePerIpLimit,
       rocksDBName: cliOptions.dbName ?? hubConfig.dbName,
       resetDB: false,

@@ -44,6 +44,8 @@ export const Config = {
   // rpcAuth: 'admin:password',
   /** Per-IP rate limiting for the RPC server*/
   rpcRateLimit: 20000,
+  /** Enable the use of the X-Forwarded-For header for IP rate limiting */
+  trustXForwardedForHeader: false,
   /** The name of the RocksDB instance */
   dbName: "rocks.hub._default",
   /** Rebuild the sync trie before starting */

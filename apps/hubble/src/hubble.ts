@@ -191,6 +191,9 @@ export interface HubOptions {
   /** Rank RPCs and use the ones with best stability and latency */
   rankRpcs?: boolean;
 
+  /** Enable the use of the X-Forwarded-For header for IP rate limiting */
+  trustXForwardedForHeader?: boolean;
+
   /** StatsD parameters */
   statsdParams?: StatsDInitParams | undefined;
 
@@ -499,6 +502,7 @@ export class Hub implements HubInterface {
       options.rpcAuth,
       options.rpcRateLimit,
       options.rpcSubscribePerIpLimit,
+      options.trustXForwardedForHeader,
     );
     this.httpApiServer = new HttpAPIServer(this.rpcServer.getImpl(), this.engine, this.options.httpCorsOrigin);
     this.adminServer = new AdminServer(this, this.rocksDB, this.engine, this.syncEngine, options.rpcAuth);
