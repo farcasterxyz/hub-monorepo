@@ -1,4 +1,4 @@
-use super::trie_node::TrieNode;
+use super::trie_node::{TrieNode, TIMESTAMP_LENGTH};
 use crate::{
     db::{RocksDB, RocksDbTransactionBatch},
     logger::LOGGER,
@@ -161,6 +161,13 @@ impl MerkleTrie {
     }
 
     pub fn insert(&self, key: &Vec<u8>) -> Result<bool, HubError> {
+        if key.len() < TIMESTAMP_LENGTH {
+            return Err(HubError {
+                code: "bad_request.invalid_param".to_string(),
+                message: "Key length is too short".to_string(),
+            });
+        }
+
         if let Some(root) = self.root.write().unwrap().as_mut() {
             let mut txn = RocksDbTransactionBatch::new();
             let result = root.insert(&self.db, &mut txn, &key, 0)?;
@@ -218,7 +225,7 @@ impl MerkleTrie {
         }
     }
 
-    pub fn get_node(&self, db: &Arc<RocksDB>, prefix: &[u8]) -> Option<TrieNode> {
+    pub fn get_node(&self, prefix: &[u8]) -> Option<TrieNode> {
         let node_key = TrieNode::make_primary_key(prefix, None);
 
         // We will first attempt to get it from the DB cache
@@ -229,7 +236,7 @@ impl MerkleTrie {
         }
 
         // Else, get it directly from the DB
-        if let Some(node_bytes) = db.get(&node_key).ok().flatten() {
+        if let Some(node_bytes) = self.db.get(&node_key).ok().flatten() {
             if let Ok(node) = TrieNode::deserialize(&node_bytes) {
                 return Some(node);
             }
@@ -239,7 +246,7 @@ impl MerkleTrie {
             .write()
             .unwrap()
             .as_mut()
-            .and_then(|root| root.get_node_from_trie(db, prefix, 0).cloned())
+            .and_then(|root| root.get_node_from_trie(&self.db, prefix, 0).cloned())
     }
 
     pub fn root_hash(&self) -> Result<Vec<u8>, HubError> {
@@ -285,25 +292,24 @@ impl MerkleTrie {
     }
 
     pub fn get_trie_node_metadata(&self, prefix: &[u8]) -> Result<NodeMetadata, HubError> {
-        if let Some(node) = self.get_node(&self.db, prefix) {
+        if let Some(node) = self.get_node(prefix) {
             let mut children = HashMap::new();
 
-            let child_chars = node.children().keys().map(|c| *c).collect::<Vec<_>>();
-            for char in child_chars {
+            for char in node.children().keys() {
                 let mut child_prefix = prefix.to_vec();
-                child_prefix.push(char);
+                child_prefix.push(*char);
 
-                let child_node = self.get_node(&self.db, &child_prefix).ok_or(HubError {
+                let child_node = self.get_node(&child_prefix).ok_or(HubError {
                     code: "bad_request.internal_error".to_string(),
                     message: "Child node not found".to_string(),
                 })?;
 
                 children.insert(
-                    char,
+                    *char,
                     NodeMetadata {
-                        prefix: child_prefix.clone(),
+                        prefix: child_prefix,
                         num_messages: child_node.items(),
-                        hash: hex::encode(child_node.hash().as_slice()),
+                        hash: hex::encode(&child_node.hash()),
                         children: HashMap::new(),
                     },
                 );
@@ -312,7 +318,7 @@ impl MerkleTrie {
             Ok(NodeMetadata {
                 prefix: prefix.to_vec(),
                 num_messages: node.items(),
-                hash: hex::encode(node.hash().as_slice()),
+                hash: hex::encode(&node.hash()),
                 children,
             })
         } else {

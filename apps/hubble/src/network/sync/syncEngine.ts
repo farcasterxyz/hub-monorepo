@@ -1302,10 +1302,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           return;
         }
 
-        const startNs = process.hrtime.bigint();
         const ourNode = await this._trie.getTrieNodeMetadata(workItem.prefix);
-        const endNs = process.hrtime.bigint();
-        statsd().timing("syncengine.get_trie_node_metadata_ns", Number(endNs - startNs));
 
         const start = Date.now();
         const theirNodeResult = await this.curSync.rpcClient.getSyncMetadataByPrefix(
