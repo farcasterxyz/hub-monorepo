@@ -58,6 +58,12 @@ services:
   statsd:
     image: graphiteapp/graphite-statsd:1.1.10-5
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-zv", "localhost", "8126"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 1m
     ports:
       # - '80:80' # Graphite web
       # - '2003:2003' # Carbon line receiver
