@@ -41,7 +41,7 @@ import {
   HubResult,
   HubAsyncResult,
 } from "@farcaster/hub-nodejs";
-import { err, Ok, ok, Result, ResultAsync } from "neverthrow";
+import { err, ok, Result, ResultAsync } from "neverthrow";
 import { APP_NICKNAME, APP_VERSION, HubInterface } from "../hubble.js";
 import { GossipNode } from "../network/p2p/gossipNode.js";
 import { NodeMetadata } from "../network/sync/merkleTrie.js";
@@ -62,10 +62,8 @@ import { statsd } from "../utils/statsd.js";
 import { SyncId } from "../network/sync/syncId.js";
 import { AddressInfo } from "net";
 import * as net from "node:net";
-import axios from "axios";
 import { fidFromEvent } from "../storage/stores/storeEventHandler.js";
 import { sendUnaryData, ServerUnaryCall } from "@grpc/grpc-js";
-import { TransactionRequest } from "viem";
 import { ServerSurfaceCall } from "@grpc/grpc-js/build/src/server-call.js";
 
 const HUBEVENTS_READER_TIMEOUT = 1 * 60 * 60 * 1000; // 1 hour

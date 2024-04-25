@@ -2,7 +2,7 @@ import { DbStats, FarcasterNetwork, HubAsyncResult, HubError } from "@farcaster/
 import { LATEST_DB_SCHEMA_VERSION } from "../storage/db/migrations/migrations.js";
 import axios from "axios";
 import { err, ok, ResultAsync } from "neverthrow";
-import { S3_REGION, SNAPSHOT_S3_DEFAULT_BUCKET } from "../hubble.js";
+import { S3_REGION, SNAPSHOT_S3_DOWNLOAD_BUCKET, SNAPSHOT_S3_UPLOAD_BUCKET } from "../hubble.js";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import fs from "fs";
 import { Upload } from "@aws-sdk/lib-storage";
@@ -57,7 +57,7 @@ export const snapshotDirectory = (fcNetwork: FarcasterNetwork, prevVersionCounte
 export const snapshotURLAndMetadata = async (
   fcNetwork: FarcasterNetwork,
   prevVersionCounter?: number,
-  s3Bucket: string = SNAPSHOT_S3_DEFAULT_BUCKET,
+  s3Bucket: string = SNAPSHOT_S3_DOWNLOAD_BUCKET,
 ): HubAsyncResult<[string, SnapshotMetadata]> => {
   const dirPath = snapshotURL(fcNetwork, prevVersionCounter, s3Bucket);
   const response = await fetchSnapshotMetadata(dirPath);
@@ -71,15 +71,19 @@ export const snapshotURLAndMetadata = async (
 export const snapshotURL = (
   fcNetwork: FarcasterNetwork,
   prevVersionCounter?: number,
-  s3Bucket: string = SNAPSHOT_S3_DEFAULT_BUCKET,
+  s3Bucket: string = SNAPSHOT_S3_DOWNLOAD_BUCKET,
 ): string => {
   return `https://${s3Bucket}/${snapshotDirectory(fcNetwork, prevVersionCounter)}`;
+};
+
+export const r2Endpoint = (): string => {
+  return process.env["R2_ENDPOINT"] ?? "";
 };
 
 export const uploadToS3 = async (
   fcNetwork: FarcasterNetwork,
   chunkedDirPath: string,
-  s3Bucket: string = SNAPSHOT_S3_DEFAULT_BUCKET,
+  s3Bucket: string = SNAPSHOT_S3_UPLOAD_BUCKET,
   messageCount?: number,
   timestamp?: number,
 ): HubAsyncResult<string> => {
@@ -87,6 +91,8 @@ export const uploadToS3 = async (
 
   const s3 = new S3Client({
     region: S3_REGION,
+    endpoint: r2Endpoint(),
+    forcePathStyle: true,
   });
 
   // The AWS key is "snapshots/{network}/{DB_SCHEMA_VERSION}/snapshot-{yyyy-mm-dd}-{timestamp}.tar.gz"
@@ -113,23 +119,16 @@ export const uploadToS3 = async (
     });
 
     // The chunks should be uploaded via multipart upload to S3
-    const chunkUploadParams = new Upload({
-      client: s3,
-      params: {
-        Bucket: s3Bucket,
-        Key: key,
-        Body: fileStream,
-      },
-      queueSize: 4, // 4 concurrent uploads
-      partSize: 1000 * 1024 * 1024, // 1 GB
-    });
+    const chunkUploadParams = {
+      Bucket: s3Bucket,
+      Key: key,
+      Body: fileStream,
+    };
 
-    chunkUploadParams.on("httpUploadProgress", (progress) => {
-      logger.info({ progress }, "Uploading snapshot to S3 - progress");
-    });
+    logger.info({ key }, "Uploading snapshot chunk to S3");
 
     try {
-      await chunkUploadParams.done();
+      await s3.send(new PutObjectCommand(chunkUploadParams));
       logger.info({ key, file, timeTakenMs: Date.now() - startTimestamp }, "Snapshot chunk uploaded to S3");
     } catch (e: unknown) {
       return err(new HubError("unavailable.network_failure", (e as Error).message));
@@ -148,6 +147,7 @@ export const uploadToS3 = async (
     Bucket: s3Bucket,
     Key: `${snapshotDirectory(fcNetwork)}/latest.json`,
     Body: JSON.stringify(metadata, null, 2),
+    ContentType: "application/json",
   };
 
   try {

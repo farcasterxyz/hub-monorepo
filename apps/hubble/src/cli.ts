@@ -9,7 +9,15 @@ import { mkdir, readFile, writeFile } from "fs/promises";
 import { Result, ResultAsync } from "neverthrow";
 import { dirname, resolve } from "path";
 import { exit } from "process";
-import { APP_VERSION, FARCASTER_VERSION, Hub, HubOptions, HubShutdownReason, S3_REGION } from "./hubble.js";
+import {
+  APP_VERSION,
+  FARCASTER_VERSION,
+  Hub,
+  HubOptions,
+  HubShutdownReason,
+  S3_REGION,
+  SNAPSHOT_S3_UPLOAD_BUCKET,
+} from "./hubble.js";
 import { logger } from "./utils/logger.js";
 import { addressInfoFromParts, hostPortFromString, ipMultiAddrStrFromAddressInfo, parseAddress } from "./utils/p2p.js";
 import { DEFAULT_RPC_CONSOLE, startConsole } from "./console/console.js";
@@ -25,11 +33,10 @@ import { startupCheck, StartupCheckStatus } from "./utils/startupCheck.js";
 import { mainnet, optimism } from "viem/chains";
 import { finishAllProgressBars } from "./utils/progressBars.js";
 import { MAINNET_BOOTSTRAP_PEERS } from "./bootstrapPeers.mainnet.js";
-import { GetCallerIdentityCommand, STSClient } from "@aws-sdk/client-sts";
 import axios from "axios";
-import { snapshotURLAndMetadata } from "./utils/snapshot.js";
+import { r2Endpoint, snapshotURLAndMetadata } from "./utils/snapshot.js";
 import { DEFAULT_DIAGNOSTIC_REPORT_URL, initDiagnosticReporter } from "./utils/diagnosticReport.js";
-import * as process from "node:process";
+import { ListObjectsV2Command, S3Client } from "@aws-sdk/client-s3";
 
 /** A CLI to accept options from the user and start the Hub */
 
@@ -958,16 +965,24 @@ app.parse(process.argv);
 // Verify that we have access to the AWS credentials.
 // Either via environment variables or via the AWS credentials file
 async function verifyAWSCredentials(): Promise<boolean> {
-  const sts = new STSClient({ region: S3_REGION });
+  const s3 = new S3Client({
+    region: S3_REGION,
+    endpoint: r2Endpoint(),
+    forcePathStyle: true,
+  });
 
   try {
-    const identity = await sts.send(new GetCallerIdentityCommand({}));
+    const params = {
+      Bucket: SNAPSHOT_S3_UPLOAD_BUCKET,
+      Prefix: "snapshots/",
+    };
 
-    logger.info({ accountId: identity.Account }, "Verified AWS credentials");
+    const result = await s3.send(new ListObjectsV2Command(params));
+    logger.info({ keys: result.KeyCount }, "Verified R2 credentials for snapshots");
 
     return true;
   } catch (error) {
-    logger.error({ err: error }, "Failed to verify AWS credentials. No S3 snapshot upload will be performed.");
+    logger.error({ err: error }, "Failed to verify R2 credentials. No snapshots performed.");
     return false;
   }
 }
