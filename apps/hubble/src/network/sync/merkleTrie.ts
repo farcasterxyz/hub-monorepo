@@ -11,7 +11,7 @@ import {
 } from "../../storage/db/types.js";
 import { logger } from "../../utils/logger.js";
 import { messageDecode } from "../../storage/db/message.js";
-import { BLAKE3TRUNCATE160_EMPTY_HASH, sleep } from "../../utils/crypto.js";
+import { BLAKE3TRUNCATE160_EMPTY_HASH } from "../../utils/crypto.js";
 import {
   rsCreateMerkleTrie,
   rsCreateMerkleTrieFromDb,
