@@ -73,7 +73,7 @@ export class BaseHubSubscriber extends HubSubscriber {
 
   private _waitForReadyHubClient(): Promise<Result<void, unknown>> {
     return new Promise((resolve) => {
-      this.hubClient?.$.waitForReady(Date.now() + 500, (e) => {
+      this.hubClient?.$.waitForReady(Date.now() + 5000, (e) => {
         return e ? resolve(err(e)) : resolve(ok(undefined));
       });
     });
