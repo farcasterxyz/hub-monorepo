@@ -629,7 +629,7 @@ describe("MerkleTrie", () => {
     });
   });
 
-  test("getAllValues returns all values for child nodes", async () => {
+  test("getAllValues returns all values for child nodes directly", async () => {
     const trie = await trieWithIds([1665182332, 1665182343, 1665182345]);
 
     let values = await trie.getAllValues(new Uint8Array(Buffer.from("16651823")));
