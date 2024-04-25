@@ -77,20 +77,6 @@ export const DEFAULT_SERVER_INTERNET_ADDRESS_IPV4 = "0.0.0.0";
 export type RpcUsers = Map<string, string[]>;
 
 const log = logger.child({ component: "gRPCServer" });
-
-const xForwardedForValidator = <TRequest, TResponse>(
-  call: ServerUnaryCall<TRequest, TResponse>,
-  callback: sendUnaryData<TResponse>,
-) => {
-  const xForwardedFor = call.metadata.get("x-forwarded-for");
-  if (xForwardedFor && !VALID_X_FORWARDED_FOR_HEADER_REGEX.test(xForwardedFor.toString())) {
-    const err = new HubError("bad_request", "Invalid X-Forwarded-For header");
-    callback(toServiceError(err), null);
-    return false;
-  }
-  return true;
-};
-
 // Check if the user is authenticated via the metadata
 export const authenticateUser = (metadata: Metadata, rpcUsers: RpcUsers): HubResult<boolean> => {
   // If there is no auth user/pass, we don't need to authenticate
