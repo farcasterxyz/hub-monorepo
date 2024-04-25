@@ -101,7 +101,7 @@ export const APP_VERSION = packageJson.version;
 export const APP_NICKNAME = process.env["HUBBLE_NAME"] ?? "Farcaster Hub";
 
 export const SNAPSHOT_S3_UPLOAD_BUCKET = "farcaster-snapshots";
-export const SNAPSHOT_S3_DEFAULT_BUCKET = "download.farcaster.xyz";
+export const SNAPSHOT_S3_DOWNLOAD_BUCKET = "download.farcaster.xyz";
 export const S3_REGION = "auto";
 
 export const FARCASTER_VERSION = "2024.3.20";
@@ -943,7 +943,7 @@ export class Hub implements HubInterface {
     }
   }
   async snapshotSync(overwrite?: boolean): HubAsyncResult<boolean> {
-    const s3Bucket = this.options.s3SnapshotBucket ?? SNAPSHOT_S3_DEFAULT_BUCKET;
+    const s3Bucket = this.options.s3SnapshotBucket ?? SNAPSHOT_S3_DOWNLOAD_BUCKET;
     return new Promise((resolve) => {
       (async () => {
         let progressBar: SingleBar | undefined;
