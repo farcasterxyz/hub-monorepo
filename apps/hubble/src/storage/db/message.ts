@@ -1,4 +1,4 @@
-import { bytesIncrement, CastId, HubError, HubResult, Message, MessageData, MessageType } from "@farcaster/hub-nodejs";
+import { bytesIncrement, HubError, HubResult, Message, MessageData, MessageType } from "@farcaster/hub-nodejs";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import RocksDB, { RocksDbIteratorOptions, RocksDbTransaction } from "./rocksdb.js";
 import {
@@ -107,6 +107,10 @@ export const typeToSetPostfix = (type: MessageType): UserMessagePostfix => {
 
   if (type === MessageType.USERNAME_PROOF) {
     return UserPostfix.UsernameProofMessage;
+  }
+
+  if (type === MessageType.LINK_COMPACT_STATE) {
+    return UserPostfix.LinkCompactStateMessage;
   }
 
   throw new Error(`invalid type: ${type}`);

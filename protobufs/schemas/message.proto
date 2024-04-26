@@ -36,6 +36,9 @@ message MessageData {
     LinkBody link_body = 14;
     UserNameProof username_proof_body = 15;
     FrameActionBody frame_action_body = 16;
+    
+    // Compaction messages
+    LinkCompactStateBody link_compact_state_body = 17;
   } // Properties specific to the MessageType
 }
 
@@ -69,6 +72,7 @@ enum MessageType {
   MESSAGE_TYPE_USER_DATA_ADD = 11; // Add metadata about a user
   MESSAGE_TYPE_USERNAME_PROOF = 12; // Add or replace a username proof
   MESSAGE_TYPE_FRAME_ACTION = 13; // A Farcaster Frame action
+  MESSAGE_TYPE_LINK_COMPACT_STATE = 14; // Link Compaction State Message
 }
 
 /** Farcaster network the message is intended for */
@@ -171,6 +175,12 @@ message LinkBody {
   oneof target {
     uint64 target_fid = 3;  // The fid the link relates to
   }
+}
+
+/** A Compaction message for the Link Store */
+message LinkCompactStateBody {
+  string type = 1; // Type of link, <= 8 characters
+  repeated uint64 target_fids = 2;
 }
 
 /** A Farcaster Frame action */

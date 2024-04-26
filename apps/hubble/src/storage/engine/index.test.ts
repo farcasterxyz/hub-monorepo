@@ -184,6 +184,16 @@ describe("mergeMessage", () => {
         ).resolves.toEqual(ok(linkAdd));
         expect(mergedMessages).toEqual([linkAdd]);
       });
+
+      test("succeeds with CompactStateMessage with no targetFids", async () => {
+        setReferenceDateForTest(100000000000000000000000);
+        const compactStateMessage = await Factories.LinkCompactStateMessage.create(
+          { data: { fid, network } },
+          { transient: { signer } },
+        );
+        await expect(engine.mergeMessage(compactStateMessage)).resolves.toBeInstanceOf(Ok);
+        expect(mergedMessages).toEqual([compactStateMessage]);
+      });
     });
 
     describe("VerificationAddAddress", () => {
@@ -990,6 +1000,28 @@ describe("mergeMessages", () => {
       expect(results.get(i)).toBeInstanceOf(Ok);
     }
     expect(new Set(mergedMessages)).toEqual(new Set([castAdd, reactionAdd, linkAdd, userDataAdd, verificationAdd]));
+  });
+
+  test("succeds with linkAdd and compaction messages", async () => {
+    const linkCompactState = await Factories.LinkCompactStateMessage.create(
+      {
+        data: {
+          fid,
+          linkCompactStateBody: { targetFids: [linkAdd.data.linkBody.targetFid as number] },
+          timestamp: linkAdd.data.timestamp + 1,
+        },
+      },
+      { transient: { signer } },
+    );
+
+    // Merge them together
+    const results = await engine.mergeMessages([linkAdd, linkCompactState]);
+
+    expect(results.size).toBe(2);
+    expect(results.get(0)).toBeInstanceOf(Ok);
+    expect(results.get(1)).toBeInstanceOf(Ok);
+
+    expect(new Set(mergedMessages)).toEqual(new Set([linkAdd, linkCompactState]));
   });
 
   test("Correctly handles incorrect messages per store", async () => {

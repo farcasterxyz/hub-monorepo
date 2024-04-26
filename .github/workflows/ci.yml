@@ -64,7 +64,6 @@ jobs:
             runs_on: 'buildjet-16vcpu-ubuntu-2204-arm'
 
     runs-on: ${{ matrix.runs_on }}
-
     name: test (${{ matrix.node_version }})
 
     services:

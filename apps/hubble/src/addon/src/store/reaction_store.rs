@@ -50,6 +50,14 @@ impl StoreDef for ReactionStoreDef {
             && message.data.as_ref().unwrap().body.is_some()
     }
 
+    fn compact_state_message_type(&self) -> u8 {
+        MessageType::None as u8
+    }
+
+    fn is_compact_state_type(&self, _message: &Message) -> bool {
+        false
+    }
+
     fn build_secondary_indices(
         &self,
         txn: &mut RocksDbTransactionBatch,
@@ -128,6 +136,13 @@ impl StoreDef for ReactionStoreDef {
             reaction_body.r#type,
             reaction_body.target.as_ref(),
         )
+    }
+
+    fn make_compact_state_add_key(&self, _message: &Message) -> Result<Vec<u8>, HubError> {
+        Err(HubError {
+            code: "bad_request.invalid_param".to_string(),
+            message: "Reaction Store doesn't support compact state".to_string(),
+        })
     }
 
     fn get_prune_size_limit(&self) -> u32 {

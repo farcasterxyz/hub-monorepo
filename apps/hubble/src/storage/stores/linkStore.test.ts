@@ -33,17 +33,17 @@ let linkAddEndorse: LinkAddMessage;
 let linkRemoveEndorse: LinkRemoveMessage;
 
 beforeAll(async () => {
-  const likeBody = Factories.LinkBody.build({
+  const linkBody = Factories.LinkBody.build({
     type: "follow",
     targetFid: targetFid,
   });
 
   linkAdd = await Factories.LinkAddMessage.create({
-    data: { fid, linkBody: likeBody },
+    data: { fid, linkBody },
   });
 
   linkRemove = await Factories.LinkRemoveMessage.create({
-    data: { fid, linkBody: likeBody, timestamp: linkAdd.data.timestamp + 1 },
+    data: { fid, linkBody, timestamp: linkAdd.data.timestamp + 1 },
   });
 
   const endorseBody = Factories.LinkBody.build({
