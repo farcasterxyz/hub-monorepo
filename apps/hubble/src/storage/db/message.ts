@@ -127,6 +127,15 @@ export const getMessage = async <T extends Message>(
   return messageDecode(new Uint8Array(buffer)) as T;
 };
 
+export const areMessagesInDb = async (db: RocksDB, messages: Message[]): Promise<boolean[]> => {
+  const exists = await db.keysExist(messages.map((message) => makeMessagePrimaryKeyFromMessage(message)));
+  if (exists.isErr()) {
+    // Return a false for each message that we couldn't check
+    return messages.map(() => false);
+  }
+  return exists.value;
+};
+
 export const isMessageInDB = async (db: RocksDB, message: Message): Promise<boolean> => {
   const exists = await ResultAsync.fromPromise(
     (async () => {
