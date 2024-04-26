@@ -506,6 +506,8 @@ describe("SyncEngine", () => {
         expect((await syncEngine.getDbStats()).numFnames).toEqual(0);
 
         await engine.mergeUserNameProof(userNameProof);
+        await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
+
         expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeTruthy();
         expect((await syncEngine.getDbStats()).numFnames).toEqual(1);
 

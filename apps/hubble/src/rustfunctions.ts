@@ -686,6 +686,14 @@ export const rsMerkleTrieStop = async (trie: RustMerkleTrie): Promise<void> => {
   await lib.merkleTrieStop.call(trie);
 };
 
+export const rsMerkleTrieBatchUpdate = async (
+  trie: RustMerkleTrie,
+  inserts: Uint8Array[],
+  deletes: Uint8Array[],
+): Promise<boolean[]> => {
+  return await lib.merkleTrieBatchUpdate.call(trie, inserts, deletes);
+};
+
 export const rsMerkleTrieInsert = async (trie: RustMerkleTrie, key: Uint8Array): Promise<boolean> => {
   return await lib.merkleTrieInsert.call(trie, key);
 };
@@ -746,14 +754,6 @@ export const rsMerkleTrieItems = async (trie: RustMerkleTrie): Promise<number> =
 
 export const rsMerkleTrieRootHash = async (trie: RustMerkleTrie): Promise<string> => {
   return Buffer.from(await lib.merkleTrieRootHash.call(trie)).toString("hex");
-};
-
-export const rsMerkleTrieMigrate = async (
-  trie: RustMerkleTrie,
-  keys: Uint8Array[],
-  values: Uint8Array[],
-): Promise<number> => {
-  return await lib.merkleTrieMigrate.call(trie, keys, values);
 };
 
 export const rsMerkleTrieUnloadChildren = async (trie: RustMerkleTrie): Promise<void> => {
