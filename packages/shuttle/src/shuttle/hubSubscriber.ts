@@ -111,7 +111,7 @@ export class BaseHubSubscriber extends HubSubscriber {
       eventTypes: this.eventTypes,
       totalShards: this.totalShards,
       shardIndex: this.shardIndex,
-      fromId: undefined,
+      fromId,
     };
 
     const subscribeRequest = await this.hubClient.subscribe(subscribeParams);
