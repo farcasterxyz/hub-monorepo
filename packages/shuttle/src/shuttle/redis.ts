@@ -20,7 +20,12 @@ export class RedisClient {
   }
 
   async setLastProcessedEvent(hubId: string, eventId: number) {
-    await this.client.set(`hub:${hubId}:last-hub-event-id`, eventId.toString());
+    const key = `hub:${hubId}:last-hub-event-id`;
+    if (eventId === 0) {
+      await this.client.del(key);
+    } else {
+      await this.client.set(key, eventId.toString());
+    }
   }
 
   async getLastProcessedEvent(hubId: string) {
