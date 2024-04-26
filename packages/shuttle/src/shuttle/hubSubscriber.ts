@@ -173,7 +173,8 @@ export class BaseHubSubscriber extends HubSubscriber {
 export class EventStreamHubSubscriber extends BaseHubSubscriber {
   private eventStream: EventStreamConnection;
   private redis: RedisClient;
-  private streamKey: string;
+  public readonly streamKey: string;
+  public readonly redisKey: string;
   private eventsToAdd: HubEvent[];
   private eventBatchSize = 100;
 
@@ -192,11 +193,18 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
     this.eventStream = eventStream;
     this.redis = redis;
     this.streamKey = `hub:${hubClient.host}:evt:msg:${shardKey}`;
+    this.redisKey = `${hubClient.host}:${shardKey}`;
     this.eventsToAdd = [];
   }
 
   public override async getLastEventId(): Promise<number | undefined> {
-    return await this.redis.getLastProcessedEvent(this.streamKey);
+    // Migrate the old label based key if present
+    const labelBasedKey = await this.redis.getLastProcessedEvent(this.label);
+    if (labelBasedKey > 0) {
+      await this.redis.setLastProcessedEvent(this.redisKey, labelBasedKey);
+      await this.redis.setLastProcessedEvent(this.label, 0);
+    }
+    return await this.redis.getLastProcessedEvent(this.redisKey);
   }
 
   public override async processHubEvent(event: HubEvent): Promise<boolean> {
@@ -208,7 +216,7 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
         lastEventId = evt.id;
       }
       if (lastEventId) {
-        await this.redis.setLastProcessedEvent(this.streamKey, lastEventId);
+        await this.redis.setLastProcessedEvent(this.redisKey, lastEventId);
       }
       this.eventsToAdd = [];
     }
