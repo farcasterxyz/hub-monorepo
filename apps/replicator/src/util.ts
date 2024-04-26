@@ -31,6 +31,7 @@ import {
   Hex,
   IdRegisterEventBodyJson,
   LinkBodyJson,
+  LinkCompactStateBodyJson,
   MessageBodyJson,
   ReactionBodyJson,
   SignerEventBodyJson,
@@ -176,6 +177,16 @@ export function convertProtobufMessageBodyToJson(message: Message): MessageBodyJ
       } else {
         throw new AssertionError("Missing targetCastId and targetUrl on reactionBody");
       }
+    }
+    case MessageType.LINK_COMPACT_STATE: {
+      if (!message.data.linkCompactStateBody) throw new Error("Missing linkCompactStateBody");
+      const targetFids = message.data.linkCompactStateBody.targetFids;
+      if (!targetFids) throw new Error("Missing targetFids");
+      const body: LinkCompactStateBodyJson = {
+        type: message.data.linkCompactStateBody.type,
+        targetFids: targetFids.map((fid) => fid),
+      };
+      return body;
     }
     case MessageType.LINK_ADD:
     case MessageType.LINK_REMOVE: {

@@ -6,6 +6,7 @@ import {
   CastId,
   CastRemoveMessage,
   FarcasterNetwork,
+  getDefaultStoreLimit,
   getStoreLimits,
   hexStringToBytes,
   HubAsyncResult,
@@ -13,6 +14,7 @@ import {
   HubErrorCode,
   HubEvent,
   HubResult,
+  isLinkCompactStateMessage,
   isSignerOnChainEvent,
   isUserDataAddMessage,
   isUsernameProofMessage,
@@ -350,6 +352,7 @@ class Engine extends TypedEmitter<EngineEvents> {
       const setPostfix = typeToSetPostfix(message.data!.type);
 
       switch (setPostfix) {
+        case UserPostfix.LinkCompactStateMessage:
         case UserPostfix.LinkMessage: {
           linkMessages.push({ i, message });
           break;
@@ -465,6 +468,7 @@ class Engine extends TypedEmitter<EngineEvents> {
       }
 
       switch (setPostfix) {
+        case UserPostfix.LinkCompactStateMessage:
         case UserPostfix.LinkMessage: {
           return this._linkStore.revoke(message.value);
         }
@@ -558,6 +562,7 @@ class Engine extends TypedEmitter<EngineEvents> {
       const setPostfix = typeToSetPostfix(message.data.type);
 
       switch (setPostfix) {
+        case UserPostfix.LinkCompactStateMessage:
         case UserPostfix.LinkMessage: {
           return this._linkStore.revoke(message);
         }
@@ -1131,7 +1136,7 @@ class Engine extends TypedEmitter<EngineEvents> {
       }
     }
 
-    // For username proof messages, make sure the name resolves to the users custody address or a connected address actually owns the ens name
+    // 6. For username proof messages, make sure the name resolves to the users custody address or a connected address actually owns the ens name
     if (isUsernameProofMessage(message) && message.data.usernameProofBody.type === UserNameType.USERNAME_TYPE_ENS_L1) {
       const result = await this.validateEnsUsernameProof(message.data.usernameProofBody, custodyAddress);
       if (result.isErr()) {
@@ -1146,6 +1151,16 @@ class Engine extends TypedEmitter<EngineEvents> {
       if (!this._solanaVerficationsEnabled) {
         return err(new HubError("bad_request.validation_failure", "solana verifications are not enabled"));
       }
+    }
+
+    // LinkCompactStateMessages can't be more than 100 storage units
+    if (
+      isLinkCompactStateMessage(message) &&
+      message.data.linkCompactStateBody.targetFids.length > getDefaultStoreLimit(StoreType.LINKS) * 100
+    ) {
+      return err(
+        new HubError("bad_request.validation_failure", "LinkCompactStateMessage is too big. Limit = 100 storage units"),
+      );
     }
 
     // 6. Check message body and envelope
