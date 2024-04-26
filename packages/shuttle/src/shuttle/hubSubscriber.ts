@@ -51,12 +51,23 @@ export class BaseHubSubscriber extends HubSubscriber {
   protected eventTypes: HubEventType[];
 
   private stream: ClientReadableStream<HubEvent> | null = null;
+  private totalShards: number | undefined;
+  private shardIndex: number | undefined;
 
-  constructor(label: string, hubClient: HubRpcClient, log: Logger, eventTypes?: HubEventType[]) {
+  constructor(
+    label: string,
+    hubClient: HubRpcClient,
+    log: Logger,
+    eventTypes?: HubEventType[],
+    totalShards?: number,
+    shardIndex?: number,
+  ) {
     super();
     this.label = label;
     this.hubClient = hubClient;
     this.log = log;
+    this.totalShards = totalShards;
+    this.shardIndex = shardIndex;
     this.eventTypes = eventTypes || DEFAULT_EVENT_TYPES;
   }
 
@@ -96,16 +107,20 @@ export class BaseHubSubscriber extends HubSubscriber {
       this.log.warn("No last hub event ID found, starting from beginning");
     }
 
-    const subscribeParams: { eventTypes: HubEventType[]; fromId?: number | undefined } = {
+    const subscribeParams = {
       eventTypes: this.eventTypes,
-      fromId,
+      totalShards: this.totalShards,
+      shardIndex: this.shardIndex,
+      fromId: undefined,
     };
 
     const subscribeRequest = await this.hubClient.subscribe(subscribeParams);
     subscribeRequest
       .andThen((stream) => {
         this.log.info(
-          `HubSubscriber ${this.label} subscribed to hub events (types ${JSON.stringify(this.eventTypes)})`,
+          `HubSubscriber ${this.label} subscribed to hub events (types ${JSON.stringify(this.eventTypes)}, shard: ${
+            this.shardIndex
+          }/${this.totalShards})`,
         );
         this.stream = stream;
         this.stopped = false;
@@ -170,8 +185,10 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
     shardKey: string,
     log: Logger,
     eventTypes?: HubEventType[],
+    totalShards?: number,
+    shardIndex?: number,
   ) {
-    super(label, hubClient.client, log, eventTypes);
+    super(label, hubClient.client, log, eventTypes, totalShards, shardIndex);
     this.eventStream = eventStream;
     this.redis = redis;
     this.streamKey = `hub:${hubClient.host}:evt:msg:${shardKey}`;
@@ -179,7 +196,7 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
   }
 
   public override async getLastEventId(): Promise<number | undefined> {
-    return await this.redis.getLastProcessedEvent(this.label);
+    return await this.redis.getLastProcessedEvent(this.streamKey);
   }
 
   public override async processHubEvent(event: HubEvent): Promise<boolean> {
@@ -191,7 +208,7 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
         lastEventId = evt.id;
       }
       if (lastEventId) {
-        await this.redis.setLastProcessedEvent(this.label, lastEventId);
+        await this.redis.setLastProcessedEvent(this.streamKey, lastEventId);
       }
       this.eventsToAdd = [];
     }
