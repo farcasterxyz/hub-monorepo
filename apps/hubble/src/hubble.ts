@@ -88,7 +88,7 @@ import { HttpAPIServer } from "./rpc/httpServer.js";
 import { SingleBar } from "cli-progress";
 import { exportToProtobuf } from "@libp2p/peer-id-factory";
 import OnChainEventStore from "./storage/stores/onChainEventStore.js";
-import { ensureMessageData, isMessageInDB } from "./storage/db/message.js";
+import { areMessagesInDb, ensureMessageData, isMessageInDB } from "./storage/db/message.js";
 import { getFarcasterTime, HubResult, MessageBundle } from "@farcaster/core";
 import { MerkleTrie } from "./network/sync/merkleTrie.js";
 import { DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT } from "./defaultConfig.js";
@@ -1657,16 +1657,16 @@ export class Hub implements HubInterface {
     const dedupedMessages: { i: number; message: Message }[] = [];
     if (source === "gossip") {
       // Go over all the messages and see if they are in the DB. If they are, don't bother processing them
-      await Promise.all(
-        messageBundle.messages.map(async (message, i) => {
-          if (await isMessageInDB(this.rocksDB, message)) {
-            log.debug({ source }, "submitMessageBundle rejected: Message already exists");
-            allResults.set(i, err(new HubError("bad_request.duplicate", "message has already been merged")));
-          } else {
-            dedupedMessages.push({ i, message: ensureMessageData(message) });
-          }
-        }),
-      );
+      const messagesExist = await areMessagesInDb(this.rocksDB, messageBundle.messages);
+
+      for (let i = 0; i < messagesExist.length; i++) {
+        if (messagesExist[i]) {
+          log.debug({ source }, "submitMessageBundle rejected: Message already exists");
+          allResults.set(i, err(new HubError("bad_request.duplicate", "message has already been merged")));
+        } else {
+          dedupedMessages.push({ i, message: ensureMessageData(messageBundle.messages[i] as Message) });
+        }
+      }
     } else {
       dedupedMessages.push(...messageBundle.messages.map((message, i) => ({ i, message: ensureMessageData(message) })));
     }
@@ -1745,6 +1745,7 @@ export class Hub implements HubInterface {
     log.info(
       {
         hash: bytesToHexString(messageBundle.hash).unwrapOr(messageBundle.hash),
+        source,
         success,
         finalFailures: [...finalFailures],
         total: finalResults.length,

@@ -130,6 +130,30 @@ describe("with db", () => {
     });
   });
 
+  describe("keysExist", () => {
+    test("exists for single key", async () => {
+      await db.put(Buffer.from("foo"), Buffer.from("bar"));
+      const exists = await db.keysExist([Buffer.from("foo")]);
+      expect(exists._unsafeUnwrap()).toEqual([true]);
+    });
+
+    test("exists works for keys that exist mixed with don't exist", async () => {
+      await db.put(Buffer.from("foo"), Buffer.from("bar"));
+      const exists = await db.keysExist([Buffer.from("foo"), Buffer.from("alice")]);
+      expect(exists._unsafeUnwrap()).toEqual([true, false]);
+    });
+
+    test("exists works when no keys exist", async () => {
+      const exists = await db.keysExist([Buffer.from("foo"), Buffer.from("alice")]);
+      expect(exists._unsafeUnwrap()).toEqual([false, false]);
+    });
+
+    test("exists works for no keys", async () => {
+      const exists = await db.keysExist([]);
+      expect(exists._unsafeUnwrap()).toEqual([]);
+    });
+  });
+
   describe("put", () => {
     test("puts a value by key", async () => {
       await expect(db.put(Buffer.from("foo"), Buffer.from("bar"))).resolves.toEqual(undefined);

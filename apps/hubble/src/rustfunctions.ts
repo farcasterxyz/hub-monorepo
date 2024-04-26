@@ -132,6 +132,10 @@ export const rsDbLocation = (db: RustDb): string => {
   return lib.dbLocation.call(db);
 };
 
+export const rsDbKeysExist = async (db: RustDb, keys: Uint8Array[]): Promise<boolean[]> => {
+  return await lib.dbKeysExist.call(db, keys);
+};
+
 export const rsDbGet = async (db: RustDb, key: Uint8Array): Promise<Buffer> => {
   return await lib.dbGet.call(db, key);
 };
