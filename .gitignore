@@ -32,6 +32,7 @@ coverage/
 # Databases
 .level/
 .rocks/
+.rocks-logs/
 
 # Application configuration files
 .hub/
@@ -48,3 +49,8 @@ dist
 .fleet
 **/.vitepress/cache/
 **/.vitepress/dist/
+
+# Benchmark backup data
+apps/hubble/backups
+apps/hubble/temp_dir
+apps/hubble/run.sh

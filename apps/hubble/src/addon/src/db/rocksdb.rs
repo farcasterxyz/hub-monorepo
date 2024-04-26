@@ -29,7 +29,16 @@ use walkdir::WalkDir;
 
 const DB_DIRECTORY: &str = ".rocks";
 
+#[cfg(feature = "bench-rocksdb-record")]
+lazy_static::lazy_static! {
+    static ref CALL_RECORDER: Arc<super::rocksdb_call_recorder::RocksDbCallRecorder> = Arc::new(super::rocksdb_call_recorder::RocksDbCallRecorder::new(format!("{}-logs", DB_DIRECTORY)));
+}
+
+#[cfg(feature = "bench-rocksdb-record")]
+use std::borrow::Cow;
+
 /** Hold a transaction. List of key/value pairs that will be committed together */
+#[derive(Clone, Debug)]
 pub struct RocksDbTransactionBatch {
     pub batch: HashMap<Vec<u8>, Option<Vec<u8>>>,
 }
@@ -172,7 +181,17 @@ impl RocksDB {
     }
 
     pub fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>, HubError> {
-        self.db().as_ref().unwrap().get(key).map_err(|e| HubError {
+        let db = self.db();
+
+        #[cfg(feature = "bench-rocksdb-record")]
+        CALL_RECORDER.record(
+            &self.path,
+            super::rocksdb_call_recorder::FunctionCall::Get {
+                key: Cow::Borrowed(key),
+            },
+        );
+
+        db.as_ref().unwrap().get(key).map_err(|e| HubError {
             code: "db.internal_error".to_string(),
             message: e.to_string(),
         })
@@ -183,7 +202,17 @@ impl RocksDB {
     }
 
     pub fn get_many(&self, keys: &Vec<Vec<u8>>) -> Result<Vec<Vec<u8>>, HubError> {
-        let results = self.db().as_ref().unwrap().multi_get(keys);
+        let db = self.db();
+
+        #[cfg(feature = "bench-rocksdb-record")]
+        CALL_RECORDER.record(
+            &self.path,
+            super::rocksdb_call_recorder::FunctionCall::GetMany {
+                keys: Cow::Borrowed(keys),
+            },
+        );
+
+        let results = db.as_ref().unwrap().multi_get(keys);
 
         // If any of the results are Errors, return an error
         let results = results.into_iter().collect::<Result<Vec<_>, _>>()?;
@@ -196,25 +225,38 @@ impl RocksDB {
     }
 
     pub fn put(&self, key: &[u8], value: &[u8]) -> Result<(), HubError> {
-        self.db()
-            .as_ref()
-            .unwrap()
-            .put(key, value)
-            .map_err(|e| HubError {
-                code: "db.internal_error".to_string(),
-                message: e.to_string(),
-            })
+        let db = self.db();
+
+        #[cfg(feature = "bench-rocksdb-record")]
+        CALL_RECORDER.record(
+            &self.path,
+            super::rocksdb_call_recorder::FunctionCall::Put {
+                key: Cow::Borrowed(key),
+                value: Cow::Borrowed(value),
+            },
+        );
+
+        db.as_ref().unwrap().put(key, value).map_err(|e| HubError {
+            code: "db.internal_error".to_string(),
+            message: e.to_string(),
+        })
     }
 
     pub fn del(&self, key: &[u8]) -> Result<(), HubError> {
-        self.db()
-            .as_ref()
-            .unwrap()
-            .delete(key)
-            .map_err(|e| HubError {
-                code: "db.internal_error".to_string(),
-                message: e.to_string(),
-            })
+        let db = self.db();
+
+        #[cfg(feature = "bench-rocksdb-record")]
+        CALL_RECORDER.record(
+            &self.path,
+            super::rocksdb_call_recorder::FunctionCall::Delete {
+                key: Cow::Borrowed(key),
+            },
+        );
+
+        db.as_ref().unwrap().delete(key).map_err(|e| HubError {
+            code: "db.internal_error".to_string(),
+            message: e.to_string(),
+        })
     }
 
     pub fn txn(&self) -> RocksDbTransactionBatch {
@@ -229,6 +271,12 @@ impl RocksDB {
                 message: "Database is not open".to_string(),
             });
         }
+
+        #[cfg(feature = "bench-rocksdb-record")]
+        CALL_RECORDER.record(
+            &self.path,
+            super::rocksdb_call_recorder::FunctionCall::Commit(Cow::Borrowed(&batch)),
+        );
 
         let txn = db.as_ref().unwrap().transaction();
         for (key, value) in batch.batch {
@@ -898,7 +946,7 @@ impl RocksDB {
             .to_string();
 
         let start = std::time::SystemTime::now();
-        info!(logger, "Creating chunked tar.gz snapshot for directory: {}", 
+        info!(logger, "Creating chunked tar.gz snapshot for directory: {}",
             input_dir; o!("output_file_path" => &chunked_output_dir, "base_name" => &base_name));
 
         let mut multi_chunk_writer = MultiChunkWriter::new(
@@ -957,7 +1005,7 @@ impl RocksDB {
         let triedb_backup_path = triedb_backup_path.into_os_string().into_string().unwrap();
 
         let start = std::time::SystemTime::now();
-        info!(snapshot_logger, "Creating snapshot for main DB: {}", main_db_path; 
+        info!(snapshot_logger, "Creating snapshot for main DB: {}", main_db_path;
         o!("output_file_path_main" => &main_backup_path, "output_file_path_trie" => &triedb_backup_path));
 
         let backup_main = DB::open_default(&main_backup_path)

@@ -16,6 +16,7 @@ dependencies = [
  "gzp",
  "hex",
  "hostname",
+ "lazy_static",
  "neon",
  "once_cell",
  "prost",

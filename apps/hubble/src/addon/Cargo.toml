@@ -7,9 +7,14 @@ exclude = ["index.node"]
 build = "build.rs"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "lib"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = ["bench-rocksdb"]
+bench-rocksdb-record = ["bench-rocksdb", "lazy_static"]
+bench-rocksdb = []
 
 [dependencies]
 blake3 = "1.4.1"
@@ -35,6 +40,7 @@ rand = "0.8.5"
 hex = "0.4.3"
 flate2 = "1.0.28"
 gzp = "0.11.3"
+lazy_static = { version = "1.4", optional = true }
 
 [build-dependencies]
 tonic-build = "0.11"
@@ -44,3 +50,8 @@ glob = "0.3.1"
 version = "1.0.0"
 default-features = false
 features = [ "futures", "napi-6"]
+
+[[bin]]
+name = "benchmark-rocks"
+path = "bin/benchmark-rocks.rs"
+required-features = ["bench-rocksdb"]
