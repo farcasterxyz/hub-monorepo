@@ -33,6 +33,7 @@ services:
         --statsd-metrics-server $STATSD_METRICS_SERVER
         --hub-operator-fid ${HUB_OPERATOR_FID:-0}
         --opt-out-diagnostics ${HUB_OPT_OUT_DIAGNOSTICS:-false}
+        --trust-x-forwarded-for-header ${TRUST_X_FORWARDED_FOR_HEADER:-false}
     ports:
       - '${HTTPAPI_PORT:-2281}:${HTTPAPI_PORT:-2281}' # HTTP API. You can set HTTP_PORT in .env
       - '${GOSSIP_PORT:-2282}:${GOSSIP_PORT:-2282}' # Gossip. You can set GOSSIP_PORT in .env
