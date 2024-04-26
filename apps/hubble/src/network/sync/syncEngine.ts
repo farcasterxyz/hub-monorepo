@@ -1304,11 +1304,13 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
         const ourNode = await this._trie.getTrieNodeMetadata(workItem.prefix);
 
+        const start = Date.now();
         const theirNodeResult = await this.curSync.rpcClient.getSyncMetadataByPrefix(
           TrieNodePrefix.create({ prefix: workItem.prefix }),
           new Metadata(),
           rpcDeadline(),
         );
+        statsd().timing("syncengine.peer.get_syncmetadata_by_prefix_ms", Date.now() - start);
 
         if (theirNodeResult.isErr()) {
           log.warn(theirNodeResult.error, `Error fetching metadata for prefix ${workItem.prefix}`);

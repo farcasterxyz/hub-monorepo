@@ -1,4 +1,4 @@
-use super::trie_node::TrieNode;
+use super::trie_node::{TrieNode, TIMESTAMP_LENGTH};
 use crate::{
     db::{RocksDB, RocksDbTransactionBatch},
     logger::LOGGER,
@@ -161,6 +161,13 @@ impl MerkleTrie {
     }
 
     pub fn insert(&self, key: &Vec<u8>) -> Result<bool, HubError> {
+        if key.len() < TIMESTAMP_LENGTH {
+            return Err(HubError {
+                code: "bad_request.invalid_param".to_string(),
+                message: "Key length is too short".to_string(),
+            });
+        }
+
         if let Some(root) = self.root.write().unwrap().as_mut() {
             let mut txn = RocksDbTransactionBatch::new();
             let result = root.insert(&self.db, &mut txn, &key, 0)?;
@@ -218,6 +225,30 @@ impl MerkleTrie {
         }
     }
 
+    pub fn get_node(&self, prefix: &[u8]) -> Option<TrieNode> {
+        let node_key = TrieNode::make_primary_key(prefix, None);
+
+        // We will first attempt to get it from the DB cache
+        if let Some(Some(node_bytes)) = self.txn_batch.lock().unwrap().batch.get(&node_key) {
+            if let Ok(node) = TrieNode::deserialize(&node_bytes) {
+                return Some(node);
+            }
+        }
+
+        // Else, get it directly from the DB
+        if let Some(node_bytes) = self.db.get(&node_key).ok().flatten() {
+            if let Ok(node) = TrieNode::deserialize(&node_bytes) {
+                return Some(node);
+            }
+        }
+        // If not found, get it the normal way from the trie root
+        self.root
+            .write()
+            .unwrap()
+            .as_mut()
+            .and_then(|root| root.get_node_from_trie(&self.db, prefix, 0).cloned())
+    }
+
     pub fn root_hash(&self) -> Result<Vec<u8>, HubError> {
         if let Some(root) = self.root.read().unwrap().as_ref() {
             Ok(root.hash())
@@ -231,7 +262,7 @@ impl MerkleTrie {
 
     pub fn get_all_values(&self, prefix: &[u8]) -> Result<Vec<Vec<u8>>, HubError> {
         if let Some(root) = self.root.write().unwrap().as_mut() {
-            if let Some(node) = root.get_node(&self.db, prefix, 0) {
+            if let Some(node) = root.get_node_from_trie(&self.db, prefix, 0) {
                 let result = node.get_all_values(&self.db, prefix);
 
                 self.unload_from_memory(root, false)?;
@@ -261,21 +292,39 @@ impl MerkleTrie {
     }
 
     pub fn get_trie_node_metadata(&self, prefix: &[u8]) -> Result<NodeMetadata, HubError> {
-        if let Some(root) = self.root.write().unwrap().as_mut() {
-            if let Some(node) = root.get_node(&self.db, prefix, 0) {
-                let result = node.get_node_metadata(&self.db, prefix);
+        if let Some(node) = self.get_node(prefix) {
+            let mut children = HashMap::new();
 
-                result
-            } else {
-                Err(HubError {
-                    code: "bad_request.invalid_param".to_string(),
-                    message: "Node not found".to_string(),
-                })
+            for char in node.children().keys() {
+                let mut child_prefix = prefix.to_vec();
+                child_prefix.push(*char);
+
+                let child_node = self.get_node(&child_prefix).ok_or(HubError {
+                    code: "bad_request.internal_error".to_string(),
+                    message: "Child node not found".to_string(),
+                })?;
+
+                children.insert(
+                    *char,
+                    NodeMetadata {
+                        prefix: child_prefix,
+                        num_messages: child_node.items(),
+                        hash: hex::encode(&child_node.hash()),
+                        children: HashMap::new(),
+                    },
+                );
             }
+
+            Ok(NodeMetadata {
+                prefix: prefix.to_vec(),
+                num_messages: node.items(),
+                hash: hex::encode(&node.hash()),
+                children,
+            })
         } else {
             Err(HubError {
-                code: "bad_request.internal_error".to_string(),
-                message: "Merkle Trie not initialized for metadata".to_string(),
+                code: "bad_request.invalid_param".to_string(),
+                message: "Node not found".to_string(),
             })
         }
     }

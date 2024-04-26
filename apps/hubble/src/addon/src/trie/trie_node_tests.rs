@@ -352,11 +352,11 @@ mod tests {
         }
 
         // Ensure the branch is compacted
-        let node1 = node.get_node(&db, &ids[1][0..10], 0).unwrap();
+        let node1 = node.get_node_from_trie(&db, &ids[1][0..10], 0).unwrap();
         assert_eq!(node1.is_leaf(), true);
         assert_eq!(node1.value(), Some(ids[1].clone()));
 
-        let node2 = node.get_node(&db, &ids[2][0..10], 0).unwrap();
+        let node2 = node.get_node_from_trie(&db, &ids[2][0..10], 0).unwrap();
         assert_eq!(node2.is_leaf(), true);
         assert_eq!(node2.value(), Some(ids[2].clone()));
 

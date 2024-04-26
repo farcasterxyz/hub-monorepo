@@ -220,7 +220,7 @@ describe("server rpc tests", () => {
 
 describe("checkPort", () => {
   let server: http.Server;
-  const testPort = 3000; // Example port
+  const testPort = 3111; // Example port
 
   beforeAll((done) => {
     server = http.createServer((req, res) => {
