@@ -352,5 +352,24 @@ describe("sharded event stream", () => {
     oddEvents.map(([, event]) => {
       expect(event.fid || event.data.fid).toBe(303);
     });
+
+    // Should also work when requesting events from the past
+    // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+    const evenHistoricalEvents: [HubEventType, any][] = [];
+    // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+    const oddHistoricalEvents: [HubEventType, any][] = [];
+
+    await setupSubscription(evenHistoricalEvents, { totalShards: 2, shardIndex: 0, fromId: 0 });
+    await setupSubscription(oddHistoricalEvents, { totalShards: 2, shardIndex: 1, fromId: 0 });
+    await sleep(100);
+
+    expect(evenHistoricalEvents).toHaveLength(5);
+    expect(oddHistoricalEvents).toHaveLength(5);
+    evenHistoricalEvents.map(([, event]) => {
+      expect(event.fid || event.data.fid).toBe(202);
+    });
+    oddHistoricalEvents.map(([, event]) => {
+      expect(event.fid || event.data.fid).toBe(303);
+    });
   });
 });
