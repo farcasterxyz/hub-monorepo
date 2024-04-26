@@ -1,5 +1,14 @@
 # @farcaster/hub-shuttle
 
+## 0.2.4
+
+### Patch Changes
+
+- 30b8d64f: fix: increase hub timeout limit
+- 80aadc6a: Buffer statsd calls before sending on socket
+- 589e5770: fix: Preserve redis stream backwards compatibility
+- 0c1ab37f: feat: add fid sharding
+
 ## 0.2.3
 
 ### Patch Changes
