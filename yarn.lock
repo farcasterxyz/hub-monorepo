@@ -1830,6 +1830,11 @@
   dependencies:
     lodash.mergewith "^4.6.2"
 
+"@farcaster/hot-shots@^10.0.0":
+  version "10.0.0"
+  resolved "https://registry.npmjs.org/@farcaster/hot-shots/-/hot-shots-10.0.0.tgz#6a2f4374c19bb69c0cd271be36f90cfc3bd10d74"
+  integrity sha512-wVbdYvZL41SuCOFOUPsso16Ld/CZtjhVE0dJr8xgR2AygniI7YR9a9lmtIZS94/LUxL84JLCAkUJzTIpPKCagQ==
+
 "@fastify/accept-negotiator@^1.0.0":
   version "1.1.0"
   resolved "https://registry.npmjs.org/@fastify/accept-negotiator/-/accept-negotiator-1.1.0.tgz#c1c66b3b771c09742a54dd5bc87c582f6b0630ff"
