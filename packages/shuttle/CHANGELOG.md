@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.2.5
+
+### Patch Changes
+
+- 20c4ef64: Validate merge messages only when storing messages
+
 ## 0.2.4
 
 ### Patch Changes
