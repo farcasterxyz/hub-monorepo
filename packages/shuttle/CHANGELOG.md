@@ -1,5 +1,12 @@
 # @farcaster/hub-shuttle
 
+## 0.2.6
+
+### Patch Changes
+
+- 7490ff5d: Switch from @figma/hot-shots to @farcaster/hot-shots
+- afa31270: Stop DNS lookups for loopback address in statsd calls
+
 ## 0.2.5
 
 ### Patch Changes
