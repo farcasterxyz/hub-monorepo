@@ -23,7 +23,8 @@ import { PeriodicPeerCheckScheduler } from "./periodicPeerCheck.js";
 import { GOSSIP_PROTOCOL_VERSION } from "./protocol.js";
 import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
 import { PeerScoreThresholds } from "@chainsafe/libp2p-gossipsub/score";
-import { statsd, StatsDInitParams } from "../../utils/statsd.js";
+import { statsd } from "../../utils/statsd.js";
+import { ClientOptions } from "@figma/hot-shots";
 import { createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
 import EventEmitter from "events";
 import RocksDB from "../../storage/db/rocksdb.js";
@@ -80,7 +81,7 @@ export interface NodeOptions {
   /** The maximum amount of time to dial a peer in libp2p network in milliseconds */
   p2pConnectTimeoutMs?: number | undefined;
   /** StatsD parameters */
-  statsdParams?: StatsDInitParams | undefined;
+  statsdParams?: ClientOptions | undefined;
 }
 
 export type GossipMessageResult = {

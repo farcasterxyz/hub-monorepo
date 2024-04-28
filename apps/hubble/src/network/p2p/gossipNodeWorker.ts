@@ -95,7 +95,7 @@ export class LibP2PNode {
   async makeNode(options: NodeOptions): HubAsyncResult<boolean> {
     // since we are running in a worker thread, we need to initialize statsd
     if (options.statsdParams) {
-      initializeStatsd(options.statsdParams.host, options.statsdParams.port);
+      initializeStatsd(options.statsdParams.host ?? "", options.statsdParams.port ?? 0);
     }
 
     const listenIPMultiAddr = options.ipMultiAddr ?? MultiaddrLocalHost;

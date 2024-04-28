@@ -1,4 +1,12 @@
-import { bytesToHexString, HubAsyncResult, HubError, OnChainEvent, toFarcasterTime } from "@farcaster/hub-nodejs";
+import {
+  bytesToHexString,
+  HubAsyncResult,
+  HubError,
+  HubResult,
+  Message,
+  OnChainEvent,
+  toFarcasterTime,
+} from "@farcaster/hub-nodejs";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import cron from "node-cron";
 import { logger } from "../../utils/logger.js";
@@ -11,6 +19,11 @@ import { getHubState, putHubState } from "../../storage/db/hubState.js";
 import { sleep } from "../../utils/crypto.js";
 
 export const DEFAULT_VALIDATE_AND_REVOKE_MESSAGES_CRON = "10 20 * * *"; // Every day at 20:10 UTC (00:10 pm PST)
+
+type ValidateResultWithMessage = {
+  result: HubAsyncResult<number | undefined>;
+  message: Message;
+};
 
 // How much time to allocate to validating and revoking each fid.
 // 50 fids per second, which translates to 1/28th of the FIDs will be checked in just over 2 hours.
@@ -201,6 +214,20 @@ export class ValidateOrRevokeMessagesJobScheduler {
     );
 
     let count = 0;
+    const validatePromises: ValidateResultWithMessage[] = [];
+    const processValidateResult = (result: HubResult<number | undefined>, message: Message) => {
+      result.match(
+        (result) => {
+          if (result !== undefined) {
+            log.info({ fid, hash: bytesToHexString(message.hash)._unsafeUnwrap() }, "revoked message");
+          }
+        },
+        (e) => {
+          log.error({ errCode: e.errCode }, `error validating and revoking message: ${e.message}`);
+        },
+      );
+    };
+
     await this._db.forEachIteratorByPrefix(prefix, async (key, value) => {
       if ((key as Buffer).length !== 1 + FID_BYTES + 1 + TSHASH_LENGTH) {
         // Not a message key, so we can skip it.
@@ -220,20 +247,15 @@ export class ValidateOrRevokeMessagesJobScheduler {
       )();
 
       if (message.isOk()) {
-        const result = await this._engine.validateOrRevokeMessage(message.value);
+        validatePromises.push({ result: this._engine.validateOrRevokeMessage(message.value), message: message.value });
         count += 1;
-        result.match(
-          (result) => {
-            if (result !== undefined) {
-              log.info({ fid, hash: bytesToHexString(message.value.hash)._unsafeUnwrap() }, "revoked message");
-            }
-          },
-          (e) => {
-            log.error({ errCode: e.errCode }, `error validating and revoking message: ${e.message}`);
-          },
-        );
       }
     });
+
+    // Process all the results
+    for (const { result, message } of validatePromises) {
+      processValidateResult(await result, message);
+    }
 
     return ok(count);
   }

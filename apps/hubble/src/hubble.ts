@@ -20,6 +20,7 @@ import {
   UserNameProof,
   validations,
 } from "@farcaster/hub-nodejs";
+import { ClientOptions as StatsDClientOptions } from "@figma/hot-shots";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { peerIdFromBytes, peerIdFromString } from "@libp2p/peer-id";
 import { publicAddressesFirst } from "@libp2p/utils/address-sort";
@@ -74,7 +75,7 @@ import { CheckIncomingPortsJobScheduler } from "./storage/jobs/checkIncomingPort
 import { applyNetworkConfig, fetchNetworkConfig, NetworkConfig } from "./network/utils/networkConfig.js";
 import { UpdateNetworkConfigJobScheduler } from "./storage/jobs/updateNetworkConfigJob.js";
 import { DbSnapshotBackupJobScheduler } from "./storage/jobs/dbSnapshotBackupJob.js";
-import { statsd, StatsDInitParams } from "./utils/statsd.js";
+import { statsd } from "./utils/statsd.js";
 import {
   getDbSchemaVersion,
   LATEST_DB_SCHEMA_VERSION,
@@ -193,7 +194,7 @@ export interface HubOptions {
   rankRpcs?: boolean;
 
   /** StatsD parameters */
-  statsdParams?: StatsDInitParams | undefined;
+  statsdParams?: StatsDClientOptions | undefined;
 
   /** ETH mainnet RPC URL(s) */
   ethMainnetRpcUrl?: string;
