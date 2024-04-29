@@ -17,7 +17,7 @@ use neon::{
     result::JsResult,
     types::{Finalize, JsBox, JsBuffer, JsPromise, JsString},
 };
-use slog::{info, o};
+use slog::{error, info, o};
 use std::{
     borrow::Borrow,
     collections::HashMap,
@@ -241,12 +241,9 @@ impl MerkleTrie {
                 return Some(node);
             }
         }
-        // If not found, get it the normal way from the trie root
-        self.root
-            .write()
-            .unwrap()
-            .as_mut()
-            .and_then(|root| root.get_node_from_trie(&self.db, prefix, 0).cloned())
+
+        // If not found, return None
+        None
     }
 
     pub fn root_hash(&self) -> Result<Vec<u8>, HubError> {
