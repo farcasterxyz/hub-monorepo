@@ -10,9 +10,10 @@ export class MessageProcessor {
     trx: DB,
     operation: StoreMessageOperation = "merge",
     log: pino.Logger | undefined = undefined,
+    validate = true,
   ): Promise<boolean> {
     // Only validate merge messages since we may be deleting an invalid message
-    if (operation === "merge") {
+    if (validate && operation === "merge") {
       const validation = await validations.validateMessage(message);
       if (validation.isErr()) {
         log?.warn(`Invalid message ${bytesToHex(message.hash)}: ${validation.error.message}`);
