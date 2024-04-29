@@ -551,8 +551,8 @@ class Engine extends TypedEmitter<EngineEvents> {
   }
 
   /** revoke message if it is not valid */
-  async validateOrRevokeMessage(message: Message): HubAsyncResult<number | undefined> {
-    const isValid = await this.validateMessage(message);
+  async validateOrRevokeMessage(message: Message, lowPriority = false): HubAsyncResult<number | undefined> {
+    const isValid = await this.validateMessage(message, lowPriority);
 
     if (isValid.isErr() && message.data) {
       if (isValid.error.errCode === "unavailable.network_failure") {
@@ -1038,7 +1038,7 @@ class Engine extends TypedEmitter<EngineEvents> {
     return ok(event);
   }
 
-  async validateMessage(message: Message): HubAsyncResult<Message> {
+  async validateMessage(message: Message, lowPriority = false): HubAsyncResult<Message> {
     // 1. Ensure message data is present
     if (!message || !message.data) {
       return err(new HubError("bad_request.validation_failure", "message data is missing"));
@@ -1168,7 +1168,19 @@ class Engine extends TypedEmitter<EngineEvents> {
       this._nextValidationWorker += 1;
       this._nextValidationWorker = this._nextValidationWorker % this._validationWorkers.length;
 
-      const worker = this._validationWorkers[this._nextValidationWorker] as Worker;
+      // If this is a low-priority message and we're under load, only send it to the [0] worker,
+      // leaving the rest for high-priority messages
+      let workerIndex = this._nextValidationWorker;
+      if (this._validationWorkerPromiseMap.size > 100) {
+        if (lowPriority) {
+          workerIndex = 0;
+        } else {
+          // Send the high-priority message any but the first worker, which is reserved for the low-priority messages
+          workerIndex = this._nextValidationWorker === 0 ? 1 : this._nextValidationWorker;
+        }
+      }
+
+      const worker = this._validationWorkers[workerIndex] as Worker;
       return new Promise<HubResult<Message>>((resolve) => {
         const id = this._validationWorkerJobId++;
         this._validationWorkerPromiseMap.set(id, resolve);

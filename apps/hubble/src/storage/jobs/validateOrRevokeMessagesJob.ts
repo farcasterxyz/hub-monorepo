@@ -214,18 +214,23 @@ export class ValidateOrRevokeMessagesJobScheduler {
     );
 
     let count = 0;
-    const validatePromises: ValidateResultWithMessage[] = [];
-    const processValidateResult = (result: HubResult<number | undefined>, message: Message) => {
-      result.match(
-        (result) => {
-          if (result !== undefined) {
-            log.info({ fid, hash: bytesToHexString(message.hash)._unsafeUnwrap() }, "revoked message");
-          }
-        },
-        (e) => {
-          log.error({ errCode: e.errCode }, `error validating and revoking message: ${e.message}`);
-        },
-      );
+    let validatePromises: ValidateResultWithMessage[] = [];
+    const processValidationResults = async () => {
+      const promises = validatePromises;
+      validatePromises = [];
+
+      for (const { result, message } of promises) {
+        (await result).match(
+          (result) => {
+            if (result !== undefined) {
+              log.info({ fid, hash: bytesToHexString(message.hash)._unsafeUnwrap() }, "revoked message");
+            }
+          },
+          (e) => {
+            log.error({ errCode: e.errCode }, `error validating and revoking message: ${e.message}`);
+          },
+        );
+      }
     };
 
     await this._db.forEachIteratorByPrefix(prefix, async (key, value) => {
@@ -247,15 +252,22 @@ export class ValidateOrRevokeMessagesJobScheduler {
       )();
 
       if (message.isOk()) {
-        validatePromises.push({ result: this._engine.validateOrRevokeMessage(message.value), message: message.value });
+        validatePromises.push({
+          // Mark as low-priority, so as to not interfere with gossip or sync messages
+          result: this._engine.validateOrRevokeMessage(message.value, true),
+          message: message.value,
+        });
+
+        // Every 10,000 messages, process the results to avoid memory issues
+        if (validatePromises.length > 10_000) {
+          await processValidationResults();
+        }
         count += 1;
       }
     });
 
-    // Process all the results
-    for (const { result, message } of validatePromises) {
-      processValidateResult(await result, message);
-    }
+    // Process any remaining results
+    await processValidationResults();
 
     return ok(count);
   }
