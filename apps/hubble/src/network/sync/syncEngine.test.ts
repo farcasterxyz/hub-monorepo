@@ -241,6 +241,7 @@ describe("SyncEngine", () => {
 
     const currentTime = getFarcasterTime()._unsafeUnwrap();
 
+    await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
     const existingItems = await syncEngine.trie.items();
     expect(existingItems).toEqual(3); // On chain events
 
@@ -474,11 +475,15 @@ describe("SyncEngine", () => {
       test("updates the trie for on chain events", async () => {
         expect(await syncEngine.trie.exists(SyncId.fromOnChainEvent(custodyEvent))).toBeFalsy();
         await engine.mergeOnChainEvent(custodyEvent);
+        await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
+
         expect(await syncEngine.trie.exists(SyncId.fromOnChainEvent(custodyEvent))).toBeTruthy();
       });
       test("updates the trie for fname events", async () => {
         expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeFalsy();
         await engine.mergeUserNameProof(userNameProof);
+        await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
+
         expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeTruthy();
         expect((await syncEngine.getDbStats()).numFnames).toEqual(1);
       });
@@ -492,6 +497,8 @@ describe("SyncEngine", () => {
         });
         await engine.mergeUserNameProof(userNameProof);
         await engine.mergeUserNameProof(deletionProof);
+        await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
+
         expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeFalsy();
         expect((await syncEngine.getDbStats()).numFnames).toEqual(0);
       });

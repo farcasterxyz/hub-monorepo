@@ -23,7 +23,7 @@ export const sleepWhile = (condition: () => boolean | Promise<boolean>, timeoutM
     }, 100);
     setTimeout(() => {
       clearInterval(interval);
-      reject(new Error(`Timeout in sleepWhile: ${stack}`));
+      reject(new Error(`Timeout in sleepWhile: ${JSON.stringify(stack, null, 2)}`));
     }, timeoutMs);
   });
 };
