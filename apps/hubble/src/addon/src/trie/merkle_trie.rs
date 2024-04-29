@@ -6,7 +6,6 @@ use crate::{
     store::{encode_node_metadata_to_js_object, get_merkle_trie, hub_error_to_js_throw, HubError},
     THREAD_POOL,
 };
-use neon::object::Object as _;
 use neon::{
     context::ModuleContext,
     result::NeonResult,
@@ -17,6 +16,7 @@ use neon::{
     result::JsResult,
     types::{Finalize, JsBox, JsBuffer, JsPromise, JsString},
 };
+use neon::{object::Object as _, types::JsBoolean};
 use slog::{info, o};
 use std::{
     borrow::Borrow,
@@ -407,10 +407,10 @@ impl MerkleTrie {
     pub fn js_batch_update(mut cx: FunctionContext) -> JsResult<JsPromise> {
         let trie = get_merkle_trie(&mut cx)?;
 
-        let inserts_list = cx.argument::<JsArray>(0)?;
-        let deletes_list = cx.argument::<JsArray>(1)?;
+        let updates_list = cx.argument::<JsArray>(0)?;
+        let operation_list = cx.argument::<JsArray>(1)?;
 
-        let insert_keys: Vec<Vec<u8>> = inserts_list
+        let update_keys: Vec<Vec<u8>> = updates_list
             .to_vec(&mut cx)?
             .iter()
             .map(|key| {
@@ -421,15 +421,14 @@ impl MerkleTrie {
             })
             .collect();
 
-        let delete_keys: Vec<Vec<u8>> = deletes_list
+        let operations: Vec<bool> = operation_list
             .to_vec(&mut cx)?
             .iter()
             .map(|value| {
                 value
-                    .downcast_or_throw::<JsBuffer, _>(&mut cx)
+                    .downcast_or_throw::<JsBoolean, _>(&mut cx)
                     .unwrap()
-                    .as_slice(&cx)
-                    .to_vec()
+                    .value(&mut cx)
             })
             .collect();
 
@@ -437,22 +436,21 @@ impl MerkleTrie {
         let (deferred, promise) = cx.promise();
 
         THREAD_POOL.lock().unwrap().execute(move || {
-            let insert_results = insert_keys
-                .iter()
-                .map(|key| trie.insert(key))
-                .collect::<Vec<_>>();
-            let delete_results = delete_keys
-                .iter()
-                .map(|key| trie.delete(key))
+            let results = update_keys
+                .into_iter()
+                .zip(operations.into_iter())
+                .map(|(key, op)| {
+                    if op {
+                        trie.insert(&key)
+                    } else {
+                        trie.delete(&key)
+                    }
+                })
                 .collect::<Vec<_>>();
 
             deferred.settle_with(&channel, move |mut cx| {
-                let js_array = JsArray::new(&mut cx, insert_results.len() + delete_results.len());
-                for (i, result) in insert_results
-                    .into_iter()
-                    .chain(delete_results.into_iter())
-                    .enumerate()
-                {
+                let js_array = JsArray::new(&mut cx, results.len());
+                for (i, result) in results.into_iter().enumerate() {
                     let val = cx.boolean(result.unwrap_or(false));
                     js_array.set(&mut cx, i as u32, val)?;
                 }

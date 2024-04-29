@@ -73,6 +73,7 @@ export interface MerkleTrieKV {
 
 export interface TrieUpdate {
   key: Uint8Array;
+  updateType: "insert" | "delete";
   resolve: (result: boolean) => void;
 }
 
@@ -91,8 +92,7 @@ class MerkleTrie {
   private _db: RocksDB;
   private _rustTrie: RustMerkleTrie;
   private _trieUpdatePending: boolean;
-  private _trieInsertUpdates: TrieUpdate[] = [];
-  private _trieDeleteUpdates: TrieUpdate[] = [];
+  private _trieUpdates: TrieUpdate[] = [];
 
   constructor(rocksDb: RocksDB, trieDb?: RocksDB) {
     this._db = rocksDb;
@@ -153,8 +153,7 @@ class MerkleTrie {
   }
 
   public async clear(): Promise<void> {
-    this._trieInsertUpdates = [];
-    this._trieDeleteUpdates = [];
+    this._trieUpdates = [];
     return await rsMerkleTrieClear(this._rustTrie);
   }
 
@@ -226,7 +225,7 @@ class MerkleTrie {
   }
 
   countPendingUpdates(): number {
-    return this._trieInsertUpdates.length + this._trieDeleteUpdates.length;
+    return this._trieUpdates.length;
   }
 
   async doBatchUpdate() {
@@ -235,17 +234,14 @@ class MerkleTrie {
     while (this.countPendingUpdates() > 0) {
       statsd().gauge("merkle_trie.pending_updates", this.countPendingUpdates());
 
-      const inserts = this._trieInsertUpdates;
-      const deletes = this._trieDeleteUpdates;
-
-      this._trieInsertUpdates = [];
-      this._trieDeleteUpdates = [];
+      const updates = this._trieUpdates;
+      this._trieUpdates = [];
 
       const results = await ResultAsync.fromPromise(
         rsMerkleTrieBatchUpdate(
           this._rustTrie,
-          inserts.map((item) => item.key),
-          deletes.map((item) => item.key),
+          updates.map((item) => item.key),
+          updates.map((item) => (item.updateType === "insert" ? true : false)),
         ),
         (e) => e as HubError,
       );
@@ -253,15 +249,13 @@ class MerkleTrie {
       if (results.isErr()) {
         log.error({ error: results.error }, "Error batch updating trie");
         // Resolve all the pending updates with false
-        inserts.forEach((update) => update.resolve(false));
-        deletes.forEach((update) => update.resolve(false));
+        updates.forEach((update) => update.resolve(false));
       } else {
         const allResults = results.value;
         // Resolve all the pending updates with the result. The allResults are concatenated
         // so we should also concat the insert+delete updates
         let i = 0;
-        inserts.forEach((update) => update.resolve(allResults[i++] as boolean));
-        deletes.forEach((update) => update.resolve(allResults[i++] as boolean));
+        updates.forEach((update) => update.resolve(allResults[i++] as boolean));
       }
 
       // Sleep for a bit to let any promises resolve. This is Ok, because the
@@ -277,7 +271,7 @@ class MerkleTrie {
 
   public async insertBytes(id: Uint8Array): Promise<boolean> {
     return new Promise<boolean>((resolve) => {
-      this._trieInsertUpdates.push({ key: id, resolve });
+      this._trieUpdates.push({ key: id, updateType: "insert", resolve });
       if (this._trieUpdatePending) {
         // Nothing to do, it will be processed at the next oppurtunity
       } else {
@@ -293,7 +287,7 @@ class MerkleTrie {
 
   public async deleteByBytes(id: Uint8Array): Promise<boolean> {
     return new Promise<boolean>((resolve) => {
-      this._trieDeleteUpdates.push({ key: id, resolve });
+      this._trieUpdates.push({ key: id, updateType: "delete", resolve });
       if (this._trieUpdatePending) {
         // Nothing to do, it will be processed at the next oppurtunity
       } else {
