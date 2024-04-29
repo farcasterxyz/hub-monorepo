@@ -383,14 +383,15 @@ describe("Multi peer sync engine", () => {
     expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
 
     // Now, delete the messages from engine 1
-    await engine1.getDb().clear();
+    engine1.getDb().clear();
     const allValues = await syncEngine1.trie.getAllValues(new Uint8Array());
     for (const value of allValues) {
       await syncEngine1.trie.deleteByBytes(value);
     }
 
-    // Now, engine 1 should have no messages
-    expect((await syncEngine1.trie.getTrieNodeMetadata(new Uint8Array()))?.numMessages).toEqual(0);
+    // Now, engine 1 should have no messages. Getting the metadata for the root should return
+    // undefined since the root node doesn't exist any more
+    expect(await syncEngine1.trie.getTrieNodeMetadata(new Uint8Array())).toBeUndefined();
 
     const startScore = syncEngine2.getPeerScore("engine1")?.score ?? 0;
 
