@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.2.7
+
+### Patch Changes
+
+- 1b502fc2: Allow skipping validation when storing message
+
 ## 0.2.6
 
 ### Patch Changes
