@@ -403,8 +403,8 @@ export const validateVerificationAddEthAddressSignature = async (
   network: protobufs.FarcasterNetwork,
   publicClients: PublicClients = defaultPublicClients,
 ): HubAsyncResult<Uint8Array> => {
-  if (body.claimSignature.length > 256) {
-    return err(new HubError("bad_request.validation_failure", "claimSignature > 256 bytes"));
+  if (body.claimSignature.length > 512) {
+    return err(new HubError("bad_request.validation_failure", "claimSignature > 512 bytes"));
   }
 
   const reconstructedClaim = makeVerificationAddressClaim(
