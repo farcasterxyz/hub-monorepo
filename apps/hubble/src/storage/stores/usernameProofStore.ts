@@ -7,7 +7,6 @@ import {
 } from "@farcaster/hub-nodejs";
 import { ResultAsync } from "neverthrow";
 import { UserPostfix } from "../db/types.js";
-import { Message } from "@farcaster/hub-nodejs";
 import {
   rsCreateUsernameProofStore,
   rsGetUsernameProof,
@@ -19,6 +18,7 @@ import StoreEventHandler from "./storeEventHandler.js";
 import { StorePruneOptions } from "./types.js";
 import RocksDB from "storage/db/rocksdb.js";
 import { RustStoreBase } from "./rustStoreBase.js";
+import { messageDecode } from "../../storage/db/message.js";
 
 class UsernameProofStore extends RustStoreBase<UsernameProofMessage, never> {
   constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
@@ -44,7 +44,7 @@ class UsernameProofStore extends RustStoreBase<UsernameProofMessage, never> {
     if (result.isErr()) {
       throw result.error;
     }
-    return Message.decode(new Uint8Array(result.value)) as UsernameProofMessage;
+    return messageDecode(new Uint8Array(result.value)) as UsernameProofMessage;
   }
 
   /** Finds all UserNameProof messages for an fid */
@@ -53,7 +53,7 @@ class UsernameProofStore extends RustStoreBase<UsernameProofMessage, never> {
 
     const messages =
       messages_page.messageBytes?.map((messageBytes) => {
-        return Message.decode(new Uint8Array(messageBytes)) as UsernameProofMessage;
+        return messageDecode(new Uint8Array(messageBytes)) as UsernameProofMessage;
       }) ?? [];
 
     return messages.map((message) => message.data.usernameProofBody);
@@ -67,7 +67,7 @@ class UsernameProofStore extends RustStoreBase<UsernameProofMessage, never> {
     if (result.isErr()) {
       throw result.error;
     }
-    return Message.decode(new Uint8Array(result.value)) as UsernameProofMessage;
+    return messageDecode(new Uint8Array(result.value)) as UsernameProofMessage;
   }
 }
 

@@ -14,6 +14,7 @@ import { MessagesPage, PageOptions } from "./types.js";
 import { UserMessagePostfix } from "../db/types.js";
 import RocksDB from "../db/rocksdb.js";
 import { ResultAsync, err, ok } from "neverthrow";
+import { messageDecode } from "../../storage/db/message.js";
 
 export type DeepPartial<T> = T extends object
   ? {
@@ -207,7 +208,7 @@ export abstract class RustStoreBase<TAdd extends Message, TRemove extends Messag
       throw message_bytes.error;
     }
 
-    return Message.decode(new Uint8Array(message_bytes.value));
+    return messageDecode(new Uint8Array(message_bytes.value));
   }
 
   async getAllMessagesByFid(fid: number, pageOptions: PageOptions = {}): Promise<MessagesPage<TAdd | TRemove>> {
@@ -215,7 +216,7 @@ export abstract class RustStoreBase<TAdd extends Message, TRemove extends Messag
 
     const messages =
       messages_page.messageBytes?.map((message_bytes) => {
-        return Message.decode(new Uint8Array(message_bytes)) as TAdd | TRemove;
+        return messageDecode(new Uint8Array(message_bytes)) as TAdd | TRemove;
       }) ?? [];
 
     return { messages, nextPageToken: messages_page.nextPageToken };

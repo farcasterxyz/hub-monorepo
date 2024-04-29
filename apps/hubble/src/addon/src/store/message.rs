@@ -1,7 +1,7 @@
 use super::{store::HubError, PageOptions, PAGE_SIZE_MAX};
 use crate::{
     db::{RocksDB, RocksDbTransactionBatch},
-    protos::{self, CastId, Message as MessageProto, MessageData, MessageType},
+    protos::{CastId, Message as MessageProto, MessageData, MessageType},
 };
 use prost::Message as _;
 use std::convert::TryFrom;
@@ -132,7 +132,7 @@ impl UserPostfix {
 
 /** A page of messages returned from various APIs */
 pub struct MessagesPage {
-    pub messages: Vec<MessageProto>,
+    pub messages: Vec<Vec<u8>>,
     pub next_page_token: Option<Vec<u8>>,
 }
 
@@ -296,27 +296,16 @@ pub fn get_message(
 /** Read many messages.
  * Note that if a message is not found, that corresponding entry in the result will be None.
  * This is different from the behaviour of get_message, which returns an error.
- *
  */
-pub fn get_many_messages(
+pub fn get_many_messages_as_bytes(
     db: &RocksDB,
     primary_keys: Vec<Vec<u8>>,
-) -> Result<Vec<protos::Message>, HubError> {
+) -> Result<Vec<Vec<u8>>, HubError> {
     let mut messages = Vec::new();
 
     for key in primary_keys {
         if let Ok(Some(value)) = db.get(&key) {
-            match message_decode(value.as_slice()) {
-                Ok(message) => {
-                    messages.push(message);
-                }
-                Err(_) => {
-                    return Err(HubError {
-                        code: "db.internal_error".to_string(),
-                        message: "could not decode message".to_string(),
-                    })
-                }
-            }
+            messages.push(value);
         } else {
             return Err(HubError {
                 code: "db.internal_error".to_string(),
@@ -344,7 +333,7 @@ where
         match message_decode(value) {
             Ok(message) => {
                 if filter(&message) {
-                    messages.push(message);
+                    messages.push(value.to_vec());
 
                     if messages.len() >= page_options.page_size.unwrap_or(PAGE_SIZE_MAX) {
                         last_key = key.to_vec();
