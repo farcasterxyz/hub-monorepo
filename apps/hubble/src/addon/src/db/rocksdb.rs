@@ -60,7 +60,6 @@ impl RocksDbTransactionBatch {
     }
 }
 
-#[derive(Debug)]
 pub struct IteratorOptions {
     pub opts: rocksdb::ReadOptions,
     pub reverse: bool,
