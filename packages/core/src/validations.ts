@@ -329,6 +329,8 @@ export const validateMessageData = async <T extends protobufs.MessageData>(
     !!data.reactionBody
   ) {
     bodyResult = validateReactionBody(data.reactionBody);
+  } else if (validType.value === protobufs.MessageType.LINK_COMPACT_STATE && !!data.linkCompactStateBody) {
+    bodyResult = validateLinkCompactStateBody(data.linkCompactStateBody);
   } else if (
     (validType.value === protobufs.MessageType.LINK_ADD || validType.value === protobufs.MessageType.LINK_REMOVE) &&
     !!data.linkBody
@@ -401,8 +403,8 @@ export const validateVerificationAddEthAddressSignature = async (
   network: protobufs.FarcasterNetwork,
   publicClients: PublicClients = defaultPublicClients,
 ): HubAsyncResult<Uint8Array> => {
-  if (body.claimSignature.length > 256) {
-    return err(new HubError("bad_request.validation_failure", "claimSignature > 256 bytes"));
+  if (body.claimSignature.length > 512) {
+    return err(new HubError("bad_request.validation_failure", "claimSignature > 512 bytes"));
   }
 
   const reconstructedClaim = makeVerificationAddressClaim(
@@ -647,6 +649,29 @@ export const validateNetwork = (network: number): HubResult<protobufs.FarcasterN
   }
 
   return ok(network);
+};
+
+export const validateLinkCompactStateBody = (
+  body: protobufs.LinkCompactStateBody,
+): HubResult<protobufs.LinkCompactStateBody> => {
+  const validatedType = validateLinkType(body.type);
+  if (validatedType.isErr()) {
+    return err(validatedType.error);
+  }
+
+  const targetFids = body.targetFids;
+  if (targetFids === undefined) {
+    return err(new HubError("bad_request.validation_failure", "targets is missing"));
+  }
+
+  for (const targetFid of targetFids) {
+    const validFid = validateFid(targetFid);
+    if (validFid.isErr()) {
+      return err(validFid.error);
+    }
+  }
+
+  return ok(body);
 };
 
 export const validateLinkBody = (body: protobufs.LinkBody): HubResult<protobufs.LinkBody> => {

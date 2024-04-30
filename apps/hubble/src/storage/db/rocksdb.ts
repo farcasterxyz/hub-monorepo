@@ -19,8 +19,10 @@ import {
   rustErrorToHubError,
   rsDbCountKeysAtPrefix,
   rsDbDeleteAllKeysInRange,
+  rsDbKeysExist,
 } from "../../rustfunctions.js";
 import { PageOptions } from "storage/stores/types.js";
+import { HubAsyncResult } from "@farcaster/hub-nodejs";
 
 export type DbStatus = "new" | "opening" | "open" | "closing" | "closed";
 
@@ -112,6 +114,10 @@ class RocksDB {
     }
 
     return v.value;
+  }
+
+  async keysExist(keys: Buffer[]): HubAsyncResult<boolean[]> {
+    return await ResultAsync.fromPromise(rsDbKeysExist(this._db, keys), (e) => rustErrorToHubError(e));
   }
 
   async get(key: Buffer): Promise<Buffer> {

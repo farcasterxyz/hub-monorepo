@@ -15,6 +15,10 @@
     "dist"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/farcasterxyz/hub-monorepo/blob/main/packages/hub-web"
+  },
   "scripts": {
     "build": "tsup --config tsup.config.ts",
     "clean": "rimraf ./dist",

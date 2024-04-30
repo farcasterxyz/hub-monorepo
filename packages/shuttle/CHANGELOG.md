@@ -1,5 +1,33 @@
 # @farcaster/hub-shuttle
 
+## 0.2.7
+
+### Patch Changes
+
+- 1b502fc2: Allow skipping validation when storing message
+
+## 0.2.6
+
+### Patch Changes
+
+- 7490ff5d: Switch from @figma/hot-shots to @farcaster/hot-shots
+- afa31270: Stop DNS lookups for loopback address in statsd calls
+
+## 0.2.5
+
+### Patch Changes
+
+- 20c4ef64: Validate merge messages only when storing messages
+
+## 0.2.4
+
+### Patch Changes
+
+- 30b8d64f: fix: increase hub timeout limit
+- 80aadc6a: Buffer statsd calls before sending on socket
+- 589e5770: fix: Preserve redis stream backwards compatibility
+- 0c1ab37f: feat: add fid sharding
+
 ## 0.2.3
 
 ### Patch Changes

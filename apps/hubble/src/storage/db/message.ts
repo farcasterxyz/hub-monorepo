@@ -1,4 +1,4 @@
-import { bytesIncrement, CastId, HubError, HubResult, Message, MessageData, MessageType } from "@farcaster/hub-nodejs";
+import { bytesIncrement, HubError, HubResult, Message, MessageData, MessageType } from "@farcaster/hub-nodejs";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import RocksDB, { RocksDbIteratorOptions, RocksDbTransaction } from "./rocksdb.js";
 import {
@@ -109,6 +109,10 @@ export const typeToSetPostfix = (type: MessageType): UserMessagePostfix => {
     return UserPostfix.UsernameProofMessage;
   }
 
+  if (type === MessageType.LINK_COMPACT_STATE) {
+    return UserPostfix.LinkCompactStateMessage;
+  }
+
   throw new Error(`invalid type: ${type}`);
 };
 
@@ -125,6 +129,15 @@ export const getMessage = async <T extends Message>(
 ): Promise<T> => {
   const buffer = await db.get(makeMessagePrimaryKey(fid, set, tsHash));
   return messageDecode(new Uint8Array(buffer)) as T;
+};
+
+export const areMessagesInDb = async (db: RocksDB, messages: Message[]): Promise<boolean[]> => {
+  const exists = await db.keysExist(messages.map((message) => makeMessagePrimaryKeyFromMessage(message)));
+  if (exists.isErr()) {
+    // Return a false for each message that we couldn't check
+    return messages.map(() => false);
+  }
+  return exists.value;
 };
 
 export const isMessageInDB = async (db: RocksDB, message: Message): Promise<boolean> => {
@@ -200,47 +213,6 @@ export const getPageIteratorOptsByPrefix = (prefix: Buffer, pageOptions: PageOpt
         gt: startKey,
         lt: Buffer.from(prefixEnd.value),
       };
-};
-
-export const getMessagesPageByPrefix = async <T extends Message>(
-  db: RocksDB,
-  prefix: Buffer,
-  filter: (message: Message) => message is T,
-  pageOptions: PageOptions = {},
-): Promise<MessagesPage<T>> => {
-  const iteratorOpts = getPageIteratorOptsByPrefix(prefix, pageOptions);
-
-  const limit = pageOptions.pageSize || PAGE_SIZE_MAX;
-
-  const messages: T[] = [];
-
-  let iteratorFinished = true;
-  let lastPageToken: Uint8Array | undefined;
-
-  await db.forEachIteratorByOpts(iteratorOpts, (key, value) => {
-    if (!key || !value) {
-      return false; // skip
-    }
-
-    const message = messageDecode(new Uint8Array(value as Buffer));
-    if (filter(message)) {
-      messages.push(message);
-
-      if (messages.length >= limit) {
-        lastPageToken = Uint8Array.from(key.subarray(prefix.length));
-        iteratorFinished = false;
-        return true;
-      }
-    }
-
-    return false; // continue
-  });
-
-  if (!iteratorFinished) {
-    return { messages, nextPageToken: lastPageToken };
-  } else {
-    return { messages, nextPageToken: undefined };
-  }
 };
 
 export const getMessagesBySignerPrefix = (db: RocksDB, fid: number, signer: Uint8Array, type?: MessageType): Buffer => {

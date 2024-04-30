@@ -7,7 +7,6 @@ import RocksDB from "../../storage/db/rocksdb.js";
 import { RootPrefix } from "../../storage/db/types.js";
 import { SyncId, TIMESTAMP_LENGTH } from "./syncId.js";
 import { jest } from "@jest/globals";
-import { sleep } from "../../utils/crypto.js";
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;
 const TEST_TIMEOUT_LONG = 60 * 1000;
@@ -629,7 +628,7 @@ describe("MerkleTrie", () => {
     });
   });
 
-  test("getAllValues returns all values for child nodes", async () => {
+  test("getAllValues returns all values for child nodes directly", async () => {
     const trie = await trieWithIds([1665182332, 1665182343, 1665182345]);
 
     let values = await trie.getAllValues(new Uint8Array(Buffer.from("16651823")));

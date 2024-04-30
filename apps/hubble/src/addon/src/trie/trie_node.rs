@@ -6,14 +6,14 @@ use crate::{
 use prost::Message as _;
 use std::{collections::HashMap, sync::Arc};
 
-use super::merkle_trie::{NodeMetadata, TrieSnapshot};
+use super::merkle_trie::TrieSnapshot;
 
 pub const TIMESTAMP_LENGTH: usize = 10;
 const MAX_VALUES_RETURNED_PER_CALL: usize = 1024;
 
 /// Represents a node in a MerkleTrie. Automatically updates the hashes when items are added,
 /// and keeps track of the number of items in the subtree.
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct TrieNode {
     hash: Vec<u8>,
     items: usize,
@@ -22,7 +22,7 @@ pub struct TrieNode {
 }
 
 // An empty struct that represents a serialized trie node, which will need to be loaded from the db
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SerializedTrieNode {
     pub hash: Option<Vec<u8>>,
 }
@@ -34,7 +34,7 @@ impl SerializedTrieNode {
 }
 
 // An enum that represents the different types of trie nodes
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TrieNodeType {
     Node(TrieNode),
     Serialized(SerializedTrieNode),
@@ -61,7 +61,7 @@ impl TrieNode {
         key
     }
 
-    fn serialize(node: &TrieNode) -> Vec<u8> {
+    pub fn serialize(node: &TrieNode) -> Vec<u8> {
         let db_trie_node = DbTrieNode {
             key: node.key.as_ref().unwrap_or(&vec![]).clone(),
             child_chars: node.children.keys().map(|c| *c as u32).collect(),
@@ -118,12 +118,11 @@ impl TrieNode {
         }
     }
 
-    #[cfg(test)]
     pub fn children(&self) -> &HashMap<u8, TrieNodeType> {
         &self.children
     }
 
-    pub fn get_node(
+    pub fn get_node_from_trie(
         &mut self,
         db: &Arc<RocksDB>,
         prefix: &[u8],
@@ -139,7 +138,7 @@ impl TrieNode {
         }
 
         if let Ok(child) = self.get_or_load_child(db, &prefix[..current_index], char) {
-            child.get_node(db, prefix, current_index + 1)
+            child.get_node_from_trie(db, prefix, current_index + 1)
         } else {
             None
         }
@@ -346,6 +345,7 @@ impl TrieNode {
             Entry::Occupied(mut entry) => {
                 if let TrieNodeType::Serialized(_) = entry.get_mut() {
                     let child_prefix = Self::make_primary_key(prefix, Some(char));
+
                     let child_node = db
                         .get(&child_prefix)?
                         .map(|b| TrieNode::deserialize(&b).unwrap())
@@ -484,39 +484,6 @@ impl TrieNode {
         }
 
         Ok(values)
-    }
-
-    pub fn get_node_metadata(
-        &mut self,
-        db: &Arc<RocksDB>,
-        prefix: &[u8],
-    ) -> Result<NodeMetadata, HubError> {
-        let mut children = HashMap::new();
-
-        let child_chars = self.children.keys().map(|c| *c).collect::<Vec<_>>();
-        for char in child_chars {
-            let child_node = self.get_or_load_child(db, prefix, char)?;
-
-            let mut child_prefix = prefix.to_vec();
-            child_prefix.push(char);
-
-            children.insert(
-                char,
-                NodeMetadata {
-                    prefix: child_prefix.clone(),
-                    num_messages: child_node.items,
-                    hash: hex::encode(child_node.hash.as_slice()),
-                    children: HashMap::new(),
-                },
-            );
-        }
-
-        Ok(NodeMetadata {
-            prefix: prefix.to_vec(),
-            num_messages: self.items,
-            hash: hex::encode(self.hash.as_slice()),
-            children,
-        })
     }
 
     pub fn get_snapshot(

@@ -164,7 +164,7 @@ impl LinkStore {
 
         store
             .db()
-            .for_each_iterator_by_prefix_unbounded(&prefix, page_options, |key, value| {
+            .for_each_iterator_by_prefix(&prefix, page_options, |key, value| {
                 if r#type.is_empty() || value.eq(r#type.as_bytes()) {
                     let ts_hash_offset = prefix.len();
                     let fid_offset: usize = ts_hash_offset + TS_HASH_LENGTH;
@@ -233,6 +233,19 @@ impl LinkStore {
 
         let r = store.get_remove(&partial_message);
         r
+    }
+
+    // Generates a unique key used to store a LinkCompactState message key in the store
+    fn link_compact_state_add_key(fid: u32, link_type: &String) -> Result<Vec<u8>, HubError> {
+        let mut key = Vec::with_capacity(
+            Self::ROOT_PREFIXED_FID_BYTE_SIZE + Self::POSTFIX_BYTE_SIZE + Self::LINK_TYPE_BYTE_SIZE,
+        );
+
+        key.extend_from_slice(&make_user_key(fid));
+        key.push(UserPostfix::LinkCompactStateMessage.as_u8());
+        key.extend_from_slice(&link_type.as_bytes());
+
+        Ok(key)
     }
 
     /// Generates a unique key used to store a LinkAdd message key in the LinksAdd Set index.
@@ -608,6 +621,10 @@ impl StoreDef for LinkStore {
         MessageType::LinkRemove.into_u8()
     }
 
+    fn compact_state_message_type(&self) -> u8 {
+        MessageType::LinkCompactState.into_u8()
+    }
+
     fn is_add_type(&self, message: &Message) -> bool {
         message.signature_scheme == protos::SignatureScheme::Ed25519 as i32
             && message.data.is_some()
@@ -621,6 +638,14 @@ impl StoreDef for LinkStore {
             && message.data.is_some()
             && message.data.as_ref().is_some_and(|data| {
                 data.r#type == MessageType::LinkRemove.into_i32() && data.body.is_some()
+            })
+    }
+
+    fn is_compact_state_type(&self, message: &Message) -> bool {
+        message.signature_scheme == protos::SignatureScheme::Ed25519 as i32
+            && message.data.is_some()
+            && message.data.as_ref().is_some_and(|data| {
+                data.r#type == MessageType::LinkCompactState.into_i32() && data.body.is_some()
             })
     }
 
@@ -662,6 +687,32 @@ impl StoreDef for LinkStore {
     ) -> Result<(), HubError> {
         // For links, there will be no additional conflict logic
         Ok(())
+    }
+
+    fn make_compact_state_add_key(&self, message: &Message) -> Result<Vec<u8>, HubError> {
+        message
+            .data
+            .as_ref()
+            .ok_or(HubError::invalid_parameter("invalid message data"))
+            .and_then(|data| {
+                data.body
+                    .as_ref()
+                    .ok_or(HubError::invalid_parameter("invalid message data body"))
+                    .and_then(|body_option| match body_option {
+                        Body::LinkCompactStateBody(link_compact_body) => {
+                            Self::link_compact_state_add_key(
+                                data.fid as u32,
+                                &link_compact_body.r#type,
+                            )
+                        }
+                        Body::LinkBody(link_body) => {
+                            Self::link_compact_state_add_key(data.fid as u32, &link_body.r#type)
+                        }
+                        _ => Err(HubError::invalid_parameter(
+                            "link_compact_body not specified",
+                        )),
+                    })
+            })
     }
 
     fn make_add_key(&self, message: &Message) -> Result<Vec<u8>, HubError> {

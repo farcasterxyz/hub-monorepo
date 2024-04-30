@@ -34,6 +34,15 @@ export const isLinkAddData = (data: protobufs.MessageData): data is types.LinkAd
   return data.type === protobufs.MessageType.LINK_ADD && typeof data.linkBody !== "undefined";
 };
 
+export const isLinkCompactStateMessage = (message: protobufs.Message): message is types.LinkCompactStateMessage => {
+  return (
+    message.signatureScheme === protobufs.SignatureScheme.ED25519 &&
+    typeof message.data !== "undefined" &&
+    message.data.type === protobufs.MessageType.LINK_COMPACT_STATE &&
+    message.data.linkCompactStateBody !== undefined
+  );
+};
+
 export const isLinkAddMessage = (message: protobufs.Message): message is types.LinkAddMessage => {
   return (
     message.signatureScheme === protobufs.SignatureScheme.ED25519 &&

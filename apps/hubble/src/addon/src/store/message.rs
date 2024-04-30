@@ -119,6 +119,9 @@ pub enum UserPostfix {
 
     /* UserNameProof add set */
     UserNameProofAdds = 99,
+
+    /* Link Compact State set */
+    LinkCompactStateMessage = 100,
 }
 
 impl UserPostfix {
@@ -337,7 +340,7 @@ where
     let mut messages = Vec::new();
     let mut last_key = vec![];
 
-    db.for_each_iterator_by_prefix_unbounded(prefix, page_options, |key, value| {
+    db.for_each_iterator_by_prefix(prefix, page_options, |key, value| {
         match message_decode(value) {
             Ok(message) => {
                 if filter(&message) {

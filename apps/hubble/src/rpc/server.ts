@@ -1396,7 +1396,10 @@ export default class Server {
 
           await this.engine.getDb().forEachIteratorByOpts(eventsIteratorOpts.value, async (_key, value) => {
             const event = HubEvent.decode(Uint8Array.from(value as Buffer));
-            if (request.eventTypes.length === 0 || request.eventTypes.includes(event.type)) {
+            const isRequestedType = request.eventTypes.length === 0 || request.eventTypes.includes(event.type);
+            const isRequestedFid = totalShards === 0 || fidFromEvent(event) % totalShards === shardIndex;
+            const shouldWriteEvent = isRequestedType && isRequestedFid;
+            if (shouldWriteEvent) {
               const writeResult = bufferedStreamWriter.writeToStream(event);
 
               if (writeResult.isErr()) {

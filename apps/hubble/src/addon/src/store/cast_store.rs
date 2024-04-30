@@ -83,6 +83,14 @@ impl StoreDef for CastStoreDef {
             && message.data.as_ref().unwrap().body.is_some()
     }
 
+    fn compact_state_message_type(&self) -> u8 {
+        MessageType::None as u8
+    }
+
+    fn is_compact_state_type(&self, _message: &Message) -> bool {
+        false
+    }
+
     fn find_merge_add_conflicts(
         &self,
         db: &RocksDB,
@@ -222,6 +230,13 @@ impl StoreDef for CastStoreDef {
             message.data.as_ref().unwrap().fid as u32,
             hash,
         ))
+    }
+
+    fn make_compact_state_add_key(&self, _message: &Message) -> Result<Vec<u8>, HubError> {
+        Err(HubError {
+            code: "bad_request.invalid_param".to_string(),
+            message: "Cast Store doesn't support compact state".to_string(),
+        })
     }
 
     fn get_prune_size_limit(&self) -> u32 {
@@ -556,7 +571,7 @@ impl CastStore {
 
         store
             .db()
-            .for_each_iterator_by_prefix_unbounded(&prefix, page_options, |key, _| {
+            .for_each_iterator_by_prefix(&prefix, page_options, |key, _| {
                 let ts_hash_offset = prefix.len();
                 let fid_offset = ts_hash_offset + TS_HASH_LENGTH;
 
@@ -647,7 +662,7 @@ impl CastStore {
 
         store
             .db()
-            .for_each_iterator_by_prefix_unbounded(&prefix, page_options, |key, _| {
+            .for_each_iterator_by_prefix(&prefix, page_options, |key, _| {
                 let ts_hash_offset = prefix.len();
                 let fid_offset = ts_hash_offset + TS_HASH_LENGTH;
 

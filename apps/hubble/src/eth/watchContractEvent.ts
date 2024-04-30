@@ -1,5 +1,5 @@
 import { Abi } from "abitype";
-import { HttpRequestError, PublicClient, WatchContractEventParameters, WatchContractEventReturnType } from "viem";
+import { PublicClient, WatchContractEventParameters, WatchContractEventReturnType } from "viem";
 import { logger, Logger } from "../utils/logger.js";
 import { HubError, HubResult } from "@farcaster/core";
 import { err, ok, Result } from "neverthrow";
