@@ -3,7 +3,7 @@ use crate::logger::LOGGER;
 use crate::statsd::statsd;
 use crate::store::{
     self, get_db, get_iterator_options, hub_error_to_js_throw, increment_vec_u8, HubError,
-    PageOptions,
+    PageOptions, PAGE_SIZE_MAX,
 };
 use crate::trie::merkle_trie::TRIE_DBPATH_PREFIX;
 use crate::THREAD_POOL;
@@ -248,10 +248,8 @@ impl RocksDB {
         let txn = db.as_ref().unwrap().transaction();
         for (key, value) in batch.batch {
             if value.is_none() {
-                // println!("rust txn is delete, key: {:?}", key);
                 txn.delete(key)?;
             } else {
-                // println!("rust txn is put, key: {:?}", key);
                 txn.put(key, value.unwrap())?;
             }
         }
@@ -322,9 +320,6 @@ impl RocksDB {
             upper_prefix = prefix_end.to_vec();
         }
 
-        // println!("lower_prefix: {:?}", lower_prefix);
-        // println!("upper_prefix: {:?}", upper_prefix);
-
         let mut opts = rocksdb::ReadOptions::default();
         opts.set_iterate_lower_bound(lower_prefix);
         opts.set_iterate_upper_bound(upper_prefix);
@@ -359,7 +354,7 @@ impl RocksDB {
      * Iterate over all keys with a given prefix.
      * The callback function should return true to stop the iteration, or false to continue.
      */
-    pub fn for_each_iterator_by_prefix<F>(
+    pub fn for_each_iterator_by_prefix_paged<F>(
         &self,
         prefix: &[u8],
         page_options: &PageOptions,
@@ -381,6 +376,7 @@ impl RocksDB {
 
         let mut all_done = true;
         let mut count = 0;
+
         while iter.valid() {
             if let Some((key, value)) = iter.item() {
                 if f(&key, &value)? {
@@ -390,7 +386,7 @@ impl RocksDB {
                 if page_options.page_size.is_some() {
                     count += 1;
                     if count >= page_options.page_size.unwrap() {
-                        all_done = false;
+                        all_done = true;
                         break;
                     }
                 }
@@ -408,7 +404,7 @@ impl RocksDB {
 
     // Same as for_each_iterator_by_prefix above, but does not limit by page size. To be used in
     // cases where higher level callers are doing custom filtering
-    pub fn for_each_iterator_by_prefix_unbounded<F>(
+    pub fn for_each_iterator_by_prefix<F>(
         &self,
         prefix: &[u8],
         page_options: &PageOptions,
@@ -422,7 +418,10 @@ impl RocksDB {
             page_token: page_options.page_token.clone(),
             reverse: page_options.reverse,
         };
-        self.for_each_iterator_by_prefix(prefix, &unbounded_page_options, f)
+
+        let all_done =
+            self.for_each_iterator_by_prefix_paged(prefix, &unbounded_page_options, f)?;
+        Ok(all_done)
     }
 
     /**
@@ -847,6 +846,71 @@ impl RocksDB {
         Ok(promise)
     }
 
+    /**
+     * Bulk fetch a page of keys with a given prefix with the given page options.
+     */
+    pub fn js_fetch_iterator_page_by_prefix(mut cx: FunctionContext) -> JsResult<JsPromise> {
+        let db = get_db(&mut cx)?;
+
+        // Prefix
+        let prefix = cx.argument::<JsBuffer>(0)?.as_slice(&cx).to_vec();
+
+        // Page options
+        let page_options = store::get_page_options(&mut cx, 1)?;
+
+        let channel = cx.channel();
+        let (deferred, promise) = cx.promise();
+        THREAD_POOL.lock().unwrap().execute(move || {
+            let mut results = Vec::new();
+            let mut next_page_token = Vec::new();
+
+            let iter_result =
+                db.for_each_iterator_by_prefix_paged(&prefix, &page_options, |key, value| {
+                    results.push((key.to_vec(), value.to_vec()));
+                    if results.len() > PAGE_SIZE_MAX {
+                        next_page_token = key[prefix.len()..].to_vec();
+                        return Ok(true);
+                    }
+                    Ok(false)
+                });
+
+            deferred.settle_with(&channel, move |mut cx| match iter_result {
+                Err(e) => hub_error_to_js_throw(&mut cx, e),
+                Ok(all_done) => {
+                    let js_array = JsArray::new(&mut cx, results.len());
+                    for (i, (key, value)) in results.iter().enumerate() {
+                        let js_object = JsObject::new(&mut cx);
+                        let mut key_buffer = cx.buffer(key.len())?;
+                        key_buffer.as_mut_slice(&mut cx).copy_from_slice(key);
+                        js_object.set(&mut cx, "key", key_buffer)?;
+
+                        let mut value_buffer = cx.buffer(value.len())?;
+                        value_buffer.as_mut_slice(&mut cx).copy_from_slice(value);
+                        js_object.set(&mut cx, "value", value_buffer)?;
+
+                        js_array.set(&mut cx, i as u32, js_object)?;
+                    }
+
+                    let js_object = JsObject::new(&mut cx);
+                    let js_all_done = cx.boolean(all_done);
+
+                    let mut js_next_page_token = cx.buffer(next_page_token.len())?;
+                    js_next_page_token
+                        .as_mut_slice(&mut cx)
+                        .copy_from_slice(&next_page_token);
+
+                    js_object.set(&mut cx, "allFinished", js_all_done)?;
+                    js_object.set(&mut cx, "nextPageToken", js_next_page_token)?;
+                    js_object.set(&mut cx, "dbKeyValues", js_array)?;
+
+                    Ok(js_object)
+                }
+            });
+        });
+
+        Ok(promise)
+    }
+
     pub fn js_for_each_iterator_by_prefix(mut cx: FunctionContext) -> JsResult<JsPromise> {
         let db = get_db(&mut cx)?;
 
@@ -859,7 +923,7 @@ impl RocksDB {
         // The argument is a callback function
         let callback = cx.argument::<JsFunction>(2)?;
 
-        let result = db.for_each_iterator_by_prefix(&prefix, &page_options, |key, value| {
+        let result = db.for_each_iterator_by_prefix_paged(&prefix, &page_options, |key, value| {
             // Use the extracted function here
             Self::call_js_callback(&mut cx, &callback, key, value)
         });

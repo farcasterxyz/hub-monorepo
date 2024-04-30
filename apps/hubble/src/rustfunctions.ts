@@ -194,33 +194,18 @@ export const rsDbForEachIteratorByPrefix = async (
   pageOptions: PageOptions,
   cb: (key: Buffer, value: Buffer | undefined) => Promise<boolean> | boolean | Promise<void> | void,
 ): Promise<boolean> => {
-  let dbKeyValues: DbKeyValue[] = [];
-  const batchPageSize = pageOptions.pageSize ?? PAGE_SIZE_MAX;
-
   let allFinished = false;
   let nextPageToken = undefined;
   let stopped = false;
   let batchPageOptions = { ...pageOptions };
 
   do {
-    allFinished = await lib.dbForEachIteratorByPrefix.call(
-      db,
-      prefix,
-      batchPageOptions,
-      (key: Buffer, value: Buffer | undefined) => {
-        dbKeyValues.push({ key, value });
-
-        if (dbKeyValues.length > batchPageSize) {
-          nextPageToken = new Uint8Array(key.subarray(prefix.length));
-          return true; // Stop the iteration
-        }
-
-        return false; // Continue the iteration
-      },
-    );
+    const result = await lib.dbFetchIteratorPageByPrefix.call(db, prefix, batchPageOptions);
+    allFinished = result.allFinished;
+    nextPageToken = result.nextPageToken;
 
     // Iterate over the key-values
-    for (const kv of dbKeyValues) {
+    for (const kv of result.dbKeyValues) {
       const shouldStop = await cb(kv.key, kv.value);
       if (shouldStop) {
         stopped = true;
@@ -229,7 +214,6 @@ export const rsDbForEachIteratorByPrefix = async (
     }
 
     batchPageOptions = { ...pageOptions, pageToken: nextPageToken };
-    dbKeyValues = []; // Clear the key-values array
   } while (!allFinished && !stopped && nextPageToken);
 
   return !stopped && allFinished;

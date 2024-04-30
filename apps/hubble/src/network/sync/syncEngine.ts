@@ -1555,19 +1555,11 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   }
 
   private async readDbStatsFromDb(): Promise<DbStats> {
-    let numFids = 0;
-    let numFnames = 0;
-
-    await this._db.forEachIteratorByPrefix(
+    const numFids = await this._db.countKeysAtPrefix(
       Buffer.from([RootPrefix.OnChainEvent, OnChainEventPostfix.IdRegisterByFid]),
-      () => {
-        numFids += 1;
-      },
     );
 
-    await this._db.forEachIteratorByPrefix(Buffer.from([RootPrefix.FNameUserNameProof]), () => {
-      numFnames += 1;
-    });
+    const numFnames = await this._db.countKeysAtPrefix(Buffer.from([RootPrefix.FNameUserNameProof]));
 
     return {
       numItems: await this._trie.items(),

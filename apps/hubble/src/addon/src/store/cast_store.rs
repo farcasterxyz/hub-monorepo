@@ -571,7 +571,7 @@ impl CastStore {
 
         store
             .db()
-            .for_each_iterator_by_prefix_unbounded(&prefix, page_options, |key, _| {
+            .for_each_iterator_by_prefix(&prefix, page_options, |key, _| {
                 let ts_hash_offset = prefix.len();
                 let fid_offset = ts_hash_offset + TS_HASH_LENGTH;
 
@@ -662,7 +662,7 @@ impl CastStore {
 
         store
             .db()
-            .for_each_iterator_by_prefix_unbounded(&prefix, page_options, |key, _| {
+            .for_each_iterator_by_prefix(&prefix, page_options, |key, _| {
                 let ts_hash_offset = prefix.len();
                 let fid_offset = ts_hash_offset + TS_HASH_LENGTH;
 
