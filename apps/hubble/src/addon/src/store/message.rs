@@ -132,7 +132,7 @@ impl UserPostfix {
 
 /** A page of messages returned from various APIs */
 pub struct MessagesPage {
-    pub messages: Vec<Vec<u8>>,
+    pub messages_bytes: Vec<Vec<u8>>,
     pub next_page_token: Option<Vec<u8>>,
 }
 
@@ -326,16 +326,16 @@ pub fn get_messages_page_by_prefix<F>(
 where
     F: Fn(&MessageProto) -> bool,
 {
-    let mut messages = Vec::new();
+    let mut messages_bytes = Vec::new();
     let mut last_key = vec![];
 
     db.for_each_iterator_by_prefix(prefix, page_options, |key, value| {
         match message_decode(value) {
             Ok(message) => {
                 if filter(&message) {
-                    messages.push(value.to_vec());
+                    messages_bytes.push(value.to_vec());
 
-                    if messages.len() >= page_options.page_size.unwrap_or(PAGE_SIZE_MAX) {
+                    if messages_bytes.len() >= page_options.page_size.unwrap_or(PAGE_SIZE_MAX) {
                         last_key = key.to_vec();
                         return Ok(true); // Stop iterating
                     }
@@ -357,7 +357,7 @@ where
     };
 
     Ok(MessagesPage {
-        messages,
+        messages_bytes,
         next_page_token,
     })
 }

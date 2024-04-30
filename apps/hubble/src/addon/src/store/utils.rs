@@ -100,8 +100,8 @@ pub fn encode_messages_to_js_object<'a>(
     cx: &mut TaskContext<'a>,
     messages_page: MessagesPage,
 ) -> JsResult<'a, JsObject> {
-    let js_messages = JsArray::new(cx, messages_page.messages.len());
-    for (i, message_bytes) in messages_page.messages.iter().enumerate() {
+    let js_messages = JsArray::new(cx, messages_page.messages_bytes.len());
+    for (i, message_bytes) in messages_page.messages_bytes.iter().enumerate() {
         let mut js_buffer = cx.buffer(message_bytes.len())?;
         js_buffer.as_mut_slice(cx).copy_from_slice(&message_bytes);
         js_messages.set(cx, i as u32, js_buffer)?;
