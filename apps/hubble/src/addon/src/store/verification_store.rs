@@ -432,7 +432,7 @@ impl VerificationStore {
         fid: u32,
         page_options: &PageOptions,
     ) -> Result<MessagesPage, HubError> {
-        store.get_adds_by_fid(fid, page_options, Some(|_message: &Message| true))
+        store.get_adds_by_fid::<fn(&protos::Message) -> bool>(fid, page_options, None)
     }
 
     pub fn js_get_verification_adds_by_fid(mut cx: FunctionContext) -> JsResult<JsPromise> {
@@ -460,7 +460,7 @@ impl VerificationStore {
         fid: u32,
         page_options: &PageOptions,
     ) -> Result<MessagesPage, HubError> {
-        store.get_removes_by_fid(fid, page_options, Some(|_message: &Message| true))
+        store.get_removes_by_fid::<fn(&protos::Message) -> bool>(fid, page_options, None)
     }
 
     pub fn js_get_verification_removes_by_fid(mut cx: FunctionContext) -> JsResult<JsPromise> {
