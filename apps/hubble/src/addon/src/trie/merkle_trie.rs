@@ -6,7 +6,6 @@ use crate::{
     store::{encode_node_metadata_to_js_object, get_merkle_trie, hub_error_to_js_throw, HubError},
     THREAD_POOL,
 };
-use neon::object::Object as _;
 use neon::{
     context::ModuleContext,
     result::NeonResult,
@@ -17,6 +16,7 @@ use neon::{
     result::JsResult,
     types::{Finalize, JsBox, JsBuffer, JsPromise, JsString},
 };
+use neon::{object::Object as _, types::JsBoolean};
 use slog::{info, o};
 use std::{
     borrow::Borrow,
@@ -86,6 +86,16 @@ impl MerkleTrie {
         })
     }
 
+    fn create_empty_root(&self) {
+        let root_key = TrieNode::make_primary_key(&[], None);
+        let empty = TrieNode::new();
+        let serialized = TrieNode::serialize(&empty);
+
+        // Write the empty root node to the DB
+        self.txn_batch.lock().unwrap().put(root_key, serialized);
+        self.root.write().unwrap().replace(empty);
+    }
+
     pub fn initialize(&self) -> Result<(), HubError> {
         // First open the DB
         if self.db_owned.load(std::sync::atomic::Ordering::Relaxed) {
@@ -93,7 +103,8 @@ impl MerkleTrie {
         }
 
         // Then load the root node
-        if let Some(root_bytes) = self.db.get(&TrieNode::make_primary_key(&[], None))? {
+        let root_key = TrieNode::make_primary_key(&[], None);
+        if let Some(root_bytes) = self.db.get(&root_key)? {
             let root_node = TrieNode::deserialize(&root_bytes.as_slice())?;
 
             info!(self.logger, "Merkle Trie loaded from DB"; 
@@ -103,7 +114,7 @@ impl MerkleTrie {
             self.root.write().unwrap().replace(root_node);
         } else {
             info!(self.logger, "Merkle Trie initialized with empty root node");
-            self.root.write().unwrap().replace(TrieNode::new());
+            self.create_empty_root();
         }
 
         Ok(())
@@ -116,7 +127,8 @@ impl MerkleTrie {
     pub fn clear(&self) -> Result<(), HubError> {
         self.txn_batch.lock().unwrap().batch.clear();
         self.db.clear()?;
-        self.root.write().unwrap().replace(TrieNode::new());
+
+        self.create_empty_root();
 
         Ok(())
     }
@@ -203,9 +215,7 @@ impl MerkleTrie {
 
     pub fn exists(&self, key: &Vec<u8>) -> Result<bool, HubError> {
         if let Some(root) = self.root.write().unwrap().as_mut() {
-            let result = root.exists(&self.db, &key, 0);
-            self.unload_from_memory(root, false)?;
-            result
+            root.exists(&self.db, &key, 0)
         } else {
             Err(HubError {
                 code: "bad_request.internal_error".to_string(),
@@ -241,12 +251,8 @@ impl MerkleTrie {
                 return Some(node);
             }
         }
-        // If not found, get it the normal way from the trie root
-        self.root
-            .write()
-            .unwrap()
-            .as_mut()
-            .and_then(|root| root.get_node_from_trie(&self.db, prefix, 0).cloned())
+
+        None
     }
 
     pub fn root_hash(&self) -> Result<Vec<u8>, HubError> {
@@ -263,10 +269,7 @@ impl MerkleTrie {
     pub fn get_all_values(&self, prefix: &[u8]) -> Result<Vec<Vec<u8>>, HubError> {
         if let Some(root) = self.root.write().unwrap().as_mut() {
             if let Some(node) = root.get_node_from_trie(&self.db, prefix, 0) {
-                let result = node.get_all_values(&self.db, prefix);
-
-                self.unload_from_memory(root, false)?;
-                result
+                node.get_all_values(&self.db, prefix)
             } else {
                 Ok(Vec::new())
             }
@@ -327,28 +330,6 @@ impl MerkleTrie {
                 message: "Node not found".to_string(),
             })
         }
-    }
-
-    pub fn migrate(&self, keys: Vec<Vec<u8>>, values: Vec<Vec<u8>>) -> Result<u64, HubError> {
-        let mut txn = RocksDbTransactionBatch::new();
-        let mut migrated = 0;
-
-        for (key, value) in keys.iter().zip(values.iter()) {
-            // Check if the key is present in the DB
-            if self
-                .db
-                .get(&TrieNode::make_primary_key(key, None))?
-                .is_none()
-            {
-                // Add the key/value to the DB
-                txn.put(key.clone(), value.clone());
-                migrated += 1;
-            }
-        }
-
-        self.db.commit(txn)?;
-
-        Ok(migrated)
     }
 }
 
@@ -426,6 +407,64 @@ impl MerkleTrie {
                 return hub_error_to_js_throw(&mut cx, e);
             }
             Ok(cx.undefined())
+        });
+
+        Ok(promise)
+    }
+
+    pub fn js_batch_update(mut cx: FunctionContext) -> JsResult<JsPromise> {
+        let trie = get_merkle_trie(&mut cx)?;
+
+        let updates_list = cx.argument::<JsArray>(0)?;
+        let operation_list = cx.argument::<JsArray>(1)?;
+
+        let update_keys: Vec<Vec<u8>> = updates_list
+            .to_vec(&mut cx)?
+            .iter()
+            .map(|key| {
+                key.downcast_or_throw::<JsBuffer, _>(&mut cx)
+                    .unwrap()
+                    .as_slice(&cx)
+                    .to_vec()
+            })
+            .collect();
+
+        let operations: Vec<bool> = operation_list
+            .to_vec(&mut cx)?
+            .iter()
+            .map(|value| {
+                value
+                    .downcast_or_throw::<JsBoolean, _>(&mut cx)
+                    .unwrap()
+                    .value(&mut cx)
+            })
+            .collect();
+
+        let channel = cx.channel();
+        let (deferred, promise) = cx.promise();
+
+        THREAD_POOL.lock().unwrap().execute(move || {
+            let results = update_keys
+                .into_iter()
+                .zip(operations.into_iter())
+                .map(|(key, op)| {
+                    if op {
+                        trie.insert(&key)
+                    } else {
+                        trie.delete(&key)
+                    }
+                })
+                .collect::<Vec<_>>();
+
+            deferred.settle_with(&channel, move |mut cx| {
+                let js_array = JsArray::new(&mut cx, results.len());
+                for (i, result) in results.into_iter().enumerate() {
+                    let val = cx.boolean(result.unwrap_or(false));
+                    js_array.set(&mut cx, i as u32, val)?;
+                }
+
+                Ok(js_array)
+            });
         });
 
         Ok(promise)
@@ -611,49 +650,6 @@ impl MerkleTrie {
         Ok(promise)
     }
 
-    pub fn js_migrate(mut cx: FunctionContext) -> JsResult<JsPromise> {
-        let trie = get_merkle_trie(&mut cx)?;
-        let keys = cx.argument::<JsArray>(0)?;
-        let values = cx.argument::<JsArray>(1)?;
-
-        let keys: Vec<Vec<u8>> = keys
-            .to_vec(&mut cx)?
-            .iter()
-            .map(|key| {
-                key.downcast_or_throw::<JsBuffer, _>(&mut cx)
-                    .unwrap()
-                    .as_slice(&cx)
-                    .to_vec()
-            })
-            .collect();
-        let values: Vec<Vec<u8>> = values
-            .to_vec(&mut cx)?
-            .iter()
-            .map(|value| {
-                value
-                    .downcast_or_throw::<JsBuffer, _>(&mut cx)
-                    .unwrap()
-                    .as_slice(&cx)
-                    .to_vec()
-            })
-            .collect();
-
-        let channel = cx.channel();
-        let (deferred, promise) = cx.promise();
-
-        THREAD_POOL.lock().unwrap().execute(move || {
-            // Migrate the keys and values in the thread
-            let result = trie.migrate(keys, values);
-
-            deferred.settle_with(&channel, move |mut tcx| match result {
-                Ok(migrated) => Ok(tcx.number(migrated as f64)),
-                Err(e) => hub_error_to_js_throw(&mut tcx, e),
-            });
-        });
-
-        Ok(promise)
-    }
-
     pub fn register_js_methods(cx: &mut ModuleContext) -> NeonResult<()> {
         cx.export_function("createMerkleTrie", Self::js_create_merkle_trie)?;
         cx.export_function(
@@ -664,6 +660,7 @@ impl MerkleTrie {
         cx.export_function("merkleTrieInitialize", Self::js_initialize)?;
         cx.export_function("merkleTrieClear", Self::js_clear)?;
         cx.export_function("merkleTrieStop", Self::js_stop)?;
+        cx.export_function("merkleTrieBatchUpdate", Self::js_batch_update)?;
         cx.export_function("merkleTrieInsert", Self::js_insert)?;
         cx.export_function("merkleTrieDelete", Self::js_delete)?;
         cx.export_function("merkleTrieExists", Self::js_exists)?;
@@ -675,7 +672,6 @@ impl MerkleTrie {
         cx.export_function("merkleTrieGetAllValues", Self::js_get_all_values)?;
         cx.export_function("merkleTrieItems", Self::js_items)?;
         cx.export_function("merkleTrieRootHash", Self::js_root_hash)?;
-        cx.export_function("merkleTrieMigrate", Self::js_migrate)?;
         cx.export_function("merkleTrieUnloadChildren", Self::js_unload_children)?;
 
         Ok(())

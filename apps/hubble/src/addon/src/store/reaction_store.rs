@@ -543,7 +543,7 @@ impl ReactionStore {
 
         store
             .db()
-            .for_each_iterator_by_prefix_unbounded(&prefix, page_options, |key, value| {
+            .for_each_iterator_by_prefix(&prefix, page_options, |key, value| {
                 if reaction_type == ReactionType::None as i32
                     || (value.len() == 1 && value[0] == reaction_type as u8)
                 {

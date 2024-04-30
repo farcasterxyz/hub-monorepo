@@ -746,10 +746,8 @@ impl Store {
         // 1. Delete all remove messages
         // 2. Delete all add messages that are not in the target_fids list
         let prefix = &make_message_primary_key(fid, self.store_def.postfix(), None);
-        self.db.for_each_iterator_by_prefix_unbounded(
-            prefix,
-            &PageOptions::default(),
-            |_key, value| {
+        self.db
+            .for_each_iterator_by_prefix(prefix, &PageOptions::default(), |_key, value| {
                 let message = message_decode(value)?;
 
                 // Only if message is older than the compact state message
@@ -774,8 +772,7 @@ impl Store {
                 }
 
                 Ok(false) // Continue the iteration
-            },
-        )?;
+            })?;
 
         let mut txn = self.db.txn();
         // Delete all the merge conflicts
@@ -938,10 +935,8 @@ impl Store {
         let mut txn = self.db.txn();
 
         let prefix = &make_message_primary_key(fid, self.store_def.postfix(), None);
-        self.db.for_each_iterator_by_prefix_unbounded(
-            prefix,
-            &PageOptions::default(),
-            |_key, value| {
+        self.db
+            .for_each_iterator_by_prefix(prefix, &PageOptions::default(), |_key, value| {
                 if count <= (prune_size_limit as u64) * units {
                     return Ok(true); // Stop the iteration, nothing left to prune
                 }
@@ -976,8 +971,7 @@ impl Store {
                 pruned_events.push(hub_event);
 
                 Ok(false) // Continue the iteration
-            },
-        )?;
+            })?;
 
         self.db.commit(txn)?;
         Ok(pruned_events)

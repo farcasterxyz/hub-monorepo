@@ -164,7 +164,7 @@ impl LinkStore {
 
         store
             .db()
-            .for_each_iterator_by_prefix_unbounded(&prefix, page_options, |key, value| {
+            .for_each_iterator_by_prefix(&prefix, page_options, |key, value| {
                 if r#type.is_empty() || value.eq(r#type.as_bytes()) {
                     let ts_hash_offset = prefix.len();
                     let fid_offset: usize = ts_hash_offset + TS_HASH_LENGTH;

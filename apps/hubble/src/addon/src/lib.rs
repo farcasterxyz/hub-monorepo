@@ -120,6 +120,10 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
         RocksDB::js_delete_all_keys_in_range,
     )?;
     cx.export_function(
+        "dbFetchIteratorPageByPrefix",
+        RocksDB::js_fetch_iterator_page_by_prefix,
+    )?;
+    cx.export_function(
         "dbForEachIteratorByPrefix",
         RocksDB::js_for_each_iterator_by_prefix,
     )?;

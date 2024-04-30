@@ -61,7 +61,7 @@ impl TrieNode {
         key
     }
 
-    fn serialize(node: &TrieNode) -> Vec<u8> {
+    pub fn serialize(node: &TrieNode) -> Vec<u8> {
         let db_trie_node = DbTrieNode {
             key: node.key.as_ref().unwrap_or(&vec![]).clone(),
             child_chars: node.children.keys().map(|c| *c as u32).collect(),

@@ -215,47 +215,6 @@ export const getPageIteratorOptsByPrefix = (prefix: Buffer, pageOptions: PageOpt
       };
 };
 
-export const getMessagesPageByPrefix = async <T extends Message>(
-  db: RocksDB,
-  prefix: Buffer,
-  filter: (message: Message) => message is T,
-  pageOptions: PageOptions = {},
-): Promise<MessagesPage<T>> => {
-  const iteratorOpts = getPageIteratorOptsByPrefix(prefix, pageOptions);
-
-  const limit = pageOptions.pageSize || PAGE_SIZE_MAX;
-
-  const messages: T[] = [];
-
-  let iteratorFinished = true;
-  let lastPageToken: Uint8Array | undefined;
-
-  await db.forEachIteratorByOpts(iteratorOpts, (key, value) => {
-    if (!key || !value) {
-      return false; // skip
-    }
-
-    const message = messageDecode(new Uint8Array(value as Buffer));
-    if (filter(message)) {
-      messages.push(message);
-
-      if (messages.length >= limit) {
-        lastPageToken = Uint8Array.from(key.subarray(prefix.length));
-        iteratorFinished = false;
-        return true;
-      }
-    }
-
-    return false; // continue
-  });
-
-  if (!iteratorFinished) {
-    return { messages, nextPageToken: lastPageToken };
-  } else {
-    return { messages, nextPageToken: undefined };
-  }
-};
-
 export const getMessagesBySignerPrefix = (db: RocksDB, fid: number, signer: Uint8Array, type?: MessageType): Buffer => {
   return makeMessageBySignerKey(fid, signer, type);
 };
