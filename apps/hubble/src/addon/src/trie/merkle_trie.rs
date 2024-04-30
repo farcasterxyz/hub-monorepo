@@ -86,6 +86,16 @@ impl MerkleTrie {
         })
     }
 
+    fn create_empty_root(&self) {
+        let root_key = TrieNode::make_primary_key(&[], None);
+        let empty = TrieNode::new();
+        let serialized = TrieNode::serialize(&empty);
+
+        // Write the empty root node to the DB
+        self.txn_batch.lock().unwrap().put(root_key, serialized);
+        self.root.write().unwrap().replace(empty);
+    }
+
     pub fn initialize(&self) -> Result<(), HubError> {
         // First open the DB
         if self.db_owned.load(std::sync::atomic::Ordering::Relaxed) {
@@ -93,7 +103,8 @@ impl MerkleTrie {
         }
 
         // Then load the root node
-        if let Some(root_bytes) = self.db.get(&TrieNode::make_primary_key(&[], None))? {
+        let root_key = TrieNode::make_primary_key(&[], None);
+        if let Some(root_bytes) = self.db.get(&root_key)? {
             let root_node = TrieNode::deserialize(&root_bytes.as_slice())?;
 
             info!(self.logger, "Merkle Trie loaded from DB"; 
@@ -103,7 +114,7 @@ impl MerkleTrie {
             self.root.write().unwrap().replace(root_node);
         } else {
             info!(self.logger, "Merkle Trie initialized with empty root node");
-            self.root.write().unwrap().replace(TrieNode::new());
+            self.create_empty_root();
         }
 
         Ok(())
@@ -116,7 +127,8 @@ impl MerkleTrie {
     pub fn clear(&self) -> Result<(), HubError> {
         self.txn_batch.lock().unwrap().batch.clear();
         self.db.clear()?;
-        self.root.write().unwrap().replace(TrieNode::new());
+
+        self.create_empty_root();
 
         Ok(())
     }
@@ -239,12 +251,8 @@ impl MerkleTrie {
                 return Some(node);
             }
         }
-        // If not found, get it the normal way from the trie root
-        self.root
-            .write()
-            .unwrap()
-            .as_mut()
-            .and_then(|root| root.get_node_from_trie(&self.db, prefix, 0).cloned())
+
+        None
     }
 
     pub fn root_hash(&self) -> Result<Vec<u8>, HubError> {
