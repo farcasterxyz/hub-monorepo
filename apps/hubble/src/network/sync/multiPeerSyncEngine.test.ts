@@ -538,7 +538,9 @@ describe("Multi peer sync engine", () => {
     await syncEngine2.performSync("engine1", clientForServer1);
 
     // Because do it without awaiting, we need to wait for the promise to resolve
-    await sleep(100);
+    await sleepWhile(() => syncEngine2.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
+    await sleepWhile(() => syncEngine1.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
+
     expect(await syncEngine1.trie.items()).toEqual(await syncEngine2.trie.items());
     expect(engine1Hash).toEqual(await syncEngine2.trie.rootHash());
   });
@@ -573,8 +575,6 @@ describe("Multi peer sync engine", () => {
     await engine1.mergeOnChainEvent(storageEvent);
     await engine2.mergeOnChainEvent(storageEvent);
 
-    const initialEngine1Count = await syncEngine1.trie.items();
-    const initialEngine2Count = await syncEngine1.trie.items();
     // We'll get 2 CastAdds
     const castAdd1 = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
     const castAdd2 = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
@@ -584,22 +584,26 @@ describe("Multi peer sync engine", () => {
     expect(await engine1.mergeMessage(castAdd1)).toBeTruthy();
 
     // CastAdd2 is added only to the sync trie, but is missing from the engine
-    await syncEngine2.trie.insert(SyncId.fromMessage(castAdd2));
+    expect(await syncEngine2.trie.insert(SyncId.fromMessage(castAdd2))).toBeTruthy();
 
     // Wait for the sync trie to be updated
-    await sleepWhile(async () => (await syncEngine2.trie.items()) !== initialEngine2Count + 2, SLEEPWHILE_TIMEOUT);
-    await sleepWhile(async () => (await syncEngine1.trie.items()) !== initialEngine1Count + 1, SLEEPWHILE_TIMEOUT);
+    await sleepWhile(() => syncEngine2.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
+    await sleepWhile(() => syncEngine1.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
+
+    expect(await syncEngine2.trie.items()).toEqual(3 + 2); // 2 onchain events + 2 castAdds
+    expect(await syncEngine1.trie.items()).toEqual(3 + 1); // 2 onchain events + 1 castAdd
 
     // Attempt to sync engine2 <-- engine1. Engine1 has only singerAdd
     await syncEngine2.performSync("engine1", clientForServer1);
 
     // The sync engine should realize that castAdd2 is not in it's engine, so it should be removed from the sync trie
     await sleepWhile(async () => (await syncEngine2.trie.exists(SyncId.fromMessage(castAdd2))) === true, 1000);
-
     expect(await syncEngine2.trie.exists(SyncId.fromMessage(castAdd2))).toBeFalsy();
 
     // but the castAdd1 should still be there
     expect(await syncEngine2.trie.exists(SyncId.fromMessage(castAdd1))).toBeTruthy();
+
+    expect(await syncEngine1.trie.items()).toEqual(await syncEngine2.trie.items());
   });
 
   test("recovers if messages are missing from the sync trie", async () => {
