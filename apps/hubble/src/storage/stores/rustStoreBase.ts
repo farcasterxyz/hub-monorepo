@@ -176,7 +176,7 @@ export abstract class RustStoreBase<TAdd extends Message, TRemove extends Messag
     }
 
     // Return immediately if there are no messages to prune
-    if (cachedCount.value === 0) {
+    if (cachedCount.value <= this._pruneSizeLimit * units.value) {
       return ok([]);
     }
 
