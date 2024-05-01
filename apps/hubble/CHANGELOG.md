@@ -1,5 +1,31 @@
 # @farcaster/hubble
 
+## 1.12.0
+
+### Minor Changes
+
+- chore: Release 1.12
+
+### Patch Changes
+
+- 23b94856: fix: Use `PutObject` to upload snapshot chunks to R2
+- e3afd5c8: fix: Use priority queue for sync work
+- 063d4ed1: fix: sharding events should work when requesting historical events
+- ec3b4e76: chore: Cleanup bundles code
+- 1642e610: fix: Remove backup fetching for get_node
+- 6bec999d: perf: Use multiple workers for validateOrRevokeMessages job
+- 93de5d76: fix: Prevent unnecessary decode/encode in rpc APIs
+- 089d1d1b: fix: Batch the de-dup check for merging messages
+- 006473dd: perf: Improve getSyncMetadataByPrefix performance
+- 63742239: chore: Cleanup trie batch inserts to use batches
+- 1317f1ce: fix: Use R2 for snapshots
+- f0bee818: fix: Batch insert merkle trie updates
+- 45cf3f40: fix(hubble): Add startup check for hub to verify gRPC port is reachable from public internet. Reachable address is required for hub to perform diff sync via gRPC API and sync with the network. Hub operators may need to enable port-forwarding of traffic to hub's host and port if they are behind a NAT. Startup check emits warning for now, but may be enforced in the future.
+- 5778e3a1: perf: Disable WAL when generating snapshots
+- 7b374890: feat: Add Link CompactStateMessage type for link compaction
+- Updated dependencies [7b374890]
+  - @farcaster/hub-nodejs@0.11.11
+
 ## 1.11.8
 
 ### Patch Changes
