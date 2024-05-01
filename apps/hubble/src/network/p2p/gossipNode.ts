@@ -32,7 +32,7 @@ import { RootPrefix } from "../../storage/db/types.js";
 import { sleep } from "../../utils/crypto.js";
 
 /** The maximum number of pending merge messages before we drop new incoming gossip or sync messages. */
-export const MAX_MESSAGE_QUEUE_SIZE = 5000;
+export const MAX_SYNCTRIE_QUEUE_SIZE = 100_000;
 /** The TTL for messages in the seen cache */
 export const GOSSIP_SEEN_TTL = 1000 * 60 * 5;
 
