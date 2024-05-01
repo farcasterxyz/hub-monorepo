@@ -22,6 +22,7 @@ import {
   rustErrorToHubError,
 } from "../../rustfunctions.js";
 import { RustStoreBase } from "./rustStoreBase.js";
+import { messageDecode } from "../../storage/db/message.js";
 
 /**
  * UserDataStore persists UserData messages in RocksDB using a grow-only CRDT set to guarantee
@@ -63,7 +64,7 @@ class UserDataStore extends RustStoreBase<UserDataAddMessage, never> {
     if (result.isErr()) {
       throw result.error;
     }
-    return Message.decode(new Uint8Array(result.value)) as UserDataAddMessage;
+    return messageDecode(new Uint8Array(result.value)) as UserDataAddMessage;
   }
 
   /** Finds all UserDataAdd messages for an fid */
@@ -72,7 +73,7 @@ class UserDataStore extends RustStoreBase<UserDataAddMessage, never> {
 
     const messages =
       messages_page.messageBytes?.map((message_bytes) => {
-        return Message.decode(new Uint8Array(message_bytes)) as UserDataAddMessage;
+        return messageDecode(new Uint8Array(message_bytes)) as UserDataAddMessage;
       }) ?? [];
 
     return { messages, nextPageToken: messages_page.nextPageToken };

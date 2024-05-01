@@ -12,7 +12,6 @@ use neon::{
         buffer::TypedArray, Deferred, JsArray, JsBoolean, JsBox, JsBuffer, JsNumber, JsObject,
     },
 };
-use prost::Message as _;
 use std::{borrow::Borrow, sync::Arc};
 
 /**
@@ -101,10 +100,8 @@ pub fn encode_messages_to_js_object<'a>(
     cx: &mut TaskContext<'a>,
     messages_page: MessagesPage,
 ) -> JsResult<'a, JsObject> {
-    let js_messages = JsArray::new(cx, messages_page.messages.len());
-    for (i, message) in messages_page.messages.iter().enumerate() {
-        let message_bytes = message.encode_to_vec();
-
+    let js_messages = JsArray::new(cx, messages_page.messages_bytes.len());
+    for (i, message_bytes) in messages_page.messages_bytes.iter().enumerate() {
         let mut js_buffer = cx.buffer(message_bytes.len())?;
         js_buffer.as_mut_slice(cx).copy_from_slice(&message_bytes);
         js_messages.set(cx, i as u32, js_buffer)?;
