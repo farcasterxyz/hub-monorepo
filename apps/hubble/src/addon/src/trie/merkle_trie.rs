@@ -6,6 +6,7 @@ use crate::{
     store::{encode_node_metadata_to_js_object, get_merkle_trie, hub_error_to_js_throw, HubError},
     THREAD_POOL,
 };
+use neon::object::Object as _;
 use neon::{
     context::ModuleContext,
     result::NeonResult,
@@ -16,7 +17,6 @@ use neon::{
     result::JsResult,
     types::{Finalize, JsBox, JsBuffer, JsPromise, JsString},
 };
-use neon::{object::Object as _, types::JsBoolean};
 use slog::{info, o};
 use std::{
     borrow::Borrow,
@@ -172,39 +172,57 @@ impl MerkleTrie {
         Ok(())
     }
 
-    pub fn insert(&self, key: &Vec<u8>) -> Result<bool, HubError> {
-        if key.len() < TIMESTAMP_LENGTH {
-            return Err(HubError {
-                code: "bad_request.invalid_param".to_string(),
-                message: "Key length is too short".to_string(),
-            });
+    pub fn insert(&self, keys: Vec<Vec<u8>>) -> Result<Vec<bool>, HubError> {
+        if keys.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        for key in keys.iter() {
+            if key.len() < TIMESTAMP_LENGTH {
+                return Err(HubError {
+                    code: "bad_request.invalid_param".to_string(),
+                    message: "Key length is too short".to_string(),
+                });
+            }
         }
 
         if let Some(root) = self.root.write().unwrap().as_mut() {
             let mut txn = RocksDbTransactionBatch::new();
-            let result = root.insert(&self.db, &mut txn, &key, 0)?;
+            let results = root.insert(&self.db, &mut txn, keys, 0)?;
 
             self.txn_batch.lock().unwrap().merge(txn);
             self.unload_from_memory(root, false)?;
 
-            Ok(result)
+            Ok(results)
         } else {
             Err(HubError {
                 code: "bad_request.internal_error".to_string(),
-                message: format!("Merkle Trie not initialized for insert {:?}", key),
+                message: format!("Merkle Trie not initialized for insert {:?}", keys),
             })
         }
     }
 
-    pub fn delete(&self, key: &Vec<u8>) -> Result<bool, HubError> {
+    pub fn delete(&self, keys: Vec<Vec<u8>>) -> Result<Vec<bool>, HubError> {
+        if keys.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        for key in keys.iter() {
+            if key.len() < TIMESTAMP_LENGTH {
+                return Err(HubError {
+                    code: "bad_request.invalid_param".to_string(),
+                    message: "Key length is too short".to_string(),
+                });
+            }
+        }
+
         if let Some(root) = self.root.write().unwrap().as_mut() {
             let mut txn = RocksDbTransactionBatch::new();
-            let result = root.delete(&self.db, &mut txn, &key, 0)?;
+            let results = root.delete(&self.db, &mut txn, keys, 0)?;
 
             self.txn_batch.lock().unwrap().merge(txn);
-
             self.unload_from_memory(root, false)?;
-            Ok(result)
+            Ok(results)
         } else {
             Err(HubError {
                 code: "bad_request.internal_error".to_string(),
@@ -415,10 +433,10 @@ impl MerkleTrie {
     pub fn js_batch_update(mut cx: FunctionContext) -> JsResult<JsPromise> {
         let trie = get_merkle_trie(&mut cx)?;
 
-        let updates_list = cx.argument::<JsArray>(0)?;
-        let operation_list = cx.argument::<JsArray>(1)?;
+        let inserts = cx.argument::<JsArray>(0)?;
+        let deletes = cx.argument::<JsArray>(1)?;
 
-        let update_keys: Vec<Vec<u8>> = updates_list
+        let insert_keys: Vec<Vec<u8>> = inserts
             .to_vec(&mut cx)?
             .iter()
             .map(|key| {
@@ -429,14 +447,14 @@ impl MerkleTrie {
             })
             .collect();
 
-        let operations: Vec<bool> = operation_list
+        let delete_keys: Vec<Vec<u8>> = deletes
             .to_vec(&mut cx)?
             .iter()
-            .map(|value| {
-                value
-                    .downcast_or_throw::<JsBoolean, _>(&mut cx)
+            .map(|key| {
+                key.downcast_or_throw::<JsBuffer, _>(&mut cx)
                     .unwrap()
-                    .value(&mut cx)
+                    .as_slice(&cx)
+                    .to_vec()
             })
             .collect();
 
@@ -444,22 +462,30 @@ impl MerkleTrie {
         let (deferred, promise) = cx.promise();
 
         THREAD_POOL.lock().unwrap().execute(move || {
-            let results = update_keys
-                .into_iter()
-                .zip(operations.into_iter())
-                .map(|(key, op)| {
-                    if op {
-                        trie.insert(&key)
-                    } else {
-                        trie.delete(&key)
-                    }
-                })
-                .collect::<Vec<_>>();
+            let insert_results = trie.insert(insert_keys);
+            let delete_results = trie.delete(delete_keys);
 
             deferred.settle_with(&channel, move |mut cx| {
-                let js_array = JsArray::new(&mut cx, results.len());
-                for (i, result) in results.into_iter().enumerate() {
-                    let val = cx.boolean(result.unwrap_or(false));
+                // If either was an error, return the error
+                if insert_results.is_err() || delete_results.is_err() {
+                    return hub_error_to_js_throw(
+                        &mut cx,
+                        HubError {
+                            code: "bad_request.internal_error".to_string(),
+                            message: format!(
+                                "Error in batch update: {:?} {:?}",
+                                insert_results, delete_results
+                            ),
+                        },
+                    );
+                }
+
+                let inserts = insert_results.unwrap();
+                let deletes = delete_results.unwrap();
+
+                let js_array = JsArray::new(&mut cx, inserts.len() + deletes.len());
+                for (i, result) in inserts.into_iter().chain(deletes.into_iter()).enumerate() {
+                    let val = cx.boolean(result);
                     js_array.set(&mut cx, i as u32, val)?;
                 }
 
@@ -477,8 +503,10 @@ impl MerkleTrie {
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
 
-        deferred.settle_with(&channel, move |mut cx| match trie.insert(&key) {
-            Ok(result) => Ok(cx.boolean(result)),
+        let result = trie.insert(vec![key]);
+
+        deferred.settle_with(&channel, move |mut cx| match result {
+            Ok(result) => Ok(cx.boolean(result[0])),
             Err(e) => hub_error_to_js_throw(&mut cx, e),
         });
 
@@ -492,8 +520,8 @@ impl MerkleTrie {
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
 
-        deferred.settle_with(&channel, move |mut cx| match trie.delete(&key) {
-            Ok(result) => Ok(cx.boolean(result)),
+        deferred.settle_with(&channel, move |mut cx| match trie.delete(vec![key]) {
+            Ok(result) => Ok(cx.boolean(result[0])),
             Err(e) => hub_error_to_js_throw(&mut cx, e),
         });
 

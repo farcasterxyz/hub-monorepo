@@ -487,9 +487,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
   /** Revoke the individual syncIDs in the Sync Trie */
   public async revokeSyncIds(syncIds: SyncId[]) {
-    for (const syncId of syncIds) {
-      await this._trie.deleteByBytes(syncId.syncId());
-    }
+    await this._trie.deleteByBytes(syncIds.map((syncId) => syncId.syncId()));
   }
 
   public async stop() {
@@ -1523,11 +1521,11 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   }
 
   public async removeFname(usernameProof: UserNameProof): Promise<void> {
-    await this._trie.deleteBySyncId(SyncId.fromFName(usernameProof));
+    await this._trie.delete(SyncId.fromFName(usernameProof));
   }
 
   public async removeMessage(message: Message): Promise<void> {
-    await this._trie.deleteBySyncId(SyncId.fromMessage(message));
+    await this._trie.delete(SyncId.fromMessage(message));
   }
 
   public async getTrieNodeMetadata(prefix: Uint8Array): Promise<NodeMetadata | undefined> {

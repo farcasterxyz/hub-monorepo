@@ -385,9 +385,7 @@ describe("Multi peer sync engine", () => {
     // Now, delete the messages from engine 1
     engine1.getDb().clear();
     const allValues = await syncEngine1.trie.getAllValues(new Uint8Array());
-    for (const value of allValues) {
-      await syncEngine1.trie.deleteByBytes(value);
-    }
+    await syncEngine1.trie.deleteByBytes(allValues);
 
     // Now, engine 1 should have no messages. Getting the metadata for the root should return
     // undefined since the root node doesn't exist any more
@@ -623,9 +621,9 @@ describe("Multi peer sync engine", () => {
     await engine2.mergeMessage(castAdd);
 
     // ...but we'll corrupt the sync trie by pretending that the castAdd message, an onchain event and an fname are missing
-    await syncEngine2.trie.deleteBySyncId(SyncId.fromMessage(castAdd));
-    await syncEngine2.trie.deleteBySyncId(SyncId.fromOnChainEvent(storageEvent));
-    await syncEngine2.trie.deleteBySyncId(SyncId.fromFName(fname));
+    await syncEngine2.trie.delete(SyncId.fromMessage(castAdd));
+    await syncEngine2.trie.delete(SyncId.fromOnChainEvent(storageEvent));
+    await syncEngine2.trie.delete(SyncId.fromFName(fname));
 
     // syncengine2 should only have 2 onchain events
     expect(await syncEngine2.trie.items()).toEqual(2);

@@ -530,8 +530,8 @@ describe("SyncEngine", () => {
         await engine.mergeOnChainEvent(custodyEvent);
         await engine.mergeUserNameProof(userNameProof);
 
-        await syncEngine.trie.deleteBySyncId(SyncId.fromOnChainEvent(custodyEvent));
-        await syncEngine.trie.deleteBySyncId(SyncId.fromFName(userNameProof));
+        await syncEngine.trie.delete(SyncId.fromOnChainEvent(custodyEvent));
+        await syncEngine.trie.delete(SyncId.fromFName(userNameProof));
 
         expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeFalsy();
         expect(await syncEngine.trie.exists(SyncId.fromOnChainEvent(custodyEvent))).toBeFalsy();
@@ -559,11 +559,11 @@ describe("SyncEngine", () => {
       await engine.mergeMessage(castAdd);
 
       // Manually remove cast add to have an emtpy trie
-      await syncEngine.trie.deleteBySyncId(SyncId.fromMessage(castAdd));
-      await syncEngine.trie.deleteBySyncId(SyncId.fromOnChainEvent(custodyEvent));
-      await syncEngine.trie.deleteBySyncId(SyncId.fromOnChainEvent(signerEvent));
-      await syncEngine.trie.deleteBySyncId(SyncId.fromOnChainEvent(storageEvent));
-      await syncEngine.trie.deleteBySyncId(SyncId.fromFName(fnameProof));
+      await syncEngine.trie.delete(SyncId.fromMessage(castAdd));
+      await syncEngine.trie.delete(SyncId.fromOnChainEvent(custodyEvent));
+      await syncEngine.trie.delete(SyncId.fromOnChainEvent(signerEvent));
+      await syncEngine.trie.delete(SyncId.fromOnChainEvent(storageEvent));
+      await syncEngine.trie.delete(SyncId.fromFName(fnameProof));
       expect(await syncEngine.trie.exists(SyncId.fromMessage(castAdd))).toBeFalsy();
       expect(await syncEngine.trie.items()).toEqual(0);
 

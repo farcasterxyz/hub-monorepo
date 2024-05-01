@@ -71,12 +71,6 @@ export interface MerkleTrieKV {
   value: Uint8Array;
 }
 
-export interface TrieUpdate {
-  key: Uint8Array;
-  updateType: "insert" | "delete";
-  resolve: (result: boolean) => void;
-}
-
 export const TrieDBPathPrefix = "trieDb";
 /**
  * MerkleTrie is a trie that contains Farcaster Messages SyncId and is used to diff the state of
@@ -92,7 +86,8 @@ class MerkleTrie {
   private _db: RocksDB;
   private _rustTrie: RustMerkleTrie;
   private _trieUpdatePending: boolean;
-  private _trieUpdates: TrieUpdate[] = [];
+  private _trieInserts: Map<Uint8Array, (result: boolean) => void> = new Map();
+  private _trieDeletes: Map<Uint8Array, (result: boolean) => void> = new Map();
 
   constructor(rocksDb: RocksDB, trieDb?: RocksDB) {
     this._db = rocksDb;
@@ -153,7 +148,9 @@ class MerkleTrie {
   }
 
   public async clear(): Promise<void> {
-    this._trieUpdates = [];
+    this._trieInserts.clear();
+    this._trieDeletes.clear();
+
     return await rsMerkleTrieClear(this._rustTrie);
   }
 
@@ -225,7 +222,7 @@ class MerkleTrie {
   }
 
   countPendingUpdates(): number {
-    return this._trieUpdates.length;
+    return this._trieInserts.size + this._trieDeletes.size;
   }
 
   async doBatchUpdate() {
@@ -234,14 +231,17 @@ class MerkleTrie {
     while (this.countPendingUpdates() > 0) {
       statsd().gauge("merkle_trie.pending_updates", this.countPendingUpdates());
 
-      const updates = this._trieUpdates;
-      this._trieUpdates = [];
+      const insertUpdates = Array.from(this._trieInserts);
+      this._trieInserts = new Map();
+
+      const deleteUpdates = Array.from(this._trieDeletes);
+      this._trieDeletes = new Map();
 
       const results = await ResultAsync.fromPromise(
         rsMerkleTrieBatchUpdate(
           this._rustTrie,
-          updates.map((item) => item.key),
-          updates.map((item) => (item.updateType === "insert" ? true : false)),
+          insertUpdates.map(([key, _]) => key),
+          deleteUpdates.map(([key, _]) => key),
         ),
         (e) => e as HubError,
       );
@@ -249,13 +249,15 @@ class MerkleTrie {
       if (results.isErr()) {
         log.error({ error: results.error }, "Error batch updating trie");
         // Resolve all the pending updates with false
-        updates.forEach((update) => update.resolve(false));
+        insertUpdates.forEach(([_, resolve]) => resolve(false));
+        deleteUpdates.forEach(([_, resolve]) => resolve(false));
       } else {
         const allResults = results.value;
         // Resolve all the pending updates with the result. The allResults are concatenated
         // so we should also concat the insert+delete updates
         let i = 0;
-        updates.forEach((update) => update.resolve(allResults[i++] as boolean));
+        insertUpdates.forEach(([_, resolve]) => resolve(allResults[i++] as boolean));
+        deleteUpdates.forEach(([_, resolve]) => resolve(allResults[i++] as boolean));
       }
 
       // Sleep for a bit to let any promises resolve. This is Ok, because the
@@ -266,34 +268,70 @@ class MerkleTrie {
   }
 
   public async insert(id: SyncId): Promise<boolean> {
-    return await this.insertBytes(id.syncId());
+    return (await this.insertBytes([id.syncId()]))[0] as boolean;
   }
 
-  public async insertBytes(id: Uint8Array): Promise<boolean> {
-    return new Promise<boolean>((resolve) => {
-      this._trieUpdates.push({ key: id, updateType: "insert", resolve });
+  public async insertBatch(ids: SyncId[]): Promise<boolean[]> {
+    return await this.insertBytes(ids.map((id) => id.syncId()));
+  }
+
+  public async insertBytes(ids: Uint8Array[]): Promise<boolean[]> {
+    const allPromises: Promise<boolean>[] = [];
+    return new Promise<boolean[]>((resolve) => {
+      ids.forEach((id) => {
+        allPromises.push(
+          new Promise<boolean>((resolve) => {
+            this._trieInserts.set(id, resolve);
+            // Remove it from the delete queue if it was there
+            const resolveFn = this._trieDeletes.get(id);
+            if (resolveFn) {
+              this._trieDeletes.delete(id);
+              resolveFn(true);
+            }
+          }),
+        );
+      });
+
       if (this._trieUpdatePending) {
         // Nothing to do, it will be processed at the next oppurtunity
       } else {
         // Trigger the update
         void this.doBatchUpdate();
       }
+
+      resolve(Promise.all(allPromises));
     });
   }
 
-  public async deleteBySyncId(id: SyncId): Promise<boolean> {
-    return await this.deleteByBytes(id.syncId());
+  public async delete(id: SyncId): Promise<boolean> {
+    return (await this.deleteByBytes([id.syncId()]))[0] as boolean;
   }
 
-  public async deleteByBytes(id: Uint8Array): Promise<boolean> {
-    return new Promise<boolean>((resolve) => {
-      this._trieUpdates.push({ key: id, updateType: "delete", resolve });
+  public async deleteByBytes(ids: Uint8Array[]): Promise<boolean[]> {
+    const allPromises: Promise<boolean>[] = [];
+    return new Promise<boolean[]>((resolve) => {
+      ids.forEach((id) => {
+        allPromises.push(
+          new Promise<boolean>((resolve) => {
+            this._trieDeletes.set(id, resolve);
+            // Remove it from the insert queue if it was there
+            const resolveFn = this._trieInserts.get(id);
+            if (resolveFn) {
+              this._trieInserts.delete(id);
+              resolveFn(true);
+            }
+          }),
+        );
+      });
+
       if (this._trieUpdatePending) {
         // Nothing to do, it will be processed at the next oppurtunity
       } else {
         // Trigger the update
         void this.doBatchUpdate();
       }
+
+      resolve(Promise.all(allPromises));
     });
   }
 

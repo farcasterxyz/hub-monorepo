@@ -27,7 +27,7 @@ import { publicAddressesFirst } from "@libp2p/utils/address-sort";
 import { unmarshalPrivateKey, unmarshalPublicKey } from "@libp2p/crypto/keys";
 import { Multiaddr, multiaddr } from "@multiformats/multiaddr";
 import { err, ok, Result, ResultAsync } from "neverthrow";
-import { GOSSIP_SEEN_TTL, GossipNode, MAX_MESSAGE_QUEUE_SIZE } from "./network/p2p/gossipNode.js";
+import { GOSSIP_SEEN_TTL, GossipNode, MAX_SYNCTRIE_QUEUE_SIZE } from "./network/p2p/gossipNode.js";
 import { PeriodicSyncJobScheduler } from "./network/sync/periodicSyncJob.js";
 import SyncEngine, { FIRST_SYNC_DELAY } from "./network/sync/syncEngine.js";
 import AdminServer from "./rpc/adminServer.js";
@@ -1263,7 +1263,7 @@ export class Hub implements HubInterface {
     }
 
     if (gossipMessage.message || gossipMessage.messageBundle) {
-      if (this.syncEngine.syncMergeQSize + this.syncEngine.syncTrieQSize > MAX_MESSAGE_QUEUE_SIZE) {
+      if (this.syncEngine.syncMergeQSize + this.syncEngine.syncTrieQSize > MAX_SYNCTRIE_QUEUE_SIZE) {
         // If there are too many messages in the queue, drop this message. This is a gossip message, so the sync
         // will eventually re-fetch and merge this message in anyway.
         const msg = "Sync queue is full, dropping gossip message";
@@ -1644,7 +1644,7 @@ export class Hub implements HubInterface {
   /* -------------------------------------------------------------------------- */
 
   async submitMessageBundle(messageBundle: MessageBundle, source?: HubSubmitSource): Promise<HubResult<number>[]> {
-    if (this.syncEngine.syncTrieQSize > MAX_MESSAGE_QUEUE_SIZE) {
+    if (this.syncEngine.syncTrieQSize > MAX_SYNCTRIE_QUEUE_SIZE) {
       log.warn({ syncTrieQSize: this.syncEngine.syncTrieQSize }, "SubmitMessage rejected: Sync trie queue is full");
       // Since we're rejecting the full bundle, return an error for each message
       return messageBundle.messages.map(() =>
@@ -1760,7 +1760,7 @@ export class Hub implements HubInterface {
   }
 
   async submitMessage(submittedMessage: Message, source?: HubSubmitSource): HubAsyncResult<number> {
-    if (this.syncEngine.syncTrieQSize > MAX_MESSAGE_QUEUE_SIZE) {
+    if (this.syncEngine.syncTrieQSize > MAX_SYNCTRIE_QUEUE_SIZE) {
       log.warn({ syncTrieQSize: this.syncEngine.syncTrieQSize }, "SubmitMessage rejected: Sync trie queue is full");
       return err(new HubError("unavailable.storage_failure", "Sync trie queue is full"));
     }
