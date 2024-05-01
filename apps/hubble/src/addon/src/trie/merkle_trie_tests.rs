@@ -16,14 +16,14 @@ mod tests {
 
         let key1: Vec<_> = "0000482712".bytes().collect();
         println!("{:?}", key1);
-        trie.insert(&key1).unwrap();
+        trie.insert(vec![key1.clone()]).unwrap();
 
         let node = trie.get_node(&key1).unwrap();
         assert_eq!(node.value().unwrap(), key1);
 
         // Add another key
         let key2: Vec<_> = "0000482713".bytes().collect();
-        trie.insert(&key2).unwrap();
+        trie.insert(vec![key2.clone()]).unwrap();
 
         // The get node should still work for both keys
         let node = trie.get_node(&key1).unwrap();

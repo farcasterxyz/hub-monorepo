@@ -41,8 +41,8 @@ describe("fnameSyncIds migration", () => {
       );
 
       await syncTrie.insert(paddedFnameSyncId);
-      await syncTrie.insertBytes(unpaddedFnameSyncId1Bytes);
-      await syncTrie.insertBytes(unpaddedFnameSyncId2Bytes);
+      await syncTrie.insertBytes([unpaddedFnameSyncId1Bytes]);
+      await syncTrie.insertBytes([unpaddedFnameSyncId2Bytes]);
 
       expect(await syncTrie.existsByBytes(paddedFnameSyncId.syncId())).toBe(true);
       expect(await syncTrie.existsByBytes(unpaddedFnameSyncId1Bytes)).toBe(true);

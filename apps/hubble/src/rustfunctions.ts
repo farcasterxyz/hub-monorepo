@@ -673,9 +673,9 @@ export const rsMerkleTrieStop = async (trie: RustMerkleTrie): Promise<void> => {
 export const rsMerkleTrieBatchUpdate = async (
   trie: RustMerkleTrie,
   inserts: Uint8Array[],
-  operations: boolean[],
+  deletes: Uint8Array[],
 ): Promise<boolean[]> => {
-  return await lib.merkleTrieBatchUpdate.call(trie, inserts, operations);
+  return await lib.merkleTrieBatchUpdate.call(trie, inserts, deletes);
 };
 
 export const rsMerkleTrieInsert = async (trie: RustMerkleTrie, key: Uint8Array): Promise<boolean> => {
