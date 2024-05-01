@@ -1,5 +1,13 @@
 # @farcaster/hub-shuttle
 
+## 0.2.8
+
+### Patch Changes
+
+- f784afd2: feat: support link compact state message in shuttle
+- Updated dependencies [7b374890]
+  - @farcaster/hub-nodejs@0.11.11
+
 ## 0.2.7
 
 ### Patch Changes
