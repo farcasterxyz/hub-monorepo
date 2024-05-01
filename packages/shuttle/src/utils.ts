@@ -173,6 +173,12 @@ export function convertProtobufMessageBodyToJson(message: Message): MessageBodyJ
       }
       break;
     }
+    case MessageType.LINK_COMPACT_STATE: {
+      if (!message.data.linkCompactStateBody) throw new Error("Missing linkCompactStateBody");
+      const { type, targetFids } = message.data.linkCompactStateBody;
+      body = { type, targetFids };
+      break;
+    }
     case MessageType.VERIFICATION_ADD_ETH_ADDRESS: {
       if (!message.data.verificationAddAddressBody) {
         throw new Error("Missing verificationAddAddressBody");
