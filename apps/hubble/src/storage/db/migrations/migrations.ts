@@ -12,6 +12,7 @@ import { fnameSyncIds } from "./5.fnameSyncIds.js";
 import { oldContractEvents } from "./6.oldContractEvents.js";
 import { clearAdminResets } from "./7.clearAdminResets.js";
 import { fnameUserNameProofByFidPrefix } from "./9.fnameUserNameProofByFidPrefix.js";
+import { fixFnameIndexLittleEndianToBigEndian } from "./11.fnameIndex.js";
 
 type MigrationFunctionType = (db: RocksDB) => Promise<boolean>;
 const migrations = new Map<number, MigrationFunctionType>();
@@ -66,6 +67,10 @@ migrations.set(10, async (_db: RocksDB) => {
    * by compatible versions of the hub)
    */
   return true;
+});
+
+migrations.set(11, async (db: RocksDB) => {
+  return await fixFnameIndexLittleEndianToBigEndian(db);
 });
 
 // To Add a new migration

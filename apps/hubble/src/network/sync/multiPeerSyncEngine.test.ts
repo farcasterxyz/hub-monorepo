@@ -262,6 +262,7 @@ describe("Multi peer sync engine", () => {
 
       // Do the sync again, this time enabling audit
       await syncEngine2.performSync("engine1", clientForServer1, true);
+      await sleepWhile(() => syncEngine2.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
       // Make sure root hash matches
       expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());

@@ -10,7 +10,7 @@ import {
   UserMessagePostfixMax,
   UserPostfix,
 } from "./types.js";
-import { MessagesPage, PAGE_SIZE_MAX, PageOptions } from "../stores/types.js";
+import { PAGE_SIZE_MAX, PageOptions } from "../stores/types.js";
 
 export const makeFidKey = (fid: number): Buffer => {
   const buffer = Buffer.alloc(FID_BYTES);
