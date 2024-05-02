@@ -524,6 +524,8 @@ describe("Multi peer sync engine", () => {
   test("local peer removes bad syncId entries from the sync trie", async () => {
     await engine1.mergeOnChainEvent(custodyEvent);
     await engine2.mergeOnChainEvent(custodyEvent);
+    await sleepWhile(() => syncEngine2.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
+    await sleepWhile(() => syncEngine1.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
     const engine1Hash = await syncEngine1.trie.rootHash();
     expect(engine1Hash).toEqual(await syncEngine2.trie.rootHash());

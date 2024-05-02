@@ -1,9 +1,9 @@
 import { DbStats, FarcasterNetwork, HubAsyncResult, HubError } from "@farcaster/core";
 import { LATEST_DB_SCHEMA_VERSION } from "../storage/db/migrations/migrations.js";
 import axios from "axios";
-import { err, ok, ResultAsync } from "neverthrow";
+import { err, ok, Result, ResultAsync } from "neverthrow";
 import { S3_REGION, SNAPSHOT_S3_DOWNLOAD_BUCKET, SNAPSHOT_S3_UPLOAD_BUCKET } from "../hubble.js";
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { PutObjectCommand, PutObjectCommandInput, S3Client } from "@aws-sdk/client-s3";
 import fs from "fs";
 import { Upload } from "@aws-sdk/lib-storage";
 import { logger } from "./logger.js";
@@ -125,13 +125,10 @@ export const uploadToS3 = async (
       Body: fileStream,
     };
 
-    logger.info({ key }, "Uploading snapshot chunk to S3");
-
-    try {
-      await s3.send(new PutObjectCommand(chunkUploadParams));
-      logger.info({ key, file, timeTakenMs: Date.now() - startTimestamp }, "Snapshot chunk uploaded to S3");
-    } catch (e: unknown) {
-      return err(new HubError("unavailable.network_failure", (e as Error).message));
+    logger.info({ key, filePath }, "Uploading snapshot chunk to S3...");
+    const uploadResult = await uploadChunk(s3, chunkUploadParams, key);
+    if (uploadResult.isErr()) {
+      return err(uploadResult.error);
     }
   }
 
@@ -159,3 +156,37 @@ export const uploadToS3 = async (
     return err(new HubError("unavailable.network_failure", (e as Error).message));
   }
 };
+
+const maxRetries = 3;
+const retryDelayMs = 10 * 1000;
+
+async function uploadChunk(
+  s3: S3Client,
+  chunkUploadParams: PutObjectCommandInput,
+  key: string,
+): Promise<Result<void, HubError>> {
+  let retries = 0;
+
+  while (retries < maxRetries) {
+    try {
+      const startTimestamp = Date.now();
+      await s3.send(new PutObjectCommand(chunkUploadParams));
+      logger.info({ key, timeTakenMs: Date.now() - startTimestamp }, "Snapshot chunk uploaded to S3");
+      return ok(undefined);
+    } catch (e: unknown) {
+      retries++;
+      if (retries < maxRetries) {
+        logger.warn({ key, retries, errMsg: (e as Error)?.message }, "Snapshot chunk upload failed. Retrying...");
+        await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+      } else {
+        logger.error(
+          { key, errMsg: (e as Error)?.message },
+          "Snapshot chunk upload failed after maximum retries. Aborting.",
+        );
+        return err(new HubError("unavailable.network_failure", (e as Error).message));
+      }
+    }
+  }
+
+  return err(new HubError("unavailable.network_failure", "Unknown error"));
+}
