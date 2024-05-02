@@ -116,14 +116,14 @@ describe("httpServer", () => {
       const syncEngine2 = new SyncEngine(hub2, db2);
       await syncEngine2.start();
       const server2 = new Server(hub2, engine2, syncEngine2);
-      const httpServer2 = new HttpAPIServer(server2.getImpl(), engine, "http://example.com");
+      const httpServer2 = new HttpAPIServer(server2.getImpl(), engine, "https://example.com");
       const addr = (await httpServer2.start())._unsafeUnwrap();
 
       const url = `${addr}/v1/info`;
-      const response = await axios.get(url, { headers: { Origin: "http://example.com" } });
+      const response = await axios.get(url, { headers: { Origin: "https://example.com" } });
 
       expect(response.status).toBe(200);
-      expect(response.headers["access-control-allow-origin"]).toBe("http://example.com");
+      expect(response.headers["access-control-allow-origin"]).toBe("https://example.com");
 
       await httpServer2.stop();
       await server2.stop();

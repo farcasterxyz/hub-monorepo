@@ -2,7 +2,7 @@ import { Message } from "@farcaster/core";
 import axios from "axios";
 
 async function profile(fid = 2) {
-  const server = "http://nemes.farcaster.xyz:2281";
+  const server = "https://nemes.farcaster.xyz:2281";
   const url = `${server}/v1/userDataByFid?fid=${fid}`;
 
   try {

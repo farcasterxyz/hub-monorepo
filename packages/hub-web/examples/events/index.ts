@@ -1,7 +1,7 @@
 import axios from "axios";
 
 async function listen() {
-  const server = "http://nemes.farcaster.xyz:2281";
+  const server = "https://nemes.farcaster.xyz:2281";
 
   let from_event_id = 0;
 
