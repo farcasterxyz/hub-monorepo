@@ -4,7 +4,7 @@ use crate::{
     store::{blake3_20, bytes_compare, HubError, RootPrefix},
 };
 use prost::Message as _;
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use super::merkle_trie::TrieSnapshot;
 
@@ -124,7 +124,7 @@ impl TrieNode {
 
     pub fn get_node_from_trie(
         &mut self,
-        db: &Arc<RocksDB>,
+        db: &RocksDB,
         prefix: &[u8],
         current_index: usize,
     ) -> Option<&mut TrieNode> {
@@ -155,7 +155,7 @@ impl TrieNode {
      */
     pub fn insert(
         &mut self,
-        db: &Arc<RocksDB>,
+        db: &RocksDB,
         txn: &mut RocksDbTransactionBatch,
         mut keys: Vec<Vec<u8>>,
         current_index: usize,
@@ -239,14 +239,14 @@ impl TrieNode {
         let mut grouped_keys = HashMap::new();
         for (i, key) in remaining_keys.into_iter() {
             let char = key[current_index];
-            grouped_keys
-                .entry(char)
-                .or_insert_with(|| vec![])
-                .push((i, key));
+            let entry = grouped_keys.entry(char).or_insert_with(|| (vec![], vec![]));
+
+            entry.0.push(i);
+            entry.1.push(key);
         }
 
         let mut successes = 0;
-        for (char, child_keys) in grouped_keys.into_iter() {
+        for (char, (is, keys)) in grouped_keys.into_iter() {
             if !self.children.contains_key(&char) {
                 self.children
                     .insert(char, TrieNodeType::Node(TrieNode::default()));
@@ -254,15 +254,6 @@ impl TrieNode {
 
             // Recurse into a non-leaf node and instruct it to insert the value.
             let child = self.get_or_load_child(db, &prefix, char)?;
-
-            // Split the child_keys into the "i"s and the keys
-            let mut is = vec![];
-            let mut keys = vec![];
-            for (i, key) in child_keys.into_iter() {
-                is.push(i);
-                keys.push(key);
-            }
-
             let child_results = child.insert(db, txn, keys, current_index + 1)?;
 
             for (i, result) in is.into_iter().zip(child_results) {
@@ -285,7 +276,7 @@ impl TrieNode {
 
     pub fn delete(
         &mut self,
-        db: &Arc<RocksDB>,
+        db: &RocksDB,
         txn: &mut RocksDbTransactionBatch,
         keys: Vec<Vec<u8>>,
         current_index: usize,
@@ -401,7 +392,7 @@ impl TrieNode {
 
     pub fn exists(
         &mut self,
-        db: &Arc<RocksDB>,
+        db: &RocksDB,
         key: &[u8],
         current_index: usize,
     ) -> Result<bool, HubError> {
@@ -428,7 +419,7 @@ impl TrieNode {
      */
     pub fn split_leaf_node(
         &mut self,
-        db: &Arc<RocksDB>,
+        db: &RocksDB,
         txn: &mut RocksDbTransactionBatch,
         current_index: usize,
     ) -> Result<(), HubError> {
@@ -452,7 +443,7 @@ impl TrieNode {
 
     fn get_or_load_child(
         &mut self,
-        db: &Arc<RocksDB>,
+        db: &RocksDB,
         prefix: &[u8],
         char: u8,
     ) -> Result<&mut TrieNode, HubError> {
@@ -485,7 +476,7 @@ impl TrieNode {
         }
     }
 
-    fn update_hash(&mut self, db: &Arc<RocksDB>, prefix: &[u8]) -> Result<(), HubError> {
+    fn update_hash(&mut self, db: &RocksDB, prefix: &[u8]) -> Result<(), HubError> {
         if self.is_leaf() {
             self.hash = blake3_20(&self.key.as_ref().unwrap_or(&vec![]));
         } else {
@@ -528,7 +519,7 @@ impl TrieNode {
 
     fn excluded_hash(
         &mut self,
-        db: &Arc<RocksDB>,
+        db: &RocksDB,
         prefix: &[u8],
         prefix_char: u8,
     ) -> Result<(usize, String), HubError> {
@@ -577,7 +568,7 @@ impl TrieNode {
 
     pub fn get_all_values(
         &mut self,
-        db: &Arc<RocksDB>,
+        db: &RocksDB,
         prefix: &[u8],
     ) -> Result<Vec<Vec<u8>>, HubError> {
         if self.is_leaf() {
@@ -605,7 +596,7 @@ impl TrieNode {
 
     pub fn get_snapshot(
         &mut self,
-        db: &Arc<RocksDB>,
+        db: &RocksDB,
         prefix: &[u8],
         current_index: usize,
     ) -> Result<TrieSnapshot, HubError> {
