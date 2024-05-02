@@ -283,7 +283,10 @@ impl LinkStore {
         // TODO: does the fid and rtype need to be padded? Is it okay not the check their lengths?
         key.extend_from_slice(&make_user_key(fid));
         key.push(UserPostfix::LinkAdds.as_u8());
-        key.extend_from_slice(&link_body.r#type.as_bytes());
+        let type_bytes = &mut link_body.r#type.as_bytes().to_vec();
+        // Pad with zero bytes
+        type_bytes.resize(Self::LINK_TYPE_BYTE_SIZE, 0);
+        key.extend_from_slice(&type_bytes);
         match link_body.target {
             None => {}
             Some(Target::TargetFid(fid)) => {
@@ -328,7 +331,10 @@ impl LinkStore {
         // TODO: does the fid and rtype need to be padded? Is it okay not the check their lengths?
         key.extend_from_slice(&make_user_key(fid));
         key.push(UserPostfix::LinkRemoves.as_u8());
-        key.extend_from_slice(&link_body.r#type.as_bytes());
+        let type_bytes = &mut link_body.r#type.as_bytes().to_vec();
+        // Pad with zero bytes
+        type_bytes.resize(Self::LINK_TYPE_BYTE_SIZE, 0);
+        key.extend_from_slice(&type_bytes);
         match link_body.target {
             None => {}
             Some(Target::TargetFid(fid)) => {
