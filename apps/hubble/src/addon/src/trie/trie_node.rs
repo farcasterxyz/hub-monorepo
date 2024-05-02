@@ -4,7 +4,7 @@ use crate::{
     store::{blake3_20, bytes_compare, HubError, RootPrefix},
 };
 use prost::Message as _;
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use super::merkle_trie::TrieSnapshot;
 
@@ -276,7 +276,7 @@ impl TrieNode {
 
     pub fn delete(
         &mut self,
-        db: &Arc<RocksDB>,
+        db: &RocksDB,
         txn: &mut RocksDbTransactionBatch,
         keys: Vec<Vec<u8>>,
         current_index: usize,
@@ -392,7 +392,7 @@ impl TrieNode {
 
     pub fn exists(
         &mut self,
-        db: &Arc<RocksDB>,
+        db: &RocksDB,
         key: &[u8],
         current_index: usize,
     ) -> Result<bool, HubError> {
@@ -519,7 +519,7 @@ impl TrieNode {
 
     fn excluded_hash(
         &mut self,
-        db: &Arc<RocksDB>,
+        db: &RocksDB,
         prefix: &[u8],
         prefix_char: u8,
     ) -> Result<(usize, String), HubError> {
@@ -568,7 +568,7 @@ impl TrieNode {
 
     pub fn get_all_values(
         &mut self,
-        db: &Arc<RocksDB>,
+        db: &RocksDB,
         prefix: &[u8],
     ) -> Result<Vec<Vec<u8>>, HubError> {
         if self.is_leaf() {
@@ -596,7 +596,7 @@ impl TrieNode {
 
     pub fn get_snapshot(
         &mut self,
-        db: &Arc<RocksDB>,
+        db: &RocksDB,
         prefix: &[u8],
         current_index: usize,
     ) -> Result<TrieSnapshot, HubError> {

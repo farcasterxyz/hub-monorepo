@@ -322,7 +322,7 @@ impl MerkleTrie {
 
                 let child_node = self.get_node(&child_prefix).ok_or(HubError {
                     code: "bad_request.internal_error".to_string(),
-                    message: "Child node not found".to_string(),
+                    message: "Child Node not found".to_string(),
                 })?;
 
                 children.insert(
