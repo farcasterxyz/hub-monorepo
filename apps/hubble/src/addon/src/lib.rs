@@ -107,6 +107,7 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("dbClose", RocksDB::js_close)?;
     cx.export_function("dbDestroy", RocksDB::js_destroy)?;
     cx.export_function("dbLocation", RocksDB::js_location)?;
+    cx.export_function("dbKeysExist", RocksDB::js_keys_exist)?;
     cx.export_function("dbGet", RocksDB::js_get)?;
     cx.export_function("dbGetMany", RocksDB::js_get_many)?;
     cx.export_function("dbPut", RocksDB::js_put)?;
@@ -117,6 +118,10 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function(
         "dbDeleteAllKeysInRange",
         RocksDB::js_delete_all_keys_in_range,
+    )?;
+    cx.export_function(
+        "dbFetchIteratorPageByPrefix",
+        RocksDB::js_fetch_iterator_page_by_prefix,
     )?;
     cx.export_function(
         "dbForEachIteratorByPrefix",

@@ -58,15 +58,12 @@ jobs:
     strategy:
       matrix:
         include:
-          - node_version: 18
-            runs_on: 'buildjet-8vcpu-ubuntu-2204'
           - node_version: 20
             runs_on: 'buildjet-8vcpu-ubuntu-2204'
           - node_version: 21
             runs_on: 'buildjet-16vcpu-ubuntu-2204-arm'
 
     runs-on: ${{ matrix.runs_on }}
-
     name: test (${{ matrix.node_version }})
 
     services:
@@ -140,4 +137,4 @@ jobs:
         uses: codecov/codecov-action@v4
         continue-on-error: true # Don't fail the build if codecov fails
         timeout-minutes: 1
-        
+

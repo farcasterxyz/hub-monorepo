@@ -6,14 +6,14 @@ use crate::{
 use prost::Message as _;
 use std::{collections::HashMap, sync::Arc};
 
-use super::merkle_trie::{NodeMetadata, TrieSnapshot};
+use super::merkle_trie::TrieSnapshot;
 
 pub const TIMESTAMP_LENGTH: usize = 10;
 const MAX_VALUES_RETURNED_PER_CALL: usize = 1024;
 
 /// Represents a node in a MerkleTrie. Automatically updates the hashes when items are added,
 /// and keeps track of the number of items in the subtree.
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct TrieNode {
     hash: Vec<u8>,
     items: usize,
@@ -22,7 +22,7 @@ pub struct TrieNode {
 }
 
 // An empty struct that represents a serialized trie node, which will need to be loaded from the db
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SerializedTrieNode {
     pub hash: Option<Vec<u8>>,
 }
@@ -34,7 +34,7 @@ impl SerializedTrieNode {
 }
 
 // An enum that represents the different types of trie nodes
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TrieNodeType {
     Node(TrieNode),
     Serialized(SerializedTrieNode),
@@ -61,7 +61,7 @@ impl TrieNode {
         key
     }
 
-    fn serialize(node: &TrieNode) -> Vec<u8> {
+    pub fn serialize(node: &TrieNode) -> Vec<u8> {
         let db_trie_node = DbTrieNode {
             key: node.key.as_ref().unwrap_or(&vec![]).clone(),
             child_chars: node.children.keys().map(|c| *c as u32).collect(),
@@ -118,12 +118,11 @@ impl TrieNode {
         }
     }
 
-    #[cfg(test)]
     pub fn children(&self) -> &HashMap<u8, TrieNodeType> {
         &self.children
     }
 
-    pub fn get_node(
+    pub fn get_node_from_trie(
         &mut self,
         db: &Arc<RocksDB>,
         prefix: &[u8],
@@ -139,7 +138,7 @@ impl TrieNode {
         }
 
         if let Ok(child) = self.get_or_load_child(db, &prefix[..current_index], char) {
-            child.get_node(db, prefix, current_index + 1)
+            child.get_node_from_trie(db, prefix, current_index + 1)
         } else {
             None
         }
@@ -158,130 +157,246 @@ impl TrieNode {
         &mut self,
         db: &Arc<RocksDB>,
         txn: &mut RocksDbTransactionBatch,
-        key: &Vec<u8>,
+        mut keys: Vec<Vec<u8>>,
         current_index: usize,
-    ) -> Result<bool, HubError> {
-        // Do not compact the timestamp portion of the trie, since it is used to compare snapshots
-        if current_index >= TIMESTAMP_LENGTH && self.is_leaf() && self.key.is_none() {
-            // Reached a leaf node with no value, insert it
-
-            self.key = Some(key.clone());
-            self.items += 1;
-
-            self.update_hash(db, &key[..current_index])?;
-            self.put_to_txn(txn, &key[..current_index]);
-
-            return Ok(true);
+    ) -> Result<Vec<bool>, HubError> {
+        if keys.len() == 0 {
+            return Err(HubError {
+                code: "bad_request.invalid_param".to_string(),
+                message: "No keys to insert".to_string(),
+            });
         }
 
+        // Note that all the keys will have the same prefix, so we can get the [0]th one
+        let prefix = keys[0][..current_index].to_vec();
+
+        let mut results = keys.iter().map(|_| false).collect::<Vec<bool>>();
+
+        // Vec to store the keys that were not inserted and their index
+        let remaining_keys;
+
+        // Do not compact the timestamp portion of the trie, since it is used to compare snapshots
         if current_index >= TIMESTAMP_LENGTH && self.is_leaf() {
-            // See if the key already exists
-            if bytes_compare(self.key.as_ref().unwrap_or(&vec![]), key.as_slice()) == 0 {
-                // Key already exists, do nothing
-                return Ok(false);
+            let mut inserted = false;
+            if self.key.is_none() {
+                let key = keys.pop().unwrap();
+                // Reached a leaf node with no value, insert it
+                self.key = Some(key);
+                self.items += 1;
+
+                self.update_hash(db, &prefix)?;
+                self.put_to_txn(txn, &prefix);
+
+                inserted = true;
+
+                results[0] = true; // the first key was inserted successfully
+            }
+
+            if keys.is_empty() {
+                return Ok(results);
+            }
+
+            // See if the any of the keys already exists
+            remaining_keys = keys
+                .into_iter()
+                .enumerate()
+                .filter_map(|(i, key)| {
+                    if bytes_compare(self.key.as_ref().unwrap_or(&vec![]), key.as_slice()) == 0 {
+                        // Key already exists, do nothing
+                        results[i] = false;
+                        None
+                    } else {
+                        Some((i + if inserted { 1 } else { 0 }, key)) // If we already pop()ed the first key, the index is i + 1
+                    }
+                })
+                .collect::<Vec<_>>();
+
+            if remaining_keys.is_empty() {
+                // Nothing new was inserted, return
+                return Ok(results);
             }
 
             //  If the key is different, and a value exists, then split the node
             self.split_leaf_node(db, txn, current_index)?;
-        }
+        } else {
+            // If not a leaf, then we need to add all the keys
+            remaining_keys = keys.into_iter().enumerate().collect::<Vec<_>>()
+        };
 
-        if current_index >= key.len() {
+        // Check if any of the remaining keys are invalid
+        if remaining_keys
+            .iter()
+            .any(|(_, key)| current_index >= key.len())
+        {
             return Err(HubError {
                 code: "bad_request.invalid_param".to_string(),
                 message: "Key length exceeded".to_string(),
             });
         }
-        let char = key[current_index];
-        if !self.children.contains_key(&char) {
-            self.children
-                .insert(char, TrieNodeType::Node(TrieNode::default()));
+
+        // For the remaining keys, group them by the key[current_index] and insert them in bulk
+        // at the next level
+        let mut grouped_keys = HashMap::new();
+        for (i, key) in remaining_keys.into_iter() {
+            let char = key[current_index];
+            grouped_keys
+                .entry(char)
+                .or_insert_with(|| vec![])
+                .push((i, key));
         }
 
-        // Recurse into a non-leaf node and instruct it to insert the value
-        let child = self.get_or_load_child(db, &key[..current_index], char)?;
-        let result = child.insert(db, txn, key, current_index + 1)?;
+        let mut successes = 0;
+        for (char, child_keys) in grouped_keys.into_iter() {
+            if !self.children.contains_key(&char) {
+                self.children
+                    .insert(char, TrieNodeType::Node(TrieNode::default()));
+            }
 
-        if result {
-            self.items += 1;
+            // Recurse into a non-leaf node and instruct it to insert the value.
+            let child = self.get_or_load_child(db, &prefix, char)?;
 
-            self.update_hash(db, &key[..current_index])?;
-            self.put_to_txn(txn, &key[..current_index]);
+            // Split the child_keys into the "i"s and the keys
+            let mut is = vec![];
+            let mut keys = vec![];
+            for (i, key) in child_keys.into_iter() {
+                is.push(i);
+                keys.push(key);
+            }
+
+            let child_results = child.insert(db, txn, keys, current_index + 1)?;
+
+            for (i, result) in is.into_iter().zip(child_results) {
+                results[i] = result;
+                if result {
+                    successes += 1;
+                }
+            }
         }
 
-        Ok(result)
+        if successes > 0 {
+            self.items += successes;
+
+            self.update_hash(db, &prefix)?;
+            self.put_to_txn(txn, &prefix);
+        }
+
+        Ok(results)
     }
 
     pub fn delete(
         &mut self,
         db: &Arc<RocksDB>,
         txn: &mut RocksDbTransactionBatch,
-        key: &[u8],
+        keys: Vec<Vec<u8>>,
         current_index: usize,
-    ) -> Result<bool, HubError> {
+    ) -> Result<Vec<bool>, HubError> {
+        let prefix = keys[0][..current_index].to_vec();
+        let mut results = keys.iter().map(|_| false).collect::<Vec<bool>>();
+
         if self.is_leaf() {
-            if bytes_compare(self.key.as_ref().unwrap_or(&vec![]), key) == 0 {
-                self.key = None;
-                self.items -= 1;
+            // If any of the keys match, then we delete the key
+            for (i, key) in keys.iter().enumerate() {
+                if bytes_compare(self.key.as_ref().unwrap_or(&vec![]), key) == 0 {
+                    self.key = None;
+                    self.items -= 1;
 
-                self.delete_to_txn(txn, &key[..current_index]);
+                    self.delete_to_txn(txn, &prefix);
+                    self.update_hash(db, &prefix)?;
 
-                return Ok(true);
+                    results[i] = true;
+                    break;
+                }
             }
 
-            return Ok(false);
+            return Ok(results);
         }
 
-        if current_index >= key.len() {
+        // Check if any of the remaining keys are invalid
+        if keys.iter().any(|key| current_index >= key.len()) {
             return Err(HubError {
                 code: "bad_request.invalid_param".to_string(),
                 message: "Key length exceeded".to_string(),
             });
         }
-        let char = key[current_index];
-        if !self.children.contains_key(&char) {
-            return Ok(false);
+
+        // For the remaining keys, we group them by the key[current_index] and delete them in bulk
+        // at the next level
+        let mut grouped_keys = HashMap::new();
+        for (i, key) in keys.into_iter().enumerate() {
+            let char = key[current_index];
+            grouped_keys
+                .entry(char)
+                .or_insert_with(|| vec![])
+                .push((i, key));
         }
 
-        let child = self.get_or_load_child(db, &key[..current_index], char)?;
-        let result = child.delete(db, txn, key, current_index + 1)?;
-        let child_items = child.items;
+        let mut successes = 0;
+        for (char, child_keys) in grouped_keys.into_iter() {
+            if !self.children.contains_key(&char) {
+                // There are no more nodes under this, so we can return false for all the keys
+                for (i, _) in child_keys.into_iter() {
+                    results[i] = false;
+                }
+                continue;
+            }
 
-        if result {
-            self.items -= 1;
+            let child = self.get_or_load_child(db, &prefix, char)?;
+
+            // Split the child_keys into the "i"s and the keys
+            let mut is = vec![];
+            let mut keys = vec![];
+            for (i, key) in child_keys.into_iter() {
+                is.push(i);
+                keys.push(key);
+            }
+
+            let child_results = child.delete(db, txn, keys, current_index + 1)?;
+            let child_items = child.items;
 
             // Delete the child if it's empty. This is required to make sure the hash will be the same
             // as another trie that doesn't have this node in the first place.
             if child_items == 0 {
                 self.children.remove(&char);
+            }
 
-                if self.items == 0 {
-                    // Delete this node
-                    self.delete_to_txn(txn, &key[..current_index]);
-                    self.update_hash(db, &key[..current_index])?;
-                    return Ok(true);
+            for (i, result) in is.into_iter().zip(child_results) {
+                results[i] = result;
+                if result {
+                    successes += 1;
                 }
+            }
+        }
+
+        if successes > 0 {
+            self.items -= successes;
+
+            if self.items == 0 {
+                // Delete this node
+                self.delete_to_txn(txn, &prefix);
+                self.update_hash(db, &prefix)?;
+                return Ok(results);
             }
 
             if self.items == 1 && self.children.len() == 1 && current_index >= TIMESTAMP_LENGTH {
                 // Compact the trie by removing the child and moving the key up
                 let char = *self.children.keys().next().unwrap();
-                let child = self.get_or_load_child(db, &key[..current_index], char)?;
+                let child = self.get_or_load_child(db, &prefix, char)?;
 
                 if child.key.is_some() {
                     self.key = child.key.take();
                     self.children.remove(&char);
 
                     // Delete child
-                    let child_prefix = Self::make_primary_key(&key[..current_index], Some(char));
+                    let child_prefix = Self::make_primary_key(&prefix, Some(char));
                     self.delete_to_txn(txn, &child_prefix);
                 }
             }
 
-            self.update_hash(db, &key[..current_index])?;
-            self.put_to_txn(txn, &key[..current_index]);
+            self.update_hash(db, &prefix)?;
+            self.put_to_txn(txn, &prefix);
         }
 
-        Ok(result)
+        Ok(results)
     }
 
     pub fn exists(
@@ -318,18 +433,19 @@ impl TrieNode {
         current_index: usize,
     ) -> Result<(), HubError> {
         let key = self.key.take().unwrap();
+        let prefix = key[..current_index].to_vec();
+
         let new_child_char = key[current_index];
 
         self.children
             .insert(new_child_char, TrieNodeType::Node(TrieNode::default()));
 
         if let Some(TrieNodeType::Node(new_child)) = self.children.get_mut(&new_child_char) {
-            new_child.insert(db, txn, &key, current_index + 1)?;
+            new_child.insert(db, txn, vec![key], current_index + 1)?;
         }
 
-        let prefix = &key[..current_index];
-        self.update_hash(db, prefix)?;
-        self.put_to_txn(txn, prefix);
+        self.update_hash(db, &prefix)?;
+        self.put_to_txn(txn, &prefix);
 
         Ok(())
     }
@@ -346,6 +462,7 @@ impl TrieNode {
             Entry::Occupied(mut entry) => {
                 if let TrieNodeType::Serialized(_) = entry.get_mut() {
                     let child_prefix = Self::make_primary_key(prefix, Some(char));
+
                     let child_node = db
                         .get(&child_prefix)?
                         .map(|b| TrieNode::deserialize(&b).unwrap())
@@ -484,39 +601,6 @@ impl TrieNode {
         }
 
         Ok(values)
-    }
-
-    pub fn get_node_metadata(
-        &mut self,
-        db: &Arc<RocksDB>,
-        prefix: &[u8],
-    ) -> Result<NodeMetadata, HubError> {
-        let mut children = HashMap::new();
-
-        let child_chars = self.children.keys().map(|c| *c).collect::<Vec<_>>();
-        for char in child_chars {
-            let child_node = self.get_or_load_child(db, prefix, char)?;
-
-            let mut child_prefix = prefix.to_vec();
-            child_prefix.push(char);
-
-            children.insert(
-                char,
-                NodeMetadata {
-                    prefix: child_prefix.clone(),
-                    num_messages: child_node.items,
-                    hash: hex::encode(child_node.hash.as_slice()),
-                    children: HashMap::new(),
-                },
-            );
-        }
-
-        Ok(NodeMetadata {
-            prefix: prefix.to_vec(),
-            num_messages: self.items,
-            hash: hex::encode(self.hash.as_slice()),
-            children,
-        })
     }
 
     pub fn get_snapshot(

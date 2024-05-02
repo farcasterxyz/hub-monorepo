@@ -1,6 +1,6 @@
 {
   "name": "@farcaster/hubble",
-  "version": "1.11.8",
+  "version": "1.12.0",
   "description": "Farcaster Hub",
   "author": "",
   "license": "",
@@ -73,8 +73,9 @@
     "@aws-sdk/lib-storage": "^3.504.0",
     "@chainsafe/libp2p-gossipsub": "6.1.0",
     "@chainsafe/libp2p-noise": "^11.0.0 ",
+    "@datastructures-js/priority-queue": "^6.3.1",
     "@faker-js/faker": "~7.6.0",
-    "@farcaster/hub-nodejs": "^0.11.10",
+    "@farcaster/hub-nodejs": "^0.11.11",
     "@fastify/cors": "^8.4.0",
     "@figma/hot-shots": "^9.0.0-figma.1",
     "@grpc/grpc-js": "~1.8.21",

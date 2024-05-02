@@ -12,7 +12,6 @@ import {
   HubEventProcessor,
   MessageState,
 } from "./shuttle";
-import { sleep } from "./utils";
 
 let db: DB;
 let subscriber: FakeHubSubscriber;
@@ -250,5 +249,30 @@ describe("shuttle", () => {
       .executeTakeFirstOrThrow();
     expect(Buffer.from(addMessageInDb.hash)).toEqual(Buffer.from(addMessage.hash));
     expect(addMessageInDb.revokedAt).not.toBeNull();
+  });
+
+  describe("message types", () => {
+    test("handles compact link state messages", async () => {
+      const message = await Factories.LinkCompactStateMessage.create(
+        {
+          data: {
+            linkCompactStateBody: {
+              type: "follow",
+              targetFids: [1, 2, 3],
+            },
+          },
+        },
+        { transient: { signer } },
+      );
+      await subscriber.processHubEvent(
+        HubEvent.create({ id: 10, type: HubEventType.MERGE_MESSAGE, mergeMessageBody: { message } }),
+      );
+      const res = await db
+        .selectFrom("messages")
+        .select(["hash", "body"])
+        .where("hash", "=", message.hash)
+        .executeTakeFirstOrThrow();
+      expect(res.body.targetFids).toEqual([1, 2, 3]);
+    });
   });
 });

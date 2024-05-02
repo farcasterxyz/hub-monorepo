@@ -288,11 +288,25 @@ const CastRemoveMessageFactory = Factory.define<protobufs.CastRemoveMessage, { s
   },
 );
 
+const LinkCompactStateBodyFactory = Factory.define<protobufs.LinkCompactStateBody>(() => {
+  return protobufs.LinkCompactStateBody.create({
+    targetFids: [FidFactory.build()],
+    type: "follow",
+  });
+});
+
 const LinkBodyFactory = Factory.define<protobufs.LinkBody>(() => {
   return protobufs.LinkBody.create({
     targetFid: FidFactory.build(),
     type: "follow",
   });
+});
+
+const LinkCompactStateAddDataFactory = Factory.define<protobufs.LinkCompactStateAddData>(() => {
+  return MessageDataFactory.build({
+    linkCompactStateBody: LinkCompactStateBodyFactory.build(),
+    type: protobufs.MessageType.LINK_COMPACT_STATE,
+  }) as protobufs.LinkCompactStateAddData;
 });
 
 const LinkAddDataFactory = Factory.define<protobufs.LinkAddData>(() => {
@@ -301,6 +315,21 @@ const LinkAddDataFactory = Factory.define<protobufs.LinkAddData>(() => {
     type: protobufs.MessageType.LINK_ADD,
   }) as protobufs.LinkAddData;
 });
+
+const LinkCompactStateMessageFactory = Factory.define<protobufs.LinkCompactStateMessage, { signer?: Ed25519Signer }>(
+  ({ onCreate, transientParams }) => {
+    onCreate((message) => {
+      return MessageFactory.create(message, {
+        transient: transientParams,
+      }) as Promise<protobufs.LinkCompactStateMessage>;
+    });
+
+    return MessageFactory.build(
+      { data: LinkCompactStateAddDataFactory.build(), signatureScheme: protobufs.SignatureScheme.ED25519 },
+      { transient: transientParams },
+    ) as protobufs.LinkCompactStateMessage;
+  },
+);
 
 const LinkAddMessageFactory = Factory.define<protobufs.LinkAddMessage, { signer?: Ed25519Signer }>(
   ({ onCreate, transientParams }) => {
@@ -821,6 +850,7 @@ export const Factories = {
   LinkAddMessage: LinkAddMessageFactory,
   LinkRemoveData: LinkRemoveDataFactory,
   LinkRemoveMessage: LinkRemoveMessageFactory,
+  LinkCompactStateMessage: LinkCompactStateMessageFactory,
   ReactionBody: ReactionBodyFactory,
   ReactionAddData: ReactionAddDataFactory,
   ReactionAddMessage: ReactionAddMessageFactory,

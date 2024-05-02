@@ -1,17 +1,12 @@
-import { getDefaultStoreLimit, LinkAddMessage, LinkRemoveMessage, Message, StoreType } from "@farcaster/hub-nodejs";
-import { makeFidKey } from "../../storage/db/message.js";
-import { RootPrefix, TSHASH_LENGTH, UserMessagePostfix, UserPostfix } from "../db/types.js";
-import { MessagesPage, PAGE_SIZE_MAX, PageOptions, StorePruneOptions } from "./types.js";
-import { Store } from "./store.js";
-import { err, ok, ResultAsync } from "neverthrow";
-import RocksDB, { RocksDbTransaction } from "../db/rocksdb.js";
-import { rsCreateReactionStore, RustDb, rsLinkStore, rustErrorToHubError } from "../../rustfunctions.js";
+import { getDefaultStoreLimit, LinkAddMessage, LinkRemoveMessage, StoreType } from "@farcaster/hub-nodejs";
+import { makeFidKey, messageDecode } from "../../storage/db/message.js";
+import { UserPostfix } from "../db/types.js";
+import { MessagesPage, PageOptions, StorePruneOptions } from "./types.js";
+import { ResultAsync } from "neverthrow";
+import RocksDB from "../db/rocksdb.js";
+import { rsLinkStore, rustErrorToHubError } from "../../rustfunctions.js";
 import { RustStoreBase } from "./rustStoreBase.js";
 import storeEventHandler from "./storeEventHandler.js";
-
-const makeTargetKey = (target: number): Buffer => {
-  return makeFidKey(target);
-};
 
 /**
  * LinkStore persists Link Messages in RocksDB using a two-phase CRDT set to guarantee
@@ -57,7 +52,7 @@ class LinkStore extends RustStoreBase<LinkAddMessage, LinkRemoveMessage> {
       throw result.error;
     }
 
-    return Message.decode(new Uint8Array(result.value)) as LinkAddMessage;
+    return messageDecode(new Uint8Array(result.value)) as LinkAddMessage;
   }
 
   async getLinkRemove(fid: number, type: string, target: number): Promise<LinkRemoveMessage> {
@@ -70,7 +65,7 @@ class LinkStore extends RustStoreBase<LinkAddMessage, LinkRemoveMessage> {
       throw result.error;
     }
 
-    return Message.decode(new Uint8Array(result.value)) as LinkRemoveMessage;
+    return messageDecode(new Uint8Array(result.value)) as LinkRemoveMessage;
   }
 
   /** Finds all LinkAdd Messages by iterating through the prefixes */
@@ -83,7 +78,7 @@ class LinkStore extends RustStoreBase<LinkAddMessage, LinkRemoveMessage> {
 
     const messages =
       messages_page.messageBytes?.map((message_bytes) => {
-        return Message.decode(new Uint8Array(message_bytes)) as LinkAddMessage;
+        return messageDecode(new Uint8Array(message_bytes)) as LinkAddMessage;
       }) ?? [];
 
     return { messages, nextPageToken: messages_page.nextPageToken };
@@ -99,7 +94,7 @@ class LinkStore extends RustStoreBase<LinkAddMessage, LinkRemoveMessage> {
 
     const messages =
       messages_page.messageBytes?.map((message_bytes) => {
-        return Message.decode(new Uint8Array(message_bytes)) as LinkRemoveMessage;
+        return messageDecode(new Uint8Array(message_bytes)) as LinkRemoveMessage;
       }) ?? [];
 
     return { messages, nextPageToken: messages_page.nextPageToken };
@@ -115,7 +110,7 @@ class LinkStore extends RustStoreBase<LinkAddMessage, LinkRemoveMessage> {
 
     const messages =
       messages_page.messageBytes?.map((message_bytes) => {
-        return Message.decode(new Uint8Array(message_bytes)) as LinkAddMessage;
+        return messageDecode(new Uint8Array(message_bytes)) as LinkAddMessage;
       }) ?? [];
 
     return { messages, nextPageToken: messages_page.nextPageToken };
@@ -129,7 +124,7 @@ class LinkStore extends RustStoreBase<LinkAddMessage, LinkRemoveMessage> {
 
     const messages =
       messages_page.messageBytes?.map((message_bytes) => {
-        return Message.decode(new Uint8Array(message_bytes)) as LinkAddMessage | LinkRemoveMessage;
+        return messageDecode(new Uint8Array(message_bytes)) as LinkAddMessage | LinkRemoveMessage;
       }) ?? [];
 
     return { messages, nextPageToken: messages_page.nextPageToken };

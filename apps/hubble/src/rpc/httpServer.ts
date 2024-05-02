@@ -30,9 +30,9 @@ import fastifyCors from "@fastify/cors";
 import { Result, err, ok } from "neverthrow";
 import { logger } from "../utils/logger.js";
 import { PageOptions } from "../storage/stores/types.js";
-import { DeepPartial } from "../storage/stores/store.js";
 import Engine from "../storage/engine/index.js";
 import { statsd } from "../utils/statsd.js";
+import { DeepPartial } from "storage/stores/rustStoreBase.js";
 
 const log = logger.child({ component: "HttpAPIServer" });
 

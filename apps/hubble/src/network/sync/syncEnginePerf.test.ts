@@ -1,10 +1,12 @@
 import { FarcasterNetwork, Factories, HubRpcClient, CastAddMessage, OnChainEvent } from "@farcaster/hub-nodejs";
+import { getFarcasterTime } from "@farcaster/core";
 import SyncEngine from "../../network/sync/syncEngine.js";
 import { jestRocksDB } from "../../storage/db/jestUtils.js";
 import { MockHub } from "../../test/mocks.js";
 import { MockRpcClient } from "./mock.js";
-import { getFarcasterTime } from "@farcaster/core";
-import { EMPTY_HASH } from "./merkleTrie.js";
+import { sleepWhile } from "../../utils/crypto.js";
+
+const SLEEPWHILE_TIMEOUT = 1 * 1000;
 
 const testDb = jestRocksDB("engine.syncEnginePerf.test");
 const testDb2 = jestRocksDB("engine2.syncEnginePerf.test");
@@ -69,6 +71,9 @@ describe("SyncEnginePerfTest", () => {
           res = await hub2.submitMessage(message);
           expect(res.isOk()).toBeTruthy();
         }
+
+        await sleepWhile(() => syncEngine2.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
+        await sleepWhile(() => syncEngine1.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
         // Sanity check, they should equal
         expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());

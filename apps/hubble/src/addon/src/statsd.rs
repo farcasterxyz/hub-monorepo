@@ -20,6 +20,8 @@ impl Clone for StatsdClientWrapper {
     }
 }
 
+/** An implementation of statsd client that ignores errors */
+#[allow(dead_code)]
 impl StatsdClientWrapper {
     fn new(client: StatsdClient) -> Self {
         Self(Arc::new(client))

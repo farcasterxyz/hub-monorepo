@@ -22,6 +22,7 @@ import { UserPostfix } from "../db/types.js";
 import { ResultAsync } from "neverthrow";
 import RocksDB from "storage/db/rocksdb.js";
 import { RustStoreBase } from "./rustStoreBase.js";
+import { messageDecode } from "../../storage/db/message.js";
 
 class ReactionStore extends RustStoreBase<ReactionAddMessage, ReactionRemoveMessage> {
   constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
@@ -48,7 +49,7 @@ class ReactionStore extends RustStoreBase<ReactionAddMessage, ReactionRemoveMess
     if (result.isErr()) {
       throw result.error;
     }
-    return Message.decode(new Uint8Array(result.value)) as ReactionAddMessage;
+    return messageDecode(new Uint8Array(result.value)) as ReactionAddMessage;
   }
 
   async getReactionRemove(fid: number, type: ReactionType, target: CastId | string): Promise<ReactionRemoveMessage> {
@@ -68,7 +69,7 @@ class ReactionStore extends RustStoreBase<ReactionAddMessage, ReactionRemoveMess
     if (result.isErr()) {
       throw result.error;
     }
-    return Message.decode(new Uint8Array(result.value)) as ReactionRemoveMessage;
+    return messageDecode(new Uint8Array(result.value)) as ReactionRemoveMessage;
   }
 
   async getReactionAddsByFid(
@@ -80,7 +81,7 @@ class ReactionStore extends RustStoreBase<ReactionAddMessage, ReactionRemoveMess
 
     const messages =
       messages_page.messageBytes?.map((message_bytes) => {
-        return Message.decode(new Uint8Array(message_bytes)) as ReactionAddMessage;
+        return messageDecode(new Uint8Array(message_bytes)) as ReactionAddMessage;
       }) ?? [];
 
     return { messages, nextPageToken: messages_page.nextPageToken };
@@ -95,7 +96,7 @@ class ReactionStore extends RustStoreBase<ReactionAddMessage, ReactionRemoveMess
 
     const messages =
       message_page.messageBytes?.map((message_bytes) => {
-        return Message.decode(new Uint8Array(message_bytes)) as ReactionRemoveMessage;
+        return messageDecode(new Uint8Array(message_bytes)) as ReactionRemoveMessage;
       }) ?? [];
 
     return { messages, nextPageToken: message_page.nextPageToken };
@@ -132,7 +133,7 @@ class ReactionStore extends RustStoreBase<ReactionAddMessage, ReactionRemoveMess
 
     const messages =
       message_page.messageBytes?.map((message_bytes) => {
-        return Message.decode(new Uint8Array(message_bytes)) as ReactionAddMessage;
+        return messageDecode(new Uint8Array(message_bytes)) as ReactionAddMessage;
       }) ?? [];
 
     return { messages, nextPageToken: message_page.nextPageToken };

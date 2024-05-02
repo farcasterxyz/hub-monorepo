@@ -199,9 +199,9 @@ describe("GossipNode", () => {
 
     test("Gossip Ids match for farcaster protocol messages", async () => {
       await node.start([]);
-      await node.gossipMessage(castAdd);
+      await node.broadcastMessage(castAdd);
       // should be detected as a duplicate
-      const res = await node.gossipMessage(castAdd);
+      const res = await node.broadcastMessage(castAdd);
 
       expect(res.isErr()).toBeTruthy();
       expect(res._unsafeUnwrapErr().errCode).toEqual("bad_request.duplicate");

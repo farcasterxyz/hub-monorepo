@@ -83,6 +83,14 @@ impl StoreDef for CastStoreDef {
             && message.data.as_ref().unwrap().body.is_some()
     }
 
+    fn compact_state_message_type(&self) -> u8 {
+        MessageType::None as u8
+    }
+
+    fn is_compact_state_type(&self, _message: &Message) -> bool {
+        false
+    }
+
     fn find_merge_add_conflicts(
         &self,
         db: &RocksDB,
@@ -222,6 +230,13 @@ impl StoreDef for CastStoreDef {
             message.data.as_ref().unwrap().fid as u32,
             hash,
         ))
+    }
+
+    fn make_compact_state_add_key(&self, _message: &Message) -> Result<Vec<u8>, HubError> {
+        Err(HubError {
+            code: "bad_request.invalid_param".to_string(),
+            message: "Cast Store doesn't support compact state".to_string(),
+        })
     }
 
     fn get_prune_size_limit(&self) -> u32 {
@@ -478,7 +493,7 @@ impl CastStore {
         fid: u32,
         page_options: &PageOptions,
     ) -> Result<MessagesPage, HubError> {
-        store.get_adds_by_fid(fid, page_options, Some(|_: &Message| true))
+        store.get_adds_by_fid::<fn(&protos::Message) -> bool>(fid, page_options, None)
     }
 
     pub fn js_create_cast_store(mut cx: FunctionContext) -> JsResult<JsBox<Arc<Store>>> {
@@ -524,7 +539,7 @@ impl CastStore {
         fid: u32,
         page_options: &PageOptions,
     ) -> Result<MessagesPage, HubError> {
-        store.get_removes_by_fid(fid, page_options, Some(|_: &Message| true))
+        store.get_removes_by_fid::<fn(&protos::Message) -> bool>(fid, page_options, None)
     }
 
     pub fn js_get_cast_removes_by_fid(mut cx: FunctionContext) -> JsResult<JsPromise> {
@@ -556,7 +571,7 @@ impl CastStore {
 
         store
             .db()
-            .for_each_iterator_by_prefix_unbounded(&prefix, page_options, |key, _| {
+            .for_each_iterator_by_prefix(&prefix, page_options, |key, _| {
                 let ts_hash_offset = prefix.len();
                 let fid_offset = ts_hash_offset + TS_HASH_LENGTH;
 
@@ -579,7 +594,8 @@ impl CastStore {
                 Ok(false) // Continue iterating
             })?;
 
-        let messages = message::get_many_messages(store.db().borrow(), message_keys)?;
+        let messages_bytes =
+            message::get_many_messages_as_bytes(store.db().borrow(), message_keys)?;
         let next_page_token = if last_key.len() > 0 {
             Some(last_key[prefix.len()..].to_vec())
         } else {
@@ -587,7 +603,7 @@ impl CastStore {
         };
 
         Ok(MessagesPage {
-            messages,
+            messages_bytes,
             next_page_token,
         })
     }
@@ -647,7 +663,7 @@ impl CastStore {
 
         store
             .db()
-            .for_each_iterator_by_prefix_unbounded(&prefix, page_options, |key, _| {
+            .for_each_iterator_by_prefix(&prefix, page_options, |key, _| {
                 let ts_hash_offset = prefix.len();
                 let fid_offset = ts_hash_offset + TS_HASH_LENGTH;
 
@@ -670,7 +686,8 @@ impl CastStore {
                 Ok(false) // Continue iterating
             })?;
 
-        let messages = message::get_many_messages(store.db().borrow(), message_keys)?;
+        let messages_bytes =
+            message::get_many_messages_as_bytes(store.db().borrow(), message_keys)?;
         let next_page_token = if last_key.len() > 0 {
             Some(last_key[prefix.len()..].to_vec())
         } else {
@@ -678,7 +695,7 @@ impl CastStore {
         };
 
         Ok(MessagesPage {
-            messages,
+            messages_bytes,
             next_page_token,
         })
     }

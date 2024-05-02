@@ -50,6 +50,14 @@ impl StoreDef for UserDataStoreDef {
         false
     }
 
+    fn compact_state_message_type(&self) -> u8 {
+        MessageType::None as u8
+    }
+
+    fn is_compact_state_type(&self, _message: &Message) -> bool {
+        false
+    }
+
     fn find_merge_add_conflicts(&self, _db: &RocksDB, _message: &Message) -> Result<(), HubError> {
         // No conflicts
         Ok(())
@@ -88,6 +96,13 @@ impl StoreDef for UserDataStoreDef {
         Err(HubError {
             code: "bad_request.invalid_param".to_string(),
             message: "removes not supported".to_string(),
+        })
+    }
+
+    fn make_compact_state_add_key(&self, _message: &Message) -> Result<Vec<u8>, HubError> {
+        Err(HubError {
+            code: "bad_request.invalid_param".to_string(),
+            message: "UserDataStore doesn't support compact state".to_string(),
         })
     }
 
@@ -205,7 +220,7 @@ impl UserDataStore {
         fid: u32,
         page_options: &PageOptions,
     ) -> Result<MessagesPage, HubError> {
-        store.get_adds_by_fid(fid, page_options, Some(|_message: &Message| true))
+        store.get_adds_by_fid::<fn(&protos::Message) -> bool>(fid, page_options, None)
     }
 
     pub fn js_get_user_data_adds_by_fid(mut cx: FunctionContext) -> JsResult<JsPromise> {

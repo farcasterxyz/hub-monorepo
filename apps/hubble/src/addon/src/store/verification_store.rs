@@ -41,6 +41,14 @@ impl StoreDef for VerificationStoreDef {
         MessageType::VerificationRemove as u8
     }
 
+    fn compact_state_message_type(&self) -> u8 {
+        MessageType::None as u8
+    }
+
+    fn is_compact_state_type(&self, _message: &Message) -> bool {
+        false
+    }
+
     fn is_add_type(&self, message: &protos::Message) -> bool {
         message.signature_scheme == protos::SignatureScheme::Ed25519 as i32
             && message.data.is_some()
@@ -185,6 +193,13 @@ impl StoreDef for VerificationStoreDef {
             message.data.as_ref().unwrap().fid as u32,
             address,
         ))
+    }
+
+    fn make_compact_state_add_key(&self, _message: &Message) -> Result<Vec<u8>, HubError> {
+        Err(HubError {
+            code: "bad_request.invalid_param".to_string(),
+            message: "Verification Store doesn't support compact state".to_string(),
+        })
     }
 
     fn get_prune_size_limit(&self) -> u32 {
@@ -417,7 +432,7 @@ impl VerificationStore {
         fid: u32,
         page_options: &PageOptions,
     ) -> Result<MessagesPage, HubError> {
-        store.get_adds_by_fid(fid, page_options, Some(|_message: &Message| true))
+        store.get_adds_by_fid::<fn(&protos::Message) -> bool>(fid, page_options, None)
     }
 
     pub fn js_get_verification_adds_by_fid(mut cx: FunctionContext) -> JsResult<JsPromise> {
@@ -445,7 +460,7 @@ impl VerificationStore {
         fid: u32,
         page_options: &PageOptions,
     ) -> Result<MessagesPage, HubError> {
-        store.get_removes_by_fid(fid, page_options, Some(|_message: &Message| true))
+        store.get_removes_by_fid::<fn(&protos::Message) -> bool>(fid, page_options, None)
     }
 
     pub fn js_get_verification_removes_by_fid(mut cx: FunctionContext) -> JsResult<JsPromise> {

@@ -1,5 +1,12 @@
 # @farcaster/core
 
+## 0.14.11
+
+### Patch Changes
+
+- ab9258af: feat: extend verification signature max length
+- 7b374890: feat: Add Link CompactStateMessage type for link compaction
+
 ## 0.14.10
 
 ### Patch Changes

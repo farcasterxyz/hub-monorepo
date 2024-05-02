@@ -7,7 +7,6 @@ import RocksDB from "../../storage/db/rocksdb.js";
 import { RootPrefix } from "../../storage/db/types.js";
 import { SyncId, TIMESTAMP_LENGTH } from "./syncId.js";
 import { jest } from "@jest/globals";
-import { sleep } from "../../utils/crypto.js";
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;
 const TEST_TIMEOUT_LONG = 60 * 1000;
@@ -152,12 +151,12 @@ describe("MerkleTrie", () => {
       expect(await trie.exists(syncId1)).toBeTruthy();
       expect(await trie.exists(syncId2)).toBeTruthy();
 
-      await trie.deleteBySyncId(syncId1);
+      await trie.delete(syncId1);
 
       expect(await trie.exists(syncId1)).toBeFalsy();
       expect(await trie.exists(syncId2)).toBeTruthy();
 
-      await trie.deleteBySyncId(syncId2);
+      await trie.delete(syncId2);
 
       expect(await trie.exists(syncId1)).toBeFalsy();
       expect(await trie.exists(syncId2)).toBeFalsy();
@@ -252,7 +251,7 @@ describe("MerkleTrie", () => {
         await trie2.stop();
 
         // Delete half the items from the first trie
-        await Promise.all(syncIds.slice(0, syncIds.length / 2).map(async (syncId) => trie.deleteBySyncId(syncId)));
+        await Promise.all(syncIds.slice(0, syncIds.length / 2).map(async (syncId) => trie.delete(syncId)));
         await trie.commitToDb();
 
         // Initialize a new trie from the same DB
@@ -288,7 +287,7 @@ describe("MerkleTrie", () => {
 
       expect(await trie.exists(syncId)).toBeTruthy();
 
-      await trie.deleteBySyncId(syncId);
+      await trie.delete(syncId);
       expect(await trie.items()).toEqual(0);
       expect(await trie.rootHash()).toEqual(EMPTY_HASH);
 
@@ -301,7 +300,7 @@ describe("MerkleTrie", () => {
 
       const rootHashBeforeDelete = await trie.rootHash();
       const syncId2 = await NetworkFactories.SyncId.create();
-      expect(await trie.deleteBySyncId(syncId2)).toBeFalsy();
+      expect(await trie.delete(syncId2)).toBeFalsy();
 
       const rootHashAfterDelete = await trie.rootHash();
       expect(rootHashAfterDelete).toEqual(rootHashBeforeDelete);
@@ -316,7 +315,7 @@ describe("MerkleTrie", () => {
       const rootHashBeforeDelete = await trie.rootHash();
       await trie.insert(syncId2);
 
-      await trie.deleteBySyncId(syncId2);
+      await trie.delete(syncId2);
       expect(await trie.rootHash()).toEqual(rootHashBeforeDelete);
     });
 
@@ -327,7 +326,7 @@ describe("MerkleTrie", () => {
       await trie.insert(syncId1);
       await trie.insert(syncId2);
 
-      await trie.deleteBySyncId(syncId1);
+      await trie.delete(syncId1);
 
       const secondTrie = new MerkleTrie(db2);
       await secondTrie.initialize();
@@ -353,7 +352,7 @@ describe("MerkleTrie", () => {
       expect(count).toEqual(1 + TIMESTAMP_LENGTH);
 
       // Delete
-      await trie.deleteBySyncId(id);
+      await trie.delete(id);
       await trie.commitToDb();
 
       count = await forEachDbItem(trie.getDb());
@@ -372,7 +371,7 @@ describe("MerkleTrie", () => {
       expect(count).toBeGreaterThan(1 + TIMESTAMP_LENGTH);
 
       // Delete
-      await trie.deleteBySyncId(syncId1);
+      await trie.delete(syncId1);
       await trie.commitToDb();
 
       count = await forEachDbItem(trie.getDb());
@@ -399,7 +398,7 @@ describe("MerkleTrie", () => {
       await Promise.all(syncIds.map(async (syncId) => trie.insert(syncId)));
 
       // Delete half of the items
-      await Promise.all(syncIds.slice(0, syncIds.length / 2).map(async (syncId) => trie.deleteBySyncId(syncId)));
+      await Promise.all(syncIds.slice(0, syncIds.length / 2).map(async (syncId) => trie.delete(syncId)));
 
       // Check that the items are still there
       await Promise.all(
@@ -422,7 +421,7 @@ describe("MerkleTrie", () => {
 
         // Delete half of the items
         const deletePromise = Promise.all(
-          syncIds1.slice(0, syncIds1.length / 2).map(async (syncId) => trie.deleteBySyncId(syncId)),
+          syncIds1.slice(0, syncIds1.length / 2).map(async (syncId) => trie.delete(syncId)),
         );
         const insert2Promise = Promise.all(syncIds2.map(async (syncId) => trie.insert(syncId)));
         const existPromise = await Promise.all(
@@ -467,7 +466,7 @@ describe("MerkleTrie", () => {
 
       expect(await trie2.rootHash()).toEqual(rootHash);
 
-      expect(await trie2.deleteBySyncId(syncId1)).toBeTruthy();
+      expect(await trie2.delete(syncId1)).toBeTruthy();
 
       expect(await trie2.rootHash()).not.toEqual(rootHash);
       expect(await trie2.exists(syncId1)).toBeFalsy();
@@ -489,7 +488,7 @@ describe("MerkleTrie", () => {
       await trie.unloadChidrenAtRoot();
 
       // Now try deleting syncId1
-      expect(await trie.deleteBySyncId(syncId1)).toBeTruthy();
+      expect(await trie.delete(syncId1)).toBeTruthy();
       await trie.commitToDb();
 
       expect(await trie.rootHash()).not.toEqual(rootHash);
@@ -629,7 +628,7 @@ describe("MerkleTrie", () => {
     });
   });
 
-  test("getAllValues returns all values for child nodes", async () => {
+  test("getAllValues returns all values for child nodes directly", async () => {
     const trie = await trieWithIds([1665182332, 1665182343, 1665182345]);
 
     let values = await trie.getAllValues(new Uint8Array(Buffer.from("16651823")));

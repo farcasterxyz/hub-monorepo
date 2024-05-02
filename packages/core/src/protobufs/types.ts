@@ -31,6 +31,16 @@ export type LinkAddData = protobufs.MessageData & {
   linkBody: protobufs.LinkBody;
 };
 
+export type LinkCompactStateAddData = protobufs.MessageData & {
+  type: protobufs.MessageType.LINK_COMPACT_STATE;
+  linkCompactStateBody: protobufs.LinkCompactStateBody;
+};
+
+export type LinkCompactStateMessage = protobufs.Message & {
+  data: LinkCompactStateAddData;
+  signatureScheme: protobufs.SignatureScheme.ED25519;
+};
+
 export type LinkAddMessage = protobufs.Message & {
   data: LinkAddData;
   signatureScheme: protobufs.SignatureScheme.ED25519;

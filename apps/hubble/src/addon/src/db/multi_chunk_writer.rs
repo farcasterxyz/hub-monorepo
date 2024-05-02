@@ -1,8 +1,9 @@
-use flate2::write::GzEncoder;
-use flate2::Compression;
+use gzp::deflate::Gzip;
+use gzp::par::compress::{ParCompress, ParCompressBuilder};
+use gzp::ZWriter as _;
 use slog::{info, o};
 use std::fs::{self, File};
-use std::io::{Result, Write};
+use std::io::{self, Result, Write};
 use std::path::{Path, PathBuf};
 
 use crate::logger::LOGGER;
@@ -19,7 +20,7 @@ pub(crate) struct MultiChunkWriter {
     current_part: usize,
     max_size: usize,
     current_size: usize,
-    encoder: Option<GzEncoder<File>>,
+    encoder: Option<ParCompress<Gzip>>,
     logger: slog::Logger,
 }
 
@@ -53,16 +54,26 @@ impl MultiChunkWriter {
             .base_path
             .join(format!("chunk_{:04}.bin", self.current_part));
         let file = File::create(&file_name)?;
-        self.encoder = Some(GzEncoder::new(file, Compression::default()));
+
+        self.encoder = Some(
+            ParCompressBuilder::new()
+                .num_threads(4)
+                .unwrap()
+                .from_writer(file),
+        );
+
         self.current_size = 0;
         Ok(())
     }
 
     pub fn finish(&mut self) -> Result<()> {
-        if let Some(encoder) = self.encoder.take() {
-            info!(self.logger, "Finished writing part"; "part" => self.current_part);
+        if let Some(mut encoder) = self.encoder.take() {
+            info!(self.logger, "Finished writing chunk"; "chunk" => self.current_part);
 
-            encoder.finish()?;
+            encoder.finish().map_err(|e| {
+                info!(self.logger, "Error finishing chunk"; "chunk" => self.current_part, "error" => e.to_string());
+                io::Error::new(io::ErrorKind::InvalidData, e)
+            })?
         }
         Ok(())
     }

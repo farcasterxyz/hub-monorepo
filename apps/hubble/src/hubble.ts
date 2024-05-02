@@ -1,38 +1,39 @@
 import {
+  bytesToHexString,
+  bytesToUtf8String,
+  ClientOptions,
   ContactInfoContent,
   ContactInfoContentBody,
   FarcasterNetwork,
+  getInsecureHubRpcClient,
+  getSSLHubRpcClient,
   GossipAddressInfo,
   GossipMessage,
-  HubState,
-  Message,
+  HashScheme,
   HubAsyncResult,
   HubError,
-  bytesToHexString,
-  bytesToUtf8String,
   HubRpcClient,
-  getSSLHubRpcClient,
-  getInsecureHubRpcClient,
-  UserNameProof,
+  HubState,
+  Message,
   OnChainEvent,
   onChainEventTypeToJSON,
-  ClientOptions,
+  UserNameProof,
   validations,
-  HashScheme,
 } from "@farcaster/hub-nodejs";
+import { ClientOptions as StatsDClientOptions } from "@figma/hot-shots";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { peerIdFromBytes, peerIdFromString } from "@libp2p/peer-id";
 import { publicAddressesFirst } from "@libp2p/utils/address-sort";
 import { unmarshalPrivateKey, unmarshalPublicKey } from "@libp2p/crypto/keys";
 import { Multiaddr, multiaddr } from "@multiformats/multiaddr";
-import { Result, ResultAsync, err, ok } from "neverthrow";
-import { GossipNode, MAX_MESSAGE_QUEUE_SIZE, GOSSIP_SEEN_TTL } from "./network/p2p/gossipNode.js";
+import { err, ok, Result, ResultAsync } from "neverthrow";
+import { GOSSIP_SEEN_TTL, GossipNode, MAX_SYNCTRIE_QUEUE_SIZE } from "./network/p2p/gossipNode.js";
 import { PeriodicSyncJobScheduler } from "./network/sync/periodicSyncJob.js";
 import SyncEngine, { FIRST_SYNC_DELAY } from "./network/sync/syncEngine.js";
 import AdminServer from "./rpc/adminServer.js";
-import Server from "./rpc/server.js";
+import Server, { checkPortAndPublicAddress, DEFAULT_SERVER_INTERNET_ADDRESS_IPV4 } from "./rpc/server.js";
 import { getHubState, putHubState } from "./storage/db/hubState.js";
-import RocksDB, { DB_DIRECTORY } from "./storage/db/rocksdb.js";
+import RocksDB from "./storage/db/rocksdb.js";
 import { RootPrefix } from "./storage/db/types.js";
 import Engine from "./storage/engine/index.js";
 import { PruneEventsJobScheduler } from "./storage/jobs/pruneEventsJob.js";
@@ -42,11 +43,11 @@ import { rsDbDestroy, rsValidationMethods } from "./rustfunctions.js";
 import * as tar from "tar";
 import * as zlib from "zlib";
 import {
-  SubmitMessageSuccessLogCache,
   logger,
   messageToLog,
   messageTypeToName,
   onChainEventToLog,
+  SubmitMessageSuccessLogCache,
   usernameProofToLog,
 } from "./utils/logger.js";
 import {
@@ -56,7 +57,7 @@ import {
   ipFamilyToString,
   p2pMultiAddrStr,
 } from "./utils/p2p.js";
-import { fetchSnapshotMetadata, SnapshotMetadata, snapshotURL, uploadToS3 } from "./utils/snapshot.js";
+import { fetchSnapshotMetadata, SnapshotMetadata, snapshotURL } from "./utils/snapshot.js";
 import { PeriodicTestDataJobScheduler, TestUser } from "./utils/periodicTestDataJob.js";
 import { ensureAboveMinFarcasterVersion, getMinFarcasterVersion, VersionSchedule } from "./utils/versions.js";
 import { CheckFarcasterVersionJobScheduler } from "./storage/jobs/checkFarcasterVersionJob.js";
@@ -71,10 +72,10 @@ import { createPublicClient, fallback, http } from "viem";
 import { mainnet, optimism } from "viem/chains";
 import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
 import { CheckIncomingPortsJobScheduler } from "./storage/jobs/checkIncomingPortsJob.js";
-import { NetworkConfig, applyNetworkConfig, fetchNetworkConfig } from "./network/utils/networkConfig.js";
+import { applyNetworkConfig, fetchNetworkConfig, NetworkConfig } from "./network/utils/networkConfig.js";
 import { UpdateNetworkConfigJobScheduler } from "./storage/jobs/updateNetworkConfigJob.js";
 import { DbSnapshotBackupJobScheduler } from "./storage/jobs/dbSnapshotBackupJob.js";
-import { statsd, StatsDInitParams } from "./utils/statsd.js";
+import { statsd } from "./utils/statsd.js";
 import {
   getDbSchemaVersion,
   LATEST_DB_SCHEMA_VERSION,
@@ -88,22 +89,23 @@ import { HttpAPIServer } from "./rpc/httpServer.js";
 import { SingleBar } from "cli-progress";
 import { exportToProtobuf } from "@libp2p/peer-id-factory";
 import OnChainEventStore from "./storage/stores/onChainEventStore.js";
-import { ensureMessageData, isMessageInDB } from "./storage/db/message.js";
-import { HubResult, MessageBundle, getFarcasterTime } from "@farcaster/core";
+import { areMessagesInDb, ensureMessageData, isMessageInDB } from "./storage/db/message.js";
+import { getFarcasterTime, HubResult, MessageBundle } from "@farcaster/core";
 import { MerkleTrie } from "./network/sync/merkleTrie.js";
 import { DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT } from "./defaultConfig.js";
 import { diagnosticReporter } from "./utils/diagnosticReport.js";
-import v8 from "v8";
+import { startupCheck, StartupCheckStatus } from "./utils/startupCheck.js";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
 export const APP_VERSION = packageJson.version;
 export const APP_NICKNAME = process.env["HUBBLE_NAME"] ?? "Farcaster Hub";
 
-export const SNAPSHOT_S3_DEFAULT_BUCKET = "download.farcaster.xyz";
-export const S3_REGION = "us-east-1";
+export const SNAPSHOT_S3_UPLOAD_BUCKET = "farcaster-snapshots";
+export const SNAPSHOT_S3_DOWNLOAD_BUCKET = "download.farcaster.xyz";
+export const S3_REGION = "auto";
 
-export const FARCASTER_VERSION = "2024.3.20";
+export const FARCASTER_VERSION = "2024.5.1";
 export const FARCASTER_VERSIONS_SCHEDULE: VersionSchedule[] = [
   { version: "2023.3.1", expiresAt: 1682553600000 }, // expires at 4/27/23 00:00 UTC
   { version: "2023.4.19", expiresAt: 1686700800000 }, // expires at 6/14/23 00:00 UTC
@@ -115,6 +117,7 @@ export const FARCASTER_VERSIONS_SCHEDULE: VersionSchedule[] = [
   { version: "2023.12.27", expiresAt: 1708473600000 }, // expires at 2/21/24 00:00 UTC
   { version: "2024.2.7", expiresAt: 1712102400000 }, // expires at 4/3/24 00:00 UTC
   { version: "2024.3.20", expiresAt: 1715731200000 }, // expires at 5/15/24 00:00 UTC
+  { version: "2024.5.1", expiresAt: 1719360000000 }, // expires at 6/26/24 00:00 UTC
 ];
 
 const MAX_CONTACT_INFO_AGE_MS = GOSSIP_SEEN_TTL;
@@ -192,7 +195,7 @@ export interface HubOptions {
   rankRpcs?: boolean;
 
   /** StatsD parameters */
-  statsdParams?: StatsDInitParams | undefined;
+  statsdParams?: StatsDClientOptions | undefined;
 
   /** ETH mainnet RPC URL(s) */
   ethMainnetRpcUrl?: string;
@@ -557,7 +560,7 @@ export class Hub implements HubInterface {
   async start() {
     // See if we have to fetch the IP address
     if (!this.options.announceIp || this.options.announceIp.trim().length === 0) {
-      const ipResult = await getPublicIp();
+      const ipResult = await getPublicIp("text");
       if (ipResult.isErr()) {
         log.error({ error: ipResult.error }, `failed to fetch public IP address, using ${this.options.ipMultiAddr}`);
       } else {
@@ -708,6 +711,35 @@ export class Hub implements HubInterface {
 
     // Start the RPC server
     await this.rpcServer.start(this.options.rpcServerHost, this.options.rpcPort ?? 0);
+    const rpcPort = this.rpcServer.listenPort;
+    const rpcAddressCheck = await checkPortAndPublicAddress(
+      this.options.rpcServerHost ?? DEFAULT_SERVER_INTERNET_ADDRESS_IPV4,
+      rpcPort,
+      this.options.announceIp ?? undefined,
+    );
+    if (rpcAddressCheck.isErr()) {
+      const errorMessage = `Error validating RPC address at port ${this.options.rpcPort}. 
+        Please make sure RPC port value is valid and reachable from public internet.
+        Reachable address is required for hub to perform diff sync via gRPC API and sync with the network. 
+        Hub operators may need to enable port-forwarding of traffic to hub's host and port if they are behind a NAT.
+        `;
+      log.warn(
+        {
+          rpc_port: rpcPort,
+          local_address: this.options.rpcServerHost,
+          ...(this.options.announceIp && { public_ip: this.options.announceIp }),
+        },
+        errorMessage,
+      );
+      // NOTE(wazzymandias): startup check is performed in hub start rather than cli.ts because rpc server port
+      // may change if initialized with zero value. We don't know correct rpc port until server starts, and hub start
+      // is blocking synchronous operation. In general startup checks should stay within cli.ts as much as possible.
+      startupCheck.printStartupCheckStatus(StartupCheckStatus.WARNING, errorMessage);
+      // NOTE(wazzymandias): For now, we will not throw error here, in order to give hub operators enough time
+      // to configure their network settings. We will throw error in the future.
+      // throw new HubError("unavailable.network_failure", errorMessage);
+    }
+
     if (!this.options.httpServerDisabled) {
       await this.httpApiServer.start(this.options.rpcServerHost, this.options.httpApiPort ?? 0);
     } else {
@@ -815,7 +847,6 @@ export class Hub implements HubInterface {
       this.allowedPeerIds = allowedPeerIds;
 
       this.gossipNode.updateDeniedPeerIds(deniedPeerIds);
-      this.gossipNode.updateBundleGossipPercent(networkConfig.bundleGossipPercent ?? 0);
       this.deniedPeerIds = deniedPeerIds;
 
       this.allowlistedImmunePeers = allowlistedImmunePeers;
@@ -914,7 +945,7 @@ export class Hub implements HubInterface {
     }
   }
   async snapshotSync(overwrite?: boolean): HubAsyncResult<boolean> {
-    const s3Bucket = this.options.s3SnapshotBucket ?? SNAPSHOT_S3_DEFAULT_BUCKET;
+    const s3Bucket = this.options.s3SnapshotBucket ?? SNAPSHOT_S3_DOWNLOAD_BUCKET;
     return new Promise((resolve) => {
       (async () => {
         let progressBar: SingleBar | undefined;
@@ -1233,7 +1264,7 @@ export class Hub implements HubInterface {
     }
 
     if (gossipMessage.message || gossipMessage.messageBundle) {
-      if (this.syncEngine.syncMergeQSize + this.syncEngine.syncTrieQSize > MAX_MESSAGE_QUEUE_SIZE) {
+      if (this.syncEngine.syncMergeQSize + this.syncEngine.syncTrieQSize > MAX_SYNCTRIE_QUEUE_SIZE) {
         // If there are too many messages in the queue, drop this message. This is a gossip message, so the sync
         // will eventually re-fetch and merge this message in anyway.
         const msg = "Sync queue is full, dropping gossip message";
@@ -1614,7 +1645,7 @@ export class Hub implements HubInterface {
   /* -------------------------------------------------------------------------- */
 
   async submitMessageBundle(messageBundle: MessageBundle, source?: HubSubmitSource): Promise<HubResult<number>[]> {
-    if (this.syncEngine.syncTrieQSize > MAX_MESSAGE_QUEUE_SIZE) {
+    if (this.syncEngine.syncTrieQSize > MAX_SYNCTRIE_QUEUE_SIZE) {
       log.warn({ syncTrieQSize: this.syncEngine.syncTrieQSize }, "SubmitMessage rejected: Sync trie queue is full");
       // Since we're rejecting the full bundle, return an error for each message
       return messageBundle.messages.map(() =>
@@ -1628,16 +1659,16 @@ export class Hub implements HubInterface {
     const dedupedMessages: { i: number; message: Message }[] = [];
     if (source === "gossip") {
       // Go over all the messages and see if they are in the DB. If they are, don't bother processing them
-      await Promise.all(
-        messageBundle.messages.map(async (message, i) => {
-          if (await isMessageInDB(this.rocksDB, message)) {
-            log.debug({ source }, "submitMessageBundle rejected: Message already exists");
-            allResults.set(i, err(new HubError("bad_request.duplicate", "message has already been merged")));
-          } else {
-            dedupedMessages.push({ i, message: ensureMessageData(message) });
-          }
-        }),
-      );
+      const messagesExist = await areMessagesInDb(this.rocksDB, messageBundle.messages);
+
+      for (let i = 0; i < messagesExist.length; i++) {
+        if (messagesExist[i]) {
+          log.debug({ source }, "submitMessageBundle rejected: Message already exists");
+          allResults.set(i, err(new HubError("bad_request.duplicate", "message has already been merged")));
+        } else {
+          dedupedMessages.push({ i, message: ensureMessageData(messageBundle.messages[i] as Message) });
+        }
+      }
     } else {
       dedupedMessages.push(...messageBundle.messages.map((message, i) => ({ i, message: ensureMessageData(message) })));
     }
@@ -1716,6 +1747,7 @@ export class Hub implements HubInterface {
     log.info(
       {
         hash: bytesToHexString(messageBundle.hash).unwrapOr(messageBundle.hash),
+        source,
         success,
         finalFailures: [...finalFailures],
         total: finalResults.length,
@@ -1729,7 +1761,7 @@ export class Hub implements HubInterface {
   }
 
   async submitMessage(submittedMessage: Message, source?: HubSubmitSource): HubAsyncResult<number> {
-    if (this.syncEngine.syncTrieQSize > MAX_MESSAGE_QUEUE_SIZE) {
+    if (this.syncEngine.syncTrieQSize > MAX_SYNCTRIE_QUEUE_SIZE) {
       log.warn({ syncTrieQSize: this.syncEngine.syncTrieQSize }, "SubmitMessage rejected: Sync trie queue is full");
       return err(new HubError("unavailable.storage_failure", "Sync trie queue is full"));
     }

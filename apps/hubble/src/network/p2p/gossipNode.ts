@@ -23,7 +23,8 @@ import { PeriodicPeerCheckScheduler } from "./periodicPeerCheck.js";
 import { GOSSIP_PROTOCOL_VERSION } from "./protocol.js";
 import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
 import { PeerScoreThresholds } from "@chainsafe/libp2p-gossipsub/score";
-import { statsd, StatsDInitParams } from "../../utils/statsd.js";
+import { statsd } from "../../utils/statsd.js";
+import { ClientOptions } from "@figma/hot-shots";
 import { createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
 import EventEmitter from "events";
 import RocksDB from "../../storage/db/rocksdb.js";
@@ -31,7 +32,7 @@ import { RootPrefix } from "../../storage/db/types.js";
 import { sleep } from "../../utils/crypto.js";
 
 /** The maximum number of pending merge messages before we drop new incoming gossip or sync messages. */
-export const MAX_MESSAGE_QUEUE_SIZE = 5000;
+export const MAX_SYNCTRIE_QUEUE_SIZE = 100_000;
 /** The TTL for messages in the seen cache */
 export const GOSSIP_SEEN_TTL = 1000 * 60 * 5;
 
@@ -80,7 +81,7 @@ export interface NodeOptions {
   /** The maximum amount of time to dial a peer in libp2p network in milliseconds */
   p2pConnectTimeoutMs?: number | undefined;
   /** StatsD parameters */
-  statsdParams?: StatsDInitParams | undefined;
+  statsdParams?: ClientOptions | undefined;
 }
 
 export type GossipMessageResult = {
@@ -113,6 +114,7 @@ export interface LibP2PNodeInterface {
   updateAllowedPeerIds: (peerIds: string[] | undefined) => Promise<void>;
   updateDeniedPeerIds: (peerIds: string[]) => Promise<void>;
   subscribe: (topic: string) => Promise<void>;
+  broadcastMessage: (message: Uint8Array) => Promise<SuccessOrError & { peerIds: Uint8Array[] }>;
   gossipMessage: (
     message: Uint8Array,
   ) => Promise<SuccessOrError & { bundled: boolean | undefined; peerIds: Uint8Array[] }>;
@@ -120,7 +122,6 @@ export interface LibP2PNodeInterface {
   gossipContactInfo: (contactInfo: Uint8Array) => Promise<SuccessOrError & { peerIds: Uint8Array[] }>;
   reportValid: (messageId: string, propagationSource: Uint8Array, isValid: boolean) => Promise<void>;
   updateApplicationPeerScore: (peerId: string, score: number) => Promise<void>;
-  updateBundleGossipPercent: (percent: number) => Promise<void>;
 }
 
 // Extract the method names (as strings) from the LibP2PNodeInterface
@@ -399,7 +400,29 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     return this._peerId?.toString();
   }
 
-  /** Serializes and publishes a Farcaster Message to the network */
+  /** Serializes and publishes a Farcaster Message to the network. This message is gossiped individually
+   *  (i.e., not in a bundle). Do not use this method at scale, since it will cause a lot of traffic
+   *  on the network.
+   *
+   *  Prefer using `gossipMessage` or `gossipBundle` instead.
+   */
+  async broadcastMessage(message: Message): HubAsyncResult<PublishResult> {
+    const result = await this.callMethod("broadcastMessage", Message.encode(message).finish());
+    if (result.success) {
+      const peerIds = await Promise.all(
+        result.peerIds.map(async (peerId: Uint8Array) => await createFromProtobuf(peerId)),
+      );
+      return ok({ recipients: peerIds });
+    } else {
+      return err(new HubError(result.errorType as HubErrorCode, result.errorMessage as string));
+    }
+  }
+
+  /** Serializes and publishes a Farcaster Message to the network. This message may not be immediately
+   *  sent to the gossip network as it may instead be bundled with other messages and sent as a bundle.
+   *
+   *  If you need to broadcast an individual message, use `broadcastMessage` instead.
+   */
   async gossipMessage(message: Message): HubAsyncResult<GossipMessageResult> {
     const result = await this.callMethod("gossipMessage", Message.encode(message).finish());
     if (result.success) {
@@ -635,11 +658,6 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
 
   updateApplicationPeerScore(peerId: string, score: number) {
     this.callMethod("updateApplicationPeerScore", peerId, score);
-  }
-
-  updateBundleGossipPercent(percent: number) {
-    statsd().gauge("gossip.bundle_percent", percent);
-    this.callMethod("updateBundleGossipPercent", percent);
   }
 
   async reportValid(messageId: string, propagationSource: Uint8Array, isValid: boolean): Promise<void> {

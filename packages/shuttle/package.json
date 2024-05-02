@@ -1,6 +1,6 @@
 {
   "name": "@farcaster/shuttle",
-  "version": "0.2.3",
+  "version": "0.2.8",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -16,8 +16,8 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "@farcaster/hub-nodejs": "^0.11.9",
-    "@figma/hot-shots": "^9.0.0-figma.1",
+    "@farcaster/hot-shots": "^10.0.0",
+    "@farcaster/hub-nodejs": "^0.11.11",
     "commander": "^11.0.0",
     "ioredis": "^5.3.2",
     "neverthrow": "^6.0.0",

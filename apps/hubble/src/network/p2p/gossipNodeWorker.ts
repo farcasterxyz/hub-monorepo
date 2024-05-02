@@ -59,12 +59,10 @@ export class LibP2PNode {
   private _network: FarcasterNetwork;
   private _peerScores: Map<string, number>;
   private _p2pConnectTimeoutMs: number;
-  private _bundleGossipPercent: number;
   private _bundleCreator: BundleCreator;
 
   constructor(network: FarcasterNetwork) {
     this._network = network;
-    this._bundleGossipPercent = 0;
     this._peerScores = new Map<string, number>();
     this._p2pConnectTimeoutMs = LIBP2P_CONNECT_TIMEOUT_MS;
 
@@ -97,7 +95,7 @@ export class LibP2PNode {
   async makeNode(options: NodeOptions): HubAsyncResult<boolean> {
     // since we are running in a worker thread, we need to initialize statsd
     if (options.statsdParams) {
-      initializeStatsd(options.statsdParams.host, options.statsdParams.port);
+      initializeStatsd(options.statsdParams.host ?? "", options.statsdParams.port ?? 0);
     }
 
     const listenIPMultiAddr = options.ipMultiAddr ?? MultiaddrLocalHost;
@@ -414,21 +412,8 @@ export class LibP2PNode {
     }
   }
 
-  updateBundleGossipPercent(percent: number) {
-    this._bundleGossipPercent = percent;
-  }
-
-  getBundleGossipPercent() {
-    return this._bundleGossipPercent;
-  }
-
   async gossipMessage(message: Message): Promise<GossipPublishResult> {
-    if (this._bundleGossipPercent === 0) {
-      const publishResults = await this.broadcastMessage(message);
-      return { bundled: false, publishResults };
-    } else {
-      return this._bundleCreator.gossipMessage(message);
-    }
+    return this._bundleCreator.gossipMessage(message);
   }
 
   /** Serializes and publishes a Farcaster Bundle to the network */
@@ -732,6 +717,26 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
       });
       break;
     }
+    case "broadcastMessage": {
+      const specificMsg = msg as LibP2PNodeMessage<"broadcastMessage">;
+      const [message] = specificMsg.args;
+
+      const publishResult = await libp2pNode.broadcastMessage(Message.decode(message));
+      const combinedResult = Result.combine(publishResult ?? []);
+
+      parentPort?.postMessage({
+        methodCallId,
+        result: makeResult<"broadcastMessage">({
+          success: combinedResult.isOk(),
+          errorMessage: combinedResult.isErr() ? combinedResult.error.message : undefined,
+          errorType: combinedResult.isErr() ? combinedResult.error.errCode : undefined,
+          peerIds: combinedResult?.isOk()
+            ? combinedResult.value.flatMap((r) => r.recipients).map((p) => exportToProtobuf(p))
+            : [],
+        }),
+      });
+      break;
+    }
     case "gossipMessage": {
       const specificMsg = msg as LibP2PNodeMessage<"gossipMessage">;
       const [message] = specificMsg.args;
@@ -814,16 +819,6 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
       parentPort?.postMessage({
         methodCallId,
         result: makeResult<"updateApplicationPeerScore">(undefined),
-      });
-      break;
-    }
-    case "updateBundleGossipPercent": {
-      const specificMsg = msg as LibP2PNodeMessage<"updateBundleGossipPercent">;
-      const [percent] = specificMsg.args;
-      await libp2pNode.updateBundleGossipPercent(percent);
-      parentPort?.postMessage({
-        methodCallId,
-        result: makeResult<"updateBundleGossipPercent">(undefined),
       });
       break;
     }
