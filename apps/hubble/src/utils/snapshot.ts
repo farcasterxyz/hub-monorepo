@@ -157,8 +157,8 @@ export const uploadToS3 = async (
   }
 };
 
-const maxRetries = 3;
-const retryDelayMs = 10 * 1000;
+const maxRetries = 5;
+const retryDelayMs = 1 * 60 * 1000;
 
 async function uploadChunk(
   s3: S3Client,
@@ -177,7 +177,7 @@ async function uploadChunk(
       retries++;
       if (retries < maxRetries) {
         logger.warn({ key, retries, errMsg: (e as Error)?.message }, "Snapshot chunk upload failed. Retrying...");
-        await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+        await new Promise((resolve) => setTimeout(resolve, retryDelayMs * retries));
       } else {
         logger.error(
           { key, errMsg: (e as Error)?.message },
