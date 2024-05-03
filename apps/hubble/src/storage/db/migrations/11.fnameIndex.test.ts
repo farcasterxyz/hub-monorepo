@@ -5,12 +5,12 @@ import { FID_BYTES, RootPrefix } from "../types.js";
 import { makeFidKey } from "../message.js";
 import { ResultAsync } from "neverthrow";
 
-const db = jestRocksDB("fnameUserNameProofByFid.migration.test");
+const db = jestRocksDB("fnameFidIndex.migration.test");
 
 const fid1 = Factories.Fid.build();
 const fid2 = fid1 + 1;
 
-describe("fnameUserNameProofByFid migration", () => {
+describe("fnameFidIndex migration", () => {
   beforeAll(async () => {});
 
   test("should migrate the fname index properly", async () => {
