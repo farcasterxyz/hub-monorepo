@@ -971,18 +971,25 @@ export class Hub implements HubInterface {
             let latestSnapshotKeyBase;
             let latestChunks: string[] = [];
             do {
-              const response = await axios.get(
-                `https://${s3Bucket}/${this.getSnapshotFolder(prevVersion)}/latest.json`,
+              const response = await ResultAsync.fromPromise(
+                axios.get(`https://${s3Bucket}/${this.getSnapshotFolder(prevVersion)}/latest.json`),
+                (e) => e,
               );
-              const { keyBase, chunks } = response.data;
 
-              if (!keyBase) {
+              if (
+                response.isErr() ||
+                !response.value.data ||
+                !response.value.data.keyBase ||
+                !response.value.data.chunks
+              ) {
                 log.error(
-                  { data: response.data, folder: this.getSnapshotFolder(prevVersion) },
+                  { response, folder: this.getSnapshotFolder(prevVersion) },
                   "No latest snapshot name found in latest.json",
                 );
                 prevVersion += 1;
               } else {
+                const { keyBase, chunks } = response.value.data;
+
                 latestSnapshotKeyBase = keyBase as string;
                 latestChunks = chunks as string[];
                 break;
