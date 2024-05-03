@@ -1,5 +1,13 @@
 # @farcaster/hubble
 
+## 1.12.1
+
+### Patch Changes
+
+- 26ced763: fix: Retry uploads of snapshot chunks to R2
+- 4286432d: fix: Check if we need to prune before actually pruning
+- 7b850fb9: fix: Fname index from Little endian -> big endian migration
+
 ## 1.12.0
 
 ### Minor Changes
