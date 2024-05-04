@@ -1,22 +1,10 @@
-import {
-  DeployContractParameters,
-  HttpTransport,
-  HttpTransportConfig,
-  UrlRequiredError,
-  createTestClient,
-  createTransport,
-  createWalletClient,
-  custom,
-  RpcRequestError,
-  HttpRequestError,
-} from "viem";
+import { DeployContractParameters, createTestClient, createWalletClient, custom } from "viem";
 import { Chain, localhost } from "viem/chains";
 import { createPublicClient, http, fallback } from "viem";
 import { Abi } from "abitype";
 import { accounts, localHttpUrl } from "./constants.js";
 import { StorageRegistry } from "../eth/abis.js";
 import { DeepPartial } from "fishery";
-import { rpc, RpcRequest, RpcResponse } from "viem/utils";
 import { schedule } from "node-cron";
 
 export const anvilChain = {

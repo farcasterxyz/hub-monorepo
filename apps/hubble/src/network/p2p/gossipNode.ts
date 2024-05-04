@@ -11,6 +11,7 @@ import {
   HubResult,
   Message,
   MessageBundle,
+  OnChainEventMessage,
 } from "@farcaster/hub-nodejs";
 import { Connection } from "@libp2p/interface-connection";
 import { PeerId } from "@libp2p/interface-peer-id";
@@ -120,6 +121,7 @@ export interface LibP2PNodeInterface {
   ) => Promise<SuccessOrError & { bundled: boolean | undefined; peerIds: Uint8Array[] }>;
   gossipBundle: (messages: Uint8Array) => Promise<SuccessOrError & { peerIds: Uint8Array[] }>;
   gossipContactInfo: (contactInfo: Uint8Array) => Promise<SuccessOrError & { peerIds: Uint8Array[] }>;
+  gossipOnChainEventMessage: (event: Uint8Array) => Promise<SuccessOrError & { peerIds: Uint8Array[] }>;
   reportValid: (messageId: string, propagationSource: Uint8Array, isValid: boolean) => Promise<void>;
   updateApplicationPeerScore: (peerId: string, score: number) => Promise<void>;
 }
@@ -465,6 +467,21 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     }
   }
 
+  async gossipOnChainEventMessage(onChainEventMessage: OnChainEventMessage): HubAsyncResult<PublishResult> {
+    const result = await this.callMethod(
+      "gossipOnChainEventMessage",
+      OnChainEventMessage.encode(onChainEventMessage).finish(),
+    );
+    if (result.success) {
+      const peerIds = await Promise.all(
+        result.peerIds.map(async (peerId: Uint8Array) => await createFromProtobuf(peerId)),
+      );
+      return ok({ recipients: peerIds });
+    } else {
+      return err(new HubError(result.errorType as HubErrorCode, result.errorMessage as string));
+    }
+  }
+
   /** Connects to a peer GossipNode */
   async connect(peerNode: GossipNode): Promise<HubResult<void>> {
     const multiaddrs = peerNode.multiaddrs();
@@ -625,6 +642,10 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     return `f_network_${network}_contact_info`;
   }
 
+  public static onchainTopicForNetwork(network: FarcasterNetwork) {
+    return `f_network_${network}_onchain`;
+  }
+
   primaryTopic(): string {
     return GossipNode.primaryTopicForNetwork(this._network);
   }
@@ -633,8 +654,16 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     return GossipNode.contactInfoTopicForNetwork(this._network);
   }
 
+  onchainTopic(): string {
+    return GossipNode.onchainTopicForNetwork(this._network);
+  }
+
   gossipTopics() {
-    return [GossipNode.primaryTopicForNetwork(this._network), GossipNode.contactInfoTopicForNetwork(this._network)];
+    return [
+      GossipNode.primaryTopicForNetwork(this._network),
+      GossipNode.contactInfoTopicForNetwork(this._network),
+      GossipNode.onchainTopicForNetwork(this._network),
+    ];
   }
 
   /** Return if we have any inbound P2P connections */

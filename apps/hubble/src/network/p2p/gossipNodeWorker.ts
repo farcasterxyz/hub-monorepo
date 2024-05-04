@@ -22,6 +22,7 @@ import {
   HubError,
   HubResult,
   Message,
+  OnChainEventMessage,
   toFarcasterTime,
 } from "@farcaster/hub-nodejs";
 import { addressInfoFromParts, checkNodeAddrs, ipMultiAddrStrFromAddressInfo } from "../../utils/p2p.js";
@@ -453,6 +454,18 @@ export class LibP2PNode {
     return this.publish(gossipMessage);
   }
 
+  /** Serializes and publishes an on-chain event to the network */
+  async broadcastOnChainEventMessage(onChainEventMsg: OnChainEventMessage): Promise<HubResult<PublishResult>[]> {
+    const gossipMessage = GossipMessage.create({
+      onChainEventMessage: onChainEventMsg,
+      topics: [GossipNode.onchainTopicForNetwork(this._network)],
+      peerId: this.peerId?.toBytes() ?? new Uint8Array(),
+      version: GOSSIP_PROTOCOL_VERSION,
+      timestamp: toFarcasterTime(Date.now()).unwrapOr(0),
+    });
+    return this.publish(gossipMessage);
+  }
+
   /** Publishes a Gossip Message to the network */
   async publish(message: GossipMessage): Promise<HubResult<PublishResult>[]> {
     const topics = message.topics;
@@ -799,6 +812,26 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
           peerIds: publishResult.isOk() ? flattenedPeerIds.map((p) => exportToProtobuf(p)) : [],
         }),
       });
+      break;
+    }
+    case "gossipOnChainEventMessage": {
+      const specificMsg = msg as LibP2PNodeMessage<"gossipOnChainEventMessage">;
+      const [onChainEvent] = specificMsg.args;
+      const publishResult = Result.combine(
+        await libp2pNode.broadcastOnChainEventMessage(OnChainEventMessage.decode(onChainEvent)),
+      );
+      parentPort?.postMessage({
+        methodCallId,
+        result: makeResult<"gossipOnChainEventMessage">({
+          success: publishResult.isOk(),
+          errorMessage: publishResult.isErr() ? publishResult.error.message : undefined,
+          errorType: publishResult.isErr() ? publishResult.error.errCode : undefined,
+          peerIds: publishResult.isOk()
+            ? publishResult.value.flatMap((r) => r.recipients).map((p) => exportToProtobuf(p))
+            : [],
+        }),
+      });
+
       break;
     }
     case "reportValid": {

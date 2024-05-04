@@ -17,6 +17,7 @@ import {
   Message,
   OnChainEvent,
   onChainEventTypeToJSON,
+  OnChainEventMessage,
   UserNameProof,
   validations,
 } from "@farcaster/hub-nodejs";
@@ -1237,6 +1238,15 @@ export class Hub implements HubInterface {
     }
   }
 
+  async gossipOnChainMessage(onChainEventMessage: OnChainEventMessage): HubAsyncResult<void> {
+    const onChainMessageResult = await this.gossipNode.gossipOnChainEventMessage(onChainEventMessage);
+    if (onChainMessageResult.isErr()) {
+      log.warn(onChainMessageResult.error, "failed to gossip on-chain message");
+      return err(onChainMessageResult.error);
+    }
+    return ok(undefined);
+  }
+
   /** ------------------------------------------------------------------------- */
   /*                                  Private Methods                           */
   /* -------------------------------------------------------------------------- */
@@ -1372,6 +1382,22 @@ export class Hub implements HubInterface {
       const result = await this.handleContactInfo(peerIdResult.value, gossipMessage.contactInfoContent);
       await this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), result);
       return ok(undefined);
+    } else if (gossipMessage.onChainEventMessage) {
+      const result = await this.handleOnChainEventMessage(peerIdResult.value, gossipMessage.onChainEventMessage);
+      const peerID = peerIdFromString(source.toString());
+      if (result.isOk()) {
+        await this.gossipNode.reportValid(msgId, peerID.toBytes(), true);
+      } else {
+        log.error(
+          {
+            error: result.error,
+            peerId: source.toString(),
+            msgId,
+          },
+          "Received bad on-chain message from peer",
+        );
+      }
+      return result.map(() => undefined);
     } else {
       return err(new HubError("bad_request.invalid_param", "invalid message type"));
     }
@@ -1611,6 +1637,7 @@ export class Hub implements HubInterface {
     // Subscribes to all relevant topics
     await this.gossipNode.subscribe(this.gossipNode.primaryTopic());
     await this.gossipNode.subscribe(this.gossipNode.contactInfoTopic());
+    await this.gossipNode.subscribe(this.gossipNode.onchainTopic());
 
     this.gossipNode.on("message", async (_topic, message, source, msgId) => {
       await message.match(
@@ -1863,6 +1890,23 @@ export class Hub implements HubInterface {
 
     const mergeResult = await this.engine.mergeOnChainEvent(event);
 
+    if (mergeResult.isOk()) {
+      const gossipOnChainResult = await this.gossipOnChainMessage({
+        chainId: event.chainId,
+        blockNumber: event.blockNumber,
+        blockHash: event.blockHash,
+        transactionHash: event.transactionHash,
+      });
+      if (gossipOnChainResult.isErr()) {
+        logEvent.error(
+          {
+            error: gossipOnChainResult.error,
+          },
+          "failed to gossip on-chain event",
+        );
+      }
+    }
+
     mergeResult.match(
       (eventId) => {
         logEvent.info(
@@ -1944,7 +1988,7 @@ export class Hub implements HubInterface {
   }
 
   async isValidPeer(otherPeerId: PeerId, message: ContactInfoContentBody) {
-    if (!this.gossipNode.isPeerAllowed(otherPeerId)) {
+    if (!(await this.gossipNode.isPeerAllowed(otherPeerId))) {
       log.warn(`Peer ${otherPeerId.toString()} is not in allowlist or is in the denylist`);
       return false;
     }
@@ -1975,6 +2019,37 @@ export class Hub implements HubInterface {
     }
 
     return true;
+  }
+
+  private async handleOnChainEventMessage(
+    peerID: PeerId,
+    onChainEventMessage: OnChainEventMessage,
+  ): HubAsyncResult<boolean> {
+    // 0. Check peer is valid
+    if (!(await this.gossipNode.isPeerAllowed(peerID))) {
+      log.warn(`Peer ${peerID.toString()} is not in allowlist or is in the denylist`);
+      return ok(false);
+    }
+
+    // 1. Check for chain id match
+    if (onChainEventMessage.chainId !== this.options.l2ChainId) {
+      log.warn(
+        {
+          peerId: peerID,
+          theirChainId: onChainEventMessage.chainId,
+          ourChainId: this.options.l2ChainId,
+        },
+        "Peer is running a different chain, ignoring",
+      );
+      await this.gossipNode.removePeerFromAddressBook(peerID);
+      return ok(false);
+    }
+
+    // 4. If we don't have any on-chain events for the given block number, validate the message
+    //    against the chain
+    const result = await this.l2RegistryProvider.createOrRejectOnChainEventFromMessage(onChainEventMessage);
+
+    return ok(false);
   }
 
   async updateApplicationPeerScore(peerId: string, score: number): HubAsyncResult<void> {

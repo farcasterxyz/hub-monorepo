@@ -159,7 +159,7 @@ class OnChainEventStore {
   }
 
   /**
-   * Merges a rent ContractEvent into the StorageEventStore
+   * Merges a ContractEvent into the StorageEventStore
    */
   async _mergeEvent(event: OnChainEvent): Promise<number> {
     const _existingEvent = await ResultAsync.fromPromise(

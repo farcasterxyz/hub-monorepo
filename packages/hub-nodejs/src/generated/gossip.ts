@@ -92,6 +92,18 @@ export interface MessageBundle {
   messages: Message[];
 }
 
+/**
+ * OnChainEventMessage represents metadata about an on-chain event.
+ * The message does not contain the event itself, but only the metadata.
+ * Peers on the network can cross-reference this metadata with blockchain to verify and persist the event.
+ */
+export interface OnChainEventMessage {
+  chainId: number;
+  blockNumber: number;
+  blockHash: Uint8Array;
+  transactionHash: Uint8Array;
+}
+
 export interface GossipMessage {
   message?:
     | Message
@@ -103,6 +115,7 @@ export interface GossipMessage {
   contactInfoContent?: ContactInfoContent | undefined;
   networkLatencyMessage?: NetworkLatencyMessage | undefined;
   messageBundle?: MessageBundle | undefined;
+  onChainEventMessage?: OnChainEventMessage | undefined;
   topics: string[];
   peerId: Uint8Array;
   version: GossipVersion;
@@ -934,12 +947,114 @@ export const MessageBundle = {
   },
 };
 
+function createBaseOnChainEventMessage(): OnChainEventMessage {
+  return { chainId: 0, blockNumber: 0, blockHash: new Uint8Array(), transactionHash: new Uint8Array() };
+}
+
+export const OnChainEventMessage = {
+  encode(message: OnChainEventMessage, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.chainId !== 0) {
+      writer.uint32(8).uint32(message.chainId);
+    }
+    if (message.blockNumber !== 0) {
+      writer.uint32(16).uint64(message.blockNumber);
+    }
+    if (message.blockHash.length !== 0) {
+      writer.uint32(26).bytes(message.blockHash);
+    }
+    if (message.transactionHash.length !== 0) {
+      writer.uint32(34).bytes(message.transactionHash);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): OnChainEventMessage {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseOnChainEventMessage();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.chainId = reader.uint32();
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.blockNumber = longToNumber(reader.uint64() as Long);
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.blockHash = reader.bytes();
+          continue;
+        case 4:
+          if (tag != 34) {
+            break;
+          }
+
+          message.transactionHash = reader.bytes();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): OnChainEventMessage {
+    return {
+      chainId: isSet(object.chainId) ? Number(object.chainId) : 0,
+      blockNumber: isSet(object.blockNumber) ? Number(object.blockNumber) : 0,
+      blockHash: isSet(object.blockHash) ? bytesFromBase64(object.blockHash) : new Uint8Array(),
+      transactionHash: isSet(object.transactionHash) ? bytesFromBase64(object.transactionHash) : new Uint8Array(),
+    };
+  },
+
+  toJSON(message: OnChainEventMessage): unknown {
+    const obj: any = {};
+    message.chainId !== undefined && (obj.chainId = Math.round(message.chainId));
+    message.blockNumber !== undefined && (obj.blockNumber = Math.round(message.blockNumber));
+    message.blockHash !== undefined &&
+      (obj.blockHash = base64FromBytes(message.blockHash !== undefined ? message.blockHash : new Uint8Array()));
+    message.transactionHash !== undefined &&
+      (obj.transactionHash = base64FromBytes(
+        message.transactionHash !== undefined ? message.transactionHash : new Uint8Array(),
+      ));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<OnChainEventMessage>, I>>(base?: I): OnChainEventMessage {
+    return OnChainEventMessage.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<OnChainEventMessage>, I>>(object: I): OnChainEventMessage {
+    const message = createBaseOnChainEventMessage();
+    message.chainId = object.chainId ?? 0;
+    message.blockNumber = object.blockNumber ?? 0;
+    message.blockHash = object.blockHash ?? new Uint8Array();
+    message.transactionHash = object.transactionHash ?? new Uint8Array();
+    return message;
+  },
+};
+
 function createBaseGossipMessage(): GossipMessage {
   return {
     message: undefined,
     contactInfoContent: undefined,
     networkLatencyMessage: undefined,
     messageBundle: undefined,
+    onChainEventMessage: undefined,
     topics: [],
     peerId: new Uint8Array(),
     version: 0,
@@ -960,6 +1075,9 @@ export const GossipMessage = {
     }
     if (message.messageBundle !== undefined) {
       MessageBundle.encode(message.messageBundle, writer.uint32(74).fork()).ldelim();
+    }
+    if (message.onChainEventMessage !== undefined) {
+      OnChainEventMessage.encode(message.onChainEventMessage, writer.uint32(82).fork()).ldelim();
     }
     for (const v of message.topics) {
       writer.uint32(34).string(v!);
@@ -1011,6 +1129,13 @@ export const GossipMessage = {
 
           message.messageBundle = MessageBundle.decode(reader, reader.uint32());
           continue;
+        case 10:
+          if (tag != 82) {
+            break;
+          }
+
+          message.onChainEventMessage = OnChainEventMessage.decode(reader, reader.uint32());
+          continue;
         case 4:
           if (tag != 34) {
             break;
@@ -1058,6 +1183,9 @@ export const GossipMessage = {
         ? NetworkLatencyMessage.fromJSON(object.networkLatencyMessage)
         : undefined,
       messageBundle: isSet(object.messageBundle) ? MessageBundle.fromJSON(object.messageBundle) : undefined,
+      onChainEventMessage: isSet(object.onChainEventMessage)
+        ? OnChainEventMessage.fromJSON(object.onChainEventMessage)
+        : undefined,
       topics: Array.isArray(object?.topics) ? object.topics.map((e: any) => String(e)) : [],
       peerId: isSet(object.peerId) ? bytesFromBase64(object.peerId) : new Uint8Array(),
       version: isSet(object.version) ? gossipVersionFromJSON(object.version) : 0,
@@ -1076,6 +1204,9 @@ export const GossipMessage = {
       : undefined);
     message.messageBundle !== undefined &&
       (obj.messageBundle = message.messageBundle ? MessageBundle.toJSON(message.messageBundle) : undefined);
+    message.onChainEventMessage !== undefined && (obj.onChainEventMessage = message.onChainEventMessage
+      ? OnChainEventMessage.toJSON(message.onChainEventMessage)
+      : undefined);
     if (message.topics) {
       obj.topics = message.topics.map((e) => e);
     } else {
@@ -1106,6 +1237,9 @@ export const GossipMessage = {
         : undefined;
     message.messageBundle = (object.messageBundle !== undefined && object.messageBundle !== null)
       ? MessageBundle.fromPartial(object.messageBundle)
+      : undefined;
+    message.onChainEventMessage = (object.onChainEventMessage !== undefined && object.onChainEventMessage !== null)
+      ? OnChainEventMessage.fromPartial(object.onChainEventMessage)
       : undefined;
     message.topics = object.topics?.map((e) => e) || [];
     message.peerId = object.peerId ?? new Uint8Array();

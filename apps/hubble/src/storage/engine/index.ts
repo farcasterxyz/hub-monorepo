@@ -26,6 +26,7 @@ import {
   Message,
   MessageType,
   OnChainEvent,
+  OnChainEventMessage,
   OnChainEventResponse,
   OnChainEventType,
   Protocol,

@@ -64,14 +64,24 @@ message MessageBundle {
   repeated Message messages = 2;
 }
 
+// OnChainEventMessage represents metadata about an on-chain event but does not contain the event itself.
+// Peers on the network can cross-reference this metadata with blockchain to verify and persist the event.
+message OnChainEventMessage {
+  uint32 chain_id = 1;
+  uint64 block_number = 2;
+  bytes block_hash = 3;
+  bytes transaction_hash = 4;
+}
+
 message GossipMessage {
   oneof content {
     Message message = 1;
 //  Deprecated
 //  IdRegistryEvent id_registry_event = 2;
-    ContactInfoContent contact_info_content = 3;    
+    ContactInfoContent contact_info_content = 3;
     NetworkLatencyMessage network_latency_message = 7;
     MessageBundle message_bundle = 9;
+    OnChainEventMessage on_chain_event_message = 10;
   }
   repeated string topics = 4;
   bytes peer_id = 5;

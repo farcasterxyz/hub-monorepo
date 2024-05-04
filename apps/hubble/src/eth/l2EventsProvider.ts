@@ -6,6 +6,7 @@ import {
   IdRegisterEventBody,
   IdRegisterEventType,
   OnChainEvent,
+  OnChainEventMessage,
   OnChainEventType,
   onChainEventTypeToJSON,
   SignerEventBody,
@@ -16,9 +17,9 @@ import {
 } from "@farcaster/hub-nodejs";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import { IdRegistry, KeyRegistry, StorageRegistry } from "./abis.js";
-import { HubInterface } from "../hubble.js";
+import { Hub, HubInterface } from "../hubble.js";
 import { logger } from "../utils/logger.js";
-import { optimismGoerli } from "viem/chains";
+import { optimism } from "viem/chains";
 import {
   createPublicClient,
   fallback,
@@ -29,6 +30,7 @@ import {
   Hex,
   FallbackTransport,
   HttpRequestError,
+  bytesToHex,
 } from "viem";
 import { WatchContractEvent } from "./watchContractEvent.js";
 import { WatchBlockNumber } from "./watchBlockNumber.js";
@@ -55,7 +57,7 @@ export class OptimismConstants {
 const RENT_EXPIRY_IN_SECONDS = 365 * 24 * 60 * 60; // One year
 
 /**
- * Class that follows the Optimism chain to handle on-chain events from the Storage Registry contract.
+ * Class that follows the Optimism chain to handle on-chain events from the Storage Registry, ID (FID) Registry, and Key Registry contracts.
  */
 export class L2EventsProvider {
   private _hub: HubInterface;
@@ -166,7 +168,7 @@ export class L2EventsProvider {
     );
 
     const publicClient = createPublicClient({
-      chain: optimismGoerli,
+      chain: optimism,
       transport: fallback(transports, {
         rank: rankRpcs,
       }),
@@ -174,7 +176,7 @@ export class L2EventsProvider {
 
     const provider = new L2EventsProvider(
       hub,
-      publicClient,
+      publicClient as PublicClient<FallbackTransport>,
       storageRegistryAddress,
       keyRegistryV2Address,
       idRegistryV2Address,
@@ -233,6 +235,236 @@ export class L2EventsProvider {
     // Wait for all async promises to resolve
     await new Promise((resolve) => setTimeout(resolve, 0));
     log.info("L2EventsProvider stopped");
+  }
+
+  public async createOrRejectOnChainEventFromMessage(
+    onChainEventMessage: OnChainEventMessage,
+  ): HubAsyncResult<OnChainEvent> {
+    // If current block number is higher than the one in the message, ignore it.
+    // We add a threshold to allow some tolerance of network latency
+    // and eventually consistent nature of the system.
+    // Current threshold is 15 blocks, based on Optimism block production
+    // interval of 2 seconds for Mainnet, which yields a tolerance of 30 seconds.
+    const BLOCK_DIVERGENCE_THRESHOLD = 15;
+    const currentHighestBlockNumber = this._lastBlockNumber;
+    if (currentHighestBlockNumber > onChainEventMessage.blockNumber + BLOCK_DIVERGENCE_THRESHOLD) {
+      log.warn(
+        {
+          theirBlockNumber: onChainEventMessage.blockNumber,
+          ourBlockNumber: currentHighestBlockNumber,
+          blockDivergenceThreshold: BLOCK_DIVERGENCE_THRESHOLD,
+        },
+        "On-chain event message has older (lower) block number, ignoring",
+      );
+      return err(new HubError("not_found", "Block number too old"));
+    }
+
+    // If we already have on chain events for the given block number, validate the message against the existing events
+    const existingOnChainEvents = this._onChainEventsByBlock.get(onChainEventMessage.blockNumber) ?? [];
+    if (existingOnChainEvents.length > 0) {
+      const ourEvent = existingOnChainEvents.find((e) => e.blockHash.length > 0);
+      // It would be very odd if we store on-chain events without a block hash
+      // but in case we do, log it and continue
+      if (!ourEvent) {
+        log.error(
+          {
+            theirBlockNumber: onChainEventMessage.blockNumber,
+            ourBlockNumber: currentHighestBlockNumber,
+          },
+          "Existing on-chain events for block number do not have a block hash",
+        );
+      } else {
+        // Compare and validate block hashes match
+        const existingBlockHash = ourEvent.blockHash;
+        if (existingBlockHash !== onChainEventMessage.blockHash) {
+          log.warn(
+            {
+              theirBlockNumber: onChainEventMessage.blockNumber,
+              theirBlockHash: onChainEventMessage.blockHash,
+              ourBlockHash: existingBlockHash,
+            },
+            "Peer sent on-chain event message with different block hash, ignoring",
+          );
+          return err(new HubError("not_found", "Block hash mismatch"));
+        }
+
+        // Compare and validate transaction hashes match.
+        // If we find a matching transaction hash, at this point we are confident
+        // the message is valid and can be forwarded.
+        const existingEventWithTxHash = existingOnChainEvents.find(
+          (e) => e.transactionHash === onChainEventMessage.transactionHash,
+        );
+        if (existingEventWithTxHash) {
+          log.info(
+            {
+              theirBlockNumber: onChainEventMessage.blockNumber,
+              theirTransactionHash: onChainEventMessage.transactionHash,
+            },
+            "Peer sent on-chain event message with existing transaction hash, forwarding",
+          );
+          return ok(existingEventWithTxHash);
+        }
+      }
+    }
+
+    const msgBlockNumBigInt = BigInt(onChainEventMessage.blockNumber);
+    const rpcBlock = await this._publicClient.getBlock({
+      includeTransactions: true,
+      blockNumber: msgBlockNumBigInt,
+    });
+    if (!rpcBlock) {
+      log.error(
+        {
+          chainId: onChainEventMessage.chainId,
+          blockNumber: onChainEventMessage.blockNumber,
+        },
+        "Error fetching block from RPC",
+      );
+      return err(new HubError("unavailable.network_failure", "RPC request for block failed"));
+    }
+    const msgBlockHashHex = bytesToHex(onChainEventMessage.blockHash);
+    // Check block hashes match
+    if (rpcBlock.hash !== msgBlockHashHex) {
+      log.error(
+        {
+          chainId: onChainEventMessage.chainId,
+          blockNumber: onChainEventMessage.blockNumber,
+          blockHash: onChainEventMessage.blockHash,
+          rpcBlockHash: rpcBlock.hash,
+        },
+        "Block hash mismatch",
+      );
+      return err(new HubError("bad_request.validation_failure", "Block hash mismatch"));
+    }
+
+    // Check transactions match
+    if (!rpcBlock.transactions) {
+      log.error(
+        {
+          chainId: onChainEventMessage.chainId,
+          blockNumber: onChainEventMessage.blockNumber,
+        },
+        "Block has no transactions",
+      );
+      return err(new HubError("not_found", "Block has no transactions"));
+    }
+
+    const msgTxHashHex = bytesToHex(onChainEventMessage.transactionHash);
+    const rpcTransaction = rpcBlock.transactions.find((tx) => tx.blockHash === msgTxHashHex);
+    if (!rpcTransaction) {
+      log.error(
+        {
+          chainId: onChainEventMessage.chainId,
+          blockNumber: onChainEventMessage.blockNumber,
+          transactionHash: onChainEventMessage.transactionHash,
+        },
+        "Transaction hash not found",
+      );
+      return err(new HubError("not_found", "Transaction hash not found"));
+    }
+
+    const rpcTransactionReceipt = await this._publicClient.getTransactionReceipt({
+      hash: msgTxHashHex,
+    });
+    if (!rpcTransactionReceipt) {
+      log.error(
+        {
+          chainId: onChainEventMessage.chainId,
+          blockNumber: onChainEventMessage.blockNumber,
+          transactionHash: onChainEventMessage.transactionHash,
+        },
+        "Transaction receipt not found",
+      );
+      return err(new HubError("not_found", "Transaction receipt not found"));
+    }
+
+    if (rpcTransactionReceipt.blockHash !== msgBlockHashHex) {
+      log.error(
+        {
+          chainId: onChainEventMessage.chainId,
+          blockNumber: onChainEventMessage.blockNumber,
+          transactionHash: onChainEventMessage.transactionHash,
+          blockHash: onChainEventMessage.blockHash,
+          rpcBlockHash: rpcBlock.hash,
+          rpcTxBlockHash: rpcTransactionReceipt.blockHash,
+        },
+        "Transaction receipt block hash mismatch",
+      );
+      return err(new HubError("bad_request.validation_failure", "Transaction receipt block hash mismatch"));
+    }
+
+    if (rpcTransactionReceipt.blockNumber !== msgBlockNumBigInt) {
+      log.error(
+        {
+          chainId: onChainEventMessage.chainId,
+          blockNumber: onChainEventMessage.blockNumber,
+          transactionHash: onChainEventMessage.transactionHash,
+          blockHash: onChainEventMessage.blockHash,
+          rpcBlockNumber: rpcTransactionReceipt.blockNumber,
+        },
+        "Transaction receipt block number mismatch",
+      );
+      return err(new HubError("bad_request.validation_failure", "Transaction receipt block number mismatch"));
+    }
+
+    if (rpcTransactionReceipt.status !== "success") {
+      log.error(
+        {
+          chainId: onChainEventMessage.chainId,
+          blockNumber: onChainEventMessage.blockNumber,
+          transactionHash: onChainEventMessage.transactionHash,
+          status: rpcTransactionReceipt.status,
+        },
+        "Transaction receipt status not success",
+      );
+      return err(new HubError("bad_request.validation_failure", "Transaction receipt status not success"));
+    }
+
+    let abi: Abi;
+    switch (rpcTransactionReceipt.contractAddress) {
+      case this.storageRegistryAddress:
+        abi = StorageRegistry.abi;
+        break;
+      case this.keyRegistryV2Address:
+        abi = KeyRegistry.abi;
+        break;
+      case this.idRegistryV2Address:
+        abi = IdRegistry.abi;
+        break;
+      default:
+        log.error(
+          {
+            chainId: onChainEventMessage.chainId,
+            blockNumber: onChainEventMessage.blockNumber,
+            transactionHash: onChainEventMessage.transactionHash,
+            contractAddress: rpcTransactionReceipt.contractAddress,
+          },
+          "Transaction receipt contract address not recognized",
+        );
+        return err(
+          new HubError("bad_request.validation_failure", "Transaction receipt contract address not recognized"),
+        );
+    }
+
+    // rpcTransactionReceipt.logs
+    // const eventLogs = parseEventLogs({
+    //   logs: rpcTransaction.logs,
+    //   abi,
+    // });
+
+    return ok({
+      blockHash: onChainEventMessage.blockHash,
+      blockNumber: onChainEventMessage.blockNumber,
+      blockTimestamp: 0,
+      chainId: onChainEventMessage.chainId,
+      transactionHash: onChainEventMessage.transactionHash,
+      transactionIndex: rpcTransaction.transactionIndex,
+      logIndex: 0,
+      txIndex: 0,
+      fid: 0,
+      version: 0,
+      type: OnChainEventType.EVENT_TYPE_STORAGE_RENT,
+    });
   }
 
   /* -------------------------------------------------------------------------- */
@@ -637,7 +869,7 @@ export class L2EventsProvider {
         strict: true,
       },
       "StorageRegistry",
-    );
+    ) as WatchContractEvent<typeof StorageRegistry.abi, string, true>;
 
     this._watchKeyRegistryV2ContractEvents = new WatchContractEvent(
       this._publicClient,
@@ -649,7 +881,7 @@ export class L2EventsProvider {
         strict: true,
       },
       "KeyRegistryV2",
-    );
+    ) as WatchContractEvent<typeof KeyRegistry.abi, string, true>;
 
     this._watchIdRegistryV2ContractEvents = new WatchContractEvent(
       this._publicClient,
@@ -661,7 +893,7 @@ export class L2EventsProvider {
         strict: true,
       },
       "IdRegistryV2",
-    );
+    ) as WatchContractEvent<typeof IdRegistry.abi, string, true>;
 
     this._watchBlockNumber = new WatchBlockNumber(this._publicClient, {
       pollingInterval: L2EventsProvider.blockPollingInterval,
@@ -814,7 +1046,7 @@ export class L2EventsProvider {
     });
     const transports = urls.map((url) => http(url, { retryCount: 1, timeout: 1000 }));
     const testClient = createPublicClient({
-      chain: optimismGoerli,
+      chain: optimism,
       transport: fallback(transports),
     });
 
