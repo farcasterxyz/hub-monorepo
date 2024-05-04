@@ -38,6 +38,7 @@ message DbStats {
   uint64 num_messages = 1;
   uint64 num_fid_events = 2;
   uint64 num_fname_events = 3;
+  uint64 approx_size = 4;
 }
 
 message SyncStatusRequest {

@@ -83,6 +83,7 @@ describe("getInfo", () => {
     expect(result._unsafeUnwrap().dbStats?.numMessages).toEqual(5); // Currently returns all items in the trie (3 events + 2 messages)
     expect(result._unsafeUnwrap().dbStats?.numFidEvents).toEqual(1);
     expect(result._unsafeUnwrap().dbStats?.numFnameEvents).toEqual(0);
+    expect(result._unsafeUnwrap().dbStats?.approxSize).toBeGreaterThan(0);
   });
 });
 

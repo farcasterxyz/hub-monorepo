@@ -121,6 +121,7 @@ export class MergeResult {
 }
 
 type DbStats = {
+  approxSize: number;
   numItems: number;
   numFids: number;
   numFnames: number;
@@ -263,6 +264,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   private _started = false;
 
   private _dbStats: DbStats = {
+    approxSize: 0,
     numItems: 0,
     numFids: 0,
     numFnames: 0,
@@ -1549,7 +1551,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   }
 
   public async getDbStats(): Promise<DbStats> {
-    return { ...this._dbStats, numItems: await this._trie.items() };
+    return { ...this._dbStats, numItems: await this._trie.items(), approxSize: await this._db.approximateSize() };
   }
 
   private async readDbStatsFromDb(): Promise<DbStats> {
@@ -1560,6 +1562,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     const numFnames = await this._db.countKeysAtPrefix(Buffer.from([RootPrefix.FNameUserNameProof]));
 
     return {
+      approxSize: await this._db.approximateSize(),
       numItems: await this._trie.items(),
       numFids: numFids,
       numFnames: numFnames,
