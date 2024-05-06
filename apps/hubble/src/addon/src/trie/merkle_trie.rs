@@ -2,7 +2,7 @@ use super::trie_node::{TrieNode, TIMESTAMP_LENGTH};
 use crate::{
     db::{RocksDB, RocksDbTransactionBatch},
     logger::LOGGER,
-    statsd::statsd,
+    metrics::statsd,
     store::{encode_node_metadata_to_js_object, get_merkle_trie, hub_error_to_js_throw, HubError},
     THREAD_POOL,
 };

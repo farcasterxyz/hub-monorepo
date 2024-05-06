@@ -610,6 +610,10 @@ impl LinkStore {
 }
 
 impl StoreDef for LinkStore {
+    fn debug_name(&self) -> &'static str {
+        "LinkStore"
+    }
+
     fn postfix(&self) -> u8 {
         UserPostfix::LinkMessage.as_u8()
     }

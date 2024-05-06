@@ -25,6 +25,10 @@ pub struct UsernameProofStoreDef {
 }
 
 impl StoreDef for UsernameProofStoreDef {
+    fn debug_name(&self) -> &'static str {
+        "UsernameProofStore"
+    }
+
     fn postfix(&self) -> u8 {
         UserPostfix::UsernameProofMessage.as_u8()
     }

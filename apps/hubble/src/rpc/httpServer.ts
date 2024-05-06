@@ -33,6 +33,7 @@ import { PageOptions } from "../storage/stores/types.js";
 import Engine from "../storage/engine/index.js";
 import { statsd } from "../utils/statsd.js";
 import { DeepPartial } from "storage/stores/rustStoreBase.js";
+import { rsCountersString } from "../rustfunctions.js";
 
 const log = logger.child({ component: "HttpAPIServer" });
 
@@ -675,6 +676,12 @@ export class HttpAPIServer {
           reply.send({ nextPageEventId, events });
         }
       });
+    });
+
+    // @doc-tag: /metrics
+    this.app.get("/v0/metrics", (_request, reply) => {
+      const data = rsCountersString();
+      reply.send(data);
     });
   }
 

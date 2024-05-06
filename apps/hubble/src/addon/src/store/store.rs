@@ -6,6 +6,7 @@ use super::{
 };
 use crate::{
     db::{RocksDB, RocksDbTransactionBatch},
+    metrics::{StoreAction, StoreLifetimeCounter},
     protos::{
         self, hub_event, link_body::Target, message_data::Body, HubEvent, HubEventType,
         MergeMessageBody, Message, MessageType,
@@ -107,6 +108,8 @@ pub struct PageOptions {
 /// Some methods in this trait provide default implementations. These methods can be overridden
 /// by implementing the trait for a specific type.
 pub trait StoreDef: Send + Sync {
+    fn debug_name(&self) -> &'static str;
+
     fn postfix(&self) -> u8;
     fn add_message_type(&self) -> u8;
     fn remove_message_type(&self) -> u8;
@@ -120,6 +123,7 @@ pub trait StoreDef: Send + Sync {
         self.remove_message_type() != MessageType::None as u8
     }
 
+    /* todo: what is this? */
     fn is_compact_state_type(&self, message: &Message) -> bool;
 
     // If the store supports compaction state messages, this should return true
@@ -217,7 +221,7 @@ pub trait StoreDef: Send + Sync {
                 if maybe_existing_remove.is_some() {
                     conflicts.push(maybe_existing_remove.unwrap());
                 } else {
-                    warn!(LOGGER, "Message's ts_hash exists but message not found in store"; 
+                    warn!(LOGGER, "Message's ts_hash exists but message not found in store";
                         o!("remove_ts_hash" => format!("{:x?}", remove_ts_hash.unwrap())));
                 }
             }
@@ -258,7 +262,7 @@ pub trait StoreDef: Send + Sync {
             )?;
 
             if maybe_existing_add.is_none() {
-                warn!(LOGGER, "Message's ts_hash exists but message not found in store"; 
+                warn!(LOGGER, "Message's ts_hash exists but message not found in store";
                     o!("add_ts_hash" => format!("{:x?}", add_ts_hash.unwrap())));
             } else {
                 conflicts.push(maybe_existing_add.unwrap());
@@ -392,6 +396,8 @@ impl Store {
             });
         }
 
+        let _metric = self.metric(StoreAction::GetAdd);
+
         let adds_key = self.store_def.make_add_key(partial_message)?;
         let message_ts_hash = self.db.get(&adds_key)?;
 
@@ -426,6 +432,8 @@ impl Store {
             });
         }
 
+        let _metric = self.metric(StoreAction::GetRemoves);
+
         let removes_key = self.store_def.make_remove_key(partial_message)?;
         let message_ts_hash = self.db.get(&removes_key)?;
 
@@ -450,6 +458,8 @@ impl Store {
     where
         F: Fn(&protos::Message) -> bool,
     {
+        let _metric = self.metric(StoreAction::GetAddsByFid);
+
         let prefix = make_message_primary_key(fid, self.store_def.postfix(), None);
         let messages_page =
             message::get_messages_page_by_prefix(&self.db, &prefix, &page_options, |message| {
@@ -476,6 +486,8 @@ impl Store {
             });
         }
 
+        let _metric = self.metric(StoreAction::GetRemovesByFid);
+
         let prefix = make_message_primary_key(fid, self.store_def.postfix(), None);
         let messages =
             message::get_messages_page_by_prefix(&self.db, &prefix, &page_options, |message| {
@@ -498,6 +510,8 @@ impl Store {
             });
         }
 
+        let _metric = self.metric(StoreAction::PutAddCompactStateTransaction);
+
         let compact_state_key = self.store_def.make_compact_state_add_key(message)?;
         txn.put(compact_state_key, message_encode(&message));
 
@@ -510,6 +524,8 @@ impl Store {
         ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
     ) -> Result<(), HubError> {
+        let _metric = self.metric(StoreAction::PutAddTransaction);
+
         put_message_transaction(txn, &message)?;
 
         let adds_key = self.store_def.make_add_key(message)?;
@@ -534,6 +550,8 @@ impl Store {
             });
         }
 
+        let _metric = self.metric(StoreAction::DeleteCompactStateTransaction);
+
         let compact_state_key = self.store_def.make_compact_state_add_key(message)?;
         txn.delete(compact_state_key);
 
@@ -546,6 +564,8 @@ impl Store {
         ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
     ) -> Result<(), HubError> {
+        let _metric = self.metric(StoreAction::DeleteAddTransaction);
+
         self.store_def
             .delete_secondary_indices(txn, ts_hash, message)?;
 
@@ -561,6 +581,8 @@ impl Store {
         ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
     ) -> Result<(), HubError> {
+        let _metric = self.metric(StoreAction::PutRemoveTransaction);
+
         if !self.store_def.remove_type_supported() {
             return Err(HubError {
                 code: "bad_request.validation_failure".to_string(),
@@ -581,6 +603,8 @@ impl Store {
         txn: &mut RocksDbTransactionBatch,
         message: &Message,
     ) -> Result<(), HubError> {
+        let _metric = self.metric(StoreAction::DeleteMoveTransaction);
+
         if !self.store_def.remove_type_supported() {
             return Err(HubError {
                 code: "bad_request.validation_failure".to_string(),
@@ -599,6 +623,8 @@ impl Store {
         txn: &mut RocksDbTransactionBatch,
         messages: &Vec<Message>,
     ) -> Result<(), HubError> {
+        let _metric = self.metric(StoreAction::DeleteMany(messages.len()));
+
         for message in messages {
             if self.store_def.is_compact_state_type(message) {
                 self.delete_compact_state_transaction(txn, message)?;
@@ -619,10 +645,14 @@ impl Store {
         // Grab a merge lock. The typescript code does this by individual fid, but we don't have a
         // good way of doing that efficiently here. We'll just use an array of locks, with each fid
         // deterministically mapped to a lock.
+        let lock_metric = self.metric(StoreAction::FidLock);
+
         let _fid_lock = &self.fid_locks
             [message.data.as_ref().unwrap().fid as usize % FID_LOCKS_COUNT]
             .lock()
             .unwrap();
+
+        drop(lock_metric);
 
         if !self.store_def.is_add_type(message)
             && !(self.store_def.remove_type_supported() && self.store_def.is_remove_type(message))
@@ -647,6 +677,8 @@ impl Store {
     }
 
     pub fn revoke(&self, message: &Message) -> Result<Vec<u8>, HubError> {
+        let _metric = self.metric(StoreAction::Revoke);
+
         // Start a transaction
         let mut txn = self.db.txn();
 
@@ -710,6 +742,8 @@ impl Store {
     }
 
     pub fn merge_compact_state(&self, message: &Message) -> Result<Vec<u8>, HubError> {
+        let _metric = self.metric(StoreAction::MergeCompactState);
+
         let mut merge_conflicts = vec![];
 
         // First, find if there's an existing compact state message, and if there is,
@@ -803,7 +837,9 @@ impl Store {
         ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
     ) -> Result<Vec<u8>, HubError> {
-        // If the store supports compact state messages, we don't merge messages that exist in the compact state
+        let _metric = self.metric(StoreAction::MergeAdd);
+
+        // If the store supports compact state messages, we don't merge messages that don't exist in the compact state
         if self.store_def.compact_state_type_supported() {
             // Get the compact state message
             let compact_state_key = self.store_def.make_compact_state_add_key(message)?;
@@ -867,6 +903,8 @@ impl Store {
         ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
     ) -> Result<Vec<u8>, HubError> {
+        let _metric = self.metric(StoreAction::MergeRemove);
+
         // If the store supports compact state messages, we don't merge remove messages before its timestamp
         // If the store supports compact state messages, we don't merge messages that don't exist in the compact state
         if self.store_def.compact_state_type_supported() {
@@ -982,6 +1020,8 @@ impl Store {
         fid: u32,
         page_options: &PageOptions,
     ) -> Result<MessagesPage, HubError> {
+        let _metric = self.metric(StoreAction::GetAllMessagesByFid(page_options.page_size));
+
         let prefix = make_message_primary_key(fid, self.store_def.postfix(), None);
         let messages =
             message::get_messages_page_by_prefix(&self.db, &prefix, &page_options, |message| {
@@ -991,6 +1031,10 @@ impl Store {
             })?;
 
         Ok(messages)
+    }
+
+    fn metric(&self, action: StoreAction) -> StoreLifetimeCounter {
+        StoreLifetimeCounter::new(self.store_def.as_ref(), action)
     }
 }
 

@@ -1,6 +1,6 @@
 use crate::db::multi_chunk_writer::MultiChunkWriter;
 use crate::logger::LOGGER;
-use crate::statsd::statsd;
+use crate::metrics::statsd;
 use crate::store::{
     self, get_db, get_iterator_options, hub_error_to_js_throw, increment_vec_u8, HubError,
     PageOptions, PAGE_SIZE_MAX,
@@ -1011,7 +1011,7 @@ impl RocksDB {
             .to_string();
 
         let start = std::time::SystemTime::now();
-        info!(logger, "Creating chunked tar.gz snapshot for directory: {}", 
+        info!(logger, "Creating chunked tar.gz snapshot for directory: {}",
             input_dir; o!("output_file_path" => &chunked_output_dir, "base_name" => &base_name));
 
         let mut multi_chunk_writer = MultiChunkWriter::new(
@@ -1070,7 +1070,7 @@ impl RocksDB {
         let triedb_backup_path = triedb_backup_path.into_os_string().into_string().unwrap();
 
         let start = std::time::SystemTime::now();
-        info!(snapshot_logger, "Creating snapshot for main DB: {}", main_db_path; 
+        info!(snapshot_logger, "Creating snapshot for main DB: {}", main_db_path;
         o!("output_file_path_main" => &main_backup_path, "output_file_path_trie" => &triedb_backup_path));
 
         let backup_main = DB::open_default(&main_backup_path)

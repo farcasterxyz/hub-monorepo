@@ -57,6 +57,10 @@ pub struct CastStoreDef {
 }
 
 impl StoreDef for CastStoreDef {
+    fn debug_name(&self) -> &'static str {
+        "CastStore"
+    }
+
     fn postfix(&self) -> u8 {
         UserPostfix::CastMessage as u8
     }

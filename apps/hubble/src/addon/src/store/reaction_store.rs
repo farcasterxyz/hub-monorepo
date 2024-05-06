@@ -24,6 +24,10 @@ pub struct ReactionStoreDef {
 }
 
 impl StoreDef for ReactionStoreDef {
+    fn debug_name(&self) -> &'static str {
+        "ReactionStoreDef"
+    }
+
     fn postfix(&self) -> u8 {
         UserPostfix::ReactionMessage.as_u8()
     }
