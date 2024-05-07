@@ -1629,6 +1629,12 @@ export class Hub implements HubInterface {
 
     const flushMessages = () => {
       (async () => {
+        if (burstMessages.length < 5_000) {
+          log.info(`Flush too small ${burstMessages.length}`);
+          setTimeout(flushMessages, 5_000);
+          return;
+        }
+
         const messages = burstMessages;
         burstMessages = [];
 
@@ -1643,7 +1649,8 @@ export class Hub implements HubInterface {
           await this.handleGossipMessage(gossipMessage, source, msgId);
         }
 
-        setTimeout(flushMessages, 60_000);
+        log.info(`Done flushing ${messages.length} bursted gossip messages`);
+        setTimeout(flushMessages, 10_000);
       })();
     };
 
