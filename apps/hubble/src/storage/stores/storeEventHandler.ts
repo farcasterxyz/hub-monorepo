@@ -54,7 +54,7 @@ const STORE_TO_SET: Record<StoreType, UserMessagePostfix> = {
   [StoreType.USERNAME_PROOFS]: UserPostfix.UsernameProofMessage,
 };
 
-type PrunableMessage =
+export type PrunableMessage =
   | CastAddMessage
   | CastRemoveMessage
   | ReactionAddMessage
@@ -106,6 +106,12 @@ export type StoreEvents = {
 };
 
 export type HubEventArgs = Omit<HubEvent, "id">;
+
+export enum PruneAction {
+  NoAction = 0,
+  Prunable = 1,
+  WouldCausePrune = 2,
+}
 
 // Chosen to keep number under Number.MAX_SAFE_INTEGER
 const TIMESTAMP_BITS = 41;
@@ -300,11 +306,11 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     return ok({ events, nextPageEventId: lastEventId + 1 });
   }
 
-  public async isPrunable(
+  public async getPruneAction(
     message: PrunableMessage,
     set: UserMessagePostfix,
     sizeLimit: number,
-  ): HubAsyncResult<boolean> {
+  ): HubAsyncResult<PruneAction> {
     const units = await this.getCurrentStorageUnitsForFid(message.data.fid);
 
     if (units.isErr()) {
@@ -317,7 +323,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     }
 
     if (messageCount.value < sizeLimit * units.value) {
-      return ok(false);
+      return ok(PruneAction.NoAction);
     }
 
     const earliestTimestamp = await this.getEarliestTsHash(message.data.fid, set);
@@ -328,13 +334,16 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     if (tsHash.isErr()) {
       return err(tsHash.error);
     }
+    /* ? over limit but have no early timestamp message ? */
     if (earliestTimestamp.value === undefined) {
-      return ok(false);
+      return ok(PruneAction.NoAction);
     }
+
+    /* we prune the earliest message, if it would be the earliest it's prunable */
     if (bytesCompare(tsHash.value, earliestTimestamp.value) < 0) {
-      return ok(true);
+      return ok(PruneAction.Prunable);
     } else {
-      return ok(false);
+      return ok(PruneAction.WouldCausePrune);
     }
   }
 

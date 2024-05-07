@@ -803,7 +803,7 @@ impl Store {
         ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
     ) -> Result<Vec<u8>, HubError> {
-        // If the store supports compact state messages, we don't merge messages that don't exist in the compact state
+        // If the store supports compact state messages, we don't merge messages that exist in the compact state
         if self.store_def.compact_state_type_supported() {
             // Get the compact state message
             let compact_state_key = self.store_def.make_compact_state_add_key(message)?;
