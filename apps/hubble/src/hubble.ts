@@ -1632,6 +1632,7 @@ export class Hub implements HubInterface {
         const messages = burstMessages;
         burstMessages = [];
 
+        log.info(`Flush ${messages.length} burst gossip messages`);
         for (let i = 0; i < messages.length; ++i) {
           const msg = messages[i];
           if (!msg) {
@@ -1642,7 +1643,7 @@ export class Hub implements HubInterface {
           await this.handleGossipMessage(gossipMessage, source, msgId);
         }
 
-        setTimeout(flushMessages, 10_000);
+        setTimeout(flushMessages, 60_000);
       })();
     };
 
