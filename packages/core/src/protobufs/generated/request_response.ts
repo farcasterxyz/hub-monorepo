@@ -108,6 +108,7 @@ export interface DbStats {
   numMessages: number;
   numFidEvents: number;
   numFnameEvents: number;
+  approxSize: number;
 }
 
 export interface SyncStatusRequest {
@@ -717,7 +718,7 @@ export const HubInfoResponse = {
 };
 
 function createBaseDbStats(): DbStats {
-  return { numMessages: 0, numFidEvents: 0, numFnameEvents: 0 };
+  return { numMessages: 0, numFidEvents: 0, numFnameEvents: 0, approxSize: 0 };
 }
 
 export const DbStats = {
@@ -730,6 +731,9 @@ export const DbStats = {
     }
     if (message.numFnameEvents !== 0) {
       writer.uint32(24).uint64(message.numFnameEvents);
+    }
+    if (message.approxSize !== 0) {
+      writer.uint32(32).uint64(message.approxSize);
     }
     return writer;
   },
@@ -762,6 +766,13 @@ export const DbStats = {
 
           message.numFnameEvents = longToNumber(reader.uint64() as Long);
           continue;
+        case 4:
+          if (tag != 32) {
+            break;
+          }
+
+          message.approxSize = longToNumber(reader.uint64() as Long);
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -776,6 +787,7 @@ export const DbStats = {
       numMessages: isSet(object.numMessages) ? Number(object.numMessages) : 0,
       numFidEvents: isSet(object.numFidEvents) ? Number(object.numFidEvents) : 0,
       numFnameEvents: isSet(object.numFnameEvents) ? Number(object.numFnameEvents) : 0,
+      approxSize: isSet(object.approxSize) ? Number(object.approxSize) : 0,
     };
   },
 
@@ -784,6 +796,7 @@ export const DbStats = {
     message.numMessages !== undefined && (obj.numMessages = Math.round(message.numMessages));
     message.numFidEvents !== undefined && (obj.numFidEvents = Math.round(message.numFidEvents));
     message.numFnameEvents !== undefined && (obj.numFnameEvents = Math.round(message.numFnameEvents));
+    message.approxSize !== undefined && (obj.approxSize = Math.round(message.approxSize));
     return obj;
   },
 
@@ -796,6 +809,7 @@ export const DbStats = {
     message.numMessages = object.numMessages ?? 0;
     message.numFidEvents = object.numFidEvents ?? 0;
     message.numFnameEvents = object.numFnameEvents ?? 0;
+    message.approxSize = object.approxSize ?? 0;
     return message;
   },
 };
