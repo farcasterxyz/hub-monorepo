@@ -616,9 +616,13 @@ impl Store {
     }
 
     pub fn merge(&self, message: &Message) -> Result<Vec<u8>, HubError> {
-        // Grab a merge lock. The typescript code does this by individual fid, but we don't have a
-        // good way of doing that efficiently here. We'll just use an array of locks, with each fid
-        // deterministically mapped to a lock.
+        // Merge operations should be atomic so we need a lock. Note, there
+        // might be extra lock conflicts due to impl.
+        //
+        // Also helps performance with RocksDB if we aren't touching the same
+        // memory space. In our case, two threads competing for locks between
+        // api calls costs more than an exclusive lock blocking the other
+        // thread entirely.
         let _fid_lock = &self.fid_locks
             [message.data.as_ref().unwrap().fid as usize % FID_LOCKS_COUNT]
             .lock()
@@ -803,7 +807,7 @@ impl Store {
         ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
     ) -> Result<Vec<u8>, HubError> {
-        // If the store supports compact state messages, we don't merge messages that don't exist in the compact state
+        // If the store supports compact state messages, we don't merge messages that exist in the compact state
         if self.store_def.compact_state_type_supported() {
             // Get the compact state message
             let compact_state_key = self.store_def.make_compact_state_add_key(message)?;
@@ -927,6 +931,11 @@ impl Store {
         cached_count: u64,
         units: u64,
     ) -> Result<Vec<HubEvent>, HubError> {
+        // for performance, prevent locking inside of RocksDB due to touching the same memory space (fid)
+        let _fid_lock = &self.fid_locks[fid as usize % FID_LOCKS_COUNT]
+            .lock()
+            .unwrap();
+
         let mut pruned_events = vec![];
 
         let mut count = cached_count;

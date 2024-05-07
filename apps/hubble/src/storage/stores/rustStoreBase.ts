@@ -9,12 +9,13 @@ import {
   rustErrorToHubError,
   rsMergeMany,
 } from "../../rustfunctions.js";
-import StoreEventHandler from "./storeEventHandler.js";
+import StoreEventHandler, { PrunableMessage, PruneAction } from "./storeEventHandler.js";
 import { MessagesPage, PageOptions } from "./types.js";
 import { UserMessagePostfix } from "../db/types.js";
 import RocksDB from "../db/rocksdb.js";
 import { ResultAsync, err, ok } from "neverthrow";
 import { messageDecode } from "../../storage/db/message.js";
+import { logger } from "../../utils/logger.js";
 
 export type DeepPartial<T> = T extends object
   ? {
@@ -69,12 +70,13 @@ export abstract class RustStoreBase<TAdd extends Message, TRemove extends Messag
 
   async mergeMessages(messages: Message[]): Promise<Map<number, HubResult<number>>> {
     const mergeResults: Map<number, HubResult<number>> = new Map();
+    const fidToPrune: Map<number, boolean> = new Map();
 
     // First, filter out any prunable messages
     const encodedMessages: { i: number; bytes: Uint8Array }[] = [];
     for (let i = 0; i < messages.length; i++) {
       const message = messages[i] as Message;
-      const prunableResult = await this._eventHandler.isPrunable(
+      const prunableResult = await this._eventHandler.getPruneAction(
         // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
         message as any,
         this._postfix,
@@ -82,9 +84,13 @@ export abstract class RustStoreBase<TAdd extends Message, TRemove extends Messag
       );
       if (prunableResult.isErr()) {
         mergeResults.set(i, err(prunableResult.error));
-      } else if (prunableResult.value) {
+      } else if (prunableResult.value === PruneAction.Prunable) {
         mergeResults.set(i, err(new HubError("bad_request.prunable", "message would be pruned")));
       } else {
+        if (prunableResult.value === PruneAction.WouldCausePrune) {
+          fidToPrune.set((message as PrunableMessage).data.fid, true);
+        }
+
         encodedMessages.push({ i, bytes: Message.encode(message).finish() });
       }
     }
@@ -117,11 +123,18 @@ export abstract class RustStoreBase<TAdd extends Message, TRemove extends Messag
       }
     }
 
+    for (const [fid, _] of fidToPrune) {
+      const pruneResult = await this.pruneMessages(fid);
+      if (pruneResult.isErr()) {
+        logger.error({ error: pruneResult.error }, "Failed to prune message after merge");
+      }
+    }
+
     return mergeResults;
   }
 
   async merge(message: Message): Promise<number> {
-    const prunableResult = await this._eventHandler.isPrunable(
+    const prunableResult = await this._eventHandler.getPruneAction(
       // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
       message as any,
       this._postfix,
@@ -129,7 +142,7 @@ export abstract class RustStoreBase<TAdd extends Message, TRemove extends Messag
     );
     if (prunableResult.isErr()) {
       throw prunableResult.error;
-    } else if (prunableResult.value) {
+    } else if (prunableResult.value === PruneAction.Prunable) {
       throw new HubError("bad_request.prunable", "message would be pruned");
     }
 
@@ -145,6 +158,14 @@ export abstract class RustStoreBase<TAdd extends Message, TRemove extends Messag
     const hubEvent = HubEvent.decode(resultBytes);
 
     void this._eventHandler.processRustCommitedTransaction(hubEvent);
+
+    if (prunableResult.value === PruneAction.WouldCausePrune) {
+      const pruneResult = await this.pruneMessages((message as PrunableMessage).data.fid);
+      if (pruneResult.isErr()) {
+        logger.error({ error: pruneResult.error }, "Failed to prune message after merge");
+      }
+    }
+
     return hubEvent.id;
   }
 

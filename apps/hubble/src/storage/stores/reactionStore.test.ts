@@ -829,7 +829,7 @@ describe("revoke", () => {
   });
 });
 
-describe("pruneMessages", () => {
+describe("mergePrunesMessages", () => {
   let prunedMessages: Message[];
 
   const pruneMessageListener = (event: PruneMessageHubEvent) => {
@@ -906,16 +906,21 @@ describe("pruneMessages", () => {
       expect(prunedMessages).toEqual([]);
     });
 
-    test("prunes earliest add messages", async () => {
-      const messages = [add1, add2, add3, add4, add5];
-      for (const message of messages) {
-        await sizePrunedStore.merge(message);
-      }
+    test("earlier add messages gets pruned", async () => {
+      await sizePrunedStore.merge(add1);
+      await sizePrunedStore.merge(add2);
+      await sizePrunedStore.merge(add3);
+      expect(prunedMessages).toEqual([]);
+
+      await sizePrunedStore.merge(add4);
+      expect(prunedMessages).toEqual([add1]);
+
+      await sizePrunedStore.merge(add5);
+      expect(prunedMessages).toEqual([add1, add2]);
 
       const result = await sizePrunedStore.pruneMessages(fid);
       expect(result.isOk()).toBeTruthy();
-      expect(result._unsafeUnwrap().length).toEqual(2);
-
+      expect(result._unsafeUnwrap().length).toEqual(0);
       expect(prunedMessages).toEqual([add1, add2]);
 
       for (const message of prunedMessages as ReactionAddMessage[]) {
@@ -929,16 +934,21 @@ describe("pruneMessages", () => {
       }
     });
 
-    test("prunes earliest remove messages", async () => {
-      const messages = [remove1, remove2, remove3, remove4, remove5];
-      for (const message of messages) {
-        await sizePrunedStore.merge(message);
-      }
+    test("earlier remove messages gets pruned", async () => {
+      await sizePrunedStore.merge(remove1);
+      await sizePrunedStore.merge(remove2);
+      await sizePrunedStore.merge(remove3);
+      expect(prunedMessages).toEqual([]);
+
+      await sizePrunedStore.merge(remove4);
+      expect(prunedMessages).toEqual([remove1]);
+
+      await sizePrunedStore.merge(remove5);
+      expect(prunedMessages).toEqual([remove1, remove2]);
 
       const result = await sizePrunedStore.pruneMessages(fid);
       expect(result.isOk()).toBeTruthy();
-      expect(result._unsafeUnwrap().length).toEqual(2);
-
+      expect(result._unsafeUnwrap().length).toEqual(0);
       expect(prunedMessages).toEqual([remove1, remove2]);
 
       for (const message of prunedMessages as ReactionRemoveMessage[]) {
@@ -952,16 +962,21 @@ describe("pruneMessages", () => {
       }
     });
 
-    test("prunes earliest messages", async () => {
-      const messages = [add1, remove2, add3, remove4, add5];
-      for (const message of messages) {
-        await sizePrunedStore.merge(message);
-      }
+    test("earlier message gets pruned", async () => {
+      await sizePrunedStore.merge(add1);
+      await sizePrunedStore.merge(remove2);
+      await sizePrunedStore.merge(add3);
+      expect(prunedMessages).toEqual([]);
+
+      await sizePrunedStore.merge(remove4);
+      expect(prunedMessages).toEqual([add1]);
+
+      await sizePrunedStore.merge(add5);
+      expect(prunedMessages).toEqual([add1, remove2]);
 
       const result = await sizePrunedStore.pruneMessages(fid);
       expect(result.isOk()).toBeTruthy();
-      expect(result._unsafeUnwrap().length).toEqual(2);
-
+      expect(result._unsafeUnwrap().length).toEqual(0);
       expect(prunedMessages).toEqual([add1, remove2]);
     });
 
@@ -969,6 +984,7 @@ describe("pruneMessages", () => {
       const messages = [add1, remove1, add2, remove2, add3];
       for (const message of messages) {
         await sizePrunedStore.merge(message);
+        expect(prunedMessages).toEqual([]);
       }
 
       const result = await sizePrunedStore.pruneMessages(fid);
@@ -990,11 +1006,12 @@ describe("pruneMessages", () => {
 
       // newer messages can still be added
       await expect(sizePrunedStore.merge(add4)).resolves.toBeGreaterThan(0);
+      expect(prunedMessages).toEqual([add1]);
 
       // Prune removes earliest
       const result = await sizePrunedStore.pruneMessages(fid);
       expect(result.isOk()).toBeTruthy();
-      expect(result._unsafeUnwrap().length).toEqual(1);
+      expect(result._unsafeUnwrap().length).toEqual(0);
 
       expect(prunedMessages).toEqual([add1]);
     });
