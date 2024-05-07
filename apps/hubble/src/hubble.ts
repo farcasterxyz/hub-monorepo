@@ -718,9 +718,9 @@ export class Hub implements HubInterface {
       this.options.announceIp ?? undefined,
     );
     if (rpcAddressCheck.isErr()) {
-      const errorMessage = `Error validating RPC address at port ${this.options.rpcPort}. 
+      const errorMessage = `Error validating RPC address at port ${this.options.rpcPort}.
         Please make sure RPC port value is valid and reachable from public internet.
-        Reachable address is required for hub to perform diff sync via gRPC API and sync with the network. 
+        Reachable address is required for hub to perform diff sync via gRPC API and sync with the network.
         Hub operators may need to enable port-forwarding of traffic to hub's host and port if they are behind a NAT.
         `;
       log.warn(
@@ -1271,23 +1271,23 @@ export class Hub implements HubInterface {
     }
 
     if (gossipMessage.message || gossipMessage.messageBundle) {
-      if (this.syncEngine.syncMergeQSize + this.syncEngine.syncTrieQSize > MAX_SYNCTRIE_QUEUE_SIZE) {
-        // If there are too many messages in the queue, drop this message. This is a gossip message, so the sync
-        // will eventually re-fetch and merge this message in anyway.
-        const msg = "Sync queue is full, dropping gossip message";
-        log.warn(
-          {
-            syncTrieQ: this.syncEngine.syncTrieQSize,
-            syncMergeQ: this.syncEngine.syncMergeQSize,
-          },
-          msg,
-        );
-        diagnosticReporter().reportUnavailable(this.handleGossipMessage.name, msg, {
-          syncTrieQ: this.syncEngine.syncTrieQSize,
-          syncMergeQ: this.syncEngine.syncMergeQSize,
-        });
-        return err(new HubError("unavailable", msg));
-      }
+      // if (this.syncEngine.syncMergeQSize + this.syncEngine.syncTrieQSize > MAX_SYNCTRIE_QUEUE_SIZE) {
+      //   // If there are too many messages in the queue, drop this message. This is a gossip message, so the sync
+      //   // will eventually re-fetch and merge this message in anyway.
+      //   const msg = "Sync queue is full, dropping gossip message";
+      //   log.warn(
+      //     {
+      //       syncTrieQ: this.syncEngine.syncTrieQSize,
+      //       syncMergeQ: this.syncEngine.syncMergeQSize,
+      //     },
+      //     msg,
+      //   );
+      //   diagnosticReporter().reportUnavailable(this.handleGossipMessage.name, msg, {
+      //     syncTrieQ: this.syncEngine.syncTrieQSize,
+      //     syncMergeQ: this.syncEngine.syncMergeQSize,
+      //   });
+      //   return err(new HubError("unavailable", msg));
+      // }
 
       const currentTime = getFarcasterTime().unwrapOr(0);
       const messageFirstGossipedTime = gossipMessage.timestamp ?? 0;
@@ -1620,10 +1620,42 @@ export class Hub implements HubInterface {
     await this.gossipNode.subscribe(this.gossipNode.primaryTopic());
     await this.gossipNode.subscribe(this.gossipNode.contactInfoTopic());
 
+    /* DEBUG: simulate higher load by queuing and bursting gossip messages */
+    let burstMessages = [] as {
+      gossipMessage: GossipMessage;
+      source: PeerId;
+      msgId: string;
+    }[];
+
+    const flushMessages = () => {
+      (async () => {
+        const messages = burstMessages;
+        burstMessages = [];
+
+        for (let i = 0; i < messages.length; ++i) {
+          const msg = messages[i];
+          if (!msg) {
+            break;
+          }
+
+          const { gossipMessage, source, msgId } = msg;
+          await this.handleGossipMessage(gossipMessage, source, msgId);
+        }
+
+        setTimeout(flushMessages, 10_000);
+      })();
+    };
+
+    flushMessages();
+
     this.gossipNode.on("message", async (_topic, message, source, msgId) => {
       await message.match(
         async (gossipMessage: GossipMessage) => {
-          await this.handleGossipMessage(gossipMessage, source, msgId);
+          burstMessages.push({
+            gossipMessage,
+            source,
+            msgId,
+          });
         },
         async (error: HubError) => {
           log.error(error, "failed to decode message");
@@ -1652,13 +1684,13 @@ export class Hub implements HubInterface {
   /* -------------------------------------------------------------------------- */
 
   async submitMessageBundle(messageBundle: MessageBundle, source?: HubSubmitSource): Promise<HubResult<number>[]> {
-    if (this.syncEngine.syncTrieQSize > MAX_SYNCTRIE_QUEUE_SIZE) {
-      log.warn({ syncTrieQSize: this.syncEngine.syncTrieQSize }, "SubmitMessage rejected: Sync trie queue is full");
-      // Since we're rejecting the full bundle, return an error for each message
-      return messageBundle.messages.map(() =>
-        err(new HubError("unavailable.storage_failure", "Sync trie queue is full")),
-      );
-    }
+    // if (this.syncEngine.syncTrieQSize > MAX_SYNCTRIE_QUEUE_SIZE) {
+    //   log.warn({ syncTrieQSize: this.syncEngine.syncTrieQSize }, "SubmitMessage rejected: Sync trie queue is full");
+    //   // Since we're rejecting the full bundle, return an error for each message
+    //   return messageBundle.messages.map(() =>
+    //     err(new HubError("unavailable.storage_failure", "Sync trie queue is full")),
+    //   );
+    // }
 
     const start = Date.now();
     const allResults: Map<number, HubResult<number>> = new Map();
@@ -1768,10 +1800,10 @@ export class Hub implements HubInterface {
   }
 
   async submitMessage(submittedMessage: Message, source?: HubSubmitSource): HubAsyncResult<number> {
-    if (this.syncEngine.syncTrieQSize > MAX_SYNCTRIE_QUEUE_SIZE) {
-      log.warn({ syncTrieQSize: this.syncEngine.syncTrieQSize }, "SubmitMessage rejected: Sync trie queue is full");
-      return err(new HubError("unavailable.storage_failure", "Sync trie queue is full"));
-    }
+    // if (this.syncEngine.syncTrieQSize > MAX_SYNCTRIE_QUEUE_SIZE) {
+    //   log.warn({ syncTrieQSize: this.syncEngine.syncTrieQSize }, "SubmitMessage rejected: Sync trie queue is full");
+    //   return err(new HubError("unavailable.storage_failure", "Sync trie queue is full"));
+    // }
 
     // If this is a dup, don't bother processing it. Only do this for gossip messages since rpc messages
     // haven't been validated yet
