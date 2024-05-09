@@ -11,6 +11,7 @@ fn main() {
     tonic_build::configure()
         .build_server(true)
         .build_client(false)
+        .protoc_arg("--experimental_allow_proto3_optional")
         .compile(&proto_files, &proto_include_dirs)
         .unwrap_or_else(|e| panic!("Failed to compile protos: {}", e));
 }
