@@ -145,6 +145,14 @@ pub trait StoreDef: Send + Sync {
         Ok(())
     }
 
+    fn delete_remove_secondary_indices(
+        &self,
+        _txn: &mut RocksDbTransactionBatch,
+        _message: &Message,
+    ) -> Result<(), HubError> {
+        Ok(())
+    }
+
     fn find_merge_add_conflicts(&self, db: &RocksDB, message: &Message) -> Result<(), HubError>;
     fn find_merge_remove_conflicts(&self, db: &RocksDB, message: &Message) -> Result<(), HubError>;
 
@@ -587,6 +595,9 @@ impl Store {
                 message: "remove type not supported".to_string(),
             });
         }
+
+        self.store_def
+            .delete_remove_secondary_indices(txn, message)?;
 
         let remove_key = self.store_def.make_remove_key(message)?;
         txn.delete(remove_key);
