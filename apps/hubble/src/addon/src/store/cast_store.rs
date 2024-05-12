@@ -193,6 +193,14 @@ impl StoreDef for CastStoreDef {
         Ok(())
     }
 
+    fn delete_remove_secondary_indices(
+        &self,
+        _txn: &mut RocksDbTransactionBatch,
+        _message: &Message,
+    ) -> Result<(), HubError> {
+        Ok(())
+    }
+
     fn make_add_key(&self, message: &protos::Message) -> Result<Vec<u8>, HubError> {
         let hash = match message.data.as_ref().unwrap().body.as_ref() {
             Some(message_data::Body::CastAddBody(_)) => message.hash.as_ref(),

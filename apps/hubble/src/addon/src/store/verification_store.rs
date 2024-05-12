@@ -159,6 +159,14 @@ impl StoreDef for VerificationStoreDef {
         Ok(())
     }
 
+    fn delete_remove_secondary_indices(
+        &self,
+        _txn: &mut RocksDbTransactionBatch,
+        _message: &Message,
+    ) -> Result<(), HubError> {
+        Ok(())
+    }
+
     fn make_add_key(&self, message: &protos::Message) -> Result<Vec<u8>, HubError> {
         let address = match message.data.as_ref().unwrap().body.as_ref().unwrap() {
             message_data::Body::VerificationAddAddressBody(body) => &body.address,

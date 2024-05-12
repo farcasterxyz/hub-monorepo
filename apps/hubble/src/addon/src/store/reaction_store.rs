@@ -84,6 +84,14 @@ impl StoreDef for ReactionStoreDef {
         Ok(())
     }
 
+    fn delete_remove_secondary_indices(
+        &self,
+        _txn: &mut RocksDbTransactionBatch,
+        _message: &Message,
+    ) -> Result<(), HubError> {
+        Ok(())
+    }
+
     fn find_merge_add_conflicts(
         &self,
         _db: &RocksDB,

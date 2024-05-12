@@ -167,6 +167,14 @@ impl StoreDef for UsernameProofStoreDef {
         }
     }
 
+    fn delete_remove_secondary_indices(
+        &self,
+        _txn: &mut RocksDbTransactionBatch,
+        _message: &Message,
+    ) -> Result<(), HubError> {
+        Ok(())
+    }
+
     fn get_merge_conflicts(
         &self,
         db: &RocksDB,
