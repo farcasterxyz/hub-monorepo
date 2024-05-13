@@ -93,29 +93,9 @@ impl StoreDef for CastStoreDef {
 
     fn find_merge_add_conflicts(
         &self,
-        db: &RocksDB,
-        message: &protos::Message,
+        _db: &RocksDB,
+        _message: &protos::Message,
     ) -> Result<(), super::store::HubError> {
-        // Look up the remove tsHash for this cast
-        let remove_key = self.make_remove_key(message)?;
-        // If remove tsHash exists, fail because this cast has already been removed
-        if let Ok(Some(_)) = db.get(&remove_key) {
-            return Err(HubError {
-                code: "bad_request.conflict".to_string(),
-                message: "message conflicts with a CastRemove".to_string(),
-            });
-        }
-
-        // Look up the add tsHash for this cast
-        let add_key = self.make_add_key(message)?;
-        // If add tsHash exists, no-op because this cast has already been added
-        if let Ok(Some(_)) = db.get(&add_key) {
-            return Err(HubError {
-                code: "bad_request.duplicate".to_string(),
-                message: "message has already been merged".to_string(),
-            });
-        }
-
         // No conflicts
         Ok(())
     }
