@@ -89,7 +89,7 @@ impl From<std::io::Error> for HubError {
     }
 }
 
-pub const FID_LOCKS_COUNT: usize = 4;
+pub const FID_LOCKS_COUNT: usize = 256;
 pub const PAGE_SIZE_MAX: usize = 10_000;
 
 #[derive(Debug, Default)]
@@ -339,7 +339,7 @@ pub trait StoreDef: Send + Sync {
 pub struct Store {
     store_def: Box<dyn StoreDef>,
     store_event_handler: Arc<StoreEventHandler>,
-    fid_locks: Arc<[Mutex<()>; 4]>,
+    fid_locks: Arc<[Mutex<()>]>,
     db: Arc<RocksDB>,
     logger: slog::Logger,
 }
@@ -357,12 +357,13 @@ impl Store {
         Store {
             store_def,
             store_event_handler,
-            fid_locks: Arc::new([
-                Mutex::new(()),
-                Mutex::new(()),
-                Mutex::new(()),
-                Mutex::new(()),
-            ]),
+            fid_locks: {
+                let mut locks = Vec::with_capacity(FID_LOCKS_COUNT);
+                for _ in 0..FID_LOCKS_COUNT {
+                    locks.push(Mutex::new(()));
+                }
+                locks.into()
+            },
             db,
             logger: LOGGER.new(o!("component" => "Store")),
         }
