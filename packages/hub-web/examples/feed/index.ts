@@ -6,7 +6,7 @@ import en from "javascript-time-ago/locale/en";
 TimeAgo.addDefaultLocale(en);
 const timeAgo = new TimeAgo("en-US");
 
-const server = "http://nemes.farcaster.xyz:2281";
+const server = "https://nemes.farcaster.xyz:2281";
 
 async function getUserNameForFid(fid: number): Promise<string> {
   const url = `${server}/v1/userDataByFid?fid=${fid}`;

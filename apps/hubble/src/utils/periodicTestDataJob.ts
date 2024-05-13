@@ -142,7 +142,7 @@ export class PeriodicTestDataJobScheduler {
         const castAdd = await makeCastAdd(
           CastAddBody.create({
             text: faker.lorem.sentence(12),
-            embeds: [{ url: "http://www.farcaster.xyz" }],
+            embeds: [{ url: "https://www.farcaster.xyz" }],
             mentions: [],
             mentionsPositions: [],
           }),

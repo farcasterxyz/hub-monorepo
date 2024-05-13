@@ -158,7 +158,7 @@ Returns a message that adds a new Cast.
 import { makeCastAdd } from '@farcaster/hub-nodejs';
 
 const cast = await makeCastAdd(
-  { text: 'hello world', embeds: ['http://www.farcaster.xyz'], mentions: [], mentionsPositions: [] },
+  { text: 'hello world', embeds: ['https://www.farcaster.xyz'], mentions: [], mentionsPositions: [] },
   dataOptions,
   ed25519Signer
 );

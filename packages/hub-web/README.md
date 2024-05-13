@@ -27,7 +27,7 @@ The HTTP API endpoints are [documented here](https://www.thehubble.xyz/docs/http
 import axios from "axios";
 
 const fid = 2;
-const server = "http://nemes.farcaster.xyz:2281";
+const server = "https://nemes.farcaster.xyz:2281";
 
 try {
     const response = await axios.get(`${server}/v1/castsByFid?fid=${fid}`);

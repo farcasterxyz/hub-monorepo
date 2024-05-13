@@ -2,7 +2,7 @@ import { Factories, FarcasterNetwork, Message } from "@farcaster/core";
 import axios from "axios";
 
 async function submitMessage() {
-  const server = "http://nemes.farcaster.xyz:2281";
+  const server = "https://nemes.farcaster.xyz:2281";
   const url = `${server}/v1/submitMessage`;
 
   // If you're using a username and password, you can use the following:
