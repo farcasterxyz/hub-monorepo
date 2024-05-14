@@ -753,7 +753,7 @@ describe("revoke", () => {
   });
 });
 
-describe("mergePrunesMessages", () => {
+describe("merge should prunes messages", () => {
   let prunedMessages: Message[];
 
   const pruneMessageListener = (event: PruneMessageHubEvent) => {

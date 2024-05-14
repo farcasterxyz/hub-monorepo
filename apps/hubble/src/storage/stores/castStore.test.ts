@@ -658,7 +658,7 @@ describe("revoke", () => {
   });
 });
 
-describe("mergePrunesMessages", () => {
+describe("merge should prunes messages", () => {
   let prunedMessages: Message[];
   const pruneMessageListener = (event: PruneMessageHubEvent) => {
     prunedMessages.push(event.pruneMessageBody.message);
@@ -774,26 +774,20 @@ describe("mergePrunesMessages", () => {
       }
     });
 
-    test("earlier remove messages gets pruned", async () => {
-      await sizePrunedStore.merge(remove1);
-      await sizePrunedStore.merge(remove2);
-      await sizePrunedStore.merge(remove3);
-      expect(prunedMessages).toEqual([]);
+    test("earlier add message gets pruned in bundle", async () => {
+      const messages = [add1, add2, add3, add4, add5];
+      const mergeResults = await sizePrunedStore.mergeMessages(messages);
+      expect(mergeResults.size).toEqual(messages.length);
+      for (const result of mergeResults.values()) {
+        expect(result.isOk()).toBeTruthy();
+      }
 
-      await sizePrunedStore.merge(remove4);
-      expect(prunedMessages).toEqual([remove1]);
+      expect(prunedMessages.length).toEqual(2);
+      expect(prunedMessages).toEqual([add1, add2]);
 
-      await sizePrunedStore.merge(remove5);
-      expect(prunedMessages).toEqual([remove1, remove2]);
-
-      const result = await sizePrunedStore.pruneMessages(fid);
-      expect(result.isOk()).toBeTruthy();
-      expect(result._unsafeUnwrap().length).toEqual(0);
-      expect(prunedMessages).toEqual([remove1, remove2]);
-
-      for (const message of prunedMessages as CastRemoveMessage[]) {
-        const getRemove = () => sizePrunedStore.getCastRemove(fid, message.data.castRemoveBody.targetHash);
-        await expect(getRemove()).rejects.toThrow(HubError);
+      for (const message of prunedMessages as CastAddMessage[]) {
+        const getAdd = () => sizePrunedStore.getCastAdd(fid, message.hash);
+        await expect(getAdd()).rejects.toThrow(HubError);
       }
     });
 
@@ -887,13 +881,16 @@ describe("mergePrunesMessages", () => {
       // These should all merge fine
       let results = await sizePrunedStore.mergeMessages([add3, add2, remove2, add4]);
       expect(results.size).toEqual(4);
-      for (const result of results.values()) {
+      for (const [index, result] of results.entries()) {
         expect(result.isOk()).toBeTruthy();
         expect(result._unsafeUnwrap()).toBeGreaterThan(0);
       }
 
+      console.log("second merge");
       // Since the size = 3, remove1 and add1 will fail to merge
       results = await sizePrunedStore.mergeMessages([remove1, add1, add5]);
+      console.log("second merge done", results);
+
       // remove1 and add1 should fail to merge
       expect(results.size).toEqual(3);
       expect(results.get(0)?._unsafeUnwrapErr().errCode).toEqual("bad_request.prunable");

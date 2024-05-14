@@ -1,4 +1,4 @@
-import { HubAsyncResult, HubError, HubEvent, HubResult, Message } from "@farcaster/hub-nodejs";
+import { HubAsyncResult, HubError, HubEvent, HubResult, Message, bytesCompare } from "@farcaster/hub-nodejs";
 import {
   RustDynStore,
   rsGetAllMessagesByFid,
@@ -14,8 +14,9 @@ import { MessagesPage, PageOptions } from "./types.js";
 import { UserMessagePostfix } from "../db/types.js";
 import RocksDB from "../db/rocksdb.js";
 import { ResultAsync, err, ok } from "neverthrow";
-import { messageDecode } from "../../storage/db/message.js";
+import { makeTsHash, messageDecode } from "../../storage/db/message.js";
 import { logger } from "../../utils/logger.js";
+import { sort } from "semver";
 
 export type DeepPartial<T> = T extends object
   ? {
@@ -70,28 +71,47 @@ export abstract class RustStoreBase<TAdd extends Message, TRemove extends Messag
 
   async mergeMessages(messages: Message[]): Promise<Map<number, HubResult<number>>> {
     const mergeResults: Map<number, HubResult<number>> = new Map();
-    const fidToPrune: Map<number, boolean> = new Map();
+    const fidSummaries: Map<number, { pending: number; shouldPrune: boolean }> = new Map();
 
     // First, filter out any prunable messages
     const encodedMessages: { i: number; bytes: Uint8Array }[] = [];
     for (let i = 0; i < messages.length; i++) {
-      const message = messages[i] as Message;
+      const message = messages[i] as PrunableMessage;
+
+      let fidSumamry = fidSummaries.get(message.data.fid);
+      if (!fidSumamry) {
+        fidSumamry = { pending: 0, shouldPrune: false };
+        fidSummaries.set(message.data.fid, fidSumamry);
+      }
+
+      console.log("getPruneAction");
       const prunableResult = await this._eventHandler.getPruneAction(
-        // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
-        message as any,
+        message,
         this._postfix,
         this._pruneSizeLimit,
+        fidSumamry.pending,
       );
+      console.log("getPruneAction res", prunableResult);
+
       if (prunableResult.isErr()) {
         mergeResults.set(i, err(prunableResult.error));
-      } else if (prunableResult.value === PruneAction.Prunable) {
+      }
+      // Note: we could sort messages (desc ts) and error if MaybePrunable. This would assume previous merges succeed.
+      else if (prunableResult.value === PruneAction.Prunable) {
         mergeResults.set(i, err(new HubError("bad_request.prunable", "message would be pruned")));
       } else {
-        if (prunableResult.value === PruneAction.WouldCausePrune) {
-          fidToPrune.set((message as PrunableMessage).data.fid, true);
+        fidSumamry.pending += 1;
+        if (
+          prunableResult.value === PruneAction.WouldCausePrune ||
+          prunableResult.value === PruneAction.MaybePrunable
+        ) {
+          fidSumamry.shouldPrune = true;
         }
 
-        encodedMessages.push({ i, bytes: Message.encode(message).finish() });
+        encodedMessages.push({
+          i,
+          bytes: Message.encode(message).finish(),
+        });
       }
     }
 
@@ -123,7 +143,11 @@ export abstract class RustStoreBase<TAdd extends Message, TRemove extends Messag
       }
     }
 
-    for (const [fid, _] of fidToPrune) {
+    for (const [fid, summary] of fidSummaries) {
+      if (!summary.shouldPrune) {
+        continue;
+      }
+
       const pruneResult = await this.pruneMessages(fid);
       if (pruneResult.isErr()) {
         logger.error({ error: pruneResult.error }, "Failed to prune message after merge");

@@ -111,6 +111,7 @@ export enum PruneAction {
   NoAction = 0,
   Prunable = 1,
   WouldCausePrune = 2,
+  MaybePrunable = 3,
 }
 
 // Chosen to keep number under Number.MAX_SAFE_INTEGER
@@ -310,6 +311,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     message: PrunableMessage,
     set: UserMessagePostfix,
     sizeLimit: number,
+    pendingCountForFid?: number,
   ): HubAsyncResult<PruneAction> {
     const units = await this.getCurrentStorageUnitsForFid(message.data.fid);
 
@@ -323,6 +325,11 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     }
 
     if (messageCount.value < sizeLimit * units.value) {
+      if (pendingCountForFid && sizeLimit * units.value <= messageCount.value + pendingCountForFid) {
+        console.log("maybe prune, pending puts over");
+        return ok(PruneAction.MaybePrunable);
+      }
+      console.log("no action below limit", messageCount.value, sizeLimit * units.value);
       return ok(PruneAction.NoAction);
     }
 
@@ -334,15 +341,18 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     if (tsHash.isErr()) {
       return err(tsHash.error);
     }
-    /* ? over limit but have no early timestamp message ? */
+
     if (earliestTimestamp.value === undefined) {
+      console.log("no early, no action");
       return ok(PruneAction.NoAction);
     }
 
-    /* we prune the earliest message, if it would be the earliest it's prunable */
+    // we prune the earliest message, if it would be the earliest it's prunable
     if (bytesCompare(tsHash.value, earliestTimestamp.value) < 0) {
+      console.log("prunable");
       return ok(PruneAction.Prunable);
     } else {
+      console.log("would cause prune");
       return ok(PruneAction.WouldCausePrune);
     }
   }
