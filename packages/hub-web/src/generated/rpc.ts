@@ -1,5 +1,5 @@
 /* eslint-disable */
-import { grpc } from "@improbable-eng/grpc-web";
+import grpcWeb from "@improbable-eng/grpc-web";
 import { BrowserHeaders } from "browser-headers";
 import { Observable } from "rxjs";
 import { share } from "rxjs/operators";
@@ -42,6 +42,8 @@ import {
   VerificationRequest,
 } from "./request_response";
 import { UserNameProof } from "./username_proof";
+
+const grpc = grpcWeb.grpc;
 
 export interface HubService {
   /** Submit Methods */
