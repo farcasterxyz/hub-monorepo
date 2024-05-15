@@ -81,9 +81,7 @@ class ValueStats {
   count: number;
   min: number;
   max: number;
-  median: number;
   average: number;
-  p95: number;
   sum: number;
 
   allValues: number[];
@@ -92,12 +90,10 @@ class ValueStats {
 
   constructor(label = "") {
     this.count = 0;
-    this.min = 0;
-    this.max = 0;
-    this.median = 0;
+    this.min = Number.MAX_SAFE_INTEGER;
+    this.max = Number.MIN_SAFE_INTEGER;
     this.average = 0;
     this.sum = 0;
-    this.p95 = 0;
     this.allValues = [];
 
     this.label = label;
@@ -106,31 +102,14 @@ class ValueStats {
   addValue(value: number) {
     this.count++;
 
-    this.allValues.push(value);
-  }
-
-  calculate() {
-    this.sum = this.allValues.reduce((a, b) => a + b, 0);
-
-    let min = Number.MAX_SAFE_INTEGER;
-    let max = Number.MIN_SAFE_INTEGER;
-    for (let i = 0; i < this.allValues.length; i++) {
-      if ((this.allValues[i] as number) < min) {
-        min = this.allValues[i] as number;
-      }
-
-      if ((this.allValues[i] as number) > max) {
-        max = this.allValues[i] as number;
-      }
+    if (value < this.min) {
+      this.min = value;
     }
-
-    this.min = this.sum === 0 ? 0 : min;
-    this.max = this.sum === 0 ? 0 : max;
-
-    this.median = this.allValues[Math.floor(this.allValues.length / 2)] || 0;
+    if (value > this.max) {
+      this.max = value;
+    }
+    this.sum += value;
     this.average = this.sum === 0 ? 0 : this.sum / this.count;
-
-    this.p95 = this.allValues[Math.floor(this.allValues.length * 0.95)] || 0;
   }
 }
 
@@ -204,14 +183,9 @@ function KeysProfileToPrettyPrintObject(keysProfile: KeysProfile[], calculateOve
 }
 
 function ValueStatsToPrettyPrintObject(valueStats: ValueStats[]): string[][] {
-  // First, calculate all the valueStats
-  for (let i = 0; i < valueStats.length; i++) {
-    valueStats[i]?.calculate();
-  }
-
   const data = [];
   // First, write the headers to the first row
-  data.push(["Prefix", "Count", "Total", "Min", "Max", "Median", "Average"]);
+  data.push(["Prefix", "Count", "Total", "Min", "Max", "Average"]);
 
   // Then, for each prefix, write a row with the prefix and the count, key bytes, and value bytes
   // for that prefix
@@ -224,7 +198,6 @@ function ValueStatsToPrettyPrintObject(valueStats: ValueStats[]): string[][] {
         formatNumber(valueStats[i]?.sum),
         formatNumber(valueStats[i]?.min),
         formatNumber(valueStats[i]?.max),
-        formatNumber(valueStats[i]?.median),
         formatNumber(valueStats[i]?.average),
       ]);
     }
@@ -405,9 +378,12 @@ export async function profileStorageUsed(rocksDB: RocksDB, fidProfileFileName?: 
     csvStream.write("FID,");
     // For each valuestat, write the headers, prefixing the label
     for (let i = 1; i < valueStats.length; i++) {
+      if (i === 5) {
+        // Ignore signer key
+        continue;
+      }
       csvStream.write(`Count_${valueStats[i]?.label},Sum_${valueStats[i]?.label},Min_${valueStats[i]?.label},`);
-      csvStream.write(`Max_${valueStats[i]?.label},Median_${valueStats[i]?.label},Average_${valueStats[i]?.label},`);
-      csvStream.write(`P95_${valueStats[i]?.label},`);
+      csvStream.write(`Max_${valueStats[i]?.label},Average_${valueStats[i]?.label},`);
     }
     csvStream.write("\n");
 
@@ -420,11 +396,23 @@ export async function profileStorageUsed(rocksDB: RocksDB, fidProfileFileName?: 
 
       // Go over each valuestat in the fidprofile and calculate the stats
       for (let i = 1; i < fidProfile.length; i++) {
-        fidProfile[i]?.calculate();
+        if (i === 5) {
+          // Ignore signer key
+          continue;
+        }
+
+        const prettyPrint = (num: number | undefined) => {
+          if (num === Number.MAX_SAFE_INTEGER || num === Number.MIN_SAFE_INTEGER) return "";
+          return num?.toString() || "";
+        };
 
         // Write the stats to the CSV file
-        csvStream.write(`${fidProfile[i]?.count},${fidProfile[i]?.sum},${fidProfile[i]?.min},${fidProfile[i]?.max},`);
-        csvStream.write(`${fidProfile[i]?.median},${fidProfile[i]?.average},${fidProfile[i]?.p95},`);
+        csvStream.write(
+          `${prettyPrint(fidProfile[i]?.count)},${prettyPrint(fidProfile[i]?.sum)},${prettyPrint(
+            fidProfile[i]?.min,
+          )},${prettyPrint(fidProfile[i]?.max)},`,
+        );
+        csvStream.write(`${prettyPrint(fidProfile[i]?.average)},`);
       }
 
       // End the line
