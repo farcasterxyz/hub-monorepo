@@ -295,6 +295,8 @@ export enum ReactionType {
   LIKE = 1,
   /** RECAST - Share target cast to the user's audience */
   RECAST = 2,
+  /** DISLIKE - Dislike/downvote the target cast */
+  DISLIKE = 3,
 }
 
 export function reactionTypeFromJSON(object: any): ReactionType {
@@ -308,6 +310,9 @@ export function reactionTypeFromJSON(object: any): ReactionType {
     case 2:
     case "REACTION_TYPE_RECAST":
       return ReactionType.RECAST;
+    case 3:
+    case "REACTION_TYPE_DISLIKE":
+      return ReactionType.DISLIKE;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum ReactionType");
   }
@@ -321,6 +326,8 @@ export function reactionTypeToJSON(object: ReactionType): string {
       return "REACTION_TYPE_LIKE";
     case ReactionType.RECAST:
       return "REACTION_TYPE_RECAST";
+    case ReactionType.DISLIKE:
+      return "REACTION_TYPE_DISLIKE";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum ReactionType");
   }

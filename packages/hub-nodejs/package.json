@@ -33,12 +33,15 @@
     "lint:ci": "biome ci src/ examples/",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:ci": "ENVIRONMENT=test NODE_OPTIONS=--experimental-vm-modules jest --ci --forceExit --coverage",
-    "prepublishOnly": "yarn run build"
+    "prepublishOnly": "yarn run build",
+    "test-script": "tsx src/scripts/index.ts",
+    "start:chain": "yarn hardhat node --config hardhat.config.cjs"
   },
   "devDependencies": {
     "@faker-js/faker": "^7.6.0",
     "biome-config-custom": "*",
-    "ts-proto": "^1.146.0"
+    "ts-proto": "^1.146.0",
+    "hardhat": "^2.19.2"
   },
   "publishConfig": {
     "access": "public"

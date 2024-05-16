@@ -20,8 +20,8 @@ services:
       - '2283:2283'
     command:
       [
-	"node", 
-	"build/cli.js", 
+	"node",
+	"build/cli.js",
 	"start",
         "--gossip-port",
         "2282",
@@ -29,6 +29,8 @@ services:
         "2283",
         "--eth-mainnet-rpc-url",
         "$ETH_MAINNET_RPC_URL",
+        "--l2-rpc-url",
+        "$OPTIMISM_L2_RPC_URL",
         "--network",
         "3",
         "--db-name",
@@ -37,7 +39,10 @@ services:
         "hubble1",
         "--id",
         "$TEST_HUB1_ID",
-        "--gossip-metrics-enabled"
+        "--l2-resync-events",
+        "$L2_RESYNC_EVENTS",
+        "--l2-first-block",
+        "$L2_FIRST_BLOCK"
       ]
     volumes:
       - ./apps/hubble/.hub:/home/node/app/apps/hubble/.hub
@@ -51,8 +56,8 @@ services:
       - '2285:2285'
     command:
       [
-	"node", 
-	"build/cli.js", 
+	"node",
+	"build/cli.js",
         "start",
         "--gossip-port",
         "2284",
@@ -60,6 +65,8 @@ services:
         "2285",
         "--eth-mainnet-rpc-url",
         "$ETH_MAINNET_RPC_URL",
+        "--l2-rpc-url",
+        "$OPTIMISM_L2_RPC_URL",
         "--network",
         "3",
         "-b",
@@ -69,7 +76,11 @@ services:
         "--process-file-prefix",
         "hubble2",
         "--id",
-        "$TEST_HUB2_ID"
+        "$TEST_HUB2_ID",
+        "--l2-resync-events",
+        "$L2_RESYNC_EVENTS",
+        "--l2-first-block",
+        "$L2_FIRST_BLOCK"
       ]
     volumes:
       - ./apps/hubble/.hub:/home/node/app/apps/hubble/.hub

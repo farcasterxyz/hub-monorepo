@@ -36,7 +36,7 @@ message MessageData {
     LinkBody link_body = 14;
     UserNameProof username_proof_body = 15;
     FrameActionBody frame_action_body = 16;
-    
+
     // Compaction messages
     LinkCompactStateBody link_compact_state_body = 17;
   } // Properties specific to the MessageType
@@ -144,6 +144,7 @@ enum ReactionType {
   REACTION_TYPE_NONE = 0;
   REACTION_TYPE_LIKE = 1; // Like the target cast
   REACTION_TYPE_RECAST = 2; // Share target cast to the user's audience
+  REACTION_TYPE_DISLIKE = 3; // Dislike/downvote the target cast
 }
 
 /** Type of Protocol to disambiguate verification addresses */
