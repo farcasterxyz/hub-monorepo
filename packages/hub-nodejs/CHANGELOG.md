@@ -1,5 +1,13 @@
 # @farcaster/hub-nodejs
 
+## 0.11.12
+
+### Patch Changes
+
+- c261fba6: added approxSize to getInfo()
+- Updated dependencies [c261fba6]
+  - @farcaster/core@0.14.12
+
 ## 0.11.11
 
 ### Patch Changes

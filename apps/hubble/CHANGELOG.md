@@ -1,5 +1,16 @@
 # @farcaster/hubble
 
+## 1.12.2
+
+### Patch Changes
+
+- 8e7dec10: fix: Fix incorrect link message padding
+- c261fba6: added approxSize to getInfo()
+- 0e342af3: fix: Fetch previous snapshot if current db one is not present
+- 8c759d66: fix: Throttle pruning so hub is not overloaded
+- Updated dependencies [c261fba6]
+  - @farcaster/hub-nodejs@0.11.12
+
 ## 1.12.1
 
 ### Patch Changes
