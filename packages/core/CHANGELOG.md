@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.14.12
+
+### Patch Changes
+
+- c261fba6: added approxSize to getInfo()
+
 ## 0.14.11
 
 ### Patch Changes
