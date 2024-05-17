@@ -15,7 +15,7 @@ concurrency:
 jobs:
   build-image:
     timeout-minutes: 10
-    runs-on: 'warp-ubuntu-latest-arm64-32x'
+    runs-on: 'warp-ubuntu-latest-arm64-16x'
 
     steps:
       - uses: actions/checkout@v4
@@ -59,9 +59,9 @@ jobs:
       matrix:
         include:
           - node_version: 20
-            runs_on: 'warp-ubuntu-latest-x64-32x'
+            runs_on: 'warp-ubuntu-latest-x64-16x'
           - node_version: 21
-            runs_on: 'warp-ubuntu-latest-arm64-32x'
+            runs_on: 'warp-ubuntu-latest-arm64-16x'
 
     runs-on: ${{ matrix.runs_on }}
     name: test (${{ matrix.node_version }})
