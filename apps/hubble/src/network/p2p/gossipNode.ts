@@ -30,6 +30,9 @@ import EventEmitter from "events";
 import RocksDB from "../../storage/db/rocksdb.js";
 import { RootPrefix } from "../../storage/db/types.js";
 import { sleep } from "../../utils/crypto.js";
+import fs from "fs";
+import readline from "readline";
+import { RUN_MODE } from "../../run_mode.js";
 
 /** The maximum number of pending merge messages before we drop new incoming gossip or sync messages. */
 export const MAX_SYNCTRIE_QUEUE_SIZE = 100_000;
@@ -545,7 +548,34 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     this._nodeEvents?.addListener("peer:discovery", (detail) => {
       log.info({ peer: detail }, "Discovered peer");
     });
+
+    if (RUN_MODE === "replay") {
+      setTimeout(async () => {
+        const gossipStreamReader = fs.createReadStream("gossip_log.json");
+        const gossipStreamLines = readline.createInterface({
+          input: gossipStreamReader,
+          crlfDelay: Infinity,
+        });
+
+        gossipStreamLines.on("line", (encoded_gossip: string) => {
+          const json = JSON.parse(encoded_gossip);
+          const data = new Uint8Array(Buffer.from(json.data, "base64"));
+          const source = json.source ? peerIdFromString(json.source) : null;
+          const msgId = json.msgId;
+          const decoded = GossipNode.decodeMessage(data);
+
+          this.emit("message", "topic", decoded, source as PeerId, msgId);
+        });
+      }, 1000);
+    }
+
+    const gossipStreamWriter = RUN_MODE === "record" ? fs.createWriteStream("gossip_log.json", { flags: "a" }) : null;
+
     this._nodeEvents?.addListener("gossipsub:message", (detail) => {
+      if (RUN_MODE === "replay") {
+        return;
+      }
+
       log.debug({
         identity: this.identity,
         gossipMessageId: detail.msgId,
@@ -554,7 +584,6 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       });
 
       statsd().increment(`gossip.${detail.msg.topic}.messages`);
-
       // ignore messages not in our topic lists (e.g. GossipSub peer discovery messages)
       if (this.gossipTopics().includes(detail.msg.topic)) {
         try {
@@ -564,15 +593,27 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
           } else {
             data = Buffer.from(Object.values(detail.msg.data as unknown as Record<string, number>));
           }
-
           statsd().gauge("gossip.message_size_bytes", data.length, { topic: detail.msg.topic });
-
           const tags: { [key: string]: string } = {
             topic: detail.msg.topic,
           };
           const decoded = GossipNode.decodeMessage(data);
           if (decoded.isOk()) {
             tags["message_type"] = messageTypeToName(decoded.value.message?.data?.type) || "unknown-message-type";
+          }
+
+          if (gossipStreamWriter !== null) {
+            const peer = detail.propagationSource as PeerId | null;
+
+            const recordData = {
+              data: Buffer.from(data).toString("base64"),
+              source: peer ? peer.toString() : null,
+              msgId: detail.msgId,
+            };
+
+            const recordJson = JSON.stringify(recordData);
+            gossipStreamWriter.write(`${recordJson}\n`);
+            // console.log("record data", recordJson);
           }
 
           this.emit("message", detail.msg.topic, decoded, detail.propagationSource, detail.msgId);

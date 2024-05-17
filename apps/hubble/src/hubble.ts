@@ -95,6 +95,7 @@ import { MerkleTrie } from "./network/sync/merkleTrie.js";
 import { DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT } from "./defaultConfig.js";
 import { diagnosticReporter } from "./utils/diagnosticReport.js";
 import { startupCheck, StartupCheckStatus } from "./utils/startupCheck.js";
+import { RUN_MODE } from "./run_mode.js";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
@@ -427,17 +428,23 @@ export class Hub implements HubInterface {
 
     const opMainnetRpcUrls = options.l2RpcUrl.split(",");
     const opTransports = opMainnetRpcUrls.map((url) => http(url, { retryCount: 3, retryDelay: 500 }));
-    const opClient = createPublicClient({
-      chain: optimism,
-      transport: fallback(opTransports, { rank: options.rankRpcs ?? false }),
-    });
+    const opClient =
+      RUN_MODE === "replay"
+        ? undefined
+        : createPublicClient({
+            chain: optimism,
+            transport: fallback(opTransports, { rank: options.rankRpcs ?? false }),
+          });
 
     const ethMainnetRpcUrls = options.ethMainnetRpcUrl.split(",");
     const transports = ethMainnetRpcUrls.map((url) => http(url, { retryCount: 3, retryDelay: 500 }));
-    const mainnetClient = createPublicClient({
-      chain: mainnet,
-      transport: fallback(transports, { rank: options.rankRpcs ?? false }),
-    });
+    const mainnetClient =
+      RUN_MODE === "replay"
+        ? undefined
+        : createPublicClient({
+            chain: mainnet,
+            transport: fallback(transports, { rank: options.rankRpcs ?? false }),
+          });
     this.engine = new Engine(this.rocksDB, options.network, eventHandler, mainnetClient, opClient);
 
     const profileSync = options.profileSync ?? false;
@@ -749,8 +756,10 @@ export class Hub implements HubInterface {
       await this.adminServer.start(this.options.adminServerHost ?? "127.0.0.1");
     }
 
-    await this.l2RegistryProvider.start();
-    await this.fNameRegistryEventsProvider.start();
+    if (RUN_MODE === "normal") {
+      await this.l2RegistryProvider.start();
+      await this.fNameRegistryEventsProvider.start();
+    }
 
     const bootstrapAddrs = this.options.bootstrapAddrs ?? [];
 
@@ -775,13 +784,15 @@ export class Hub implements HubInterface {
     await this.registerEventHandlers();
 
     // Start cron tasks
-    this.pruneMessagesJobScheduler.start(this.options.pruneMessagesJobCron);
-    this.periodSyncJobScheduler.start();
-    this.pruneEventsJobScheduler.start(this.options.pruneEventsJobCron);
-    this.checkFarcasterVersionJobScheduler.start();
-    this.validateOrRevokeMessagesJobScheduler.start();
-    this.gossipContactInfoJobScheduler.start("*/1 * * * *"); // Every minute
-    this.checkIncomingPortsJobScheduler.start();
+    if (RUN_MODE === "normal") {
+      this.pruneMessagesJobScheduler.start(this.options.pruneMessagesJobCron);
+      this.periodSyncJobScheduler.start();
+      this.pruneEventsJobScheduler.start(this.options.pruneEventsJobCron);
+      this.checkFarcasterVersionJobScheduler.start();
+      this.validateOrRevokeMessagesJobScheduler.start();
+      this.gossipContactInfoJobScheduler.start("*/1 * * * *"); // Every minute
+      this.checkIncomingPortsJobScheduler.start();
+    }
 
     // Mainnet only jobs
     if (this.options.network === FarcasterNetwork.MAINNET) {
@@ -901,7 +912,7 @@ export class Hub implements HubInterface {
     }
 
     delta = snapshotMetadata.numMessages - currentItemCount;
-    if (delta > limit) {
+    if (delta > limit && RUN_MODE === "normal") {
       log.info({ delta, limit, current_item_count: currentItemCount }, "catchup sync using snapshot");
       shouldCatchupSync = true;
     }
@@ -1251,7 +1262,7 @@ export class Hub implements HubInterface {
 
   private async handleGossipMessage(gossipMessage: GossipMessage, source: PeerId, msgId: string): HubAsyncResult<void> {
     let reportedAsInvalid = false;
-    if (gossipMessage.timestamp) {
+    if (gossipMessage.timestamp && RUN_MODE !== "replay") {
       // If message is older than seenTTL, we will try to merge it, but report it as invalid so it doesn't
       // propogate across the network
       const cutOffTime = getFarcasterTime().unwrapOr(0) - GOSSIP_SEEN_TTL / 1000;
@@ -1620,6 +1631,10 @@ export class Hub implements HubInterface {
     await this.gossipNode.subscribe(this.gossipNode.primaryTopic());
     await this.gossipNode.subscribe(this.gossipNode.contactInfoTopic());
 
+    let firstMessageTs = 0;
+    let lastMessageTs = 0;
+    let messageCount = 0;
+
     this.gossipNode.on("message", async (_topic, message, source, msgId) => {
       await message.match(
         async (gossipMessage: GossipMessage) => {
@@ -1629,7 +1644,17 @@ export class Hub implements HubInterface {
           log.error(error, "failed to decode message");
         },
       );
+
+      messageCount += 1;
+      lastMessageTs = Date.now();
+      if (firstMessageTs === 0) {
+        firstMessageTs = lastMessageTs;
+      }
     });
+
+    setInterval(() => {
+      console.log(`Perf| count: ${messageCount}, ms: ${lastMessageTs - firstMessageTs}`);
+    }, 1000);
 
     this.gossipNode.on("peerConnect", async () => {
       // When we connect to a new node, gossip out our contact info 1 second later.

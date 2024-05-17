@@ -19,6 +19,7 @@ import { makeFidKey, makeMessagePrimaryKey, makeTsHash, typeToSetPostfix } from 
 import { bytesCompare, getFarcasterTime, HubAsyncResult } from "@farcaster/core";
 import { forEachOnChainEvent } from "../db/onChainEvent.js";
 import { addProgressBar } from "../../utils/progressBars.js";
+import { RUN_MODE } from "../../run_mode.js";
 
 const MAX_PENDING_MESSAGE_COUNT_SCANS = 100;
 
@@ -103,7 +104,7 @@ export class StorageCache {
     }
 
     if (this._counts.get(key) === undefined && forceFetch) {
-      if (this._pendingMessageCountScans.size > MAX_PENDING_MESSAGE_COUNT_SCANS) {
+      if (this._pendingMessageCountScans.size > MAX_PENDING_MESSAGE_COUNT_SCANS && RUN_MODE !== "replay") {
         return err(new HubError("unavailable.storage_failure", "too many pending message count scans"));
       }
 
