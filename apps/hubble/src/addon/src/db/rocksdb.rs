@@ -102,11 +102,15 @@ impl RocksDB {
     }
 
     pub fn open(&self) -> Result<(), HubError> {
-        let mut db_lock = self.db.write().unwrap();
-
         // Create RocksDB options
         let mut opts = Options::default();
         opts.create_if_missing(true); // Creates a database if it does not exist
+
+        self.open_with_opts(opts)
+    }
+
+    pub fn open_with_opts(&self, opts: Options) -> Result<(), HubError> {
+        let mut db_lock = self.db.write().unwrap();
 
         let mut tx_db_opts = rocksdb::TransactionDBOptions::default();
         tx_db_opts.set_default_lock_timeout(5000); // 5 seconds

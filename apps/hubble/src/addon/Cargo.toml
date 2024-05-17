@@ -7,7 +7,7 @@ exclude = ["index.node"]
 build = "build.rs"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "lib"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -44,3 +44,7 @@ glob = "0.3.1"
 version = "1.0.0"
 default-features = false
 features = [ "futures", "napi-6"]
+
+[[bin]]
+name = "migrate-db"
+path = "bin/migrate_db.rs"
