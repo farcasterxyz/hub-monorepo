@@ -1,6 +1,6 @@
 use crate::db::multi_chunk_writer::MultiChunkWriter;
 use crate::logger::LOGGER;
-use crate::statsd::statsd;
+use crate::metrics::statsd;
 use crate::store::{
     self, get_db, get_iterator_options, hub_error_to_js_throw, increment_vec_u8, HubError,
     PageOptions, PAGE_SIZE_MAX,

@@ -27,6 +27,10 @@ pub struct UserDataStoreDef {
 }
 
 impl StoreDef for UserDataStoreDef {
+    fn debug_name(&self) -> &'static str {
+        "UserDataStore"
+    }
+
     fn postfix(&self) -> u8 {
         UserPostfix::UserDataMessage as u8
     }

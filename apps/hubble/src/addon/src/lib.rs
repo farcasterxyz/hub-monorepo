@@ -11,7 +11,7 @@ use threadpool::ThreadPool;
 
 mod db;
 mod logger;
-mod statsd;
+mod metrics;
 mod store;
 mod trie;
 
@@ -89,7 +89,7 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("ed25519_verify", ed25519_verify)?;
     cx.export_function("blake3_20", js_blake3_20)?;
 
-    cx.export_function("createStatsdClient", statsd::js_create_statsd_client)?;
+    cx.export_function("createStatsdClient", metrics::js_create_statsd_client)?;
 
     cx.export_function("flushLogBuffer", logger::js_flush_log_buffer)?;
     cx.export_function("setLogLevel", logger::js_set_log_level)?;
@@ -240,6 +240,8 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
 
     // Register Merkle Trie methods
     MerkleTrie::register_js_methods(&mut cx)?;
+
+    crate::metrics::register_counters_js(&mut cx)?;
 
     Ok(())
 }

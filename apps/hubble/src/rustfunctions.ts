@@ -743,3 +743,8 @@ export const rsMerkleTrieRootHash = async (trie: RustMerkleTrie): Promise<string
 export const rsMerkleTrieUnloadChildren = async (trie: RustMerkleTrie): Promise<void> => {
   return await lib.merkleTrieUnloadChildren.call(trie);
 };
+
+export const rsCountersString = (): String => {
+  const store = lib.countersString();
+  return store as String;
+};
