@@ -57,7 +57,7 @@ import { MaxPriorityQueue } from "@datastructures-js/priority-queue";
 // attempt to sync messages that are older than this time.
 const SYNC_THRESHOLD_IN_SECONDS = 10;
 
-// The maximum number of nodes to enque in the work queue
+// The maximum number of nodes to enqueue in the work queue
 const MAX_WORK_QUEUE_SIZE = 100_000;
 
 export const FIRST_SYNC_DELAY = 30 * 1000; // How long to wait after startup to start syncing

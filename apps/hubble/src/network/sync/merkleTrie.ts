@@ -293,7 +293,7 @@ class MerkleTrie {
       });
 
       if (this._trieUpdatePending) {
-        // Nothing to do, it will be processed at the next oppurtunity
+        // Nothing to do, it will be processed at the next opportunity
       } else {
         // Trigger the update
         void this.doBatchUpdate();
@@ -325,7 +325,7 @@ class MerkleTrie {
       });
 
       if (this._trieUpdatePending) {
-        // Nothing to do, it will be processed at the next oppurtunity
+        // Nothing to do, it will be processed at the next opportunity
       } else {
         // Trigger the update
         void this.doBatchUpdate();
