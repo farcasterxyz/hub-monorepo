@@ -41,6 +41,8 @@ export const processUserNameProofAdd = async (proof: UserNameProof, trx: DBTrans
     )
     .execute();
 
+  await trx.deleteFrom("fnames").where("username", "=", username).execute();
+
   await trx
     .insertInto("fnames")
     .values({
@@ -62,7 +64,8 @@ export const processUserNameProofRemove = async (proof: UserNameProof, trx: DBTr
     .deleteFrom("usernameProofs")
     .where("username", "=", username)
     .where("timestamp", "=", farcasterTimeToDate(proof.timestamp))
+    .where("fid", "=", proof.fid)
     .execute();
 
-  await trx.deleteFrom("fnames").where("username", "=", username).execute();
+  await trx.deleteFrom("fnames").where("username", "=", username).where("fid", "=", proof.fid).execute();
 };
