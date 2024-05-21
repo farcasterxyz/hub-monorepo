@@ -52,7 +52,7 @@ import fs from "fs";
 import { Worker } from "worker_threads";
 import { makeUserKey, messageDecode, typeToSetPostfix } from "../db/message.js";
 import RocksDB from "../db/rocksdb.js";
-import { UserPostfix } from "../db/types.js";
+import { UserMessagePostfixMax, UserPostfix } from "../db/types.js";
 import CastStore from "../stores/castStore.js";
 import LinkStore from "../stores/linkStore.js";
 import ReactionStore from "../stores/reactionStore.js";
@@ -452,7 +452,12 @@ class Engine extends TypedEmitter<EngineEvents> {
 
     let revokedCount = 0;
 
-    const prefix = makeUserKey(fid);
+    const userPrefix = makeUserKey(fid);
+    const maxPrefix = Buffer.concat([userPrefix, Buffer.from([UserMessagePostfixMax + 1])]);
+    const iteratorOptions = {
+      gte: userPrefix,
+      lt: maxPrefix,
+    };
 
     const revokeMessage = async (message: Message): HubAsyncResult<number | undefined> => {
       if (!message.data) {
@@ -487,16 +492,9 @@ class Engine extends TypedEmitter<EngineEvents> {
       }
     };
 
-    await this._db.forEachIteratorByPrefix(prefix, async (key, value) => {
+    await this._db.forEachIteratorByOpts(iteratorOptions, async (_key, value) => {
       if (!value) {
         return false;
-      }
-
-      const type = key.readUint8(prefix.length);
-
-      // We assume the iterator runs sequentially and thus we can stop when we pass 85, as that is the max non-index type
-      if (type > 85) {
-        return true;
       }
 
       const decoded = messageDecode(new Uint8Array(value));

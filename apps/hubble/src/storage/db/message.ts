@@ -213,20 +213,19 @@ export const getAllMessagesBySigner = async (
   signer: Uint8Array,
   messageType?: MessageType,
 ): Promise<Message[]> => {
-  const prefix = makeUserKey(fid);
+  const userPrefix = makeUserKey(fid);
+  const maxPrefix = Buffer.concat([userPrefix, Buffer.from([UserMessagePostfixMax + 1])]);
+  const iteratorOptions = {
+    gte: userPrefix,
+    lt: maxPrefix,
+  };
+
   const messages: Message[] = [];
 
   // Loop through all keys that start with the given prefix
-  await db.forEachIteratorByPrefix(prefix, (key, value) => {
+  await db.forEachIteratorByOpts(iteratorOptions, (key, value) => {
     if (!value) {
       return false;
-    }
-
-    const type = key.readUint8(prefix.length);
-
-    // We assume the iterator runs sequentially and thus we can stop when we pass 85, as that is the max non-index type
-    if (type > 85) {
-      return true;
     }
 
     const decoded = messageDecode(new Uint8Array(value));
