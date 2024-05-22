@@ -438,7 +438,14 @@ export class Hub implements HubInterface {
       chain: mainnet,
       transport: fallback(transports, { rank: options.rankRpcs ?? false }),
     });
-    this.engine = new Engine(this.rocksDB, options.network, eventHandler, mainnetClient, opClient);
+    this.engine = new Engine(
+      this.rocksDB,
+      options.network,
+      eventHandler,
+      mainnetClient,
+      opClient,
+      this.fNameRegistryEventsProvider,
+    );
 
     const profileSync = options.profileSync ?? false;
     this.syncEngine = new SyncEngine(

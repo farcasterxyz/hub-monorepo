@@ -32,7 +32,7 @@ import {
   VerificationAddAddressMessage,
   recreateSolanaClaimMessage,
 } from "@farcaster/hub-nodejs";
-import { err, Ok, ok } from "neverthrow";
+import { err, Ok, ok, ResultAsync } from "neverthrow";
 import { jestRocksDB } from "../db/jestUtils.js";
 import Engine from "../engine/index.js";
 import { sleep } from "../../utils/crypto.js";
@@ -43,15 +43,50 @@ import { setReferenceDateForTest } from "../../utils/versions.js";
 import { getUserNameProof } from "../db/nameRegistryEvent.js";
 import { publicClient } from "../../test/utils.js";
 import { jest } from "@jest/globals";
+import { FNameRegistryEventsProvider, FNameTransfer } from "../../eth/fnameRegistryEventsProvider.js";
+import { MockFnameRegistryClient } from "../../test/mocks.js";
+import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 
 const db = jestRocksDB("protobufs.engine.test");
 const network = FarcasterNetwork.TESTNET;
-const engine = new Engine(db, network, undefined, publicClient);
+
+const account = privateKeyToAccount(generatePrivateKey());
+const fNameClient = new MockFnameRegistryClient(account);
+
+// biome-ignore lint/style/useConst: cannot use lint as we need a reference before instantiation
+let engine: Engine;
+
+const fNameProvider = new FNameRegistryEventsProvider(
+  fNameClient,
+  // Mock version of the hub interface
+  {
+    submitUserNameProof: (proof) => engine.mergeUserNameProof(proof),
+    getHubState: () => ResultAsync.fromSafePromise(Promise.resolve({ lastFnameProof: 0 })),
+    putHubState: () => undefined,
+    // biome-ignore lint/suspicious/noExplicitAny: mock doesnt specify full interface
+  } as any,
+  false,
+);
+engine = new Engine(db, network, undefined, publicClient, undefined, fNameProvider);
 
 const fid = Factories.Fid.build();
 const fname = Factories.Fname.build();
 const signer = Factories.Ed25519Signer.build();
 const custodySigner = Factories.Eip712Signer.build();
+
+const transferEvents: FNameTransfer[] = [
+  {
+    id: 1,
+    username: Buffer.from(fname).toString("utf-8"),
+    from: 0,
+    to: fid,
+    timestamp: 1686291736947,
+    owner: account.address,
+    server_signature: "",
+  },
+];
+
+fNameClient.setTransfersToReturn([[], transferEvents]);
 
 let custodySignerKey: Uint8Array;
 let signerKey: Uint8Array;
@@ -67,6 +102,10 @@ let verificationAdd: VerificationAddAddressMessage;
 let userDataAdd: UserDataAddMessage;
 
 beforeAll(async () => {
+  // This forces the provider to fetch the signer address
+  await fNameProvider.start();
+  await fNameProvider.stop();
+
   signerKey = (await signer.getSignerKey())._unsafeUnwrap();
   custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
   custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid }, { transient: { to: custodySignerKey } });
@@ -463,6 +502,10 @@ describe("mergeMessage", () => {
           });
 
           await expect(engine.mergeUserNameProof(proof)).resolves.toBeInstanceOf(Ok);
+          await expect(engine.mergeMessage(usernameAdd)).resolves.toBeInstanceOf(Ok);
+        });
+
+        test("retries and succeeds when username proof has not been merged yet", async () => {
           await expect(engine.mergeMessage(usernameAdd)).resolves.toBeInstanceOf(Ok);
         });
 
