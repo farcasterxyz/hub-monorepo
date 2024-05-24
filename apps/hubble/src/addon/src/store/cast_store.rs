@@ -41,7 +41,7 @@ type Parent = protos::cast_add_body::Parent;
  * 2. Highest timestamp wins
  * 3. Highest lexicographic hash wins
  *
- * CastMessages are stored ordinally in RocksDB indexed by a unique key `fid:tsHash` which makes
+ * CastMessages are stored ordinarily in RocksDB indexed by a unique key `fid:tsHash` which makes
  * truncating a user's earliest messages easy. Indices are built to lookup cast adds in the adds
  * set, cast removes in the removes set, cast adds that are the children of a cast add, and cast
  * adds that mention a specific user. The key-value entries created are:
