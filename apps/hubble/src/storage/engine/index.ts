@@ -917,7 +917,7 @@ class Engine extends TypedEmitter<EngineEvents> {
 
       const result = await ResultAsync.fromPromise(this._userDataStore.getUserNameProof(name), (e) => e as HubError);
 
-      if (result.isErr() && retries > 0 && this._fNameRegistryEventsProvider) {
+      if (result.isErr() && result.error.errCode === "not_found" && retries > 0 && this._fNameRegistryEventsProvider) {
         await this._fNameRegistryEventsProvider.retryTransferByName(name);
         return this.getUserNameProof(name, retries - 1);
       }

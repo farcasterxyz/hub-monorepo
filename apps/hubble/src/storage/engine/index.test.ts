@@ -60,7 +60,7 @@ const fNameProvider = new FNameRegistryEventsProvider(
   fNameClient,
   // Mock version of the hub interface
   {
-    submitUserNameProof: (proof) => engine.mergeUserNameProof(proof),
+    submitUserNameProof: (proof: UserNameProof) => engine.mergeUserNameProof(proof),
     getHubState: () => ResultAsync.fromSafePromise(Promise.resolve({ lastFnameProof: 0 })),
     putHubState: () => undefined,
     // biome-ignore lint/suspicious/noExplicitAny: mock doesnt specify full interface
