@@ -207,23 +207,21 @@ export const getPageIteratorOptsByPrefix = (prefix: Buffer, pageOptions: PageOpt
 };
 
 /** Get an array of messages for a given fid and signer */
-export const getAllMessagesBySigner = async (
+export const forEachMessageBySigner = async (
   db: RocksDB,
   fid: number,
   signer: Uint8Array,
+  cb: (message: Message) => Promise<void>,
   messageType?: MessageType,
-): Promise<Message[]> => {
+): Promise<void> => {
   const userPrefix = makeUserKey(fid);
   const maxPrefix = Buffer.concat([userPrefix, Buffer.from([UserMessagePostfixMax + 1])]);
   const iteratorOptions = {
     gte: userPrefix,
     lt: maxPrefix,
   };
-
-  const messages: Message[] = [];
-
   // Loop through all keys that start with the given prefix
-  await db.forEachIteratorByOpts(iteratorOptions, (key, value) => {
+  await db.forEachIteratorByOpts(iteratorOptions, async (key, value) => {
     if (!value) {
       return false;
     }
@@ -233,13 +231,11 @@ export const getAllMessagesBySigner = async (
     const isCorrectType = messageType === undefined || messageType === decoded.data?.type;
 
     if (isCorrectType && bytesCompare(decoded.signer, signer) === 0) {
-      messages.push(decoded);
+      await cb(decoded);
     }
 
     return false;
   });
-
-  return messages;
 };
 
 export const putMessageTransaction = (txn: RocksDbTransaction, message: Message): RocksDbTransaction => {

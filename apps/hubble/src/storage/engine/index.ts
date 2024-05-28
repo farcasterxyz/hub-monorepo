@@ -50,7 +50,7 @@ import {
 import { err, ok, ResultAsync } from "neverthrow";
 import fs from "fs";
 import { Worker } from "worker_threads";
-import { makeUserKey, messageDecode, typeToSetPostfix } from "../db/message.js";
+import { forEachMessageBySigner, makeUserKey, messageDecode, typeToSetPostfix } from "../db/message.js";
 import RocksDB from "../db/rocksdb.js";
 import { UserMessagePostfixMax, UserPostfix } from "../db/types.js";
 import CastStore from "../stores/castStore.js";
@@ -492,18 +492,8 @@ class Engine extends TypedEmitter<EngineEvents> {
       }
     };
 
-    await this._db.forEachIteratorByOpts(iteratorOptions, async (_key, value) => {
-      if (!value) {
-        return false;
-      }
-
-      const decoded = messageDecode(new Uint8Array(value));
-
-      if (bytesCompare(decoded.signer, signer) !== 0) {
-        return false;
-      }
-
-      const revokeResult = await revokeMessage(decoded);
+    await forEachMessageBySigner(this._db, fid, signer, async (message) => {
+      const revokeResult = await revokeMessage(message);
       revokeResult.match(
         () => {
           revokedCount += 1;
@@ -515,8 +505,6 @@ class Engine extends TypedEmitter<EngineEvents> {
           );
         },
       );
-
-      return false;
     });
 
     if (revokedCount > 0) {

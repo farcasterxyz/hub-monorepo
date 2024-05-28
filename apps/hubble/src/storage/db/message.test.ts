@@ -5,12 +5,13 @@ import {
   bytesCompare,
   Factories,
   HubError,
+  Message,
 } from "@farcaster/hub-nodejs";
 import { jestRocksDB } from "./jestUtils.js";
 import { TRUE_VALUE, UserPostfix } from "./types.js";
 import {
   getAllMessagesByFid,
-  getAllMessagesBySigner,
+  forEachMessageBySigner,
   getManyMessages,
   getMessage,
   makeMessagePrimaryKey,
@@ -163,11 +164,25 @@ describe("getAllMessagesByFid", () => {
 });
 
 describe("getAllMessagesBySigner", () => {
+  const getAllMessagesBySigner = async (fid: number, signer: Uint8Array, type?: MessageType) => {
+    const messages: Message[] = [];
+    await forEachMessageBySigner(
+      db,
+      fid,
+      signer,
+      async (message) => {
+        messages.push(message);
+      },
+      type,
+    );
+    return messages;
+  };
+
   test("succeeds", async () => {
     await putMessage(db, castMessage);
     await putMessage(db, reactionMessage);
-    await expect(getAllMessagesBySigner(db, castMessage.data.fid, castMessage.signer)).resolves.toEqual([castMessage]);
-    await expect(getAllMessagesBySigner(db, reactionMessage.data.fid, reactionMessage.signer)).resolves.toEqual([
+    await expect(getAllMessagesBySigner(castMessage.data.fid, castMessage.signer)).resolves.toEqual([castMessage]);
+    await expect(getAllMessagesBySigner(reactionMessage.data.fid, reactionMessage.signer)).resolves.toEqual([
       reactionMessage,
     ]);
   });
@@ -176,16 +191,16 @@ describe("getAllMessagesBySigner", () => {
     await putMessage(db, castMessage);
     await putMessage(db, reactionMessage);
     await expect(
-      getAllMessagesBySigner(db, castMessage.data.fid, castMessage.signer, MessageType.CAST_ADD),
+      getAllMessagesBySigner(castMessage.data.fid, castMessage.signer, MessageType.CAST_ADD),
     ).resolves.toEqual([castMessage]);
     await expect(
-      getAllMessagesBySigner(db, castMessage.data.fid, castMessage.signer, MessageType.REACTION_ADD),
+      getAllMessagesBySigner(castMessage.data.fid, castMessage.signer, MessageType.REACTION_ADD),
     ).resolves.toEqual([]);
   });
 
   test("succeeds with no results", async () => {
-    await expect(
-      getAllMessagesBySigner(db, castMessage.data.fid, Factories.Ed25519PPublicKey.build()),
-    ).resolves.toEqual([]);
+    await expect(getAllMessagesBySigner(castMessage.data.fid, Factories.Ed25519PPublicKey.build())).resolves.toEqual(
+      [],
+    );
   });
 });
