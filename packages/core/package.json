@@ -24,6 +24,7 @@
     "@noble/hashes": "^1.3.0",
     "neverthrow": "^6.0.0",
     "viem": "^1.12.2",
+    "@faker-js/faker": "^7.6.0",
     "bs58": "^5.0.0"
   },
   "scripts": {
@@ -38,7 +39,6 @@
   },
   "devDependencies": {
     "@ethersproject/abstract-signer": "^5.7.0",
-    "@faker-js/faker": "^7.6.0",
     "@farcaster/fishery": "2.2.3",
     "biome-config-custom": "*",
     "ethers": "^6.6.1",
