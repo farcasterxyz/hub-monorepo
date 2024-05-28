@@ -106,6 +106,8 @@ export enum UserPostfix {
 
   /** Index records (must be 86-255) */
 
+  BySigner = 86, // Index message by its signer
+
   /** CastStore add and remove sets */
   CastAdds = 87,
   CastRemoves = 88,

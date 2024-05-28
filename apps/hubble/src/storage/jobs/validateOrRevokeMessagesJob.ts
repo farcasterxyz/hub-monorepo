@@ -269,6 +269,15 @@ export class ValidateOrRevokeMessagesJobScheduler {
     // Process any remaining results
     await processValidationResults();
 
+    // Gradually delete all the by Signer Indices since it is deprecated
+    const signerIndexPrefix = Buffer.concat([makeUserKey(fid), Buffer.from([UserPostfix.BySigner])]);
+    let bySignerCount = 0;
+    await this._db.forEachIteratorByPrefix(signerIndexPrefix, async (key, value) => {
+      await this._db.del(key);
+      bySignerCount += 1;
+    });
+    logger.info({ fid }, `Deleted ${bySignerCount} bySigner index entries for fid ${fid}`);
+
     return ok(count);
   }
 
