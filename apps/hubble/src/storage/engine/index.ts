@@ -452,13 +452,6 @@ class Engine extends TypedEmitter<EngineEvents> {
 
     let revokedCount = 0;
 
-    const userPrefix = makeUserKey(fid);
-    const maxPrefix = Buffer.concat([userPrefix, Buffer.from([UserMessagePostfixMax + 1])]);
-    const iteratorOptions = {
-      gte: userPrefix,
-      lt: maxPrefix,
-    };
-
     const revokeMessage = async (message: Message): HubAsyncResult<number | undefined> => {
       if (!message.data) {
         return err(new HubError("bad_request.invalid_param", "missing message data"));

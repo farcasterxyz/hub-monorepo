@@ -276,7 +276,9 @@ export class ValidateOrRevokeMessagesJobScheduler {
       await this._db.del(key);
       bySignerCount += 1;
     });
-    logger.info({ fid }, `Deleted ${bySignerCount} bySigner index entries for fid ${fid}`);
+    if (bySignerCount > 0) {
+      logger.info({ fid }, `Deleted ${bySignerCount} bySigner index entries for fid ${fid}`);
+    }
 
     return ok(count);
   }
