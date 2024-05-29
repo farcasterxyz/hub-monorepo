@@ -50,9 +50,9 @@ import {
 import { err, ok, ResultAsync } from "neverthrow";
 import fs from "fs";
 import { Worker } from "worker_threads";
-import { getMessage, getMessagesBySignerPrefix, typeToSetPostfix } from "../db/message.js";
+import { forEachMessageBySigner, makeUserKey, messageDecode, typeToSetPostfix } from "../db/message.js";
 import RocksDB from "../db/rocksdb.js";
-import { TSHASH_LENGTH, UserPostfix } from "../db/types.js";
+import { UserMessagePostfixMax, UserPostfix } from "../db/types.js";
 import CastStore from "../stores/castStore.js";
 import LinkStore from "../stores/linkStore.js";
 import ReactionStore from "../stores/reactionStore.js";
@@ -452,40 +452,32 @@ class Engine extends TypedEmitter<EngineEvents> {
 
     let revokedCount = 0;
 
-    const prefix = getMessagesBySignerPrefix(this._db, fid, signer);
-
-    const revokeMessageByKey = async (key: Buffer): HubAsyncResult<number | undefined> => {
-      const length = key.length;
-      const type = key.readUint8(length - TSHASH_LENGTH - 1);
-      const setPostfix = typeToSetPostfix(type);
-      const tsHash = Uint8Array.from(key.subarray(length - TSHASH_LENGTH));
-      const message = await ResultAsync.fromPromise(
-        getMessage(this._db, fid, setPostfix, tsHash),
-        (e) => e as HubError,
-      );
-      if (message.isErr()) {
-        return err(message.error);
+    const revokeMessage = async (message: Message): HubAsyncResult<number | undefined> => {
+      if (!message.data) {
+        return err(new HubError("bad_request.invalid_param", "missing message data"));
       }
 
-      switch (setPostfix) {
+      const postfix = typeToSetPostfix(message.data.type);
+
+      switch (postfix) {
         case UserPostfix.LinkCompactStateMessage:
         case UserPostfix.LinkMessage: {
-          return this._linkStore.revoke(message.value);
+          return this._linkStore.revoke(message);
         }
         case UserPostfix.ReactionMessage: {
-          return this._reactionStore.revoke(message.value);
+          return this._reactionStore.revoke(message);
         }
         case UserPostfix.CastMessage: {
-          return this._castStore.revoke(message.value);
+          return this._castStore.revoke(message);
         }
         case UserPostfix.UserDataMessage: {
-          return this._userDataStore.revoke(message.value);
+          return this._userDataStore.revoke(message);
         }
         case UserPostfix.VerificationMessage: {
-          return this._verificationStore.revoke(message.value);
+          return this._verificationStore.revoke(message);
         }
         case UserPostfix.UsernameProofMessage: {
-          return this._usernameProofStore.revoke(message.value);
+          return this._usernameProofStore.revoke(message);
         }
         default: {
           return err(new HubError("bad_request.invalid_param", "invalid message type"));
@@ -493,8 +485,8 @@ class Engine extends TypedEmitter<EngineEvents> {
       }
     };
 
-    await this._db.forEachIteratorByPrefix(prefix, async (key) => {
-      const revokeResult = await revokeMessageByKey(key as Buffer);
+    await forEachMessageBySigner(this._db, fid, signer, async (message) => {
+      const revokeResult = await revokeMessage(message);
       revokeResult.match(
         () => {
           revokedCount += 1;

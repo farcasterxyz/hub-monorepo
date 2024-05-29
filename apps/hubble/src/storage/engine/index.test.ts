@@ -31,6 +31,7 @@ import {
   base58ToBytes,
   VerificationAddAddressMessage,
   recreateSolanaClaimMessage,
+  bytesCompare,
 } from "@farcaster/hub-nodejs";
 import { err, Ok, ok } from "neverthrow";
 import { jestRocksDB } from "../db/jestUtils.js";
@@ -1135,7 +1136,9 @@ describe("revokeMessagesBySigner", () => {
     for (const message of signerMessages) {
       await expect(checkMessage(message)).rejects.toThrow();
     }
-    expect(revokedMessages).toEqual(signerMessages);
+    expect(revokedMessages.sort((a, b) => bytesCompare(a.hash, b.hash))).toEqual(
+      signerMessages.sort((a, b) => bytesCompare(a.hash, b.hash)),
+    );
   });
 });
 
@@ -1186,7 +1189,9 @@ describe("with listeners and workers", () => {
 
       expect(revokedMessages).toEqual([]);
       await sleep(200); // Wait for engine to revoke messages
-      expect(revokedMessages).toEqual([castAdd, reactionAdd, linkAdd]);
+      expect(revokedMessages.sort((a, b) => bytesCompare(a.hash, b.hash))).toEqual(
+        [castAdd, reactionAdd, linkAdd].sort((a, b) => bytesCompare(a.hash, b.hash)),
+      );
     });
 
     test("does not revoke UserDataAdd when fname is transferred to different address but same fid", async () => {

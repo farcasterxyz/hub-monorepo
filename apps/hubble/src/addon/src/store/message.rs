@@ -92,7 +92,8 @@ pub enum UserPostfix {
     // NOTE: If you add a new message type, make sure that it is only used to store Message protobufs.
     // If you need to store an index, use one of the UserPostfix values below (>86).
     /** Index records (must be 86-255) */
-    BySigner = 86, // Index message by its signer
+    // Deprecated
+    // BySigner = 86, // Index message by its signer
 
     /** CastStore add and remove sets */
     CastAdds = 87,
@@ -251,19 +252,6 @@ pub fn make_message_primary_key(
     key
 }
 
-fn make_message_by_signer_key(fid: u32, signer: Vec<u8>, r#type: u8, ts_hash: [u8; 24]) -> Vec<u8> {
-    let mut key = Vec::with_capacity(1 + 4 + 1 + 32 + 1 + 24);
-    key.extend_from_slice(&make_user_key(fid));
-    key.push(UserPostfix::BySigner as u8);
-    key.extend_from_slice(&signer);
-    if r#type > 0 {
-        key.push(r#type as u8);
-    }
-    key.extend_from_slice(&ts_hash);
-
-    key
-}
-
 pub fn make_cast_id_key(cast_id: &CastId) -> Vec<u8> {
     let mut key = Vec::with_capacity(4 + HASH_LENGTH);
     key.extend_from_slice(&make_fid_key(cast_id.fid as u32));
@@ -408,15 +396,6 @@ pub fn put_message_transaction(
     );
     txn.put(primary_key, message_encode(&message));
 
-    let by_signer_key = make_message_by_signer_key(
-        message.data.as_ref().unwrap().fid as u32,
-        message.signer.clone(),
-        message.data.as_ref().unwrap().r#type as u8,
-        ts_hash,
-    );
-
-    txn.put(by_signer_key, [TRUE_VALUE].to_vec());
-
     Ok(())
 }
 
@@ -433,14 +412,6 @@ pub fn delete_message_transaction(
         Some(&ts_hash),
     );
     txn.delete(primary_key);
-
-    let by_signer_key = make_message_by_signer_key(
-        message.data.as_ref().unwrap().fid as u32,
-        message.signer.clone(),
-        message.data.as_ref().unwrap().r#type as u8,
-        ts_hash,
-    );
-    txn.delete(by_signer_key);
 
     Ok(())
 }
