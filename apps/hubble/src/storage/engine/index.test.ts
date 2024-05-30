@@ -74,20 +74,6 @@ const fname = Factories.Fname.build();
 const signer = Factories.Ed25519Signer.build();
 const custodySigner = Factories.Eip712Signer.build();
 
-const transferEvents: FNameTransfer[] = [
-  {
-    id: 1,
-    username: Buffer.from(fname).toString("utf-8"),
-    from: 0,
-    to: fid,
-    timestamp: 1686291736947,
-    owner: account.address,
-    server_signature: "",
-  },
-];
-
-fNameClient.setTransfersToReturn([[], transferEvents]);
-
 let custodySignerKey: Uint8Array;
 let signerKey: Uint8Array;
 let userNameProof: UserNameProof;
@@ -102,6 +88,7 @@ let verificationAdd: VerificationAddAddressMessage;
 let userDataAdd: UserDataAddMessage;
 
 beforeAll(async () => {
+  fNameClient.setTransfersToReturn([]);
   // This forces the provider to fetch the signer address
   await fNameProvider.start();
   await fNameProvider.stop();
@@ -138,6 +125,20 @@ beforeAll(async () => {
 beforeEach(async () => {
   engine.clearCaches();
   engine.setSolanaVerifications(false);
+
+  const transferEvents: FNameTransfer[] = [
+    {
+      id: 1,
+      username: Buffer.from(fname).toString("utf-8"),
+      from: 0,
+      to: fid,
+      timestamp: 1686291736947,
+      owner: account.address,
+      server_signature: "",
+    },
+  ];
+
+  fNameClient.setTransfersToReturn([transferEvents]);
 });
 
 afterAll(async () => {
@@ -510,9 +511,26 @@ describe("mergeMessage", () => {
         });
 
         test("fails when fname transfer event is missing", async () => {
+          fNameClient.setTransfersToReturn([]);
           const result = await engine.mergeMessage(usernameAdd);
           expect(result).toMatchObject(err({ errCode: "bad_request.validation_failure" }));
           expect(result._unsafeUnwrapErr().message).toMatch("is not registered");
+        });
+
+        test("retries and succeeds when username proof has not been merged yet", async () => {
+          fNameClient.setTransfersToReturn([]);
+
+          // This is a bit of a hack
+          // Since all of the tests run on the same engine it takes less than 60 attempts to get rate limited
+          for (let i = 0; i < 58; i++) {
+            const result = await engine.mergeMessage(usernameAdd);
+            expect(result).toMatchObject(err({ errCode: "bad_request.validation_failure" }));
+            expect(result._unsafeUnwrapErr().message).toMatch("is not registered");
+          }
+
+          const result = await engine.mergeMessage(usernameAdd);
+          expect(result).toMatchObject(err({ errCode: "unavailable" }));
+          expect(result._unsafeUnwrapErr().message).toMatch("Too many requests to fName server");
         });
 
         test("fails when fname is owned by another fid", async () => {
