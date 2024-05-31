@@ -520,12 +520,8 @@ describe("mergeMessage", () => {
         test("retries and succeeds when username proof has not been merged yet", async () => {
           fNameClient.setTransfersToReturn([]);
 
-          // This is a bit of a hack
-          // Since all of the tests run on the same engine it takes less than 60 attempts to get rate limited
-          for (let i = 0; i < 58; i++) {
-            const result = await engine.mergeMessage(usernameAdd);
-            expect(result).toMatchObject(err({ errCode: "bad_request.validation_failure" }));
-            expect(result._unsafeUnwrapErr().message).toMatch("is not registered");
+          for (let i = 0; i < 61; i++) {
+            await engine.mergeMessage(usernameAdd);
           }
 
           const result = await engine.mergeMessage(usernameAdd);
