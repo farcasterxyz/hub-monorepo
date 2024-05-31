@@ -6,76 +6,12 @@ import {
 } from "./fnameRegistryEventsProvider.js";
 import { jestRocksDB } from "../storage/db/jestUtils.js";
 import Engine from "../storage/engine/index.js";
-import { ViemLocalEip712Signer, makeUserNameProofClaim, FarcasterNetwork } from "@farcaster/core";
-import { MockHub } from "../test/mocks.js";
+import { FarcasterNetwork } from "@farcaster/core";
+import { MockFnameRegistryClient, MockHub } from "../test/mocks.js";
 import { getUserNameProof } from "../storage/db/nameRegistryEvent.js";
 import { utf8ToBytes } from "@noble/curves/abstract/utils";
-import { generatePrivateKey, privateKeyToAccount, PrivateKeyAccount, Address } from "viem/accounts";
-import { bytesToHex } from "viem";
+import { generatePrivateKey, privateKeyToAccount, Address } from "viem/accounts";
 import { HubState } from "@farcaster/hub-nodejs";
-
-class MockFnameRegistryClient implements FNameRegistryClientInterface {
-  private transfersToReturn: FNameTransfer[][] = [];
-  private minimumSince = 0;
-  private timesToThrow = 0;
-  private account: PrivateKeyAccount;
-  private signer: ViemLocalEip712Signer;
-  private signerAddress: Address;
-
-  constructor(account: PrivateKeyAccount) {
-    this.account = account;
-    this.signer = new ViemLocalEip712Signer(account);
-    this.signerAddress = account.address;
-  }
-
-  setTransfersToReturn(transfers: FNameTransfer[][]) {
-    this.transfersToReturn = transfers;
-    this.transfersToReturn.flat(2).forEach(async (t) => {
-      if (t.server_signature === "") {
-        t.server_signature = bytesToHex(
-          (
-            await this.signer.signUserNameProofClaim(
-              makeUserNameProofClaim({
-                name: t.username,
-                owner: t.owner,
-                timestamp: t.timestamp,
-              }),
-            )
-          )._unsafeUnwrap(),
-        );
-      }
-    });
-  }
-
-  setMinimumSince(minimumSince: number) {
-    this.minimumSince = minimumSince;
-  }
-
-  setSignerAddress(address: Address) {
-    this.signerAddress = address;
-  }
-
-  throwOnce() {
-    this.timesToThrow = 1;
-  }
-
-  async getTransfers(params: FNameTransferRequest): Promise<FNameTransfer[]> {
-    if (this.timesToThrow > 0) {
-      this.timesToThrow--;
-      throw new Error("connection failed");
-    }
-    expect(params.from_id).toBeGreaterThanOrEqual(this.minimumSince);
-    const transfers = this.transfersToReturn.shift();
-    if (!transfers) {
-      return Promise.resolve([]);
-    }
-    return Promise.resolve(transfers);
-  }
-
-  async getSigner(): Promise<string> {
-    return this.signerAddress;
-  }
-}
 
 describe("fnameRegistryEventsProvider", () => {
   const db = jestRocksDB("protobufs.fnameRegistry.test");

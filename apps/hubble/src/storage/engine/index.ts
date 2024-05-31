@@ -69,8 +69,9 @@ import UsernameProofStore from "../stores/usernameProofStore.js";
 import OnChainEventStore from "../stores/onChainEventStore.js";
 import { consumeRateLimitByKey, getRateLimiterForTotalMessages, isRateLimitedByKey } from "../../utils/rateLimits.js";
 import { rsValidationMethods } from "../../rustfunctions.js";
-import { RateLimiterAbstract } from "rate-limiter-flexible";
+import { RateLimiterAbstract, RateLimiterMemory } from "rate-limiter-flexible";
 import { TypedEmitter } from "tiny-typed-emitter";
+import { FNameRegistryEventsProvider } from "../../eth/fnameRegistryEventsProvider.js";
 
 export const NUM_VALIDATION_WORKERS = 2;
 
@@ -119,6 +120,7 @@ class Engine extends TypedEmitter<EngineEvents> {
   private _network: FarcasterNetwork;
   private _publicClient: PublicClient | undefined;
   private _l2PublicClient: PublicClient | undefined;
+  private _fNameRegistryEventsProvider: FNameRegistryEventsProvider | undefined;
 
   private _linkStore: LinkStore;
   private _reactionStore: ReactionStore;
@@ -141,18 +143,22 @@ class Engine extends TypedEmitter<EngineEvents> {
 
   private _solanaVerficationsEnabled = false;
 
+  private _fNameRetryRateLimiter = new RateLimiterMemory({ points: 60, duration: 60 }); // 60 retries per minute allowed
+
   constructor(
     db: RocksDB,
     network: FarcasterNetwork,
     eventHandler?: StoreEventHandler,
     publicClient?: PublicClient,
     l2PublicClient?: PublicClient,
+    fNameRegistryEventsProvider?: FNameRegistryEventsProvider,
   ) {
     super();
     this._db = db;
     this._network = network;
     this._publicClient = publicClient;
     this._l2PublicClient = l2PublicClient;
+    this._fNameRegistryEventsProvider = fNameRegistryEventsProvider;
 
     this.eventHandler = eventHandler ?? new StoreEventHandler(db);
 
@@ -881,7 +887,7 @@ class Engine extends TypedEmitter<EngineEvents> {
     });
   }
 
-  async getUserNameProof(name: Uint8Array): HubAsyncResult<UserNameProof> {
+  async getUserNameProof(name: Uint8Array, retries = 1): HubAsyncResult<UserNameProof> {
     const nameString = bytesToUtf8String(name);
     if (nameString.isErr()) {
       return err(nameString.error);
@@ -903,7 +909,21 @@ class Engine extends TypedEmitter<EngineEvents> {
         return err(validatedFname.error);
       }
 
-      return ResultAsync.fromPromise(this._userDataStore.getUserNameProof(name), (e) => e as HubError);
+      const result = await ResultAsync.fromPromise(this._userDataStore.getUserNameProof(name), (e) => e as HubError);
+
+      if (result.isErr() && result.error.errCode === "not_found" && retries > 0 && this._fNameRegistryEventsProvider) {
+        const rateLimitResult = await ResultAsync.fromPromise(
+          this._fNameRetryRateLimiter.consume(0),
+          () => new HubError("unavailable", "Too many requests to fName server"),
+        );
+        if (rateLimitResult.isErr()) {
+          return err(rateLimitResult.error);
+        }
+        await this._fNameRegistryEventsProvider.retryTransferByName(name);
+        return this.getUserNameProof(name, retries - 1);
+      }
+
+      return result;
     }
   }
 
