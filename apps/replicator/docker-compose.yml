@@ -8,7 +8,7 @@ services:
         dockerfile: Dockerfile.replicator
     restart: unless-stopped
     init: true
-    command: ['node', 'build/app.js', 'start']
+    command: ['node', '--max-old-space-size=${MAX_OLD_SPACE_SIZE:-2048}', 'build/app.js', 'start']
     environment:
       - LOG_LEVEL
       - HUB_HOST
