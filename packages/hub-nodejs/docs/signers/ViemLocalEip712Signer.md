@@ -1,6 +1,6 @@
 # ViemLocalEip712Signer
 
-An Eip712Signer that is initialized with an [Viem](https://viem.sh/docs) LocalACcount and can be used with [Builders](../builders/builders.md) to sign Farcaster Messages.
+An Eip712Signer that is initialized with an [Viem](https://viem.sh/docs/getting-started) LocalACcount and can be used with [Builders](../builders/builders.md) to sign Farcaster Messages.
 
 ## Properties
 

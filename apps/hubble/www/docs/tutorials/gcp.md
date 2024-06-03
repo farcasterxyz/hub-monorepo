@@ -79,7 +79,7 @@ resource "google_compute_firewall" "farcaster-p2p-ports" {
 Execute this command:
 
 ```
-terraform init # to intialize terraform in your farcaster-hub folder
+terraform init # to initialize terraform in your farcaster-hub folder
 ```
 
 Execute this command:
