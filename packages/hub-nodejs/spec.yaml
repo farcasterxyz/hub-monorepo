@@ -490,7 +490,7 @@ paths:
       tags:
         - UserData
       summary: Get UserData for a FID.
-      description: "**Note:** one of two different response schemas is returned 
+      description: "**Note:** one of two different response schemas is returned
         based on whether the caller provides the `user_data_type` parameter. If included, a single
         `UserDataAdd` message is returned (or a `not_found` error). If omitted, a paginated list
         of `UserDataAdd` messages is returned instead"
@@ -731,9 +731,9 @@ paths:
       tags:
         - OnChainEvents
       summary: Get a list of signers provided by an FID
-      description: "**Note:** one of two different response schemas is returned 
+      description: "**Note:** one of two different response schemas is returned
         based on whether the caller provides the `signer` parameter. If included, a single
-        `OnChainEventSigner` message is returned (or a `not_found` error). If omitted, a 
+        `OnChainEventSigner` message is returned (or a `not_found` error). If omitted, a
         non-paginated list of `OnChainEventSigner` messages is returned instead"
       operationId: ListOnChainSignersByFid
       parameters:
@@ -836,9 +836,9 @@ paths:
           required: false
           schema:
             type: integer
-          description: "An optional Hub Id to start getting events from. 
-            This is also returned from the API as nextPageEventId, which 
-            can be used to page through all the Hub events. Set it to 0 
+          description: "An optional Hub Id to start getting events from.
+            This is also returned from the API as nextPageEventId, which
+            can be used to page through all the Hub events. Set it to 0
             to start from the first event"
       responses:
         200:
@@ -917,7 +917,7 @@ components:
                 - $ref: '#/components/schemas/MessageDataCastAdd'
                 - type: object
                   properties:
-                    type: 
+                    type:
                       $ref: '#/components/schemas/MessageType'
                   required:
                     - type
@@ -982,7 +982,7 @@ components:
                 - $ref: '#/components/schemas/MessageDataCastRemove'
                 - type: object
                   properties:
-                    type: 
+                    type:
                       $ref: '#/components/schemas/MessageType'
                   required:
                     - type
@@ -1136,7 +1136,7 @@ components:
     HubEventMergeMessage:
       type: object
       properties:
-        type: 
+        type:
           type: string
           example: HUB_EVENT_TYPE_MERGE_MESSAGE
         id:
@@ -1151,7 +1151,7 @@ components:
     HubEventPruneMessage:
       type: object
       properties:
-        type: 
+        type:
           type: string
           example: HUB_EVENT_TYPE_PRUNE_MESSAGE
         id:
@@ -1166,7 +1166,7 @@ components:
     HubEventRevokeMessage:
       type: object
       properties:
-        type: 
+        type:
           type: string
           example: HUB_EVENT_TYPE_REVOKE_MESSAGE
         id:
@@ -1181,7 +1181,7 @@ components:
     HubEventMergeUsernameProof:
       type: object
       properties:
-        type: 
+        type:
           type: string
           example: HUB_EVENT_TYPE_MERGE_USERNAME_PROOF
         id:
@@ -1196,7 +1196,7 @@ components:
     HubEventMergeOnChainEvent:
       type: object
       properties:
-        type: 
+        type:
           type: string
           example: HUB_EVENT_TYPE_MERGE_ON_CHAIN_EVENT
         id:
@@ -1273,7 +1273,7 @@ components:
                 - $ref: '#/components/schemas/MessageDataLink'
                 - type: object
                   properties:
-                    type: 
+                    type:
                       $ref: '#/components/schemas/MessageType'
                   required:
                     - type
@@ -1307,7 +1307,7 @@ components:
                 - $ref: '#/components/schemas/MessageDataLink'
                 - type: object
                   properties:
-                    type: 
+                    type:
                       $ref: '#/components/schemas/MessageType'
                   required:
                     - type
@@ -1418,6 +1418,7 @@ components:
         - fid
         - network
         - timestamp
+        - type
       type: object
       properties:
         fid:
@@ -1425,6 +1426,9 @@ components:
           type: integer
           format: uint64
           example: 2
+        type:
+          title: Message Type
+          type: string
         timestamp:
           title: Farcaster epoch timestamp in seconds
           type: integer
@@ -1649,7 +1653,7 @@ components:
                 - $ref: '#/components/schemas/MessageDataReaction'
                 - type: object
                   properties:
-                    type: 
+                    type:
                       $ref: '#/components/schemas/MessageType'
                   required:
                     - type
@@ -1808,7 +1812,7 @@ components:
                 - $ref: '#/components/schemas/MessageDataUserDataAdd'
                 - type: object
                   properties:
-                    type: 
+                    type:
                       $ref: '#/components/schemas/MessageType'
                   required:
                     - type
@@ -1905,7 +1909,7 @@ components:
                 - $ref: '#/components/schemas/MessageDataVerificationAdd'
                 - type: object
                   properties:
-                    type: 
+                    type:
                       $ref: '#/components/schemas/MessageType'
                   required:
                     - type
@@ -1942,7 +1946,7 @@ components:
                 - $ref: '#/components/schemas/MessageDataVerificationRemove'
                 - type: object
                   properties:
-                    type: 
+                    type:
                       $ref: '#/components/schemas/MessageType'
                   required:
                     - type
