@@ -310,7 +310,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     return this._multiaddrs ?? [];
   }
 
-  /** Returs the node's network */
+  /** Returns the node's network */
   get network() {
     return this._network;
   }
