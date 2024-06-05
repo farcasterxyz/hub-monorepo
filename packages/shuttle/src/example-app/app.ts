@@ -146,14 +146,22 @@ export class App implements MessageHandler {
     // biome-ignore lint/style/noNonNullAssertion: client is always initialized
     const reconciler = new MessageReconciliation(this.hubSubscriber.hubClient!, this.db, log);
     for (const fid of fids) {
-      await reconciler.reconcileMessagesForFid(fid, async (message, missingInDb, prunedInDb, revokedInDb) => {
-        if (missingInDb) {
-          await HubEventProcessor.handleMissingMessage(this.db, message, this);
-        } else if (prunedInDb || revokedInDb) {
-          const messageDesc = prunedInDb ? "pruned" : revokedInDb ? "revoked" : "existing";
-          log.info(`Reconciled ${messageDesc} message ${bytesToHexString(message.hash)._unsafeUnwrap()}`);
-        }
-      });
+      await reconciler.reconcileMessagesForFid(
+        fid,
+        async (message, missingInDb, prunedInDb, revokedInDb) => {
+          if (missingInDb) {
+            await HubEventProcessor.handleMissingMessage(this.db, message, this);
+          } else if (prunedInDb || revokedInDb) {
+            const messageDesc = prunedInDb ? "pruned" : revokedInDb ? "revoked" : "existing";
+            log.info(`Reconciled ${messageDesc} message ${bytesToHexString(message.hash)._unsafeUnwrap()}`);
+          }
+        },
+        async (message, missingInHub) => {
+          if (missingInHub) {
+            log.info(`Message ${bytesToHexString(message.hash)._unsafeUnwrap()} is missing in the hub`);
+          }
+        },
+      );
     }
   }
 
