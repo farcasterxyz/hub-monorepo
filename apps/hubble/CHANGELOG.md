@@ -1,5 +1,15 @@
 # @farcaster/hubble
 
+## 1.12.3
+
+### Patch Changes
+
+- a6367658: Retry fetching fname transfers on failed merge
+- 33d43715: feat: Remove the BySigner index to reduce disk usage
+- 053f3ac5: Remove unnecessary database reads when merging casts
+- Updated dependencies [87c4f416]
+  - @farcaster/hub-nodejs@0.11.13
+
 ## 1.12.2
 
 ### Patch Changes

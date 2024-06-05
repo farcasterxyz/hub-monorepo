@@ -1,5 +1,16 @@
 # @farcaster/hub-shuttle
 
+## 0.3.0
+
+### Minor Changes
+
+- bb707b1e: feat: Add support for reverse reconciliation
+
+### Patch Changes
+
+- Updated dependencies [87c4f416]
+  - @farcaster/hub-nodejs@0.11.13
+
 ## 0.2.8
 
 ### Patch Changes

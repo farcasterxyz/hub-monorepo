@@ -1,5 +1,14 @@
 # @farcaster/replicator
 
+## 0.3.8
+
+### Patch Changes
+
+- 1c9f2527: respect fnames_username_unique constraint
+- 1bed6d18: Fix replicator heap out of memory
+- Updated dependencies [87c4f416]
+  - @farcaster/hub-nodejs@0.11.13
+
 ## 0.3.7
 
 ### Patch Changes
