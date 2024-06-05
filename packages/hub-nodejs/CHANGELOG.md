@@ -1,5 +1,11 @@
 # @farcaster/hub-nodejs
 
+## 0.11.13
+
+### Patch Changes
+
+- 87c4f416: Include better error message when providing bad host address
+
 ## 0.11.12
 
 ### Patch Changes
