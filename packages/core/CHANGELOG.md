@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.14.13
+
+### Patch Changes
+
+- 911f8b23: Adds missing builder for LinkCompactState
+
 ## 0.14.12
 
 ### Patch Changes
