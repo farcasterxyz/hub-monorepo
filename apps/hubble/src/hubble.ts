@@ -40,6 +40,7 @@ import { PruneEventsJobScheduler } from "./storage/jobs/pruneEventsJob.js";
 import { PruneMessagesJobScheduler } from "./storage/jobs/pruneMessagesJob.js";
 import { sleep } from "./utils/crypto.js";
 import { rsDbDestroy, rsValidationMethods } from "./rustfunctions.js";
+import { URL } from "node:url";
 import * as tar from "tar";
 import * as zlib from "zlib";
 import {
@@ -67,7 +68,6 @@ import StoreEventHandler from "./storage/stores/storeEventHandler.js";
 import { FNameRegistryClient, FNameRegistryEventsProvider } from "./eth/fnameRegistryEventsProvider.js";
 import { L2EventsProvider, OptimismConstants } from "./eth/l2EventsProvider.js";
 import { prettyPrintTable } from "./profile/profile.js";
-import packageJson from "./package.json" assert { type: "json" };
 import { createPublicClient, fallback, http } from "viem";
 import { mainnet, optimism } from "viem/chains";
 import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
@@ -98,7 +98,9 @@ import { startupCheck, StartupCheckStatus } from "./utils/startupCheck.js";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
-export const APP_VERSION = packageJson.version;
+export const APP_VERSION = JSON.parse(
+  fs.readFileSync(path.join(new URL(".", import.meta.url).pathname, "..", "./package.json")).toString(),
+).version;
 export const APP_NICKNAME = process.env["HUBBLE_NAME"] ?? "Farcaster Hub";
 
 export const SNAPSHOT_S3_UPLOAD_BUCKET = "farcaster-snapshots";
@@ -725,9 +727,9 @@ export class Hub implements HubInterface {
       this.options.announceIp ?? undefined,
     );
     if (rpcAddressCheck.isErr()) {
-      const errorMessage = `Error validating RPC address at port ${this.options.rpcPort}. 
+      const errorMessage = `Error validating RPC address at port ${this.options.rpcPort}.
         Please make sure RPC port value is valid and reachable from public internet.
-        Reachable address is required for hub to perform diff sync via gRPC API and sync with the network. 
+        Reachable address is required for hub to perform diff sync via gRPC API and sync with the network.
         Hub operators may need to enable port-forwarding of traffic to hub's host and port if they are behind a NAT.
         `;
       log.warn(
