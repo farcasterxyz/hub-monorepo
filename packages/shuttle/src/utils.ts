@@ -66,6 +66,9 @@ export function bytesToHex(value: Uint8Array): `0x${string}` {
   return `0x${Buffer.from(value).toString("hex")}`;
 }
 
+export function farcasterTimeToDate(time: number): Date;
+export function farcasterTimeToDate(time: null): null;
+export function farcasterTimeToDate(time: undefined): undefined;
 export function farcasterTimeToDate(time: number | null | undefined): Date | null | undefined {
   if (time === undefined) return undefined;
   if (time === null) return null;
