@@ -841,15 +841,15 @@ describe("validateVerificationAddEthAddressSignature", () => {
     expect(result).toEqual(err(new HubError("bad_request.invalid_param", "RPC client not provided for chainId 1")));
   });
 
-  test("fails if ethSignature is > 512 bytes", async () => {
+  test("fails if ethSignature is > 2048 bytes", async () => {
     const body = await Factories.VerificationAddAddressBody.create(
       {
-        claimSignature: Factories.Bytes.build({}, { transient: { length: 513 } }),
+        claimSignature: Factories.Bytes.build({}, { transient: { length: 2049 } }),
       },
       { transient: { protocol: Protocol.ETHEREUM } },
     );
     const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network, {});
-    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "claimSignature > 512 bytes")));
+    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "claimSignature > 2048 bytes")));
   });
 
   test("succeeds for contract signatures", async () => {
