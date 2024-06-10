@@ -15,7 +15,6 @@ DOCKER_COMPOSE_FILE_PATH="apps/hubble/docker-compose.yml"
 SCRIPT_FILE_PATH="scripts/hubble.sh"
 GRAFANA_DASHBOARD_JSON_PATH="apps/hubble/grafana/grafana-dashboard.json"
 GRAFANA_INI_PATH="apps/hubble/grafana/grafana.ini"
-ENVOY_CONFIG_PATH="apps/hubble/envoy/envoy.yaml"
 
 install_jq() {
     if command -v jq >/dev/null 2>&1; then
@@ -66,7 +65,7 @@ install_jq() {
 # Fetch file from repo at "@latest"
 fetch_file_from_repo() {
     local file_path="$1"
-    local local_filename="$2"    
+    local local_filename="$2"
 
     local download_url
     download_url="$RAWFILE_BASE/$LATEST_TAG/$file_path?t=$(date +%s)"
@@ -113,15 +112,12 @@ self_upgrade() {
 }
 
 # Fetch the docker-compose.yml and grafana-dashboard.json files
-fetch_latest_docker_compose_and_dashboard() {    
-    fetch_file_from_repo "$DOCKER_COMPOSE_FILE_PATH" "docker-compose.yml" 
+fetch_latest_docker_compose_and_dashboard() {
+    fetch_file_from_repo "$DOCKER_COMPOSE_FILE_PATH" "docker-compose.yml"
     fetch_file_from_repo "$GRAFANA_DASHBOARD_JSON_PATH" "grafana-dashboard.json"
     mkdir -p grafana
     chmod 777 grafana
     fetch_file_from_repo "$GRAFANA_INI_PATH" "grafana/grafana.ini"
-    mkdir -p envoy
-    chmod 777 envoy
-    fetch_file_from_repo "$ENVOY_CONFIG_PATH" "envoy/envoy.yaml"
 }
 
 validate_and_store() {
@@ -163,7 +159,7 @@ store_operator_fid_env() {
     fi
 
     if [ "$response" != "null" ] && [ "$response" != "" ]; then
-        echo "HUB_OPERATOR_FID=$response" >> .env        
+        echo "HUB_OPERATOR_FID=$response" >> .env
     else
         echo "Not a valid FID or username. Not updating HUB_OPERATOR_FID."
         echo "HUB_OPERATOR_FID=0" >> .env
@@ -285,7 +281,7 @@ setup_grafana() {
     # Step 4: Import the dashboard. The API takes a slighly different format than the JSON import
     # in the UI, so we need to convert the JSON file first.
     jq '{dashboard: (del(.id) | . + {id: null}), folderId: 0, overwrite: true}' "grafana-dashboard.json" > "grafana-dashboard.api.json"
-    
+
     response=$(curl -s -X "POST" "$grafana_url/api/dashboards/db" \
         -u "$credentials" \
         -H "Content-Type: application/json" \
@@ -331,8 +327,8 @@ install_docker() {
     # Add current user to the docker group
     sudo usermod -aG docker $(whoami)
 
-    echo "✅ Docker is installed"   
-    return 0 
+    echo "✅ Docker is installed"
+    return 0
 }
 
 setup_identity() {
@@ -386,10 +382,10 @@ setup_crontab() {
       # Fix buggy crontab entry which would run every minute
       if $CRONTAB_CMD -l 2>/dev/null | grep "hubble.sh" | grep -q "^\*"; then
         echo "Removing crontab for upgrade"
-  
+
         # Export the existing crontab entries to a temporary file in /tmp/
         crontab -l > /tmp/temp_cron.txt
-  
+
         # Remove the line containing "hubble.sh" from the temporary file
         sed -i '/hubble\.sh/d' /tmp/temp_cron.txt
         crontab /tmp/temp_cron.txt
@@ -527,7 +523,7 @@ if [ "$1" == "down" ]; then
 fi
 
 # Check the command-line argument for 'upgrade'
-if [ "$1" == "upgrade" ]; then    
+if [ "$1" == "upgrade" ]; then
     # Ensure the ~/hubble directory exists
     if [ ! -d ~/hubble ]; then
         mkdir -p ~/hubble || { echo "Failed to create ~/hubble directory."; exit 1; }
@@ -563,7 +559,7 @@ if [ "$1" == "upgrade" ]; then
     # Start the hubble service
     start_hubble
 
-    echo "✅ Upgrade complete."    
+    echo "✅ Upgrade complete."
     echo ""
     echo "Monitor your node at http://localhost:3000/"
 
