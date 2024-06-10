@@ -1,11 +1,4 @@
-import {
-  CastAddMessage,
-  CastId,
-  CastRemoveMessage,
-  getDefaultStoreLimit,
-  StoreType,
-  Message,
-} from "@farcaster/hub-nodejs";
+import { CastAddMessage, CastId, CastRemoveMessage, getDefaultStoreLimit, StoreType } from "@farcaster/hub-nodejs";
 import { ResultAsync } from "neverthrow";
 import RocksDB from "../db/rocksdb.js";
 import { UserPostfix } from "../db/types.js";
@@ -22,6 +15,7 @@ import {
   rsGetCastsByParent,
   rustErrorToHubError,
 } from "../../rustfunctions.js";
+import { messageDecode } from "../../storage/db/message.js";
 
 class CastStore extends RustStoreBase<CastAddMessage, CastRemoveMessage> {
   constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
@@ -38,7 +32,7 @@ class CastStore extends RustStoreBase<CastAddMessage, CastRemoveMessage> {
     if (result.isErr()) {
       throw result.error;
     }
-    return Message.decode(new Uint8Array(result.value)) as CastAddMessage;
+    return messageDecode(new Uint8Array(result.value)) as CastAddMessage;
   }
 
   /** Looks up CastRemove message by cast tsHash */
@@ -48,7 +42,7 @@ class CastStore extends RustStoreBase<CastAddMessage, CastRemoveMessage> {
     if (result.isErr()) {
       throw result.error;
     }
-    return Message.decode(new Uint8Array(result.value)) as CastRemoveMessage;
+    return messageDecode(new Uint8Array(result.value)) as CastRemoveMessage;
   }
 
   /** Gets all CastAdd messages for an fid */
@@ -57,7 +51,7 @@ class CastStore extends RustStoreBase<CastAddMessage, CastRemoveMessage> {
 
     const messages =
       messages_page.messageBytes?.map((message_bytes) => {
-        return Message.decode(new Uint8Array(message_bytes)) as CastAddMessage;
+        return messageDecode(new Uint8Array(message_bytes)) as CastAddMessage;
       }) ?? [];
 
     return { messages, nextPageToken: messages_page.nextPageToken };
@@ -69,7 +63,7 @@ class CastStore extends RustStoreBase<CastAddMessage, CastRemoveMessage> {
 
     const messages =
       message_page.messageBytes?.map((message_bytes) => {
-        return Message.decode(new Uint8Array(message_bytes)) as CastRemoveMessage;
+        return messageDecode(new Uint8Array(message_bytes)) as CastRemoveMessage;
       }) ?? [];
 
     return { messages, nextPageToken: message_page.nextPageToken };
@@ -100,7 +94,7 @@ class CastStore extends RustStoreBase<CastAddMessage, CastRemoveMessage> {
 
     const messages =
       message_page.messageBytes?.map((message_bytes) => {
-        return Message.decode(new Uint8Array(message_bytes)) as CastAddMessage;
+        return messageDecode(new Uint8Array(message_bytes)) as CastAddMessage;
       }) ?? [];
 
     return { messages, nextPageToken: message_page.nextPageToken };
@@ -112,7 +106,7 @@ class CastStore extends RustStoreBase<CastAddMessage, CastRemoveMessage> {
 
     const messages =
       message_page.messageBytes?.map((message_bytes) => {
-        return Message.decode(new Uint8Array(message_bytes)) as CastAddMessage;
+        return messageDecode(new Uint8Array(message_bytes)) as CastAddMessage;
       }) ?? [];
 
     return { messages, nextPageToken: message_page.nextPageToken };

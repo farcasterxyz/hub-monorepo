@@ -8,7 +8,7 @@ Hubble can be installed in 30 minutes, and a full sync can take 1-2 hours to com
 
 - 16 GB of RAM
 - 4 CPU cores or vCPUs
-- 40 GB of free storage
+- 140 GB of free storage
 - A public IP address with ports 2282 - 2285 exposed
 
 See [tutorials](./tutorials.html) for instructions on how to set up cloud providers to run Hubble.

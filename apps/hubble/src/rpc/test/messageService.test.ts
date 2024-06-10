@@ -91,7 +91,7 @@ describe("submitMessage", () => {
     test("fails with conflict", async () => {
       await engine.mergeMessage(castRemove);
       const result = await client.submitMessage(castAdd);
-      expect(result).toEqual(err(new HubError("bad_request.conflict", "message conflicts with a CastRemove")));
+      expect(result).toEqual(err(new HubError("bad_request.conflict", "message conflicts with a more recent remove")));
     });
 
     test("fails for frame action", async () => {

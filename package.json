@@ -9,7 +9,7 @@
     "build": "./node_modules/.bin/turbo run build",
     "clean": "./node_modules/.bin/turbo run clean",
     "dev": "./node_modules/.bin/turbo run dev --parallel",
-    "protoc": "cd packages/core && yarn protoc && cd ../hub-nodejs && yarn protoc && cd ../hub-web && yarn protoc",
+    "protoc": "cd packages/core && yarn protoc && cd ../hub-nodejs && yarn protoc && cd ../hub-web && yarn protoc && sed -i '' 's/{ grpc }/grpcWeb/g; s/grpc\\./grpcWeb.grpc./g' src/generated/rpc.ts",
     "test": "./node_modules/.bin/turbo run test",
     "test:ci": "./node_modules/.bin/turbo run test:ci -- --passWithNoTests",
     "lint": "./node_modules/.bin/turbo run lint --parallel",
@@ -38,7 +38,7 @@
     "ts-node": "^10.9.1",
     "tsup": "^6.5.0",
     "turbo": "1.10.3",
-    "typescript": "^5.0.2"
+    "typescript": "^5.4.5"
   },
   "lint-staged": {
     "*.ts": ["biome check"],

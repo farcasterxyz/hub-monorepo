@@ -27,7 +27,6 @@ export type NetworkConfig = {
   keyRegistryV2Address: `0x${string}` | undefined;
   idRegistryV2Address: `0x${string}` | undefined;
   solanaVerificationsEnabled: boolean | undefined;
-  bundleGossipPercent: number | undefined;
 };
 
 export type NetworkConfigResult = {
@@ -38,7 +37,6 @@ export type NetworkConfigResult = {
   strictNoSign: boolean | undefined;
   shouldExit: boolean;
   solanaVerificationsEnabled: boolean | undefined;
-  bundleGossipPercent: number | undefined;
 };
 
 export async function fetchNetworkConfig(): HubAsyncResult<NetworkConfig> {
@@ -98,8 +96,6 @@ export function applyNetworkConfig(
   strictNoSign: boolean | undefined,
   solanaVerificationsEnabled: boolean | undefined,
 ): NetworkConfigResult {
-  const bundleGossipPercent = networkConfig.bundleGossipPercent ?? 0;
-
   if (networkConfig.network !== currentNetwork) {
     log.error({ networkConfig, network: currentNetwork }, "network config mismatch");
     return {
@@ -110,7 +106,6 @@ export function applyNetworkConfig(
       strictNoSign,
       shouldExit: false,
       solanaVerificationsEnabled,
-      bundleGossipPercent,
     };
   }
 
@@ -129,7 +124,6 @@ export function applyNetworkConfig(
         strictNoSign,
         shouldExit: true,
         solanaVerificationsEnabled,
-        bundleGossipPercent,
       };
     }
   } else {
@@ -169,6 +163,5 @@ export function applyNetworkConfig(
     strictNoSign: strictNoSign || !!networkConfig.strictNoSign,
     shouldExit: false,
     solanaVerificationsEnabled: solanaVerificationsEnabled || networkConfig.solanaVerificationsEnabled,
-    bundleGossipPercent,
   };
 }

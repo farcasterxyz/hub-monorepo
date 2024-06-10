@@ -3,10 +3,11 @@ use crate::logger::LOGGER;
 use crate::statsd::statsd;
 use crate::store::{
     self, get_db, get_iterator_options, hub_error_to_js_throw, increment_vec_u8, HubError,
-    PageOptions,
+    PageOptions, PAGE_SIZE_MAX,
 };
 use crate::trie::merkle_trie::TRIE_DBPATH_PREFIX;
 use crate::THREAD_POOL;
+use chrono::NaiveDateTime;
 use neon::context::{Context, FunctionContext};
 use neon::handle::Handle;
 use neon::object::Object;
@@ -16,7 +17,7 @@ use neon::types::{
     Finalize, JsArray, JsBoolean, JsBox, JsBuffer, JsFunction, JsNumber, JsObject, JsPromise,
     JsString,
 };
-use rocksdb::{Options, TransactionDB, DB};
+use rocksdb::{Options, TransactionDB, WriteBatch, WriteOptions, DB};
 use slog::{info, o, Logger};
 use std::borrow::Borrow;
 use std::collections::HashMap;
@@ -170,15 +171,30 @@ impl RocksDB {
         result
     }
 
+    pub fn db(&self) -> RwLockReadGuard<'_, Option<TransactionDB>> {
+        self.db.read().unwrap()
+    }
+
+    pub fn keys_exist(&self, keys: &Vec<Vec<u8>>) -> Result<Vec<bool>, HubError> {
+        let db = self.db();
+        let db = db.as_ref().unwrap();
+
+        Ok(db
+            .multi_get(keys)
+            .into_iter()
+            .map(|r| match r {
+                Ok(Some(_)) => true,
+                Ok(None) => false,
+                Err(_) => false,
+            })
+            .collect::<Vec<_>>())
+    }
+
     pub fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>, HubError> {
         self.db().as_ref().unwrap().get(key).map_err(|e| HubError {
             code: "db.internal_error".to_string(),
             message: e.to_string(),
         })
-    }
-
-    pub fn db(&self) -> RwLockReadGuard<'_, Option<TransactionDB>> {
-        self.db.read().unwrap()
     }
 
     pub fn get_many(&self, keys: &Vec<Vec<u8>>) -> Result<Vec<Vec<u8>>, HubError> {
@@ -232,10 +248,8 @@ impl RocksDB {
         let txn = db.as_ref().unwrap().transaction();
         for (key, value) in batch.batch {
             if value.is_none() {
-                // println!("rust txn is delete, key: {:?}", key);
                 txn.delete(key)?;
             } else {
-                // println!("rust txn is put, key: {:?}", key);
                 txn.put(key, value.unwrap())?;
             }
         }
@@ -306,9 +320,6 @@ impl RocksDB {
             upper_prefix = prefix_end.to_vec();
         }
 
-        // println!("lower_prefix: {:?}", lower_prefix);
-        // println!("upper_prefix: {:?}", upper_prefix);
-
         let mut opts = rocksdb::ReadOptions::default();
         opts.set_iterate_lower_bound(lower_prefix);
         opts.set_iterate_upper_bound(upper_prefix);
@@ -343,7 +354,7 @@ impl RocksDB {
      * Iterate over all keys with a given prefix.
      * The callback function should return true to stop the iteration, or false to continue.
      */
-    pub fn for_each_iterator_by_prefix<F>(
+    pub fn for_each_iterator_by_prefix_paged<F>(
         &self,
         prefix: &[u8],
         page_options: &PageOptions,
@@ -365,6 +376,7 @@ impl RocksDB {
 
         let mut all_done = true;
         let mut count = 0;
+
         while iter.valid() {
             if let Some((key, value)) = iter.item() {
                 if f(&key, &value)? {
@@ -374,7 +386,7 @@ impl RocksDB {
                 if page_options.page_size.is_some() {
                     count += 1;
                     if count >= page_options.page_size.unwrap() {
-                        all_done = false;
+                        all_done = true;
                         break;
                     }
                 }
@@ -392,7 +404,7 @@ impl RocksDB {
 
     // Same as for_each_iterator_by_prefix above, but does not limit by page size. To be used in
     // cases where higher level callers are doing custom filtering
-    pub fn for_each_iterator_by_prefix_unbounded<F>(
+    pub fn for_each_iterator_by_prefix<F>(
         &self,
         prefix: &[u8],
         page_options: &PageOptions,
@@ -406,7 +418,10 @@ impl RocksDB {
             page_token: page_options.page_token.clone(),
             reverse: page_options.reverse,
         };
-        self.for_each_iterator_by_prefix(prefix, &unbounded_page_options, f)
+
+        let all_done =
+            self.for_each_iterator_by_prefix_paged(prefix, &unbounded_page_options, f)?;
+        Ok(all_done)
     }
 
     /**
@@ -609,6 +624,40 @@ impl RocksDB {
         Ok(promise)
     }
 
+    pub fn js_keys_exist(mut cx: FunctionContext) -> JsResult<JsPromise> {
+        let db = get_db(&mut cx)?;
+        let keys = cx.argument::<JsArray>(0)?;
+
+        let mut key_vec = Vec::new();
+        for i in 0..keys.len(&mut cx) {
+            let key = keys
+                .get::<JsBuffer, _, u32>(&mut cx, i)?
+                .downcast_or_throw::<JsBuffer, _>(&mut cx)?;
+            key_vec.push(key.as_slice(&cx).to_vec());
+        }
+
+        let channel = cx.channel();
+        let (deferred, promise) = cx.promise();
+        THREAD_POOL.lock().unwrap().execute(move || {
+            let result = db.keys_exist(&key_vec);
+
+            deferred.settle_with(&channel, move |mut cx| match result {
+                Ok(exists) => {
+                    let js_array = JsArray::new(&mut cx, exists.len());
+                    for (i, value) in exists.iter().enumerate() {
+                        let val = cx.boolean(*value);
+                        js_array.set(&mut cx, i as u32, val)?;
+                    }
+
+                    Ok(js_array)
+                }
+                Err(e) => hub_error_to_js_throw(&mut cx, e),
+            });
+        });
+
+        Ok(promise)
+    }
+
     pub fn js_get(mut cx: FunctionContext) -> JsResult<JsBuffer> {
         let db = get_db(&mut cx)?;
         let key = cx.argument::<JsBuffer>(0)?.as_slice(&cx).to_vec();
@@ -797,6 +846,71 @@ impl RocksDB {
         Ok(promise)
     }
 
+    /**
+     * Bulk fetch a page of keys with a given prefix with the given page options.
+     */
+    pub fn js_fetch_iterator_page_by_prefix(mut cx: FunctionContext) -> JsResult<JsPromise> {
+        let db = get_db(&mut cx)?;
+
+        // Prefix
+        let prefix = cx.argument::<JsBuffer>(0)?.as_slice(&cx).to_vec();
+
+        // Page options
+        let page_options = store::get_page_options(&mut cx, 1)?;
+
+        let channel = cx.channel();
+        let (deferred, promise) = cx.promise();
+        THREAD_POOL.lock().unwrap().execute(move || {
+            let mut results = Vec::new();
+            let mut next_page_token = Vec::new();
+
+            let iter_result =
+                db.for_each_iterator_by_prefix_paged(&prefix, &page_options, |key, value| {
+                    results.push((key.to_vec(), value.to_vec()));
+                    if results.len() > PAGE_SIZE_MAX {
+                        next_page_token = key[prefix.len()..].to_vec();
+                        return Ok(true);
+                    }
+                    Ok(false)
+                });
+
+            deferred.settle_with(&channel, move |mut cx| match iter_result {
+                Err(e) => hub_error_to_js_throw(&mut cx, e),
+                Ok(all_done) => {
+                    let js_array = JsArray::new(&mut cx, results.len());
+                    for (i, (key, value)) in results.iter().enumerate() {
+                        let js_object = JsObject::new(&mut cx);
+                        let mut key_buffer = cx.buffer(key.len())?;
+                        key_buffer.as_mut_slice(&mut cx).copy_from_slice(key);
+                        js_object.set(&mut cx, "key", key_buffer)?;
+
+                        let mut value_buffer = cx.buffer(value.len())?;
+                        value_buffer.as_mut_slice(&mut cx).copy_from_slice(value);
+                        js_object.set(&mut cx, "value", value_buffer)?;
+
+                        js_array.set(&mut cx, i as u32, js_object)?;
+                    }
+
+                    let js_object = JsObject::new(&mut cx);
+                    let js_all_done = cx.boolean(all_done);
+
+                    let mut js_next_page_token = cx.buffer(next_page_token.len())?;
+                    js_next_page_token
+                        .as_mut_slice(&mut cx)
+                        .copy_from_slice(&next_page_token);
+
+                    js_object.set(&mut cx, "allFinished", js_all_done)?;
+                    js_object.set(&mut cx, "nextPageToken", js_next_page_token)?;
+                    js_object.set(&mut cx, "dbKeyValues", js_array)?;
+
+                    Ok(js_object)
+                }
+            });
+        });
+
+        Ok(promise)
+    }
+
     pub fn js_for_each_iterator_by_prefix(mut cx: FunctionContext) -> JsResult<JsPromise> {
         let db = get_db(&mut cx)?;
 
@@ -809,7 +923,7 @@ impl RocksDB {
         // The argument is a callback function
         let callback = cx.argument::<JsFunction>(2)?;
 
-        let result = db.for_each_iterator_by_prefix(&prefix, &page_options, |key, value| {
+        let result = db.for_each_iterator_by_prefix_paged(&prefix, &page_options, |key, value| {
             // Use the extracted function here
             Self::call_js_callback(&mut cx, &callback, key, value)
         });
@@ -875,7 +989,11 @@ impl RocksDB {
 }
 
 impl RocksDB {
-    fn create_tar_gzip(logger: &Logger, input_dir: &str) -> Result<String, HubError> {
+    fn create_tar_gzip(
+        logger: &Logger,
+        input_dir: &str,
+        timestamp: NaiveDateTime,
+    ) -> Result<String, HubError> {
         let base_name = Path::new(input_dir)
             .file_name()
             .map(|s| s.to_string_lossy().to_string())
@@ -885,7 +1003,7 @@ impl RocksDB {
             .join(format!(
                 "{}-{}.tar.gz",
                 base_name,
-                chrono::Local::now().format("%Y-%m-%d-%s")
+                timestamp.format("%Y-%m-%d-%s")
             ))
             .as_os_str()
             .to_str()
@@ -920,14 +1038,21 @@ impl RocksDB {
         Ok(chunked_output_dir)
     }
 
-    fn snapshot_backup(main_db: Arc<RocksDB>, trie_db: Arc<RocksDB>) -> Result<String, HubError> {
+    fn snapshot_backup(
+        main_db: Arc<RocksDB>,
+        trie_db: Arc<RocksDB>,
+        timestamp_ms: i64,
+    ) -> Result<String, HubError> {
         let snapshot_logger = LOGGER.new(o! ("component" => "RocksDBSnapshotBackup"));
         let main_db_path = main_db.location();
+
+        let timestamp = chrono::NaiveDateTime::from_timestamp_millis(timestamp_ms)
+            .unwrap_or(chrono::Utc::now().naive_utc());
 
         let main_backup_path = Path::new(&format!(
             "{}-{}.backup",
             main_db_path,
-            chrono::Local::now().format("%Y-%m-%d-%s")
+            timestamp.format("%Y-%m-%d-%s")
         ))
         .join("rocks.hub._default");
 
@@ -950,6 +1075,11 @@ impl RocksDB {
 
         let backup_main = DB::open_default(&main_backup_path)
             .map_err(|e| HubError::internal_db_error(&e.to_string()))?;
+        // Prepare write options to disable WAL
+        let mut write_opts = WriteOptions::default();
+        write_opts.disable_wal(true);
+        let mut write_batch = WriteBatch::default();
+
         let backup_trie = DB::open_default(&triedb_backup_path)
             .map_err(|e| HubError::internal_db_error(&e.to_string()))?;
 
@@ -962,7 +1092,11 @@ impl RocksDB {
             let mut count = 0;
             for item in iterator {
                 let (key, value) = item.unwrap();
-                backup_main.put(key, value).unwrap();
+                write_batch.put(key, value);
+                if write_batch.len() >= 10_000 {
+                    backup_main.write_opt(write_batch, &write_opts).unwrap();
+                    write_batch = WriteBatch::default();
+                }
 
                 count += 1;
                 if count % 1_000_000 == 0 {
@@ -975,12 +1109,20 @@ impl RocksDB {
                 }
             }
 
+            // write any leftover keys
+            backup_main.write_opt(write_batch, &write_opts).unwrap();
+
             info!(logger, "mainDB Snapshot backup completed: {}", count);
             drop(main_db_snapshot);
             drop(backup_main);
         });
 
         let logger = snapshot_logger.clone();
+        // Prepare write options to disable WAL
+        let mut write_opts = WriteOptions::default();
+        write_opts.disable_wal(true);
+        let mut write_batch = WriteBatch::default();
+
         let trie_backup_thread = std::thread::spawn(move || {
             let trie_db = trie_db.db();
             let trie_db_snapshot = trie_db.as_ref().unwrap().snapshot();
@@ -989,7 +1131,11 @@ impl RocksDB {
             let mut count = 0;
             for item in iterator {
                 let (key, value) = item.unwrap();
-                backup_trie.put(key, value).unwrap();
+                write_batch.put(key, value);
+                if write_batch.len() >= 10_000 {
+                    backup_trie.write_opt(write_batch, &write_opts).unwrap();
+                    write_batch = WriteBatch::default();
+                }
 
                 count += 1;
                 if count % 1_000_000 == 0 {
@@ -1001,6 +1147,9 @@ impl RocksDB {
                     );
                 }
             }
+
+            // write any leftover keys
+            backup_trie.write_opt(write_batch, &write_opts).unwrap();
 
             info!(logger, "trieDB Snapshot backup completed: {}", count);
             drop(trie_db_snapshot);
@@ -1017,7 +1166,7 @@ impl RocksDB {
             start.elapsed().expect("Time went backwards")
         );
 
-        let tar_gz_path = Self::create_tar_gzip(&snapshot_logger, &main_backup_path)?;
+        let tar_gz_path = Self::create_tar_gzip(&snapshot_logger, &main_backup_path, timestamp)?;
         info!(
             snapshot_logger,
             "Full DB Snapshot Backup tar.gz created: path = {}", tar_gz_path,
@@ -1038,12 +1187,14 @@ impl RocksDB {
         let trie_db_handle = cx.argument::<JsBox<Arc<RocksDB>>>(1)?;
         let trie_db = (**trie_db_handle.borrow()).clone();
 
+        let timestamp_ms = cx.argument::<JsNumber>(2)?.value(&mut cx) as i64;
+
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
 
         // Spawn a new thread to create the tarball
         std::thread::spawn(move || {
-            let result = Self::snapshot_backup(main_db, trie_db);
+            let result = Self::snapshot_backup(main_db, trie_db, timestamp_ms);
 
             deferred.settle_with(&channel, move |mut tcx| match result {
                 Ok(output_path) => Ok(tcx.string(output_path)),
@@ -1206,6 +1357,52 @@ mod tests {
         // Count keys at prefix with a specific prefix that doesn't exist
         let count = db.count_keys_at_prefix(b"key201");
         assert_eq!(count.unwrap(), 0);
+
+        // Cleanup
+        db.destroy().unwrap();
+    }
+
+    #[test]
+    fn test_keys_exist_in_db() {
+        let tmp_path = tempfile::tempdir()
+            .unwrap()
+            .path()
+            .as_os_str()
+            .to_string_lossy()
+            .to_string();
+        let db = crate::db::RocksDB::new(&tmp_path).unwrap();
+        db.open().unwrap();
+
+        // Add some keys
+        db.put(b"key100", b"value1").unwrap();
+        db.put(b"key101", b"value3").unwrap();
+        db.put(b"key104", b"value4").unwrap();
+        db.put(b"key200", b"value2").unwrap();
+
+        // Check if keys exist
+        let exists = db.keys_exist(&vec![b"key100".to_vec(), b"key101".to_vec()]);
+        assert_eq!(exists.unwrap(), vec![true, true]);
+
+        // Check if keys exist with a key that doesn't exist
+        let exists = db.keys_exist(&vec![
+            b"key100".to_vec(),
+            b"key101".to_vec(),
+            b"key102".to_vec(),
+        ]);
+        assert_eq!(exists.unwrap(), vec![true, true, false]);
+
+        // Check if keys exist with a key that doesn't exist
+        let exists = db.keys_exist(&vec![
+            b"key100".to_vec(),
+            b"key101".to_vec(),
+            b"key102".to_vec(),
+            b"key200".to_vec(),
+        ]);
+        assert_eq!(exists.unwrap(), vec![true, true, false, true]);
+
+        // No keys should return an empty array
+        let exists = db.keys_exist(&vec![]);
+        assert_eq!(exists.unwrap().len(), 0);
 
         // Cleanup
         db.destroy().unwrap();

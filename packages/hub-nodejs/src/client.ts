@@ -135,13 +135,16 @@ export const getServer = (): grpc.Server => {
 };
 
 export const getSSLClient = (address: string, options?: Partial<grpc.ClientOptions>): HubServiceClient => {
+  if (!address) throw new Error("Hub address not specified");
   return new HubServiceClient(address, grpc.credentials.createSsl(), { ...options });
 };
 
 export const getInsecureClient = (address: string, options?: Partial<grpc.ClientOptions>): HubServiceClient => {
+  if (!address) throw new Error("Hub address not specified");
   return new HubServiceClient(address, grpc.credentials.createInsecure(), { ...options });
 };
 
 export const getAdminClient = (address: string, options?: Partial<grpc.ClientOptions>): AdminServiceClient => {
+  if (!address) throw new Error("Hub address not specified");
   return new AdminServiceClient(address, grpc.credentials.createInsecure(), { ...options });
 };

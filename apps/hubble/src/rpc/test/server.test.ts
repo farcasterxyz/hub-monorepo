@@ -14,13 +14,16 @@ import {
   StorageLimitsResponse,
   StoreType,
   getDefaultStoreLimit,
+  HubError,
 } from "@farcaster/hub-nodejs";
 import Engine from "../../storage/engine/index.js";
 import { MockHub } from "../../test/mocks.js";
-import Server from "../server.js";
+import Server, { checkPort } from "../server.js";
 import SyncEngine from "../../network/sync/syncEngine.js";
-import { Ok } from "neverthrow";
+import { Err, Ok } from "neverthrow";
 import { sleep } from "../../utils/crypto.js";
+import * as http from "http";
+import { AddressInfo, createServer } from "net";
 
 const db = jestRocksDB("protobufs.rpc.server.test");
 const network = FarcasterNetwork.TESTNET;
@@ -212,5 +215,43 @@ describe("server rpc tests", () => {
         expect(limit.limit).toEqual(getDefaultStoreLimit(limit.storeType) * 3);
       }
     });
+  });
+});
+
+describe("checkPort", () => {
+  let server: http.Server;
+  const testPort = 3111; // Example port
+
+  beforeAll((done) => {
+    server = http.createServer((req, res) => {
+      res.writeHead(200);
+      res.end("Test Server");
+    });
+
+    server.listen(testPort, done);
+  });
+
+  afterAll((done) => {
+    server.close(done);
+  });
+
+  it("should verify the port is open", async () => {
+    expect(await checkPort("127.0.0.1", testPort)).toBeInstanceOf(Ok<void, HubError>);
+  });
+
+  it("should verify the port is closed", async () => {
+    const findAvailablePort = () =>
+      new Promise<number>((resolve, reject) => {
+        const server = createServer();
+        server.unref();
+        server.listen(0, () => {
+          const port = (server.address() as AddressInfo).port;
+          server.close(() => resolve(port));
+        });
+        server.on("error", reject);
+      });
+
+    const closedPort = await findAvailablePort();
+    expect(await checkPort("127.0.0.1", closedPort)).toBeInstanceOf(Err<void, HubError>);
   });
 });

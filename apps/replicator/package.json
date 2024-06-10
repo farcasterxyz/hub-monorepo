@@ -1,6 +1,6 @@
 {
   "name": "@farcaster/replicator",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "description": "Replicate Farcaster hub data into Postgres",
   "author": "",
   "license": "",
@@ -28,7 +28,7 @@
     "@bull-board/api": "^5.8.4",
     "@bull-board/fastify": "^5.8.4",
     "@commander-js/extra-typings": "^11.0.0",
-    "@farcaster/hub-nodejs": "^0.11.6",
+    "@farcaster/hub-nodejs": "^0.11.13",
     "@figma/hot-shots": "^9.0.0-figma.1",
     "bullmq": "^4.11.4",
     "commander": "^11.0.0",

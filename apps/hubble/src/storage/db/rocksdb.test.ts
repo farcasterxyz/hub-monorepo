@@ -130,6 +130,30 @@ describe("with db", () => {
     });
   });
 
+  describe("keysExist", () => {
+    test("exists for single key", async () => {
+      await db.put(Buffer.from("foo"), Buffer.from("bar"));
+      const exists = await db.keysExist([Buffer.from("foo")]);
+      expect(exists._unsafeUnwrap()).toEqual([true]);
+    });
+
+    test("exists works for keys that exist mixed with don't exist", async () => {
+      await db.put(Buffer.from("foo"), Buffer.from("bar"));
+      const exists = await db.keysExist([Buffer.from("foo"), Buffer.from("alice")]);
+      expect(exists._unsafeUnwrap()).toEqual([true, false]);
+    });
+
+    test("exists works when no keys exist", async () => {
+      const exists = await db.keysExist([Buffer.from("foo"), Buffer.from("alice")]);
+      expect(exists._unsafeUnwrap()).toEqual([false, false]);
+    });
+
+    test("exists works for no keys", async () => {
+      const exists = await db.keysExist([]);
+      expect(exists._unsafeUnwrap()).toEqual([]);
+    });
+  });
+
   describe("put", () => {
     test("puts a value by key", async () => {
       await expect(db.put(Buffer.from("foo"), Buffer.from("bar"))).resolves.toEqual(undefined);
@@ -294,8 +318,8 @@ describe("with db", () => {
       );
       expect(bytesCompare(values[0] as Buffer, keys[0] as Buffer)).toEqual(0);
       expect(bytesCompare(values[99] as Buffer, keys[99] as Buffer)).toEqual(0);
-      expect(allFinished).toEqual(false);
       expect(values.length).toEqual(100);
+      expect(allFinished).toEqual(true);
 
       // 6. Iterate through all messages with no prefix + page size
       values = [];
@@ -308,7 +332,7 @@ describe("with db", () => {
       );
       expect(bytesCompare(values[0] as Buffer, keys[0] as Buffer)).toEqual(0);
       expect(bytesCompare(values[99] as Buffer, keys[99] as Buffer)).toEqual(0);
-      expect(allFinished).toEqual(false);
+      expect(allFinished).toEqual(true);
       expect(values.length).toEqual(100);
 
       // 6.1 Iterate through all messages with no prefix + page size + page token
@@ -321,7 +345,7 @@ describe("with db", () => {
         { pageSize: 100, pageToken: keys[100] as Buffer },
       );
       expect(bytesCompare(values[0] as Buffer, keys[101] as Buffer)).toEqual(0);
-      expect(allFinished).toEqual(false);
+      expect(allFinished).toEqual(true);
       expect(values.length).toEqual(100);
 
       // 6.2 Iterate through all messages with no prefix + page size + page token + reverse
@@ -334,7 +358,7 @@ describe("with db", () => {
         { pageSize: 100, pageToken: keys[100] as Buffer, reverse: true },
       );
       expect(bytesCompare(values[0] as Buffer, keys[99] as Buffer)).toEqual(0);
-      expect(allFinished).toEqual(false);
+      expect(allFinished).toEqual(true);
       expect(values.length).toEqual(100);
 
       // 6.3 Iterate through all messages with no prefix + page token
@@ -541,7 +565,7 @@ describe("with db", () => {
       allFinished = await rsDbForEachIteratorByPrefix(db.rustDb, Buffer.from([100]), { pageSize: 3 }, (_key, value) => {
         values.push(value as Buffer);
       });
-      expect(allFinished).toEqual(false);
+      expect(allFinished).toEqual(true);
       expect(values).toEqual(allValues.slice(0, 3));
 
       // With a continuation token and page size, the next 3 values are returned
@@ -554,7 +578,7 @@ describe("with db", () => {
           values.push(value as Buffer);
         },
       );
-      expect(allFinished).toEqual(false);
+      expect(allFinished).toEqual(true);
       expect(values).toEqual(allValues.slice(3, 6));
 
       // With a continuation token and no page size, all remaining values are returned
@@ -594,6 +618,15 @@ describe("with db", () => {
       // allFinished returns false if the callback returns true
       values = [];
       allFinished = await rsDbForEachIteratorByPrefix(db.rustDb, Buffer.from([100]), {}, (_key, value) => {
+        values.push(value as Buffer);
+        return true;
+      });
+      expect(allFinished).toEqual(false);
+      expect(values).toEqual(allValues.slice(0, 1));
+
+      // allFinished returns false if the callback returns true with pageSize
+      values = [];
+      allFinished = await rsDbForEachIteratorByPrefix(db.rustDb, Buffer.from([100]), { pageSize: 5 }, (_key, value) => {
         values.push(value as Buffer);
         return true;
       });

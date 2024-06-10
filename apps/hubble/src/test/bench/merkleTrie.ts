@@ -73,10 +73,8 @@ export const benchMerkleTrie = async ({
 
   while (i < syncIds.length) {
     let start = performance.now();
-    for (let j = 0; j < cycle; j++) {
-      // biome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
-      await trie.insert(syncIds[(i + j) % syncIds.length]!);
-    }
+    await trie.insertBatch(syncIds.slice(i, i + cycle));
+
     await trie.commitToDb();
     const insertDuration = performance.now() - start;
 

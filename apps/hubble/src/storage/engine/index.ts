@@ -6,6 +6,7 @@ import {
   CastId,
   CastRemoveMessage,
   FarcasterNetwork,
+  getDefaultStoreLimit,
   getStoreLimits,
   hexStringToBytes,
   HubAsyncResult,
@@ -13,6 +14,7 @@ import {
   HubErrorCode,
   HubEvent,
   HubResult,
+  isLinkCompactStateMessage,
   isSignerOnChainEvent,
   isUserDataAddMessage,
   isUsernameProofMessage,
@@ -48,9 +50,9 @@ import {
 import { err, ok, ResultAsync } from "neverthrow";
 import fs from "fs";
 import { Worker } from "worker_threads";
-import { getMessage, getMessagesBySignerPrefix, typeToSetPostfix } from "../db/message.js";
+import { forEachMessageBySigner, makeUserKey, messageDecode, typeToSetPostfix } from "../db/message.js";
 import RocksDB from "../db/rocksdb.js";
-import { TSHASH_LENGTH, UserPostfix } from "../db/types.js";
+import { UserMessagePostfixMax, UserPostfix } from "../db/types.js";
 import CastStore from "../stores/castStore.js";
 import LinkStore from "../stores/linkStore.js";
 import ReactionStore from "../stores/reactionStore.js";
@@ -67,8 +69,9 @@ import UsernameProofStore from "../stores/usernameProofStore.js";
 import OnChainEventStore from "../stores/onChainEventStore.js";
 import { consumeRateLimitByKey, getRateLimiterForTotalMessages, isRateLimitedByKey } from "../../utils/rateLimits.js";
 import { rsValidationMethods } from "../../rustfunctions.js";
-import { RateLimiterAbstract } from "rate-limiter-flexible";
+import { RateLimiterAbstract, RateLimiterMemory } from "rate-limiter-flexible";
 import { TypedEmitter } from "tiny-typed-emitter";
+import { FNameRegistryEventsProvider } from "../../eth/fnameRegistryEventsProvider.js";
 
 export const NUM_VALIDATION_WORKERS = 2;
 
@@ -117,6 +120,7 @@ class Engine extends TypedEmitter<EngineEvents> {
   private _network: FarcasterNetwork;
   private _publicClient: PublicClient | undefined;
   private _l2PublicClient: PublicClient | undefined;
+  private _fNameRegistryEventsProvider: FNameRegistryEventsProvider | undefined;
 
   private _linkStore: LinkStore;
   private _reactionStore: ReactionStore;
@@ -139,18 +143,22 @@ class Engine extends TypedEmitter<EngineEvents> {
 
   private _solanaVerficationsEnabled = false;
 
+  private _fNameRetryRateLimiter = new RateLimiterMemory({ points: 60, duration: 60 }); // 60 retries per minute allowed
+
   constructor(
     db: RocksDB,
     network: FarcasterNetwork,
     eventHandler?: StoreEventHandler,
     publicClient?: PublicClient,
     l2PublicClient?: PublicClient,
+    fNameRegistryEventsProvider?: FNameRegistryEventsProvider,
   ) {
     super();
     this._db = db;
     this._network = network;
     this._publicClient = publicClient;
     this._l2PublicClient = l2PublicClient;
+    this._fNameRegistryEventsProvider = fNameRegistryEventsProvider;
 
     this.eventHandler = eventHandler ?? new StoreEventHandler(db);
 
@@ -243,7 +251,7 @@ class Engine extends TypedEmitter<EngineEvents> {
       }
 
       this._validationWorkers = undefined;
-      log.info("validation worker thread terminated");
+      log.info("All validation worker threads terminated");
     }
     log.info("engine stopped");
   }
@@ -325,39 +333,8 @@ class Engine extends TypedEmitter<EngineEvents> {
   }
 
   async mergeMessage(message: Message): HubAsyncResult<number> {
-    // TODO: Note, we can just call this.mergeMessages([message]) when bundles are fully rolled out, to
-    // remove the need for this method
-    const validatedMessage = await this.validateMessage(message);
-    if (validatedMessage.isErr()) {
-      return err(validatedMessage.error);
-    }
-
-    // Extract the FID that this message was signed by
-    const fid = message.data?.fid ?? 0;
-    const storageUnits = await this.eventHandler.getCurrentStorageUnitsForFid(fid);
-
-    if (storageUnits.isErr()) {
-      return err(storageUnits.error);
-    }
-
-    if (storageUnits.value === 0) {
-      return err(new HubError("bad_request.prunable", "no storage"));
-    }
-
-    // We rate limit the number of messages that can be merged per FID
-    const limiter = getRateLimiterForTotalMessages(storageUnits.value * this._totalPruneSize);
-    const isRateLimited = await isRateLimitedByKey(`${fid}`, limiter);
-    if (isRateLimited) {
-      return err(new HubError("unavailable", `rate limit exceeded for FID ${fid}`));
-    }
-
-    const mergeResult = await this.mergeMessageToStore(message);
-
-    if (mergeResult.isOk() && limiter) {
-      consumeRateLimitByKey(`${fid}`, limiter);
-    }
-
-    return mergeResult;
+    const result = await this.mergeMessages([message]);
+    return result.get(0) ?? err(new HubError("unavailable", "missing result"));
   }
 
   async mergeMessagesToStore(messages: Message[]): Promise<Map<number, HubResult<number>>> {
@@ -381,6 +358,7 @@ class Engine extends TypedEmitter<EngineEvents> {
       const setPostfix = typeToSetPostfix(message.data!.type);
 
       switch (setPostfix) {
+        case UserPostfix.LinkCompactStateMessage:
         case UserPostfix.LinkMessage: {
           linkMessages.push({ i, message });
           break;
@@ -445,40 +423,6 @@ class Engine extends TypedEmitter<EngineEvents> {
     return results;
   }
 
-  async mergeMessageToStore(message: Message): HubAsyncResult<number> {
-    // Frame actions cannot be stored
-    if (message.data?.type === MessageType.FRAME_ACTION) {
-      return err(new HubError("bad_request.validation_failure", "invalid message type"));
-    }
-
-    // biome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
-    const setPostfix = typeToSetPostfix(message.data!.type);
-
-    switch (setPostfix) {
-      case UserPostfix.LinkMessage: {
-        return ResultAsync.fromPromise(this._linkStore.merge(message), (e) => e as HubError);
-      }
-      case UserPostfix.ReactionMessage: {
-        return ResultAsync.fromPromise(this._reactionStore.merge(message), (e) => e as HubError);
-      }
-      case UserPostfix.CastMessage: {
-        return ResultAsync.fromPromise(this._castStore.merge(message), (e) => e as HubError);
-      }
-      case UserPostfix.UserDataMessage: {
-        return ResultAsync.fromPromise(this._userDataStore.merge(message), (e) => e as HubError);
-      }
-      case UserPostfix.VerificationMessage: {
-        return ResultAsync.fromPromise(this._verificationStore.merge(message), (e) => e as HubError);
-      }
-      case UserPostfix.UsernameProofMessage: {
-        return ResultAsync.fromPromise(this._usernameProofStore.merge(message), (e) => e as HubError);
-      }
-      default: {
-        return err(new HubError("bad_request.validation_failure", "invalid message type"));
-      }
-    }
-  }
-
   async mergeOnChainEvent(event: OnChainEvent): HubAsyncResult<number> {
     const eventResult = await this.validateOnChainEvent(event);
     if (eventResult.isErr()) {
@@ -514,39 +458,32 @@ class Engine extends TypedEmitter<EngineEvents> {
 
     let revokedCount = 0;
 
-    const prefix = getMessagesBySignerPrefix(this._db, fid, signer);
-
-    const revokeMessageByKey = async (key: Buffer): HubAsyncResult<number | undefined> => {
-      const length = key.length;
-      const type = key.readUint8(length - TSHASH_LENGTH - 1);
-      const setPostfix = typeToSetPostfix(type);
-      const tsHash = Uint8Array.from(key.subarray(length - TSHASH_LENGTH));
-      const message = await ResultAsync.fromPromise(
-        getMessage(this._db, fid, setPostfix, tsHash),
-        (e) => e as HubError,
-      );
-      if (message.isErr()) {
-        return err(message.error);
+    const revokeMessage = async (message: Message): HubAsyncResult<number | undefined> => {
+      if (!message.data) {
+        return err(new HubError("bad_request.invalid_param", "missing message data"));
       }
 
-      switch (setPostfix) {
+      const postfix = typeToSetPostfix(message.data.type);
+
+      switch (postfix) {
+        case UserPostfix.LinkCompactStateMessage:
         case UserPostfix.LinkMessage: {
-          return this._linkStore.revoke(message.value);
+          return this._linkStore.revoke(message);
         }
         case UserPostfix.ReactionMessage: {
-          return this._reactionStore.revoke(message.value);
+          return this._reactionStore.revoke(message);
         }
         case UserPostfix.CastMessage: {
-          return this._castStore.revoke(message.value);
+          return this._castStore.revoke(message);
         }
         case UserPostfix.UserDataMessage: {
-          return this._userDataStore.revoke(message.value);
+          return this._userDataStore.revoke(message);
         }
         case UserPostfix.VerificationMessage: {
-          return this._verificationStore.revoke(message.value);
+          return this._verificationStore.revoke(message);
         }
         case UserPostfix.UsernameProofMessage: {
-          return this._usernameProofStore.revoke(message.value);
+          return this._usernameProofStore.revoke(message);
         }
         default: {
           return err(new HubError("bad_request.invalid_param", "invalid message type"));
@@ -554,8 +491,8 @@ class Engine extends TypedEmitter<EngineEvents> {
       }
     };
 
-    await this._db.forEachIteratorByPrefix(prefix, async (key) => {
-      const revokeResult = await revokeMessageByKey(key as Buffer);
+    await forEachMessageBySigner(this._db, fid, signer, async (message) => {
+      const revokeResult = await revokeMessage(message);
       revokeResult.match(
         () => {
           revokedCount += 1;
@@ -612,8 +549,8 @@ class Engine extends TypedEmitter<EngineEvents> {
   }
 
   /** revoke message if it is not valid */
-  async validateOrRevokeMessage(message: Message): HubAsyncResult<number | undefined> {
-    const isValid = await this.validateMessage(message);
+  async validateOrRevokeMessage(message: Message, lowPriority = false): HubAsyncResult<number | undefined> {
+    const isValid = await this.validateMessage(message, lowPriority);
 
     if (isValid.isErr() && message.data) {
       if (isValid.error.errCode === "unavailable.network_failure") {
@@ -623,6 +560,7 @@ class Engine extends TypedEmitter<EngineEvents> {
       const setPostfix = typeToSetPostfix(message.data.type);
 
       switch (setPostfix) {
+        case UserPostfix.LinkCompactStateMessage:
         case UserPostfix.LinkMessage: {
           return this._linkStore.revoke(message);
         }
@@ -949,7 +887,7 @@ class Engine extends TypedEmitter<EngineEvents> {
     });
   }
 
-  async getUserNameProof(name: Uint8Array): HubAsyncResult<UserNameProof> {
+  async getUserNameProof(name: Uint8Array, retries = 1): HubAsyncResult<UserNameProof> {
     const nameString = bytesToUtf8String(name);
     if (nameString.isErr()) {
       return err(nameString.error);
@@ -971,7 +909,21 @@ class Engine extends TypedEmitter<EngineEvents> {
         return err(validatedFname.error);
       }
 
-      return ResultAsync.fromPromise(this._userDataStore.getUserNameProof(name), (e) => e as HubError);
+      const result = await ResultAsync.fromPromise(this._userDataStore.getUserNameProof(name), (e) => e as HubError);
+
+      if (result.isErr() && result.error.errCode === "not_found" && retries > 0 && this._fNameRegistryEventsProvider) {
+        const rateLimitResult = await ResultAsync.fromPromise(
+          this._fNameRetryRateLimiter.consume(0),
+          () => new HubError("unavailable", "Too many requests to fName server"),
+        );
+        if (rateLimitResult.isErr()) {
+          return err(rateLimitResult.error);
+        }
+        await this._fNameRegistryEventsProvider.retryTransferByName(name);
+        return this.getUserNameProof(name, retries - 1);
+      }
+
+      return result;
     }
   }
 
@@ -1098,7 +1050,7 @@ class Engine extends TypedEmitter<EngineEvents> {
     return ok(event);
   }
 
-  async validateMessage(message: Message): HubAsyncResult<Message> {
+  async validateMessage(message: Message, lowPriority = false): HubAsyncResult<Message> {
     // 1. Ensure message data is present
     if (!message || !message.data) {
       return err(new HubError("bad_request.validation_failure", "message data is missing"));
@@ -1196,7 +1148,7 @@ class Engine extends TypedEmitter<EngineEvents> {
       }
     }
 
-    // For username proof messages, make sure the name resolves to the users custody address or a connected address actually owns the ens name
+    // 6. For username proof messages, make sure the name resolves to the users custody address or a connected address actually owns the ens name
     if (isUsernameProofMessage(message) && message.data.usernameProofBody.type === UserNameType.USERNAME_TYPE_ENS_L1) {
       const result = await this.validateEnsUsernameProof(message.data.usernameProofBody, custodyAddress);
       if (result.isErr()) {
@@ -1213,12 +1165,34 @@ class Engine extends TypedEmitter<EngineEvents> {
       }
     }
 
+    // LinkCompactStateMessages can't be more than 100 storage units
+    if (
+      isLinkCompactStateMessage(message) &&
+      message.data.linkCompactStateBody.targetFids.length > getDefaultStoreLimit(StoreType.LINKS) * 100
+    ) {
+      return err(
+        new HubError("bad_request.validation_failure", "LinkCompactStateMessage is too big. Limit = 100 storage units"),
+      );
+    }
+
     // 6. Check message body and envelope
     if (this._validationWorkers) {
       this._nextValidationWorker += 1;
       this._nextValidationWorker = this._nextValidationWorker % this._validationWorkers.length;
 
-      const worker = this._validationWorkers[this._nextValidationWorker] as Worker;
+      // If this is a low-priority message and we're under load, only send it to the [0] worker,
+      // leaving the rest for high-priority messages
+      let workerIndex = this._nextValidationWorker;
+      if (this._validationWorkerPromiseMap.size > 100) {
+        if (lowPriority) {
+          workerIndex = 0;
+        } else {
+          // Send the high-priority message any but the first worker, which is reserved for the low-priority messages
+          workerIndex = this._nextValidationWorker === 0 ? 1 : this._nextValidationWorker;
+        }
+      }
+
+      const worker = this._validationWorkers[workerIndex] as Worker;
       return new Promise<HubResult<Message>>((resolve) => {
         const id = this._validationWorkerJobId++;
         this._validationWorkerPromiseMap.set(id, resolve);

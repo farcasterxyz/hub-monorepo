@@ -1,5 +1,35 @@
 # @farcaster/hub-nodejs
 
+## 0.11.14
+
+### Patch Changes
+
+- Updated dependencies [911f8b23]
+  - @farcaster/core@0.14.13
+
+## 0.11.13
+
+### Patch Changes
+
+- 87c4f416: Include better error message when providing bad host address
+
+## 0.11.12
+
+### Patch Changes
+
+- c261fba6: added approxSize to getInfo()
+- Updated dependencies [c261fba6]
+  - @farcaster/core@0.14.12
+
+## 0.11.11
+
+### Patch Changes
+
+- 7b374890: feat: Add Link CompactStateMessage type for link compaction
+- Updated dependencies [ab9258af]
+- Updated dependencies [7b374890]
+  - @farcaster/core@0.14.11
+
 ## 0.11.10
 
 ### Patch Changes

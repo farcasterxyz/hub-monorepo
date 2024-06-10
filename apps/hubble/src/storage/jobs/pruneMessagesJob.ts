@@ -10,7 +10,7 @@ export const DEFAULT_PRUNE_MESSAGES_JOB_CRON = "0 */2 * * *"; // Every two hours
 
 // How much time to allocate to pruning each fid.
 // 1000 fids per second = 1 fid per ms. 500k fids will take under 10 minutes
-const TIME_SCHEDULED_PER_FID_MS = 1;
+const TIME_SCHEDULED_PER_FID_MS = 5; // Temporarily increase to 5ms per fid to reduce load on DB, while we move to pruning at merge
 
 const log = logger.child({
   component: "PruneMessagesJob",

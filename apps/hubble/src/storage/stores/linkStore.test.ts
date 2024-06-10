@@ -15,7 +15,14 @@ import {
 } from "@farcaster/hub-nodejs";
 import { err, ok } from "neverthrow";
 import { jestRocksDB } from "../db/jestUtils.js";
-import { getMessage, makeTsHash } from "../db/message.js";
+import {
+  getMessage,
+  makeFidKey,
+  makeMessagePrimaryKeyFromMessage,
+  makeTsHash,
+  makeUserKey,
+  putMessageTransaction,
+} from "../db/message.js";
 import { UserPostfix } from "../db/types.js";
 import LinkStore from "./linkStore.js";
 import StoreEventHandler from "./storeEventHandler.js";
@@ -33,17 +40,17 @@ let linkAddEndorse: LinkAddMessage;
 let linkRemoveEndorse: LinkRemoveMessage;
 
 beforeAll(async () => {
-  const likeBody = Factories.LinkBody.build({
+  const linkBody = Factories.LinkBody.build({
     type: "follow",
     targetFid: targetFid,
   });
 
   linkAdd = await Factories.LinkAddMessage.create({
-    data: { fid, linkBody: likeBody },
+    data: { fid, linkBody },
   });
 
   linkRemove = await Factories.LinkRemoveMessage.create({
-    data: { fid, linkBody: likeBody, timestamp: linkAdd.data.timestamp + 1 },
+    data: { fid, linkBody, timestamp: linkAdd.data.timestamp + 1 },
   });
 
   const endorseBody = Factories.LinkBody.build({
@@ -672,6 +679,140 @@ describe("merge", () => {
           [linkRemove, [linkAddEarlier]],
         ]);
       });
+    });
+  });
+
+  describe("padding bug", () => {
+    const makeIncorrectKey = (message: LinkAddMessage | LinkRemoveMessage) => {
+      const postfix = message.data.type === MessageType.LINK_ADD ? UserPostfix.LinkAdds : UserPostfix.LinkRemoves;
+      return Buffer.concat([
+        makeUserKey(message.data.fid), // --------------------------- fid prefix, 5
+        Buffer.from([postfix]), // -------------- link_adds key, 1 byte
+        Buffer.concat([Buffer.from("follow")], 6), //-------- type, 6 bytes (incorrect padding)
+        makeFidKey(message.data.linkBody.targetFid || 0), //-- target id, 4 bytes
+      ]);
+    };
+    const insertWithIncorrectPadding = async (message: LinkAddMessage | LinkRemoveMessage) => {
+      const key = makeIncorrectKey(message);
+      expect(key.length).toEqual(16);
+      const tsHash = Buffer.from(makeTsHash(message.data.timestamp, message.hash)._unsafeUnwrap());
+      const txn = db.transaction();
+      txn.put(key, tsHash);
+      putMessageTransaction(txn, message);
+      await db.commit(txn);
+    };
+    const assertIncorrectPaddingExists = async (message: LinkAddMessage | LinkRemoveMessage, exists: boolean) => {
+      const badAddKey = makeIncorrectKey(message);
+      const primaryKey = makeMessagePrimaryKeyFromMessage(message);
+      await expect(db.keysExist([badAddKey, primaryKey])).resolves.toEqual(ok([exists, exists]));
+    };
+
+    test("duplicate link add with incorrect padding", async () => {
+      const earlierLinkAddIncorrectPadding = await Factories.LinkAddMessage.create({
+        data: { fid, timestamp: linkAdd.data.timestamp - 1, linkBody: linkAdd.data.linkBody },
+      });
+
+      await insertWithIncorrectPadding(earlierLinkAddIncorrectPadding);
+      await assertIncorrectPaddingExists(earlierLinkAddIncorrectPadding, true);
+
+      await expect(set.merge(linkAdd)).resolves.toBeGreaterThan(0);
+      await expect(
+        set.getLinkAdd(fid, linkAdd.data.linkBody.type, linkAdd.data.linkBody.targetFid as number),
+      ).resolves.toEqual(linkAdd);
+      // The incorrect key should be removed
+      await assertIncorrectPaddingExists(earlierLinkAddIncorrectPadding, false);
+    });
+
+    test("duplicate link remove with incorrect padding", async () => {
+      const earlierLinkRemoveIncorrectPadding = await Factories.LinkRemoveMessage.create({
+        data: { fid, timestamp: linkRemove.data.timestamp - 1, linkBody: linkAdd.data.linkBody },
+      });
+
+      await insertWithIncorrectPadding(earlierLinkRemoveIncorrectPadding);
+      await assertIncorrectPaddingExists(earlierLinkRemoveIncorrectPadding, true);
+
+      await expect(set.merge(linkRemove)).resolves.toBeGreaterThan(0);
+      await expect(
+        set.getLinkRemove(fid, linkRemove.data.linkBody.type, linkRemove.data.linkBody.targetFid as number),
+      ).resolves.toEqual(linkRemove);
+      // The incorrect key should be removed
+      await assertIncorrectPaddingExists(earlierLinkRemoveIncorrectPadding, false);
+    });
+
+    test("conflicting link add with incorrect padding", async () => {
+      const linkAddIncorrectPadding = await Factories.LinkAddMessage.create({
+        data: { fid, timestamp: linkAdd.data.timestamp, linkBody: linkAdd.data.linkBody },
+      });
+      const laterLinkRemove = await Factories.LinkRemoveMessage.create({
+        data: { fid, timestamp: linkAdd.data.timestamp + 1, linkBody: linkAdd.data.linkBody },
+      });
+
+      await insertWithIncorrectPadding(linkAddIncorrectPadding);
+      await assertIncorrectPaddingExists(linkAddIncorrectPadding, true);
+
+      await expect(set.merge(laterLinkRemove)).resolves.toBeGreaterThan(0);
+      await expect(
+        set.getLinkRemove(fid, laterLinkRemove.data.linkBody.type, laterLinkRemove.data.linkBody.targetFid as number),
+      ).resolves.toEqual(laterLinkRemove);
+      // The incorrect key should be removed
+      await assertIncorrectPaddingExists(linkAddIncorrectPadding, false);
+    });
+
+    test("conflicting link remove with incorrect padding", async () => {
+      const linkRemoveIncorrectPadding = await Factories.LinkRemoveMessage.create({
+        data: { fid, timestamp: linkAdd.data.timestamp, linkBody: linkAdd.data.linkBody },
+      });
+      const laterLinkAdd = await Factories.LinkAddMessage.create({
+        data: { fid, timestamp: linkAdd.data.timestamp + 1, linkBody: linkAdd.data.linkBody },
+      });
+
+      await insertWithIncorrectPadding(linkRemoveIncorrectPadding);
+      await assertIncorrectPaddingExists(linkRemoveIncorrectPadding, true);
+
+      await expect(set.merge(laterLinkAdd)).resolves.toBeGreaterThan(0);
+      await expect(
+        set.getLinkAdd(fid, laterLinkAdd.data.linkBody.type, laterLinkAdd.data.linkBody.targetFid as number),
+      ).resolves.toEqual(laterLinkAdd);
+      // The incorrect key should be removed
+      await assertIncorrectPaddingExists(linkRemoveIncorrectPadding, false);
+    });
+
+    test("handles conflicting messages when type is max length", async () => {
+      const maxTypeLinkAdd = await Factories.LinkAddMessage.create({
+        data: {
+          fid: fid,
+          timestamp: linkAdd.data.timestamp,
+          linkBody: { type: "follower", targetFid: targetFid },
+        },
+      });
+      const laterMaxTypeLinkAdd = await Factories.LinkAddMessage.create({
+        data: {
+          fid: fid,
+          timestamp: maxTypeLinkAdd.data.timestamp + 1,
+          linkBody: { type: "follower", targetFid: targetFid },
+        },
+      });
+      await expect(set.merge(maxTypeLinkAdd)).resolves.toBeGreaterThan(0);
+      await expect(set.merge(laterMaxTypeLinkAdd)).resolves.toBeGreaterThan(0);
+
+      await assertLinkAddWins(laterMaxTypeLinkAdd);
+      await assertLinkDoesNotExist(maxTypeLinkAdd);
+    });
+
+    test("getLinkAdd with incorrect padding", async () => {
+      await insertWithIncorrectPadding(linkAdd);
+      await assertIncorrectPaddingExists(linkAdd, true);
+      await expect(
+        set.getLinkAdd(fid, linkAdd.data.linkBody.type, linkAdd.data.linkBody.targetFid as number),
+      ).resolves.toEqual(linkAdd);
+    });
+
+    test("getLinkRemove with incorrect padding", async () => {
+      await insertWithIncorrectPadding(linkRemove);
+      await assertIncorrectPaddingExists(linkRemove, true);
+      await expect(
+        set.getLinkRemove(fid, linkRemove.data.linkBody.type, linkRemove.data.linkBody.targetFid as number),
+      ).resolves.toEqual(linkRemove);
     });
   });
 });

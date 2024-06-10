@@ -94,6 +94,7 @@ export type LinkBodyJson = {
   /** original timestamp in Unix ms */
   displayTimestamp?: number;
   targetFid?: number;
+  targetFids?: number[];
 };
 
 export type UsernameProofBodyJson = {

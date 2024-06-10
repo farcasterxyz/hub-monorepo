@@ -1,7 +1,7 @@
 use super::{store::HubError, PageOptions, PAGE_SIZE_MAX};
 use crate::{
     db::{RocksDB, RocksDbTransactionBatch},
-    protos::{self, CastId, Message as MessageProto, MessageData, MessageType},
+    protos::{CastId, Message as MessageProto, MessageData, MessageType},
 };
 use prost::Message as _;
 use std::convert::TryFrom;
@@ -14,6 +14,7 @@ pub const HASH_LENGTH: usize = 20;
 pub const TRUE_VALUE: u8 = 1;
 
 /** Copied from the JS code */
+#[allow(dead_code)]
 pub enum RootPrefix {
     /* Used for multiple purposes, starts with a 4-byte fid */
     User = 1,
@@ -50,7 +51,7 @@ pub enum RootPrefix {
     // Deprecated, DO NOT USE
     // GossipMetrics = 18,
 
-    /* Used to index user submited username proofs */
+    /* Used to index user submitted username proofs */
     UserNameProofByName = 19,
 
     // Deprecated
@@ -91,7 +92,8 @@ pub enum UserPostfix {
     // NOTE: If you add a new message type, make sure that it is only used to store Message protobufs.
     // If you need to store an index, use one of the UserPostfix values below (>86).
     /** Index records (must be 86-255) */
-    BySigner = 86, // Index message by its signer
+    // Deprecated
+    // BySigner = 86, // Index message by its signer
 
     /** CastStore add and remove sets */
     CastAdds = 87,
@@ -118,6 +120,9 @@ pub enum UserPostfix {
 
     /* UserNameProof add set */
     UserNameProofAdds = 99,
+
+    /* Link Compact State set */
+    LinkCompactStateMessage = 100,
 }
 
 impl UserPostfix {
@@ -128,7 +133,7 @@ impl UserPostfix {
 
 /** A page of messages returned from various APIs */
 pub struct MessagesPage {
-    pub messages: Vec<MessageProto>,
+    pub messages_bytes: Vec<Vec<u8>>,
     pub next_page_token: Option<Vec<u8>>,
 }
 
@@ -201,6 +206,7 @@ pub fn make_ts_hash(timestamp: u32, hash: &Vec<u8>) -> Result<[u8; TS_HASH_LENGT
     Ok(ts_hash)
 }
 
+#[allow(dead_code)]
 pub fn unpack_ts_hash(ts_hash: &[u8; TS_HASH_LENGTH]) -> (u32, [u8; HASH_LENGTH]) {
     let mut timestamp_bytes = [0u8; 4];
     timestamp_bytes.copy_from_slice(&ts_hash[0..4]);
@@ -246,19 +252,6 @@ pub fn make_message_primary_key(
     key
 }
 
-fn make_message_by_signer_key(fid: u32, signer: Vec<u8>, r#type: u8, ts_hash: [u8; 24]) -> Vec<u8> {
-    let mut key = Vec::with_capacity(1 + 4 + 1 + 32 + 1 + 24);
-    key.extend_from_slice(&make_user_key(fid));
-    key.push(UserPostfix::BySigner as u8);
-    key.extend_from_slice(&signer);
-    if r#type > 0 {
-        key.push(r#type as u8);
-    }
-    key.extend_from_slice(&ts_hash);
-
-    key
-}
-
 pub fn make_cast_id_key(cast_id: &CastId) -> Vec<u8> {
     let mut key = Vec::with_capacity(4 + HASH_LENGTH);
     key.extend_from_slice(&make_fid_key(cast_id.fid as u32));
@@ -291,27 +284,16 @@ pub fn get_message(
 /** Read many messages.
  * Note that if a message is not found, that corresponding entry in the result will be None.
  * This is different from the behaviour of get_message, which returns an error.
- *
  */
-pub fn get_many_messages(
+pub fn get_many_messages_as_bytes(
     db: &RocksDB,
     primary_keys: Vec<Vec<u8>>,
-) -> Result<Vec<protos::Message>, HubError> {
+) -> Result<Vec<Vec<u8>>, HubError> {
     let mut messages = Vec::new();
 
     for key in primary_keys {
         if let Ok(Some(value)) = db.get(&key) {
-            match message_decode(value.as_slice()) {
-                Ok(message) => {
-                    messages.push(message);
-                }
-                Err(_) => {
-                    return Err(HubError {
-                        code: "db.internal_error".to_string(),
-                        message: "could not decode message".to_string(),
-                    })
-                }
-            }
+            messages.push(value);
         } else {
             return Err(HubError {
                 code: "db.internal_error".to_string(),
@@ -332,16 +314,16 @@ pub fn get_messages_page_by_prefix<F>(
 where
     F: Fn(&MessageProto) -> bool,
 {
-    let mut messages = Vec::new();
+    let mut messages_bytes = Vec::new();
     let mut last_key = vec![];
 
-    db.for_each_iterator_by_prefix_unbounded(prefix, page_options, |key, value| {
+    db.for_each_iterator_by_prefix(prefix, page_options, |key, value| {
         match message_decode(value) {
             Ok(message) => {
                 if filter(&message) {
-                    messages.push(message);
+                    messages_bytes.push(value.to_vec());
 
-                    if messages.len() >= page_options.page_size.unwrap_or(PAGE_SIZE_MAX) {
+                    if messages_bytes.len() >= page_options.page_size.unwrap_or(PAGE_SIZE_MAX) {
                         last_key = key.to_vec();
                         return Ok(true); // Stop iterating
                     }
@@ -363,7 +345,7 @@ where
     };
 
     Ok(MessagesPage {
-        messages,
+        messages_bytes,
         next_page_token,
     })
 }
@@ -414,15 +396,6 @@ pub fn put_message_transaction(
     );
     txn.put(primary_key, message_encode(&message));
 
-    let by_signer_key = make_message_by_signer_key(
-        message.data.as_ref().unwrap().fid as u32,
-        message.signer.clone(),
-        message.data.as_ref().unwrap().r#type as u8,
-        ts_hash,
-    );
-
-    txn.put(by_signer_key, [TRUE_VALUE].to_vec());
-
     Ok(())
 }
 
@@ -439,14 +412,6 @@ pub fn delete_message_transaction(
         Some(&ts_hash),
     );
     txn.delete(primary_key);
-
-    let by_signer_key = make_message_by_signer_key(
-        message.data.as_ref().unwrap().fid as u32,
-        message.signer.clone(),
-        message.data.as_ref().unwrap().r#type as u8,
-        ts_hash,
-    );
-    txn.delete(by_signer_key);
 
     Ok(())
 }

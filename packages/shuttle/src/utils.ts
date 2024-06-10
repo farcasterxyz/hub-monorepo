@@ -66,6 +66,9 @@ export function bytesToHex(value: Uint8Array): `0x${string}` {
   return `0x${Buffer.from(value).toString("hex")}`;
 }
 
+export function farcasterTimeToDate(time: number): Date;
+export function farcasterTimeToDate(time: null): null;
+export function farcasterTimeToDate(time: undefined): undefined;
 export function farcasterTimeToDate(time: number | null | undefined): Date | null | undefined {
   if (time === undefined) return undefined;
   if (time === null) return null;
@@ -171,6 +174,12 @@ export function convertProtobufMessageBodyToJson(message: Message): MessageBodyJ
         if (displayTimestampUnixResult.isErr()) throw displayTimestampUnixResult.error;
         body.displayTimestamp = displayTimestampUnixResult.value;
       }
+      break;
+    }
+    case MessageType.LINK_COMPACT_STATE: {
+      if (!message.data.linkCompactStateBody) throw new Error("Missing linkCompactStateBody");
+      const { type, targetFids } = message.data.linkCompactStateBody;
+      body = { type, targetFids };
       break;
     }
     case MessageType.VERIFICATION_ADD_ETH_ADDRESS: {

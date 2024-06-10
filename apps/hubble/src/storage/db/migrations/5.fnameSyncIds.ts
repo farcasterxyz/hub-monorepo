@@ -37,7 +37,7 @@ export const fnameSyncIds = async (db: RocksDB): Promise<boolean> => {
 
         if (await syncTrie.existsByBytes(unpaddedBytes)) {
           count += 1;
-          await syncTrie.deleteByBytes(unpaddedBytes);
+          await syncTrie.deleteByBytes([unpaddedBytes]);
         }
       } catch (e) {
         log.error({ err: e }, `Failed to delete fname sync id for fname: ${proof.value.name}`);

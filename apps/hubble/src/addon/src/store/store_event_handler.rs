@@ -92,7 +92,7 @@ impl StoreEventHandler {
         txn: &mut RocksDbTransactionBatch,
         raw_event: &mut HubEvent,
     ) -> Result<u64, HubError> {
-        // Acquire the lock so we don't generate multiple IDs. This also serves as the commmit lock
+        // Acquire the lock so we don't generate multiple IDs. This also serves as the commit lock
         let mut generator = self.generator.lock().unwrap();
 
         // Generate the event ID

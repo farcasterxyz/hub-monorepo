@@ -1,5 +1,23 @@
 # @farcaster/hub-web
 
+## 0.8.9
+
+### Patch Changes
+
+- c261fba6: added approxSize to getInfo()
+- 920f6c02: fix: grpcWeb import
+- Updated dependencies [c261fba6]
+  - @farcaster/core@0.14.12
+
+## 0.8.8
+
+### Patch Changes
+
+- 7b374890: feat: Add Link CompactStateMessage type for link compaction
+- Updated dependencies [ab9258af]
+- Updated dependencies [7b374890]
+  - @farcaster/core@0.14.11
+
 ## 0.8.7
 
 ### Patch Changes

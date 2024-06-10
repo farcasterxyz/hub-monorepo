@@ -15,7 +15,7 @@ concurrency:
 jobs:
   build-image:
     timeout-minutes: 10
-    runs-on: 'buildjet-16vcpu-ubuntu-2204-arm'
+    runs-on: 'warp-ubuntu-latest-arm64-16x'
 
     steps:
       - uses: actions/checkout@v4
@@ -58,15 +58,14 @@ jobs:
     strategy:
       matrix:
         include:
-          - node_version: 18
-            runs_on: 'buildjet-8vcpu-ubuntu-2204'
           - node_version: 20
-            runs_on: 'buildjet-8vcpu-ubuntu-2204'
+            runs_on: 'warp-ubuntu-latest-x64-16x'
           - node_version: 21
-            runs_on: 'buildjet-16vcpu-ubuntu-2204-arm'
+            runs_on: 'warp-ubuntu-latest-arm64-16x' # Only works on ARM for now
+          - node_version: 22
+            runs_on: 'warp-ubuntu-latest-x64-16x'
 
     runs-on: ${{ matrix.runs_on }}
-
     name: test (${{ matrix.node_version }})
 
     services:
@@ -86,6 +85,10 @@ jobs:
         options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
 
     steps:
+      # Needed for WarpBuild ARM runners
+      - if: ${{ startsWith(runner.arch, 'ARM') }}
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
@@ -140,4 +143,4 @@ jobs:
         uses: codecov/codecov-action@v4
         continue-on-error: true # Don't fail the build if codecov fails
         timeout-minutes: 1
-        
+

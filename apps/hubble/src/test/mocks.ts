@@ -14,8 +14,21 @@ import { GossipNode } from "../network/p2p/gossipNode.js";
 import RocksDB from "../storage/db/rocksdb.js";
 import Engine from "../storage/engine/index.js";
 import { PeerId } from "@libp2p/interface-peer-id";
-import { ContactInfoContent, HubResult, MessageBundle } from "@farcaster/core";
+import {
+  ContactInfoContent,
+  HubResult,
+  MessageBundle,
+  ViemLocalEip712Signer,
+  makeUserNameProofClaim,
+} from "@farcaster/core";
 import { getHubState, putHubState } from "../storage/db/hubState.js";
+import {
+  FNameRegistryClientInterface,
+  FNameTransfer,
+  FNameTransferRequest,
+} from "../eth/fnameRegistryEventsProvider.js";
+import { Address, PrivateKeyAccount, generatePrivateKey, privateKeyToAccount } from "viem/accounts";
+import { bytesToHex } from "viem/utils";
 
 export class MockHub implements HubInterface {
   public db: RocksDB;
@@ -92,5 +105,70 @@ export class MockHub implements HubInterface {
 
   async updateApplicationPeerScore(_peerId: String, _score: number) {
     return ok(undefined);
+  }
+}
+
+export class MockFnameRegistryClient implements FNameRegistryClientInterface {
+  private transfersToReturn: FNameTransfer[][] = [];
+  private minimumSince = 0;
+  private timesToThrow = 0;
+  private account: PrivateKeyAccount;
+  private signer: ViemLocalEip712Signer;
+  private signerAddress: Address;
+
+  constructor(account: PrivateKeyAccount = privateKeyToAccount(generatePrivateKey())) {
+    this.account = account;
+    this.signer = new ViemLocalEip712Signer(account);
+    this.signerAddress = account.address;
+  }
+
+  setTransfersToReturn(transfers: FNameTransfer[][]) {
+    this.transfersToReturn = transfers;
+    this.transfersToReturn.flat(2).forEach(async (t) => {
+      if (t.server_signature === "") {
+        t.server_signature = bytesToHex(
+          (
+            await this.signer.signUserNameProofClaim(
+              makeUserNameProofClaim({
+                name: t.username,
+                owner: t.owner,
+                timestamp: t.timestamp,
+              }),
+            )
+          )._unsafeUnwrap(),
+        );
+      }
+    });
+  }
+
+  setMinimumSince(minimumSince: number) {
+    this.minimumSince = minimumSince;
+  }
+
+  setSignerAddress(address: Address) {
+    this.signerAddress = address;
+  }
+
+  throwOnce() {
+    this.timesToThrow = 1;
+  }
+
+  async getTransfers(params: FNameTransferRequest): Promise<FNameTransfer[]> {
+    if (this.timesToThrow > 0) {
+      this.timesToThrow--;
+      throw new Error("connection failed");
+    }
+    if (params.from_id) {
+      expect(params.from_id).toBeGreaterThanOrEqual(this.minimumSince);
+    }
+    const transfers = this.transfersToReturn.shift();
+    if (!transfers) {
+      return Promise.resolve([]);
+    }
+    return Promise.resolve(transfers);
+  }
+
+  async getSigner(): Promise<string> {
+    return this.signerAddress;
   }
 }

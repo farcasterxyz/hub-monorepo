@@ -10,18 +10,15 @@ export class MessageProcessor {
     trx: DB,
     operation: StoreMessageOperation = "merge",
     log: pino.Logger | undefined = undefined,
+    validate = true,
   ): Promise<boolean> {
-    // const log = createLogger(messageLogData(message));
-    // if (ENVIRONMENT === "prod" && message.data?.network !== FC_NETWORK_ID) {
-    //   throw new BadRequestError(
-    //     `Message ${bytesToHex(message.hash)} has unexpected network ID: ${message.data?.network}`,
-    //   );
-    // }
-
-    const validation = await validations.validateMessage(message);
-    if (validation.isErr()) {
-      log?.warn(`Invalid message ${bytesToHex(message.hash)}: ${validation.error.message}`);
-      throw new Error(`Invalid message: ${validation.error.message}`);
+    // Only validate merge messages since we may be deleting an invalid message
+    if (validate && operation === "merge") {
+      const validation = await validations.validateMessage(message);
+      if (validation.isErr()) {
+        log?.warn(`Invalid message ${bytesToHex(message.hash)}: ${validation.error.message}`);
+        throw new Error(`Invalid message: ${validation.error.message}`);
+      }
     }
 
     if (!message.data) throw new Error("Message data is missing");

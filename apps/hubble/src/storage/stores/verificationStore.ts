@@ -1,6 +1,5 @@
 import {
   HubAsyncResult,
-  Message,
   StoreType,
   VerificationAddAddressMessage,
   VerificationRemoveMessage,
@@ -21,6 +20,7 @@ import { UserPostfix } from "../db/types.js";
 import { ResultAsync } from "neverthrow";
 import RocksDB from "storage/db/rocksdb.js";
 import { RustStoreBase } from "./rustStoreBase.js";
+import { messageDecode } from "../../storage/db/message.js";
 
 class VerificationStore extends RustStoreBase<VerificationAddAddressMessage, VerificationRemoveMessage> {
   constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
@@ -42,7 +42,7 @@ class VerificationStore extends RustStoreBase<VerificationAddAddressMessage, Ver
     if (result.isErr()) {
       throw result.error;
     }
-    return Message.decode(new Uint8Array(result.value)) as VerificationAddAddressMessage;
+    return messageDecode(new Uint8Array(result.value)) as VerificationAddAddressMessage;
   }
 
   async getVerificationRemove(fid: number, address: Uint8Array): Promise<VerificationRemoveMessage> {
@@ -53,7 +53,7 @@ class VerificationStore extends RustStoreBase<VerificationAddAddressMessage, Ver
     if (result.isErr()) {
       throw result.error;
     }
-    return Message.decode(new Uint8Array(result.value)) as VerificationRemoveMessage;
+    return messageDecode(new Uint8Array(result.value)) as VerificationRemoveMessage;
   }
 
   async getVerificationAddsByFid(
@@ -64,7 +64,7 @@ class VerificationStore extends RustStoreBase<VerificationAddAddressMessage, Ver
 
     const messages =
       messages_page.messageBytes?.map((message_bytes) => {
-        return Message.decode(new Uint8Array(message_bytes)) as VerificationAddAddressMessage;
+        return messageDecode(new Uint8Array(message_bytes)) as VerificationAddAddressMessage;
       }) ?? [];
 
     return { messages, nextPageToken: messages_page.nextPageToken };
@@ -78,7 +78,7 @@ class VerificationStore extends RustStoreBase<VerificationAddAddressMessage, Ver
 
     const messages =
       message_page.messageBytes?.map((message_bytes) => {
-        return Message.decode(new Uint8Array(message_bytes)) as VerificationRemoveMessage;
+        return messageDecode(new Uint8Array(message_bytes)) as VerificationRemoveMessage;
       }) ?? [];
 
     return { messages, nextPageToken: message_page.nextPageToken };

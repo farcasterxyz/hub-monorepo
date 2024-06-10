@@ -101,6 +101,8 @@ export enum MessageType {
   USERNAME_PROOF = 12,
   /** FRAME_ACTION - A Farcaster Frame action */
   FRAME_ACTION = 13,
+  /** LINK_COMPACT_STATE - Link Compaction State Message */
+  LINK_COMPACT_STATE = 14,
 }
 
 export function messageTypeFromJSON(object: any): MessageType {
@@ -141,6 +143,9 @@ export function messageTypeFromJSON(object: any): MessageType {
     case 13:
     case "MESSAGE_TYPE_FRAME_ACTION":
       return MessageType.FRAME_ACTION;
+    case 14:
+    case "MESSAGE_TYPE_LINK_COMPACT_STATE":
+      return MessageType.LINK_COMPACT_STATE;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum MessageType");
   }
@@ -172,6 +177,8 @@ export function messageTypeToJSON(object: MessageType): string {
       return "MESSAGE_TYPE_USERNAME_PROOF";
     case MessageType.FRAME_ACTION:
       return "MESSAGE_TYPE_FRAME_ACTION";
+    case MessageType.LINK_COMPACT_STATE:
+      return "MESSAGE_TYPE_LINK_COMPACT_STATE";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum MessageType");
   }
@@ -399,7 +406,11 @@ export interface MessageData {
   /** SignerRemoveBody signer_remove_body = 13; // Deprecated */
   linkBody?: LinkBody | undefined;
   usernameProofBody?: UserNameProof | undefined;
-  frameActionBody?: FrameActionBody | undefined;
+  frameActionBody?:
+    | FrameActionBody
+    | undefined;
+  /** Compaction messages */
+  linkCompactStateBody?: LinkCompactStateBody | undefined;
 }
 
 /** Adds metadata about a user */
@@ -497,6 +508,13 @@ export interface LinkBody {
     | undefined;
   /** The fid the link relates to */
   targetFid?: number | undefined;
+}
+
+/** A Compaction message for the Link Store */
+export interface LinkCompactStateBody {
+  /** Type of link, <= 8 characters */
+  type: string;
+  targetFids: number[];
 }
 
 /** A Farcaster Frame action */
@@ -684,6 +702,7 @@ function createBaseMessageData(): MessageData {
     linkBody: undefined,
     usernameProofBody: undefined,
     frameActionBody: undefined,
+    linkCompactStateBody: undefined,
   };
 }
 
@@ -727,6 +746,9 @@ export const MessageData = {
     }
     if (message.frameActionBody !== undefined) {
       FrameActionBody.encode(message.frameActionBody, writer.uint32(130).fork()).ldelim();
+    }
+    if (message.linkCompactStateBody !== undefined) {
+      LinkCompactStateBody.encode(message.linkCompactStateBody, writer.uint32(138).fork()).ldelim();
     }
     return writer;
   },
@@ -829,6 +851,13 @@ export const MessageData = {
 
           message.frameActionBody = FrameActionBody.decode(reader, reader.uint32());
           continue;
+        case 17:
+          if (tag != 138) {
+            break;
+          }
+
+          message.linkCompactStateBody = LinkCompactStateBody.decode(reader, reader.uint32());
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -857,6 +886,9 @@ export const MessageData = {
       linkBody: isSet(object.linkBody) ? LinkBody.fromJSON(object.linkBody) : undefined,
       usernameProofBody: isSet(object.usernameProofBody) ? UserNameProof.fromJSON(object.usernameProofBody) : undefined,
       frameActionBody: isSet(object.frameActionBody) ? FrameActionBody.fromJSON(object.frameActionBody) : undefined,
+      linkCompactStateBody: isSet(object.linkCompactStateBody)
+        ? LinkCompactStateBody.fromJSON(object.linkCompactStateBody)
+        : undefined,
     };
   },
 
@@ -886,6 +918,9 @@ export const MessageData = {
       (obj.usernameProofBody = message.usernameProofBody ? UserNameProof.toJSON(message.usernameProofBody) : undefined);
     message.frameActionBody !== undefined &&
       (obj.frameActionBody = message.frameActionBody ? FrameActionBody.toJSON(message.frameActionBody) : undefined);
+    message.linkCompactStateBody !== undefined && (obj.linkCompactStateBody = message.linkCompactStateBody
+      ? LinkCompactStateBody.toJSON(message.linkCompactStateBody)
+      : undefined);
     return obj;
   },
 
@@ -927,6 +962,9 @@ export const MessageData = {
       : undefined;
     message.frameActionBody = (object.frameActionBody !== undefined && object.frameActionBody !== null)
       ? FrameActionBody.fromPartial(object.frameActionBody)
+      : undefined;
+    message.linkCompactStateBody = (object.linkCompactStateBody !== undefined && object.linkCompactStateBody !== null)
+      ? LinkCompactStateBody.fromPartial(object.linkCompactStateBody)
       : undefined;
     return message;
   },
@@ -1768,6 +1806,92 @@ export const LinkBody = {
     message.type = object.type ?? "";
     message.displayTimestamp = object.displayTimestamp ?? undefined;
     message.targetFid = object.targetFid ?? undefined;
+    return message;
+  },
+};
+
+function createBaseLinkCompactStateBody(): LinkCompactStateBody {
+  return { type: "", targetFids: [] };
+}
+
+export const LinkCompactStateBody = {
+  encode(message: LinkCompactStateBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.type !== "") {
+      writer.uint32(10).string(message.type);
+    }
+    writer.uint32(18).fork();
+    for (const v of message.targetFids) {
+      writer.uint64(v);
+    }
+    writer.ldelim();
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): LinkCompactStateBody {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseLinkCompactStateBody();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.type = reader.string();
+          continue;
+        case 2:
+          if (tag == 16) {
+            message.targetFids.push(longToNumber(reader.uint64() as Long));
+            continue;
+          }
+
+          if (tag == 18) {
+            const end2 = reader.uint32() + reader.pos;
+            while (reader.pos < end2) {
+              message.targetFids.push(longToNumber(reader.uint64() as Long));
+            }
+
+            continue;
+          }
+
+          break;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): LinkCompactStateBody {
+    return {
+      type: isSet(object.type) ? String(object.type) : "",
+      targetFids: Array.isArray(object?.targetFids) ? object.targetFids.map((e: any) => Number(e)) : [],
+    };
+  },
+
+  toJSON(message: LinkCompactStateBody): unknown {
+    const obj: any = {};
+    message.type !== undefined && (obj.type = message.type);
+    if (message.targetFids) {
+      obj.targetFids = message.targetFids.map((e) => Math.round(e));
+    } else {
+      obj.targetFids = [];
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<LinkCompactStateBody>, I>>(base?: I): LinkCompactStateBody {
+    return LinkCompactStateBody.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<LinkCompactStateBody>, I>>(object: I): LinkCompactStateBody {
+    const message = createBaseLinkCompactStateBody();
+    message.type = object.type ?? "";
+    message.targetFids = object.targetFids?.map((e) => e) || [];
     return message;
   },
 };

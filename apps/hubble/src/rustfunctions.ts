@@ -12,7 +12,7 @@ import { PAGE_SIZE_MAX, PageOptions } from "./storage/stores/types.js";
 import { UserMessagePostfix } from "./storage/db/types.js";
 import { DbKeyValue, RocksDbIteratorOptions } from "./storage/db/rocksdb.js";
 import { logger } from "./utils/logger.js";
-import { Result, err, ok } from "neverthrow";
+import { Result, ResultAsync, err, ok } from "neverthrow";
 import { NodeMetadata, TrieSnapshot } from "network/sync/merkleTrie.js";
 
 // Also set up the log flush listener
@@ -132,6 +132,10 @@ export const rsDbLocation = (db: RustDb): string => {
   return lib.dbLocation.call(db);
 };
 
+export const rsDbKeysExist = async (db: RustDb, keys: Uint8Array[]): Promise<boolean[]> => {
+  return await lib.dbKeysExist.call(db, keys);
+};
+
 export const rsDbGet = async (db: RustDb, key: Uint8Array): Promise<Buffer> => {
   return await lib.dbGet.call(db, key);
 };
@@ -154,8 +158,8 @@ export const rsDbCommit = async (db: RustDb, keyValues: DbKeyValue[]): Promise<v
   return await lib.dbCommit.call(db, keyValues);
 };
 
-export const rsDbSnapshotBackup = async (mainDb: RustDb, trieDb: RustDb): Promise<string> => {
-  return await lib.dbSnapshotBackup(mainDb, trieDb);
+export const rsDbSnapshotBackup = async (mainDb: RustDb, trieDb: RustDb, timestamp: number): Promise<string> => {
+  return await lib.dbSnapshotBackup(mainDb, trieDb, timestamp);
 };
 
 /**
@@ -190,33 +194,18 @@ export const rsDbForEachIteratorByPrefix = async (
   pageOptions: PageOptions,
   cb: (key: Buffer, value: Buffer | undefined) => Promise<boolean> | boolean | Promise<void> | void,
 ): Promise<boolean> => {
-  let dbKeyValues: DbKeyValue[] = [];
-  const batchPageSize = pageOptions.pageSize ?? PAGE_SIZE_MAX;
-
   let allFinished = false;
   let nextPageToken = undefined;
   let stopped = false;
   let batchPageOptions = { ...pageOptions };
 
   do {
-    allFinished = await lib.dbForEachIteratorByPrefix.call(
-      db,
-      prefix,
-      batchPageOptions,
-      (key: Buffer, value: Buffer | undefined) => {
-        dbKeyValues.push({ key, value });
-
-        if (dbKeyValues.length > batchPageSize) {
-          nextPageToken = new Uint8Array(key.subarray(prefix.length));
-          return true; // Stop the iteration
-        }
-
-        return false; // Continue the iteration
-      },
-    );
+    const result = await lib.dbFetchIteratorPageByPrefix.call(db, prefix, batchPageOptions);
+    allFinished = result.allFinished;
+    nextPageToken = result.nextPageToken;
 
     // Iterate over the key-values
-    for (const kv of dbKeyValues) {
+    for (const kv of result.dbKeyValues) {
       const shouldStop = await cb(kv.key, kv.value);
       if (shouldStop) {
         stopped = true;
@@ -225,7 +214,6 @@ export const rsDbForEachIteratorByPrefix = async (
     }
 
     batchPageOptions = { ...pageOptions, pageToken: nextPageToken };
-    dbKeyValues = []; // Clear the key-values array
   } while (!allFinished && !stopped && nextPageToken);
 
   return !stopped && allFinished;
@@ -385,6 +373,12 @@ export const rsMergeMany = async (
   store: RustDynStore,
   messagesBytes: Uint8Array[],
 ): Promise<Map<number, HubResult<Buffer>>> => {
+  // Short-circuit if there are is just one message
+  if (messagesBytes.length === 1) {
+    const result = await ResultAsync.fromPromise(rsMerge(store, messagesBytes[0] as Uint8Array), rustErrorToHubError);
+    return new Map([[0, result]]);
+  }
+
   const mergeResults: Map<number, HubResult<Buffer>> = new Map();
 
   const results = await lib.mergeMany.call(store, messagesBytes);
@@ -676,6 +670,14 @@ export const rsMerkleTrieStop = async (trie: RustMerkleTrie): Promise<void> => {
   await lib.merkleTrieStop.call(trie);
 };
 
+export const rsMerkleTrieBatchUpdate = async (
+  trie: RustMerkleTrie,
+  inserts: Uint8Array[],
+  deletes: Uint8Array[],
+): Promise<boolean[]> => {
+  return await lib.merkleTrieBatchUpdate.call(trie, inserts, deletes);
+};
+
 export const rsMerkleTrieInsert = async (trie: RustMerkleTrie, key: Uint8Array): Promise<boolean> => {
   return await lib.merkleTrieInsert.call(trie, key);
 };
@@ -736,14 +738,6 @@ export const rsMerkleTrieItems = async (trie: RustMerkleTrie): Promise<number> =
 
 export const rsMerkleTrieRootHash = async (trie: RustMerkleTrie): Promise<string> => {
   return Buffer.from(await lib.merkleTrieRootHash.call(trie)).toString("hex");
-};
-
-export const rsMerkleTrieMigrate = async (
-  trie: RustMerkleTrie,
-  keys: Uint8Array[],
-  values: Uint8Array[],
-): Promise<number> => {
-  return await lib.merkleTrieMigrate.call(trie, keys, values);
 };
 
 export const rsMerkleTrieUnloadChildren = async (trie: RustMerkleTrie): Promise<void> => {

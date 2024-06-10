@@ -1,5 +1,24 @@
 # @farcaster/core
 
+## 0.14.13
+
+### Patch Changes
+
+- 911f8b23: Adds missing builder for LinkCompactState
+
+## 0.14.12
+
+### Patch Changes
+
+- c261fba6: added approxSize to getInfo()
+
+## 0.14.11
+
+### Patch Changes
+
+- ab9258af: feat: extend verification signature max length
+- 7b374890: feat: Add Link CompactStateMessage type for link compaction
+
 ## 0.14.10
 
 ### Patch Changes

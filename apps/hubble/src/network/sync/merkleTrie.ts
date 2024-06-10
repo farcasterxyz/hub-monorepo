@@ -11,26 +11,25 @@ import {
 } from "../../storage/db/types.js";
 import { logger } from "../../utils/logger.js";
 import { messageDecode } from "../../storage/db/message.js";
-import { BLAKE3TRUNCATE160_EMPTY_HASH, sleep } from "../../utils/crypto.js";
+import { BLAKE3TRUNCATE160_EMPTY_HASH } from "../../utils/crypto.js";
 import {
   rsCreateMerkleTrie,
   rsCreateMerkleTrieFromDb,
+  rsMerkleTrieBatchUpdate,
   rsMerkleTrieClear,
-  rsMerkleTrieDelete,
   rsMerkleTrieExists,
   rsMerkleTrieGetAllValues,
   rsMerkleTrieGetDb,
   rsMerkleTrieGetSnapshot,
   rsMerkleTrieGetTrieNodeMetadata,
   rsMerkleTrieInitialize,
-  rsMerkleTrieInsert,
   rsMerkleTrieItems,
-  rsMerkleTrieMigrate,
   rsMerkleTrieRootHash,
   rsMerkleTrieStop,
   rsMerkleTrieUnloadChildren,
   RustMerkleTrie,
 } from "../../rustfunctions.js";
+import { statsd } from "../../utils/statsd.js";
 import path, { dirname } from "path";
 import fs from "fs";
 
@@ -86,9 +85,13 @@ export const TrieDBPathPrefix = "trieDb";
 class MerkleTrie {
   private _db: RocksDB;
   private _rustTrie: RustMerkleTrie;
+  private _trieUpdatePending: boolean;
+  private _trieInserts: Map<Uint8Array, (result: boolean) => void> = new Map();
+  private _trieDeletes: Map<Uint8Array, (result: boolean) => void> = new Map();
 
   constructor(rocksDb: RocksDB, trieDb?: RocksDB) {
     this._db = rocksDb;
+    this._trieUpdatePending = false;
 
     if (trieDb) {
       this._rustTrie = rsCreateMerkleTrieFromDb(trieDb.rustDb);
@@ -145,6 +148,9 @@ class MerkleTrie {
   }
 
   public async clear(): Promise<void> {
+    this._trieInserts.clear();
+    this._trieDeletes.clear();
+
     return await rsMerkleTrieClear(this._rustTrie);
   }
 
@@ -215,31 +221,125 @@ class MerkleTrie {
     log.info({ count }, "Rebuilt fnmames trie");
   }
 
+  countPendingUpdates(): number {
+    return this._trieInserts.size + this._trieDeletes.size;
+  }
+
+  async doBatchUpdate() {
+    this._trieUpdatePending = true;
+    // Keep inserting while there are pending updates
+    while (this.countPendingUpdates() > 0) {
+      statsd().gauge("merkle_trie.pending_updates", this.countPendingUpdates());
+
+      const insertUpdates = Array.from(this._trieInserts);
+      this._trieInserts = new Map();
+
+      const deleteUpdates = Array.from(this._trieDeletes);
+      this._trieDeletes = new Map();
+
+      const results = await ResultAsync.fromPromise(
+        rsMerkleTrieBatchUpdate(
+          this._rustTrie,
+          insertUpdates.map(([key, _]) => key),
+          deleteUpdates.map(([key, _]) => key),
+        ),
+        (e) => e as HubError,
+      );
+
+      if (results.isErr()) {
+        log.error({ error: results.error }, "Error batch updating trie");
+        // Resolve all the pending updates with false
+        insertUpdates.forEach(([_, resolve]) => resolve(false));
+        deleteUpdates.forEach(([_, resolve]) => resolve(false));
+      } else {
+        const allResults = results.value;
+        // Resolve all the pending updates with the result. The allResults are concatenated
+        // so we should also concat the insert+delete updates
+        let i = 0;
+        insertUpdates.forEach(([_, resolve]) => resolve(allResults[i++] as boolean));
+        deleteUpdates.forEach(([_, resolve]) => resolve(allResults[i++] as boolean));
+      }
+
+      // Sleep for a bit to let any promises resolve. This is Ok, because the
+      // doBatchUpdate() call is never blocking
+      await new Promise((resolve) => setTimeout(resolve, 1));
+    }
+    this._trieUpdatePending = false;
+  }
+
   public async insert(id: SyncId): Promise<boolean> {
-    return await rsMerkleTrieInsert(this._rustTrie, id.syncId());
+    return (await this.insertBytes([id.syncId()]))[0] as boolean;
   }
 
-  public async insertBytes(id: Uint8Array): Promise<boolean> {
-    return await rsMerkleTrieInsert(this._rustTrie, id);
+  public async insertBatch(ids: SyncId[]): Promise<boolean[]> {
+    return await this.insertBytes(ids.map((id) => id.syncId()));
   }
 
-  public async migrate(keys: Uint8Array[], values: Uint8Array[]): Promise<number> {
-    return await rsMerkleTrieMigrate(this._rustTrie, keys, values);
+  public async insertBytes(ids: Uint8Array[]): Promise<boolean[]> {
+    const allPromises: Promise<boolean>[] = [];
+    return new Promise<boolean[]>((resolve) => {
+      ids.forEach((id) => {
+        allPromises.push(
+          new Promise<boolean>((resolve) => {
+            this._trieInserts.set(id, resolve);
+            // Remove it from the delete queue if it was there
+            const resolveFn = this._trieDeletes.get(id);
+            if (resolveFn) {
+              this._trieDeletes.delete(id);
+              resolveFn(true);
+            }
+          }),
+        );
+      });
+
+      if (this._trieUpdatePending) {
+        // Nothing to do, it will be processed at the next opportunity
+      } else {
+        // Trigger the update
+        void this.doBatchUpdate();
+      }
+
+      resolve(Promise.all(allPromises));
+    });
   }
 
-  public async deleteBySyncId(id: SyncId): Promise<boolean> {
-    return await rsMerkleTrieDelete(this._rustTrie, id.syncId());
+  public async delete(id: SyncId): Promise<boolean> {
+    return (await this.deleteByBytes([id.syncId()]))[0] as boolean;
   }
 
-  public async deleteByBytes(id: Uint8Array): Promise<boolean> {
-    return await rsMerkleTrieDelete(this._rustTrie, id);
+  public async deleteByBytes(ids: Uint8Array[]): Promise<boolean[]> {
+    const allPromises: Promise<boolean>[] = [];
+    return new Promise<boolean[]>((resolve) => {
+      ids.forEach((id) => {
+        allPromises.push(
+          new Promise<boolean>((resolve) => {
+            this._trieDeletes.set(id, resolve);
+            // Remove it from the insert queue if it was there
+            const resolveFn = this._trieInserts.get(id);
+            if (resolveFn) {
+              this._trieInserts.delete(id);
+              resolveFn(true);
+            }
+          }),
+        );
+      });
+
+      if (this._trieUpdatePending) {
+        // Nothing to do, it will be processed at the next opportunity
+      } else {
+        // Trigger the update
+        void this.doBatchUpdate();
+      }
+
+      resolve(Promise.all(allPromises));
+    });
   }
 
   /**
    * Check if the SyncId exists in the trie.
    */
   public async exists(id: SyncId): Promise<boolean> {
-    return await rsMerkleTrieExists(this._rustTrie, id.syncId());
+    return await this.existsByBytes(id.syncId());
   }
 
   /**

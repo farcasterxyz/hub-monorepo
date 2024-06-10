@@ -69,10 +69,25 @@ impl StoreDef for UsernameProofStoreDef {
         false
     }
 
+    fn compact_state_message_type(&self) -> u8 {
+        MessageType::None as u8
+    }
+
+    fn is_compact_state_type(&self, _message: &Message) -> bool {
+        false
+    }
+
     fn make_remove_key(&self, _message: &Message) -> Result<Vec<u8>, HubError> {
         Err(HubError {
             code: "bad_request.validation_failure".to_string(),
             message: "Remove not supported".to_string(),
+        })
+    }
+
+    fn make_compact_state_add_key(&self, _message: &Message) -> Result<Vec<u8>, HubError> {
+        Err(HubError {
+            code: "bad_request.invalid_param".to_string(),
+            message: "Username Proof Store doesn't support compact state".to_string(),
         })
     }
 
@@ -150,6 +165,14 @@ impl StoreDef for UsernameProofStoreDef {
                 message: "Message data body is missing or incorrect".to_string(),
             })
         }
+    }
+
+    fn delete_remove_secondary_indices(
+        &self,
+        _txn: &mut RocksDbTransactionBatch,
+        _message: &Message,
+    ) -> Result<(), HubError> {
+        Ok(())
     }
 
     fn get_merge_conflicts(
@@ -431,7 +454,7 @@ impl UsernameProofStore {
         fid: u32,
         page_options: &PageOptions,
     ) -> Result<MessagesPage, HubError> {
-        store.get_adds_by_fid(fid, page_options, Some(|_message: &Message| true))
+        store.get_adds_by_fid::<fn(&protos::Message) -> bool>(fid, page_options, None)
     }
 
     pub fn js_get_username_proofs_by_fid(mut cx: FunctionContext) -> JsResult<JsPromise> {

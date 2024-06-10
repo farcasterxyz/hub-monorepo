@@ -841,15 +841,15 @@ describe("validateVerificationAddEthAddressSignature", () => {
     expect(result).toEqual(err(new HubError("bad_request.invalid_param", "RPC client not provided for chainId 1")));
   });
 
-  test("fails if ethSignature is > 256 bytes", async () => {
+  test("fails if ethSignature is > 512 bytes", async () => {
     const body = await Factories.VerificationAddAddressBody.create(
       {
-        claimSignature: Factories.Bytes.build({}, { transient: { length: 257 } }),
+        claimSignature: Factories.Bytes.build({}, { transient: { length: 513 } }),
       },
       { transient: { protocol: Protocol.ETHEREUM } },
     );
     const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network, {});
-    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "claimSignature > 256 bytes")));
+    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "claimSignature > 512 bytes")));
   });
 
   test("succeeds for contract signatures", async () => {
@@ -1315,7 +1315,11 @@ describe("validateSingleBody", () => {
             hash: new Uint8Array(),
           },
         },
-        linkBody: { type: "follow", displayTimestamp: 1768551184, targetFid: 4 },
+        linkBody: {
+          type: "follow",
+          displayTimestamp: 1768551184,
+          targetFid: 4,
+        },
       },
     });
 

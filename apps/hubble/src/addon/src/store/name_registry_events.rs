@@ -5,20 +5,20 @@ use crate::{
     protos::UserNameProof,
 };
 
-use super::{HubError, RootPrefix};
+use super::{make_fid_key, HubError, RootPrefix};
 
 pub fn make_fname_username_proof_key(name: &[u8]) -> Vec<u8> {
-    let mut key = Vec::with_capacity(1 + 32 + 1 + 32);
+    let mut key = Vec::with_capacity(1 + 32);
     key.push(RootPrefix::FNameUserNameProof as u8);
     key.extend_from_slice(name);
     key
 }
 
 pub fn make_fname_username_proof_by_fid_key(fid: u32) -> Vec<u8> {
-    let mut key = Vec::with_capacity(1 + 4 + 1 + 32);
+    let mut key = Vec::with_capacity(1 + 4);
 
     key.push(RootPrefix::FNameUserNameProofByFid as u8);
-    key.extend_from_slice(&fid.to_le_bytes());
+    key.extend_from_slice(&make_fid_key(fid));
     key
 }
 

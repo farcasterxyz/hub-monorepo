@@ -50,6 +50,14 @@ impl StoreDef for ReactionStoreDef {
             && message.data.as_ref().unwrap().body.is_some()
     }
 
+    fn compact_state_message_type(&self) -> u8 {
+        MessageType::None as u8
+    }
+
+    fn is_compact_state_type(&self, _message: &Message) -> bool {
+        false
+    }
+
     fn build_secondary_indices(
         &self,
         txn: &mut RocksDbTransactionBatch,
@@ -73,6 +81,14 @@ impl StoreDef for ReactionStoreDef {
 
         txn.delete(by_target_key);
 
+        Ok(())
+    }
+
+    fn delete_remove_secondary_indices(
+        &self,
+        _txn: &mut RocksDbTransactionBatch,
+        _message: &Message,
+    ) -> Result<(), HubError> {
         Ok(())
     }
 
@@ -128,6 +144,13 @@ impl StoreDef for ReactionStoreDef {
             reaction_body.r#type,
             reaction_body.target.as_ref(),
         )
+    }
+
+    fn make_compact_state_add_key(&self, _message: &Message) -> Result<Vec<u8>, HubError> {
+        Err(HubError {
+            code: "bad_request.invalid_param".to_string(),
+            message: "Reaction Store doesn't support compact state".to_string(),
+        })
     }
 
     fn get_prune_size_limit(&self) -> u32 {
@@ -528,7 +551,7 @@ impl ReactionStore {
 
         store
             .db()
-            .for_each_iterator_by_prefix_unbounded(&prefix, page_options, |key, value| {
+            .for_each_iterator_by_prefix(&prefix, page_options, |key, value| {
                 if reaction_type == ReactionType::None as i32
                     || (value.len() == 1 && value[0] == reaction_type as u8)
                 {
@@ -556,7 +579,8 @@ impl ReactionStore {
                 Ok(false) // Continue iterating
             })?;
 
-        let messages = message::get_many_messages(store.db().borrow(), message_keys)?;
+        let messages_bytes =
+            message::get_many_messages_as_bytes(store.db().borrow(), message_keys)?;
         let next_page_token = if last_key.len() > 0 {
             Some(last_key[prefix.len()..].to_vec())
         } else {
@@ -564,7 +588,7 @@ impl ReactionStore {
         };
 
         Ok(MessagesPage {
-            messages,
+            messages_bytes,
             next_page_token,
         })
     }

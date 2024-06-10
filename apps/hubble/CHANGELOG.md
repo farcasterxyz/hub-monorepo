@@ -1,5 +1,60 @@
 # @farcaster/hubble
 
+## 1.12.3
+
+### Patch Changes
+
+- a6367658: Retry fetching fname transfers on failed merge
+- 33d43715: feat: Remove the BySigner index to reduce disk usage
+- 053f3ac5: Remove unnecessary database reads when merging casts
+- Updated dependencies [87c4f416]
+  - @farcaster/hub-nodejs@0.11.13
+
+## 1.12.2
+
+### Patch Changes
+
+- 8e7dec10: fix: Fix incorrect link message padding
+- c261fba6: added approxSize to getInfo()
+- 0e342af3: fix: Fetch previous snapshot if current db one is not present
+- 8c759d66: fix: Throttle pruning so hub is not overloaded
+- Updated dependencies [c261fba6]
+  - @farcaster/hub-nodejs@0.11.12
+
+## 1.12.1
+
+### Patch Changes
+
+- 26ced763: fix: Retry uploads of snapshot chunks to R2
+- 4286432d: fix: Check if we need to prune before actually pruning
+- 7b850fb9: fix: Fname index from Little endian -> big endian migration
+
+## 1.12.0
+
+### Minor Changes
+
+- chore: Release 1.12
+
+### Patch Changes
+
+- 23b94856: fix: Use `PutObject` to upload snapshot chunks to R2
+- e3afd5c8: fix: Use priority queue for sync work
+- 063d4ed1: fix: sharding events should work when requesting historical events
+- ec3b4e76: chore: Cleanup bundles code
+- 1642e610: fix: Remove backup fetching for get_node
+- 6bec999d: perf: Use multiple workers for validateOrRevokeMessages job
+- 93de5d76: fix: Prevent unnecessary decode/encode in rpc APIs
+- 089d1d1b: fix: Batch the de-dup check for merging messages
+- 006473dd: perf: Improve getSyncMetadataByPrefix performance
+- 63742239: chore: Cleanup trie batch inserts to use batches
+- 1317f1ce: fix: Use R2 for snapshots
+- f0bee818: fix: Batch insert merkle trie updates
+- 45cf3f40: fix(hubble): Add startup check for hub to verify gRPC port is reachable from public internet. Reachable address is required for hub to perform diff sync via gRPC API and sync with the network. Hub operators may need to enable port-forwarding of traffic to hub's host and port if they are behind a NAT. Startup check emits warning for now, but may be enforced in the future.
+- 5778e3a1: perf: Disable WAL when generating snapshots
+- 7b374890: feat: Add Link CompactStateMessage type for link compaction
+- Updated dependencies [7b374890]
+  - @farcaster/hub-nodejs@0.11.11
+
 ## 1.11.8
 
 ### Patch Changes

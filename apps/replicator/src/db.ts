@@ -227,6 +227,11 @@ export type UserDataBodyJson = {
   value: string;
 };
 
+export type LinkCompactStateBodyJson = {
+  type: string;
+  targetFids?: Fid[];
+};
+
 export type LinkBodyJson = {
   type: string;
   /** original timestamp in Unix ms */

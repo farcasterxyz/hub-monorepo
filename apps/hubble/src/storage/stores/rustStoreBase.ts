@@ -14,6 +14,30 @@ import { MessagesPage, PageOptions } from "./types.js";
 import { UserMessagePostfix } from "../db/types.js";
 import RocksDB from "../db/rocksdb.js";
 import { ResultAsync, err, ok } from "neverthrow";
+import { messageDecode } from "../../storage/db/message.js";
+
+export type DeepPartial<T> = T extends object
+  ? {
+      [P in keyof T]?: DeepPartial<T[P]>;
+    }
+  : T;
+
+const deepPartialEquals = <T>(partial: DeepPartial<T>, whole: T) => {
+  if (typeof partial === "object") {
+    for (const key in partial) {
+      if (partial[key] !== undefined) {
+        // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+        if (!deepPartialEquals(partial[key] as any, whole[key as keyof T] as any)) {
+          return false;
+        }
+      }
+    }
+  } else {
+    return partial === whole;
+  }
+
+  return true;
+};
 
 /**
  * Base class with common methods for all stores implemented in Rust
@@ -152,7 +176,7 @@ export abstract class RustStoreBase<TAdd extends Message, TRemove extends Messag
     }
 
     // Return immediately if there are no messages to prune
-    if (cachedCount.value === 0) {
+    if (cachedCount.value <= this._pruneSizeLimit * units.value) {
       return ok([]);
     }
 
@@ -184,7 +208,7 @@ export abstract class RustStoreBase<TAdd extends Message, TRemove extends Messag
       throw message_bytes.error;
     }
 
-    return Message.decode(new Uint8Array(message_bytes.value));
+    return messageDecode(new Uint8Array(message_bytes.value));
   }
 
   async getAllMessagesByFid(fid: number, pageOptions: PageOptions = {}): Promise<MessagesPage<TAdd | TRemove>> {
@@ -192,7 +216,7 @@ export abstract class RustStoreBase<TAdd extends Message, TRemove extends Messag
 
     const messages =
       messages_page.messageBytes?.map((message_bytes) => {
-        return Message.decode(new Uint8Array(message_bytes)) as TAdd | TRemove;
+        return messageDecode(new Uint8Array(message_bytes)) as TAdd | TRemove;
       }) ?? [];
 
     return { messages, nextPageToken: messages_page.nextPageToken };

@@ -1,9 +1,9 @@
 import { DbStats, FarcasterNetwork, HubAsyncResult, HubError } from "@farcaster/core";
 import { LATEST_DB_SCHEMA_VERSION } from "../storage/db/migrations/migrations.js";
 import axios from "axios";
-import { err, ok, ResultAsync } from "neverthrow";
-import { S3_REGION, SNAPSHOT_S3_DEFAULT_BUCKET } from "../hubble.js";
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { err, ok, Result, ResultAsync } from "neverthrow";
+import { S3_REGION, SNAPSHOT_S3_DOWNLOAD_BUCKET, SNAPSHOT_S3_UPLOAD_BUCKET } from "../hubble.js";
+import { PutObjectCommand, PutObjectCommandInput, S3Client } from "@aws-sdk/client-s3";
 import fs from "fs";
 import { Upload } from "@aws-sdk/lib-storage";
 import { logger } from "./logger.js";
@@ -53,10 +53,11 @@ export const snapshotDirectory = (fcNetwork: FarcasterNetwork, prevVersionCounte
   const network = FarcasterNetwork[fcNetwork].toString();
   return `snapshots/${network}/DB_SCHEMA_${LATEST_DB_SCHEMA_VERSION - (prevVersionCounter ?? 0)}`;
 };
+
 export const snapshotURLAndMetadata = async (
   fcNetwork: FarcasterNetwork,
   prevVersionCounter?: number,
-  s3Bucket: string = SNAPSHOT_S3_DEFAULT_BUCKET,
+  s3Bucket: string = SNAPSHOT_S3_DOWNLOAD_BUCKET,
 ): HubAsyncResult<[string, SnapshotMetadata]> => {
   const dirPath = snapshotURL(fcNetwork, prevVersionCounter, s3Bucket);
   const response = await fetchSnapshotMetadata(dirPath);
@@ -66,23 +67,32 @@ export const snapshotURLAndMetadata = async (
   const data: SnapshotMetadata = response.value;
   return ok([`https://${s3Bucket}/${data.keyBase}`, data]);
 };
+
 export const snapshotURL = (
   fcNetwork: FarcasterNetwork,
   prevVersionCounter?: number,
-  s3Bucket: string = SNAPSHOT_S3_DEFAULT_BUCKET,
+  s3Bucket: string = SNAPSHOT_S3_DOWNLOAD_BUCKET,
 ): string => {
   return `https://${s3Bucket}/${snapshotDirectory(fcNetwork, prevVersionCounter)}`;
+};
+
+export const r2Endpoint = (): string => {
+  return process.env["R2_ENDPOINT"] ?? "";
 };
 
 export const uploadToS3 = async (
   fcNetwork: FarcasterNetwork,
   chunkedDirPath: string,
-  s3Bucket: string = SNAPSHOT_S3_DEFAULT_BUCKET,
+  s3Bucket: string = SNAPSHOT_S3_UPLOAD_BUCKET,
   messageCount?: number,
+  timestamp?: number,
 ): HubAsyncResult<string> => {
-  const startTimestamp = Date.now();
+  const startTimestamp = timestamp ?? Date.now();
+
   const s3 = new S3Client({
     region: S3_REGION,
+    endpoint: r2Endpoint(),
+    forcePathStyle: true,
   });
 
   // The AWS key is "snapshots/{network}/{DB_SCHEMA_VERSION}/snapshot-{yyyy-mm-dd}-{timestamp}.tar.gz"
@@ -109,26 +119,16 @@ export const uploadToS3 = async (
     });
 
     // The chunks should be uploaded via multipart upload to S3
-    const chunkUploadParams = new Upload({
-      client: s3,
-      params: {
-        Bucket: s3Bucket,
-        Key: key,
-        Body: fileStream,
-      },
-      queueSize: 4, // 4 concurrent uploads
-      partSize: 1000 * 1024 * 1024, // 1 GB
-    });
+    const chunkUploadParams = {
+      Bucket: s3Bucket,
+      Key: key,
+      Body: fileStream,
+    };
 
-    chunkUploadParams.on("httpUploadProgress", (progress) => {
-      logger.info({ progress }, "Uploading snapshot to S3 - progress");
-    });
-
-    try {
-      await chunkUploadParams.done();
-      logger.info({ key, file, timeTakenMs: Date.now() - startTimestamp }, "Snapshot chunk uploaded to S3");
-    } catch (e: unknown) {
-      return err(new HubError("unavailable.network_failure", (e as Error).message));
+    logger.info({ key, filePath }, "Uploading snapshot chunk to S3...");
+    const uploadResult = await uploadChunk(s3, chunkUploadParams, key);
+    if (uploadResult.isErr()) {
+      return err(uploadResult.error);
     }
   }
 
@@ -144,6 +144,7 @@ export const uploadToS3 = async (
     Bucket: s3Bucket,
     Key: `${snapshotDirectory(fcNetwork)}/latest.json`,
     Body: JSON.stringify(metadata, null, 2),
+    ContentType: "application/json",
   };
 
   try {
@@ -155,3 +156,37 @@ export const uploadToS3 = async (
     return err(new HubError("unavailable.network_failure", (e as Error).message));
   }
 };
+
+const maxRetries = 5;
+const retryDelayMs = 1 * 60 * 1000;
+
+async function uploadChunk(
+  s3: S3Client,
+  chunkUploadParams: PutObjectCommandInput,
+  key: string,
+): Promise<Result<void, HubError>> {
+  let retries = 0;
+
+  while (retries < maxRetries) {
+    try {
+      const startTimestamp = Date.now();
+      await s3.send(new PutObjectCommand(chunkUploadParams));
+      logger.info({ key, timeTakenMs: Date.now() - startTimestamp }, "Snapshot chunk uploaded to S3");
+      return ok(undefined);
+    } catch (e: unknown) {
+      retries++;
+      if (retries < maxRetries) {
+        logger.warn({ key, retries, errMsg: (e as Error)?.message }, "Snapshot chunk upload failed. Retrying...");
+        await new Promise((resolve) => setTimeout(resolve, retryDelayMs * retries));
+      } else {
+        logger.error(
+          { key, errMsg: (e as Error)?.message },
+          "Snapshot chunk upload failed after maximum retries. Aborting.",
+        );
+        return err(new HubError("unavailable.network_failure", (e as Error).message));
+      }
+    }
+  }
+
+  return err(new HubError("unavailable.network_failure", "Unknown error"));
+}

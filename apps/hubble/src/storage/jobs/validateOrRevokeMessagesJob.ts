@@ -1,4 +1,12 @@
-import { bytesToHexString, HubAsyncResult, HubError, OnChainEvent, toFarcasterTime } from "@farcaster/hub-nodejs";
+import {
+  bytesToHexString,
+  HubAsyncResult,
+  HubError,
+  HubResult,
+  Message,
+  OnChainEvent,
+  toFarcasterTime,
+} from "@farcaster/hub-nodejs";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import cron from "node-cron";
 import { logger } from "../../utils/logger.js";
@@ -11,6 +19,11 @@ import { getHubState, putHubState } from "../../storage/db/hubState.js";
 import { sleep } from "../../utils/crypto.js";
 
 export const DEFAULT_VALIDATE_AND_REVOKE_MESSAGES_CRON = "10 20 * * *"; // Every day at 20:10 UTC (00:10 pm PST)
+
+type ValidateResultWithMessage = {
+  result: HubAsyncResult<number | undefined>;
+  message: Message;
+};
 
 // How much time to allocate to validating and revoking each fid.
 // 50 fids per second, which translates to 1/28th of the FIDs will be checked in just over 2 hours.
@@ -121,7 +134,7 @@ export class ValidateOrRevokeMessagesJobScheduler {
         // Throttle the job.
         // We run at the rate of 50 fids per second. If we are running ahead of schedule, we sleep to catch up
         if (fid % 100 === 0) {
-          const allotedTimeMs = fid * TIME_SCHEDULED_PER_FID_MS;
+          const allotedTimeMs = (fid - lastFid) * TIME_SCHEDULED_PER_FID_MS;
           const elapsedTimeMs = Date.now() - start;
           if (allotedTimeMs > elapsedTimeMs) {
             const sleepTimeMs = allotedTimeMs - elapsedTimeMs;
@@ -201,6 +214,25 @@ export class ValidateOrRevokeMessagesJobScheduler {
     );
 
     let count = 0;
+    let validatePromises: ValidateResultWithMessage[] = [];
+    const processValidationResults = async () => {
+      const promises = validatePromises;
+      validatePromises = [];
+
+      for (const { result, message } of promises) {
+        (await result).match(
+          (result) => {
+            if (result !== undefined) {
+              log.info({ fid, hash: bytesToHexString(message.hash)._unsafeUnwrap() }, "revoked message");
+            }
+          },
+          (e) => {
+            log.error({ errCode: e.errCode }, `error validating and revoking message: ${e.message}`);
+          },
+        );
+      }
+    };
+
     await this._db.forEachIteratorByPrefix(prefix, async (key, value) => {
       if ((key as Buffer).length !== 1 + FID_BYTES + 1 + TSHASH_LENGTH) {
         // Not a message key, so we can skip it.
@@ -220,20 +252,33 @@ export class ValidateOrRevokeMessagesJobScheduler {
       )();
 
       if (message.isOk()) {
-        const result = await this._engine.validateOrRevokeMessage(message.value);
+        validatePromises.push({
+          // Mark as low-priority, so as to not interfere with gossip or sync messages
+          result: this._engine.validateOrRevokeMessage(message.value, true),
+          message: message.value,
+        });
+
+        // Every 10,000 messages, process the results to avoid memory issues
+        if (validatePromises.length > 10_000) {
+          await processValidationResults();
+        }
         count += 1;
-        result.match(
-          (result) => {
-            if (result !== undefined) {
-              log.info({ fid, hash: bytesToHexString(message.value.hash)._unsafeUnwrap() }, "revoked message");
-            }
-          },
-          (e) => {
-            log.error({ errCode: e.errCode }, `error validating and revoking message: ${e.message}`);
-          },
-        );
       }
     });
+
+    // Process any remaining results
+    await processValidationResults();
+
+    // Gradually delete all the by Signer Indices since it is deprecated
+    const signerIndexPrefix = Buffer.concat([makeUserKey(fid), Buffer.from([UserPostfix.BySigner])]);
+    let bySignerCount = 0;
+    await this._db.forEachIteratorByPrefix(signerIndexPrefix, async (key, value) => {
+      await this._db.del(key);
+      bySignerCount += 1;
+    });
+    if (bySignerCount > 0) {
+      logger.info({ fid }, `Deleted ${bySignerCount} bySigner index entries for fid ${fid}`);
+    }
 
     return ok(count);
   }

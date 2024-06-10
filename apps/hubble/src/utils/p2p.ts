@@ -1,7 +1,7 @@
 import { GossipAddressInfo, HubAsyncResult, HubError, HubResult } from "@farcaster/hub-nodejs";
 import { Multiaddr, NodeAddress, multiaddr } from "@multiformats/multiaddr";
 import { AddressInfo, isIP } from "net";
-import { Result, err, ok } from "neverthrow";
+import { Result, err, ok, ResultAsync } from "neverthrow";
 import { logger } from "./logger.js";
 import axios from "axios";
 
@@ -145,16 +145,33 @@ export const addressInfoToString = (addressInfo: AddressInfo): string => {
 };
 
 /** Returns a publicly visible IPv4 or IPv6 address of the running process */
-export const getPublicIp = async (): HubAsyncResult<string> => {
-  try {
-    const response = await axios.get("http://api.ipify.org?format=text");
-    const ip = response.data;
-    logger.info({ component: "utils/p2p", ip }, "Fetched public IP");
-    return ok(ip);
-    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-  } catch (error: any) {
-    return err(new HubError("unavailable.network_failure", error.message));
+export const getPublicIp = async (format: "text" | "json"): HubAsyncResult<string> => {
+  const apiTimeoutMs = 3 * 1000; // 3 seconds
+  const publicAddressAPI = `https://api.ipify.org?format=${format}`;
+  const publicIPResponse = await ResultAsync.fromPromise(
+    axios.get(publicAddressAPI, { timeout: apiTimeoutMs }),
+    (error) => {
+      const err = error as Error;
+      return new HubError("unavailable.network_failure", `Failed to get public IP [${err.message}]`);
+    },
+  );
+  if (publicIPResponse.isErr()) {
+    return err(publicIPResponse.error);
   }
+
+  let ip: string;
+  if (format === "json") {
+    type IPResponse = {
+      ip: string;
+    };
+    const response: IPResponse = publicIPResponse.value.data;
+    ip = response.ip;
+  } else {
+    ip = publicIPResponse.value.data;
+  }
+
+  logger.info({ component: "utils/p2p", ip }, "Fetched public IP");
+  return ok(ip);
 };
 
 /* -------------------------------------------------------------------------- */

@@ -82,10 +82,10 @@ describe("gossip network tests", () => {
       // Create a message and send it to a random node
       const validMessage = await Factories.CastAddMessage.create();
       const invalidMessage = await Factories.ReactionAddMessage.create();
-      const validPublishResult = await randomNode.gossipMessage(validMessage);
+      const validPublishResult = await randomNode.broadcastMessage(validMessage);
       expect(validPublishResult.isOk()).toBeTruthy();
       expect(validPublishResult._unsafeUnwrap().recipients.length).toBeGreaterThan(0);
-      const invalidPublishResult = await randomNode.gossipMessage(invalidMessage);
+      const invalidPublishResult = await randomNode.broadcastMessage(invalidMessage);
       expect(invalidPublishResult.isOk()).toBeTruthy();
       expect(invalidPublishResult._unsafeUnwrap().recipients.length).toBeGreaterThan(0);
 
@@ -134,7 +134,7 @@ describe("gossip network tests", () => {
       const messageWithDataBytes = await Factories.Message.create({ data: { castAddBody: { text: "data" } } });
       messageWithDataBytes.dataBytes = MessageData.encode(messageWithDataBytes.data as MessageData).finish();
       messageWithDataBytes.data = undefined;
-      const publishResultWithDataBytes = await randomNode.gossipMessage(messageWithDataBytes);
+      const publishResultWithDataBytes = await randomNode.broadcastMessage(messageWithDataBytes);
       expect(publishResultWithDataBytes.isOk()).toBeTruthy();
       expect(publishResultWithDataBytes._unsafeUnwrap().recipients.length).toBeGreaterThan(0);
 
