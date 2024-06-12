@@ -1,5 +1,12 @@
 # @farcaster/hub-shuttle
 
+## 0.3.1
+
+### Patch Changes
+
+- 87796697: Export multiple signatures for farcasterTimeToDate
+  - @farcaster/hub-nodejs@0.11.15
+
 ## 0.3.0
 
 ### Minor Changes

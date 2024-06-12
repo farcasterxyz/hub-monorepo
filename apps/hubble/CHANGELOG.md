@@ -1,5 +1,17 @@
 # @farcaster/hubble
 
+## 1.13.0
+
+### Minor Changes
+
+- feat: Release 1.13
+
+### Patch Changes
+
+- 1c2dde78: feat: All HUB_OPTIONS env var to docker compose
+- 35d395f3: [chore] Determine app version via manual JSON.parse instead of import
+  - @farcaster/hub-nodejs@0.11.15
+
 ## 1.12.3
 
 ### Patch Changes
