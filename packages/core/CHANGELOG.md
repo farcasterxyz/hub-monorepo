@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.14.14
+
+### Patch Changes
+
+- de52fbce: feat: extend verifications signature max length
+
 ## 0.14.13
 
 ### Patch Changes
