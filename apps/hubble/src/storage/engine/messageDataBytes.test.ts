@@ -159,13 +159,13 @@ describe("messageDataBytes", () => {
       expect(result3._unsafeUnwrapErr().message).toContain("invalid hash");
     });
 
-    test("fails if dataBytes is > 1024 bytes", async () => {
+    test("fails if dataBytes is > 2048 bytes", async () => {
       const castAddClone = cloneMessage(castAdd);
-      castAddClone.dataBytes = new Uint8Array(1025);
+      castAddClone.dataBytes = new Uint8Array(2049);
 
       const result = await engine.mergeMessage(castAddClone);
       expect(result.isErr()).toBeTruthy();
-      expect(result._unsafeUnwrapErr().message).toContain("dataBytes > 1024 bytes");
+      expect(result._unsafeUnwrapErr().message).toContain("dataBytes > 2048 bytes");
     });
 
     // This function re-encodes the fid with a different varint encoding, simulating what

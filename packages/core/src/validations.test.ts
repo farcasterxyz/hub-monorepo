@@ -1,6 +1,6 @@
 import { faker } from "@faker-js/faker";
 import * as protobufs from "./protobufs";
-import { Protocol } from "./protobufs";
+import { CastType, Protocol } from "./protobufs";
 import { err, ok } from "neverthrow";
 import { bytesToUtf8String, utf8StringToBytes } from "./bytes";
 import { HubError } from "./errors";
@@ -284,6 +284,43 @@ describe("validateCastAddBody", () => {
       mentionsPositions: [6, 6],
     });
     expect(validations.validateCastAddBody(body)).toEqual(ok(body));
+  });
+
+  describe("long casts", () => {
+    test("succeeds with 1024 ASCII characters", () => {
+      const body = Factories.CastAddBody.build({
+        text: faker.random.alphaNumeric(1024),
+        type: CastType.LONG_CAST,
+      });
+      expect(validations.validateCastAddBody(body)).toEqual(ok(body));
+    });
+    test("fails with 1025 ASCII characters", () => {
+      const body = Factories.CastAddBody.build({
+        text: faker.random.alphaNumeric(1025),
+        type: CastType.LONG_CAST,
+      });
+      expect(validations.validateCastAddBody(body)).toEqual(
+        err(new HubError("bad_request.validation_failure", "text > 1024 bytes for long cast")),
+      );
+    });
+    test("fails with less than 320 ASCII characters", () => {
+      const body = Factories.CastAddBody.build({
+        text: "Hello",
+        type: CastType.LONG_CAST,
+      });
+      expect(validations.validateCastAddBody(body)).toEqual(
+        err(new HubError("bad_request.validation_failure", "text too short for long cast")),
+      );
+    });
+    test("fails with unrecognized type", () => {
+      const body = Factories.CastAddBody.build({
+        text: "Hello",
+        type: 2,
+      });
+      expect(validations.validateCastAddBody(body)).toEqual(
+        err(new HubError("bad_request.validation_failure", "invalid cast type")),
+      );
+    });
   });
 
   describe("when string embeds are allowed", () => {
