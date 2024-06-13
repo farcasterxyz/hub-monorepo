@@ -192,7 +192,7 @@ pub fn get_page_options(cx: &mut FunctionContext, at: usize) -> Result<PageOptio
 }
 
 /**
- * Extract the iteator opts
+ * Extract the iterator opts
  */
 pub fn get_iterator_options(
     cx: &mut FunctionContext,
