@@ -513,7 +513,7 @@ impl UsernameProofStore {
             Ok(None) => cx.throw_error(format!(
                 "{}/{} for {}",
                 "not_found",
-                "NotFound: usernameproof not found for {}",
+                "NotFound: username proof not found for {}",
                 String::from_utf8_lossy(&name)
             ))?,
             Err(e) => return hub_error_to_js_throw(&mut cx, e),

@@ -853,7 +853,7 @@ impl Store {
         // Delete all the merge conflicts
         self.delete_many_transaction(&mut txn, &merge_conflicts)?;
 
-        // Add ops to store the message by messageKey and index the the messageKey by set and by target
+        // Add ops to store the message by messageKey and index the messageKey by set and by target
         self.put_add_transaction(&mut txn, &ts_hash, message)?;
 
         // Event handler
@@ -912,7 +912,7 @@ impl Store {
         // Delete all the merge conflicts
         self.delete_many_transaction(&mut txn, &merge_conflicts)?;
 
-        // Add ops to store the message by messageKey and index the the messageKey by set and by target
+        // Add ops to store the message by messageKey and index the messageKey by set and by target
         self.put_remove_transaction(&mut txn, ts_hash, message)?;
 
         // Event handler

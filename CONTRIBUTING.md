@@ -276,13 +276,13 @@ when the repo manager runs a release process.
 
 ### 3.6 Releasing Versions
 
-Permissions to publish to the @farcaster organization in NPM is necessary. This is a non-reversible process so if you
+Permission to publish to the @farcaster organization in NPM is necessary. This is a non-reversible process so if you
 are at all unsure about how to proceed, please reach out to Varun ([Github](https://github.com/varunsrin) | [Warpcast](https://warpcast.com/v))
 
 1. Checkout a new branch and run `yarn changeset version`
 2. Review CHANGELOG.md and confirm that it is accurate
 3. Check that `package.json` was bumped correctly
-3. If protocol version change, bump `FARCASTER_VERSIONS_SCHEDULE` and  `FARCASTER_VERSION`
+3. If the protocol version changes, bump `FARCASTER_VERSIONS_SCHEDULE` and  `FARCASTER_VERSION`
 4. Create commit, merge to main, check out commit on main and run `yarn build`
 5. Publish changes by running `yarn changeset publish`
 6. Fetch and update tags with `git fetch origin --tags && yarn changeset tag && git tag -f @latest`

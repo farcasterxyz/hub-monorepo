@@ -15,11 +15,11 @@ It usually takes less than 30 minutes to complete the whole process.
 
 ## Create GCP VM
 
-Open **Google Cloud Shell** and execute following commands:
+Open **Google Cloud Shell** and execute the following commands:
 
 <figure><img src="../assets/images/google_cloud_shell.png" alt=""><figcaption><p>Click on Google Cloud Shell Icon</p></figcaption></figure>
 
-Execute below commands in the cloud shell:
+Execute the below commands in the cloud shell:
 
 <pre><code><strong>mkdir farcaster-hub
 </strong>cd farcaster-hub

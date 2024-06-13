@@ -31,7 +31,7 @@ export class WatchBlockNumber {
         const restartResult = this.restart();
         if (restartResult.isErr()) {
           // Note: restart returns error if start fails - if start fails, we throw the error since
-          // it can lead to inconsistent state.
+          // it can lead to an inconsistent state.
           throw restartResult.error;
         }
         if (this._params.onError) this._params.onError(error);

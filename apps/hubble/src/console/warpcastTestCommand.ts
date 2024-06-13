@@ -237,7 +237,7 @@ export class WarpcastTestCommand implements ConsoleCommandInterface {
       const _castParentResult = await this.rpcClient.submitMessage(castParent, new Metadata());
     }
 
-    // 5. A CastAdd for a child is seen after the parent CastAdd recieved a CastRemove
+    // 5. A CastAdd for a child is seen after the parent CastAdd received a CastRemove
     {
       const { fid, signer } = await this.getSigners(++nextFid, network);
 

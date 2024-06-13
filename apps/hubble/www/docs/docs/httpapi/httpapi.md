@@ -1,8 +1,8 @@
 # HTTP API
-Hubble serves a HTTP API on port 2281 by default.
+Hubble serves an HTTP API on port 2281 by default.
 
 ## Using the API
-The API can be called from any programing language or browser by making a normal HTTP request. 
+The API can be called from any programming language or browser by making a normal HTTP request. 
 
 **View the API responses in a browser**
 
@@ -53,7 +53,7 @@ Most endpoints support paging to get a large number of responses.
 | --------- | ----------- | ------- |
 | pageSize | Maximum number of messages to return in a single response | `pageSize=100` |
 | reverse | Reverse the sort order, returning latest messages first | `reverse=1` |
-| pageToken | The page token returned by the previous query, to fetch the next page. If this parameters is empty, fetch the first page | `pageToken=AuzO1V0Dta...fStlynsGWT` |
+| pageToken | The page token returned by the previous query, to fetch the next page. If this parameter is empty, fetch the first page | `pageToken=AuzO1V0Dta...fStlynsGWT` |
 
 The returned `nextPageToken` is empty if there are no more pages to return. 
 
@@ -63,7 +63,7 @@ All endpoints have a maximum page size of `1000`.
 
 **Example**
 
-Fetch all casts by FID `2`, fetching upto 3 casts per Page
+Fetch all casts by FID `2`, fetching up to 3 casts per Page
 
 ```bash
 # Fetch first page
