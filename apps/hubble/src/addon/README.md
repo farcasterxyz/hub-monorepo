@@ -26,7 +26,7 @@ This specifically means that we need to use iterators as callbacks. The way the 
 - At the end of the iteration, the iterator is returned and closed by Rust
 
 #### Iterators and paging
-In JS, we can have async functions as callbacks to the `forEachIterator` methods. This means that the callback can take arbitrarily long, and that is bad because keeping iterators open for long periods of time is very problematic (See section below). Additionally, we can't call async JS methods from rust. To address these both, the iterators are automatically paged. 
+In JS, we can have async functions as callbacks to the `forEachIterator` methods. This means that the callback can take arbitrarily long, and that is bad because keeping iterators open for long periods of time is very problematic (See section below). Additionally, we can't call async JS methods from rust. To address both of these, the iterators are automatically paged. 
 
 That means that when you start an iterator:
 1. JS code will fetch a page full of keys and values from rust
