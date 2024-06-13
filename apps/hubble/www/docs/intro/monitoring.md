@@ -22,7 +22,7 @@ yarn start --statsd-metrics-server 127.0.0.1:8125
 ```
 3. Restart your hub
 
-4. Open Grafana in a browser at `127.0.0.1:3000`. The default username/password is `admin`/`admin`. You will need to change your password on first login
+4. Open Grafana in a browser at `127.0.0.1:3000`. The default username/password is `admin`/`admin`. You will need to change your password on the first login
 
 5. Go to `Settings -> Datasource -> Add new data source` and select `Graphite`. Set the URL to `http://statsd:80` and click `Save & Test` to make sure it is working
 
