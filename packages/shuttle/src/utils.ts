@@ -111,6 +111,7 @@ export function convertProtobufMessageBodyToJson(message: Message): MessageBodyJ
         text,
         parentCastId,
         parentUrl,
+        type,
       } = message.data.castAddBody;
 
       const embeds: string[] = [];
@@ -135,6 +136,7 @@ export function convertProtobufMessageBodyToJson(message: Message): MessageBodyJ
         mentions,
         mentionsPositions,
         text,
+        type,
         parent: parentCastId ? { fid: parentCastId.fid, hash: bytesToHex(parentCastId.hash) } : parentUrl,
       };
       break;
