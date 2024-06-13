@@ -4,6 +4,7 @@ import {
   CastAddMessage,
   CastId,
   CastRemoveMessage,
+  CastType,
   Factories,
   getFarcasterTime,
   HubError,
@@ -319,6 +320,16 @@ describe("merge", () => {
       expect(mergeEvents).toEqual([[castAdd, []]]);
     });
 
+    test("succeeds for long cast", async () => {
+      const longCast = await Factories.CastAddMessage.create({
+        data: { fid, castAddBody: { text: faker.random.alpha(750), type: CastType.LONG_CAST } },
+      });
+      await expect(store.merge(longCast)).resolves.toBeGreaterThan(0);
+      await assertCastAddWins(longCast);
+
+      expect(mergeEvents).toEqual([[longCast, []]]);
+    });
+
     test("succeeds with mergeMany", async () => {
       const results = await store.mergeMessages([castAdd]);
       expect(results.size).toEqual(1);
@@ -409,6 +420,26 @@ describe("merge", () => {
       expect(mergeEvents).toEqual([
         [castAdd, []],
         [castRemove, [castAdd]],
+      ]);
+    });
+
+    test("succeeds for long cast", async () => {
+      const longCast = await Factories.CastAddMessage.create({
+        data: { fid, castAddBody: { text: faker.random.alpha(750), type: CastType.LONG_CAST } },
+      });
+      const longCastRemove = await Factories.CastRemoveMessage.create({
+        data: { fid, castRemoveBody: { targetHash: longCast.hash } },
+      });
+
+      await expect(store.merge(longCast)).resolves.toBeGreaterThan(0);
+      await expect(store.merge(longCastRemove)).resolves.toBeGreaterThan(0);
+
+      await assertCastRemoveWins(longCastRemove);
+      await assertMessageDoesNotExist(longCast);
+
+      expect(mergeEvents).toEqual([
+        [longCast, []],
+        [longCastRemove, [longCast]],
       ]);
     });
 
