@@ -33,6 +33,9 @@ export class MessageProcessor {
 
     switch (operation) {
       case "merge":
+        opData.deletedAt = null;
+        opData.prunedAt = null;
+        opData.revokedAt = null;
         break;
       case "delete":
         opData.deletedAt = new Date();
