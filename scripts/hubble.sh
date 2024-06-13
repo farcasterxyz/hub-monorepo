@@ -278,7 +278,7 @@ setup_grafana() {
         fi
     fi
 
-    # Step 4: Import the dashboard. The API takes a slighly different format than the JSON import
+    # Step 4: Import the dashboard. The API takes a slightly different format than the JSON import
     # in the UI, so we need to convert the JSON file first.
     jq '{dashboard: (del(.id) | . + {id: null}), folderId: 0, overwrite: true}' "grafana-dashboard.json" > "grafana-dashboard.api.json"
 
@@ -301,7 +301,7 @@ setup_grafana() {
 
         echo "✅ Dashboard is installed."
     else
-        echo "Failed to install dashboard. Exiting."
+        echo "Failed to install the dashboard. Exiting."
         echo "$response"
         return 1
     fi
