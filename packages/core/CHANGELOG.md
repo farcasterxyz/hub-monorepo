@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.14.15
+
+### Patch Changes
+
+- c424e111: feat: Add support for long casts
+
 ## 0.14.14
 
 ### Patch Changes
