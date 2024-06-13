@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.3.2
+
+### Patch Changes
+
+- feat(shuttle): store cast type in message body
+
 ## 0.3.1
 
 ### Patch Changes

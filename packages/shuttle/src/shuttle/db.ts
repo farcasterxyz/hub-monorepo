@@ -16,6 +16,7 @@ import {
   UpdateQueryBuilder,
 } from "kysely";
 import {
+  CastType,
   HashScheme,
   MessageType,
   ReactionType,
@@ -53,6 +54,7 @@ export type CastAddBodyJson = {
   mentions?: number[];
   mentionsPositions?: number[];
   parent?: CastIdJson | string;
+  type: CastType;
 };
 
 export type CastRemoveBodyJson = {
