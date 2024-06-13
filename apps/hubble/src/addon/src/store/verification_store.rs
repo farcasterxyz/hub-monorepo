@@ -29,6 +29,10 @@ pub struct VerificationStoreDef {
 }
 
 impl StoreDef for VerificationStoreDef {
+    fn debug_name(&self) -> &'static str {
+        "VerificationStore"
+    }
+
     fn postfix(&self) -> u8 {
         UserPostfix::VerificationMessage as u8
     }

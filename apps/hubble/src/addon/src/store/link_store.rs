@@ -2,6 +2,7 @@ use std::{borrow::Borrow, convert::TryInto, sync::Arc};
 
 use crate::db::{RocksDB, RocksDbTransactionBatch};
 use crate::logger::LOGGER;
+use crate::metrics::StoreAction;
 use crate::protos::link_body::Target;
 use crate::protos::message_data::Body;
 use crate::protos::{message_data, LinkBody, Message, MessageData, MessageType};
@@ -512,7 +513,10 @@ impl LinkStore {
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
 
+        let metric = store.metric(StoreAction::ThreadPoolWait);
         THREAD_POOL.lock().unwrap().execute(move || {
+            drop(metric);
+
             let messages = Self::get_link_adds_by_fid(&store, fid, link_type, &page_options);
 
             deferred_settle_messages(deferred, &channel, messages);
@@ -531,7 +535,10 @@ impl LinkStore {
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
 
+        let metric = store.metric(StoreAction::ThreadPoolWait);
         THREAD_POOL.lock().unwrap().execute(move || {
+            drop(metric);
+
             let messages = Self::get_link_removes_by_fid(&store, fid, link_type, &page_options);
 
             deferred_settle_messages(deferred, &channel, messages);
@@ -655,7 +662,10 @@ impl LinkStore {
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
 
+        let metric = store.metric(StoreAction::ThreadPoolWait);
         THREAD_POOL.lock().unwrap().execute(move || {
+            drop(metric);
+
             let messages = Self::get_links_by_target(&store, &target, link_type, &page_options);
 
             deferred_settle_messages(deferred, &channel, messages);
@@ -678,7 +688,10 @@ impl LinkStore {
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
 
+        let metric = store.metric(StoreAction::ThreadPoolWait);
         THREAD_POOL.lock().unwrap().execute(move || {
+            drop(metric);
+
             let messages = Self::get_all_link_messages_by_fid(&store, fid, &page_options);
 
             deferred_settle_messages(deferred, &channel, messages);
@@ -689,6 +702,10 @@ impl LinkStore {
 }
 
 impl StoreDef for LinkStore {
+    fn debug_name(&self) -> &'static str {
+        "LinkStore"
+    }
+
     fn postfix(&self) -> u8 {
         UserPostfix::LinkMessage.as_u8()
     }

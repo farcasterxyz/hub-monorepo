@@ -6,6 +6,7 @@ use super::{
 };
 use crate::{
     db::{RocksDB, RocksDbTransactionBatch},
+    metrics::{FidLockSource, StoreAction, StoreLifetimeCounter},
     protos::{
         self, hub_event, link_body::Target, message_data::Body, HubEvent, HubEventType,
         MergeMessageBody, Message, MessageType,
@@ -107,6 +108,8 @@ pub struct PageOptions {
 /// Some methods in this trait provide default implementations. These methods can be overridden
 /// by implementing the trait for a specific type.
 pub trait StoreDef: Send + Sync {
+    fn debug_name(&self) -> &'static str;
+
     fn postfix(&self) -> u8;
     fn add_message_type(&self) -> u8;
     fn remove_message_type(&self) -> u8;
@@ -120,6 +123,7 @@ pub trait StoreDef: Send + Sync {
         self.remove_message_type() != MessageType::None as u8
     }
 
+    /* todo: what is this? */
     fn is_compact_state_type(&self, message: &Message) -> bool;
 
     // If the store supports compaction state messages, this should return true
@@ -339,7 +343,7 @@ pub trait StoreDef: Send + Sync {
 pub struct Store {
     store_def: Box<dyn StoreDef>,
     store_event_handler: Arc<StoreEventHandler>,
-    fid_locks: Arc<[Mutex<()>; 4]>,
+    fid_locks: Arc<[Mutex<()>]>,
     db: Arc<RocksDB>,
     logger: slog::Logger,
 }
@@ -357,12 +361,13 @@ impl Store {
         Store {
             store_def,
             store_event_handler,
-            fid_locks: Arc::new([
-                Mutex::new(()),
-                Mutex::new(()),
-                Mutex::new(()),
-                Mutex::new(()),
-            ]),
+            fid_locks: {
+                let mut locks = Vec::with_capacity(FID_LOCKS_COUNT);
+                for _ in 0..FID_LOCKS_COUNT {
+                    locks.push(Mutex::new(()));
+                }
+                locks.into()
+            },
             db,
             logger: LOGGER.new(o!("component" => "Store")),
         }
@@ -400,6 +405,8 @@ impl Store {
             });
         }
 
+        let _metric = self.metric(StoreAction::GetAdd);
+
         let adds_key = self.store_def.make_add_key(partial_message)?;
         let message_ts_hash = self.db.get(&adds_key)?;
 
@@ -434,6 +441,8 @@ impl Store {
             });
         }
 
+        let _metric = self.metric(StoreAction::GetRemoves);
+
         let removes_key = self.store_def.make_remove_key(partial_message)?;
         let message_ts_hash = self.db.get(&removes_key)?;
 
@@ -458,6 +467,8 @@ impl Store {
     where
         F: Fn(&protos::Message) -> bool,
     {
+        let _metric = self.metric(StoreAction::GetAddsByFid);
+
         let prefix = make_message_primary_key(fid, self.store_def.postfix(), None);
         let messages_page =
             message::get_messages_page_by_prefix(&self.db, &prefix, &page_options, |message| {
@@ -484,6 +495,8 @@ impl Store {
             });
         }
 
+        let _metric = self.metric(StoreAction::GetRemovesByFid);
+
         let prefix = make_message_primary_key(fid, self.store_def.postfix(), None);
         let messages =
             message::get_messages_page_by_prefix(&self.db, &prefix, &page_options, |message| {
@@ -506,6 +519,8 @@ impl Store {
             });
         }
 
+        let _metric = self.metric(StoreAction::PutAddCompactStateTransaction);
+
         let compact_state_key = self.store_def.make_compact_state_add_key(message)?;
         txn.put(compact_state_key, message_encode(&message));
 
@@ -518,6 +533,8 @@ impl Store {
         ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
     ) -> Result<(), HubError> {
+        let _metric = self.metric(StoreAction::PutAddTransaction);
+
         put_message_transaction(txn, &message)?;
 
         let adds_key = self.store_def.make_add_key(message)?;
@@ -542,6 +559,8 @@ impl Store {
             });
         }
 
+        let _metric = self.metric(StoreAction::DeleteCompactStateTransaction);
+
         let compact_state_key = self.store_def.make_compact_state_add_key(message)?;
         txn.delete(compact_state_key);
 
@@ -554,6 +573,8 @@ impl Store {
         ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
     ) -> Result<(), HubError> {
+        let _metric = self.metric(StoreAction::DeleteAddTransaction);
+
         self.store_def
             .delete_secondary_indices(txn, ts_hash, message)?;
 
@@ -569,6 +590,8 @@ impl Store {
         ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
     ) -> Result<(), HubError> {
+        let _metric = self.metric(StoreAction::PutRemoveTransaction);
+
         if !self.store_def.remove_type_supported() {
             return Err(HubError {
                 code: "bad_request.validation_failure".to_string(),
@@ -589,6 +612,8 @@ impl Store {
         txn: &mut RocksDbTransactionBatch,
         message: &Message,
     ) -> Result<(), HubError> {
+        let _metric = self.metric(StoreAction::DeleteMoveTransaction);
+
         if !self.store_def.remove_type_supported() {
             return Err(HubError {
                 code: "bad_request.validation_failure".to_string(),
@@ -610,6 +635,8 @@ impl Store {
         txn: &mut RocksDbTransactionBatch,
         messages: &Vec<Message>,
     ) -> Result<(), HubError> {
+        let _metric = self.metric(StoreAction::DeleteMany(messages.len()));
+
         for message in messages {
             if self.store_def.is_compact_state_type(message) {
                 self.delete_compact_state_transaction(txn, message)?;
@@ -627,13 +654,23 @@ impl Store {
     }
 
     pub fn merge(&self, message: &Message) -> Result<Vec<u8>, HubError> {
+        let _metric = self.metric(StoreAction::Merge);
+
         // Grab a merge lock. The typescript code does this by individual fid, but we don't have a
         // good way of doing that efficiently here. We'll just use an array of locks, with each fid
         // deterministically mapped to a lock.
-        let _fid_lock = &self.fid_locks
-            [message.data.as_ref().unwrap().fid as usize % FID_LOCKS_COUNT]
-            .lock()
-            .unwrap();
+
+        let _fid_lock = 'get_lock: {
+            let index = message.data.as_ref().unwrap().fid as usize % FID_LOCKS_COUNT;
+            let lock = &self.fid_locks[index];
+
+            if let Ok(lock) = lock.try_lock() {
+                break 'get_lock lock;
+            }
+
+            let _metric = self.metric(StoreAction::FidLock(FidLockSource::Merge));
+            lock.lock().unwrap()
+        };
 
         if !self.store_def.is_add_type(message)
             && !(self.store_def.remove_type_supported() && self.store_def.is_remove_type(message))
@@ -658,6 +695,8 @@ impl Store {
     }
 
     pub fn revoke(&self, message: &Message) -> Result<Vec<u8>, HubError> {
+        let _metric = self.metric(StoreAction::Revoke);
+
         // Start a transaction
         let mut txn = self.db.txn();
 
@@ -721,6 +760,8 @@ impl Store {
     }
 
     pub fn merge_compact_state(&self, message: &Message) -> Result<Vec<u8>, HubError> {
+        let _metric = self.metric(StoreAction::MergeCompactState);
+
         let mut merge_conflicts = vec![];
 
         // First, find if there's an existing compact state message, and if there is,
@@ -814,6 +855,8 @@ impl Store {
         ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
     ) -> Result<Vec<u8>, HubError> {
+        let _metric = self.metric(StoreAction::MergeAdd);
+
         // If the store supports compact state messages, we don't merge messages that don't exist in the compact state
         if self.store_def.compact_state_type_supported() {
             // Get the compact state message
@@ -878,6 +921,8 @@ impl Store {
         ts_hash: &[u8; TS_HASH_LENGTH],
         message: &Message,
     ) -> Result<Vec<u8>, HubError> {
+        let _metric = self.metric(StoreAction::MergeRemove);
+
         // If the store supports compact state messages, we don't merge remove messages before its timestamp
         // If the store supports compact state messages, we don't merge messages that don't exist in the compact state
         if self.store_def.compact_state_type_supported() {
@@ -938,6 +983,20 @@ impl Store {
         cached_count: u64,
         units: u64,
     ) -> Result<Vec<HubEvent>, HubError> {
+        // TODO: uncomment this code and monitor in production
+        // // Concurrent writes on same memory space kills RocksDB performance. Ensure this doesn't happen with a lock.
+        // let _fid_lock = 'get_lock: {
+        //     let index = fid as usize % FID_LOCKS_COUNT;
+        //     let lock = &self.fid_locks[index];
+
+        //     if let Ok(lock) = lock.try_lock() {
+        //         break 'get_lock lock;
+        //     }
+
+        //     let _metric = self.metric(StoreAction::FidLock(FidLockSource::Prune));
+        //     lock.lock().unwrap()
+        // };
+
         let mut pruned_events = vec![];
 
         let mut count = cached_count;
@@ -993,6 +1052,8 @@ impl Store {
         fid: u32,
         page_options: &PageOptions,
     ) -> Result<MessagesPage, HubError> {
+        let _metric = self.metric(StoreAction::GetAllMessagesByFid(page_options.page_size));
+
         let prefix = make_message_primary_key(fid, self.store_def.postfix(), None);
         let messages =
             message::get_messages_page_by_prefix(&self.db, &prefix, &page_options, |message| {
@@ -1002,6 +1063,10 @@ impl Store {
             })?;
 
         Ok(messages)
+    }
+
+    pub fn metric(&self, action: StoreAction) -> StoreLifetimeCounter {
+        StoreLifetimeCounter::new(self.store_def.as_ref(), action)
     }
 }
 
@@ -1070,7 +1135,10 @@ impl Store {
 
         // We run the merge in a threadpool because it can be very CPU intensive and it will block
         // the NodeJS main thread.
+        let metric = store.metric(StoreAction::ThreadPoolWait);
         THREAD_POOL.lock().unwrap().execute(move || {
+            drop(metric);
+
             let results = messages
                 .into_iter()
                 .map(|message| match message {
@@ -1147,7 +1215,10 @@ impl Store {
 
         // We run the prune in a threadpool because it can be very CPU intensive and it will block
         // the NodeJS main thread.
+        let metric = store.metric(StoreAction::ThreadPoolWait);
         THREAD_POOL.lock().unwrap().execute(move || {
+            drop(metric);
+
             // Run the prune job in a separate thread
             let prune_result = store.prune_messages(fid, cached_count, units);
 
