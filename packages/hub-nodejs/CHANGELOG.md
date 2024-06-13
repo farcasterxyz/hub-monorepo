@@ -1,5 +1,13 @@
 # @farcaster/hub-nodejs
 
+## 0.11.16
+
+### Patch Changes
+
+- c424e111: feat: Add support for long casts
+- Updated dependencies [c424e111]
+  - @farcaster/core@0.14.15
+
 ## 0.11.15
 
 ### Patch Changes
