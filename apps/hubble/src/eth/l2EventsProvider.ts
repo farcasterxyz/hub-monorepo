@@ -687,7 +687,7 @@ export class L2EventsProvider {
     /*
      * Querying Blocks in Batches
      *
-     * 1. Calculate difference between the first and last sync blocks (e.g. )
+     * 1. Calculate the difference between the first and last sync blocks (e.g. )
      * 2. Divide by batch size and round up to get runs, and iterate with for-loop
      * 3. Compute the fromBlock in each run as firstBlock + (loopIndex * batchSize)
      * 4. Compute the toBlock in each run as fromBlock + batchSize
@@ -701,7 +701,7 @@ export class L2EventsProvider {
      * For the 2nd run, toBlock = 7,658,796 + 10,000 =  7,668,796
      */
 
-    // Calculate amount of runs required based on batchSize, and round up to capture all blocks
+    // Calculate the amount of runs required based on batchSize, and round up to capture all blocks
     const totalBlocks = toBlock - fromBlock;
     const numOfRuns = Math.ceil(totalBlocks / batchSize);
 
