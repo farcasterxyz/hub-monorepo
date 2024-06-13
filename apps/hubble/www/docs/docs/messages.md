@@ -186,7 +186,7 @@ Adds or removes a Link
 
 ## 6. Verification
 
-A Verification is a delta that contains a bi-directional signature proving that an fid has control over an Ethereum address.
+A Verification is a delta that contains a bi-directional signature proving that a fid has control over an Ethereum address.
 
 ### 6.1 VerificationAddEthAddressBody
 
