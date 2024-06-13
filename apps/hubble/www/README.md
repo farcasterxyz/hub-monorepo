@@ -14,7 +14,7 @@ Documentation of gRPC endpoints is done manually, but `protoc` can be used to ge
 
 1. Install [protoc](https://grpc.io/docs/protoc-installation/)
 2. Download latest `protoc-gen-doc` binary from the [repo](https://github.com/pseudomuto/protoc-gen-doc) and place in this folder
-3. On OS X, you may need to remove the binary from quaratine with `xattr -d com.apple.quarantine protoc-gen-doc`
+3. On OS X, you may need to remove the binary from quarantine with `xattr -d com.apple.quarantine protoc-gen-doc`
 4. Run `protoc --plugin=protoc-gen-doc=./protoc-gen-doc --doc_out=./docs --doc_opt=markdown,docs.md -I ../../../protobufs/schemas  ../../../protobufs/schemas/*.proto`
 5. Move the generated docs to the appropriate sections manually, and then delete the `docs/docs.md` file.
 
