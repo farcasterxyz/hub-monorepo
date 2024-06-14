@@ -541,30 +541,24 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
   public addContactInfoForPeerId(peerId: PeerId, contactInfo: ContactInfoContentBody) {
     const existingPeerInfo = this.getContactInfoForPeerId(peerId.toString());
-    if (existingPeerInfo) {
-      if (contactInfo.timestamp > existingPeerInfo.contactInfo.timestamp) {
-        this.currentHubPeerContacts.set(peerId.toString(), { peerId, contactInfo });
-      }
+    if (existingPeerInfo && contactInfo.timestamp <= existingPeerInfo.contactInfo.timestamp) {
       return err(new HubError("bad_request.duplicate", "peer already exists"));
-    } else {
-      log.info(
-        {
-          peerInfo: contactInfo,
-          theirMessages: contactInfo.count,
-          peerNetwork: contactInfo.network,
-          peerVersion: contactInfo.hubVersion,
-          peerAppVersion: contactInfo.appVersion,
-          connectedPeers: this.getPeerCount(),
-          peerId: peerId.toString(),
-          isNew: !!existingPeerInfo,
-          gossipDelay: (Date.now() - contactInfo.timestamp) / 1000,
-        },
-        "Updated Peer ContactInfo",
-      );
-
-      this.currentHubPeerContacts.set(peerId.toString(), { peerId, contactInfo });
     }
-
+    log.info(
+      {
+        peerInfo: contactInfo,
+        theirMessages: contactInfo.count,
+        peerNetwork: contactInfo.network,
+        peerVersion: contactInfo.hubVersion,
+        peerAppVersion: contactInfo.appVersion,
+        connectedPeers: this.getPeerCount(),
+        peerId: peerId.toString(),
+        isNew: !!existingPeerInfo,
+        gossipDelay: (Date.now() - contactInfo.timestamp) / 1000,
+      },
+      "Updated Peer ContactInfo",
+    );
+    this.currentHubPeerContacts.set(peerId.toString(), { peerId, contactInfo });
     return ok(undefined);
   }
 

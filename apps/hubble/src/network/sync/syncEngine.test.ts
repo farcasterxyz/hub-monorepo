@@ -604,7 +604,7 @@ describe("SyncEngine", () => {
       expect(syncEngine.getContactInfoForPeerId(peerId.toString())?.contactInfo).toEqual(contactInfo);
 
       // Adding a newer contact info should replace the existing one
-      expect(syncEngine.addContactInfoForPeerId(peerId, newerContactInfo)).toBeInstanceOf(Err);
+      expect(syncEngine.addContactInfoForPeerId(peerId, newerContactInfo)).toBeInstanceOf(Ok);
       expect(syncEngine.getContactInfoForPeerId(peerId.toString())?.contactInfo).toEqual(newerContactInfo);
     });
   });
