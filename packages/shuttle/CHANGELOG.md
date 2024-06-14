@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.3.3
+
+### Patch Changes
+
+- fix: Fix shuttle hub-nodejs version dep to support long casts
+
 ## 0.3.2
 
 ### Patch Changes
