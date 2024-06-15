@@ -1,6 +1,6 @@
 # Client
 
-A Client established a connection with a Farcaster Hub and can be used to send and receive messages. It is initialized
+A Client established a connection with a Farcaster Hub which can be used to send and receive messages. It is initialized
 with the IP address and gRPC port of the Hub. Once connected, a Client instance can:
 
 - Query for messages by user or type.
@@ -166,7 +166,7 @@ client.$.waitForReady(Date.now() + 5000, async (e) => {
 
 ### getSigner
 
-Returns an active signer message given an fid and the public key of the signer.
+Returns an active signer message given a fid and the public key of the signer.
 
 #### Usage
 
@@ -214,7 +214,7 @@ client.$.waitForReady(Date.now() + 5000, async (e) => {
 
 ### getSignersByFid
 
-Returns all active signers created by an fid in reverse chronological order.
+Returns all active signers created by a fid in reverse chronological order.
 
 #### Usage
 
