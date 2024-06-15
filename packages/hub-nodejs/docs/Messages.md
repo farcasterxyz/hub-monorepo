@@ -30,7 +30,7 @@ A generic container which holds the contents of the message(`MessageData`) and m
 | `signature`       | `Uint8Array`                          | Signature of the hash digest                      |
 | `signatureScheme` | [`SignatureScheme`](#signaturescheme) | Signature scheme that produced the signature      |
 | `signer`          | `Uint8Array`                          | Public key or address that produced the signature |
-| `data_bytes`      | `Uint8Array`                          | Alternative to using the `data` field. Contains the serialized `MessageData` bytes, on which you can calculate the `hash` and `signature`. Use this field instead of `data` if you are using another programing language or protobuf encoding scheme. Optional. |
+| `data_bytes`      | `Uint8Array`                          | Alternative to using the `data` field. Contains the serialized `MessageData` bytes, on which you can calculate the `hash` and `signature`. Use this field instead of `data` if you are using another programming language or protobuf encoding scheme. Optional. |
 
 ## MessageData\<Body,Type>
 
