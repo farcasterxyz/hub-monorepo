@@ -38,7 +38,7 @@ export class MessageReconciliation {
       MessageType.VERIFICATION_ADD_ETH_ADDRESS,
       MessageType.USER_DATA_ADD,
     ]) {
-      this.log.info(`Reconciling messages for FID ${fid} of type ${type}`);
+      this.log.debug(`Reconciling messages for FID ${fid} of type ${type}`);
       await this.reconcileMessagesOfTypeForFid(fid, type, onHubMessage, onDbMessage);
     }
   }
@@ -57,7 +57,7 @@ export class MessageReconciliation {
       const messageHashes = messages.map((msg) => msg.hash);
 
       if (messageHashes.length === 0) {
-        this.log.info(`No messages of type ${type} for FID ${fid}`);
+        this.log.debug(`No messages of type ${type} for FID ${fid}`);
         continue;
       }
 
