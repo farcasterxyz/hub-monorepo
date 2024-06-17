@@ -288,7 +288,7 @@ export function userDataTypeToJSON(object: UserDataType): string {
   }
 }
 
-/** Type of Protocol to disambiguate verification addresses */
+/** Type of Cast */
 export enum CastType {
   CAST = 0,
   LONG_CAST = 1,
