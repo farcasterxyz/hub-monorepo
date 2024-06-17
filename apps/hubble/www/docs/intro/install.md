@@ -112,7 +112,7 @@ First, ensure that the following are installed globally on your machine:
 - `cd hub-monorepo` to enter the directory
 - `yarn install` to install dependencies
 - `yarn build` to build Hubble and its dependencies
-- `yarn test` to ensure that the test suite runs correctly
+- `yarn test` to ensure that the test suite runs correctly. If integration tests fail, run `docker compose up redis postgres` and retry. 
 
 #### Running Hubble
 To run the Hubble commands, go to the Hubble app (`cd apps/hubble`) and run the `yarn` commands.
