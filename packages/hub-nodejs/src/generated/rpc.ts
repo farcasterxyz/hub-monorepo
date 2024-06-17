@@ -404,6 +404,16 @@ export const HubServiceService = {
     responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
+  /** @http-api: none */
+  getLinkCompactStateMessageByFid: {
+    path: "/HubService/GetLinkCompactStateMessageByFid",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => FidRequest.decode(value),
+    responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
+  },
   /** Sync Methods */
   getInfo: {
     path: "/HubService/GetInfo",
@@ -562,6 +572,8 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   getAllUserDataMessagesByFid: handleUnaryCall<FidRequest, MessagesResponse>;
   /** @http-api: none */
   getAllLinkMessagesByFid: handleUnaryCall<FidRequest, MessagesResponse>;
+  /** @http-api: none */
+  getLinkCompactStateMessageByFid: handleUnaryCall<FidRequest, MessagesResponse>;
   /** Sync Methods */
   getInfo: handleUnaryCall<HubInfoRequest, HubInfoResponse>;
   getCurrentPeers: handleUnaryCall<Empty, ContactInfoResponse>;
@@ -1098,6 +1110,22 @@ export interface HubServiceClient extends Client {
     callback: (error: ServiceError | null, response: MessagesResponse) => void,
   ): ClientUnaryCall;
   getAllLinkMessagesByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  /** @http-api: none */
+  getLinkCompactStateMessageByFid(
+    request: FidRequest,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getLinkCompactStateMessageByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getLinkCompactStateMessageByFid(
     request: FidRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,

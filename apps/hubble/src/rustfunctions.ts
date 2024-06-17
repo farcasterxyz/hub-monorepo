@@ -639,6 +639,14 @@ export namespace rsLinkStore {
   ): Promise<RustMessagesPage> => {
     return await lib.getAllLinkMessagesByFid.call(store, fid, pageOptions);
   };
+
+  export const GetLinkCompactStateMessageByFid = async (
+    store: RustDynStore,
+    fid: number,
+    pageOptions: PageOptions,
+  ): Promise<RustMessagesPage> => {
+    return await lib.getLinkCompactStateMessageByFid.call(store, fid, pageOptions);
+  };
 }
 
 /**

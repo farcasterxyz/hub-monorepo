@@ -288,7 +288,7 @@ export function userDataTypeToJSON(object: UserDataType): string {
   }
 }
 
-/** Type of Cast */
+/** Type of cast */
 export enum CastType {
   CAST = 0,
   LONG_CAST = 1,

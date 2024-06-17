@@ -3,6 +3,7 @@ import {
   isCastAddMessage,
   isCastRemoveMessage,
   isLinkAddMessage,
+  isLinkCompactStateMessage,
   isLinkRemoveMessage,
   isMergeMessageHubEvent,
   isPruneMessageHubEvent,
@@ -72,7 +73,7 @@ export class HubEventProcessor {
       return "deleted";
     }
     // Links
-    if (isAdd && isLinkAddMessage(message)) {
+    if ((isAdd && isLinkAddMessage(message)) || (isAdd && isLinkCompactStateMessage(message))) {
       return "created";
     } else if ((isAdd && isLinkRemoveMessage(message)) || (!isAdd && isLinkAddMessage(message))) {
       return "deleted";

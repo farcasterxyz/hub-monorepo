@@ -1003,6 +1003,21 @@ impl Store {
 
         Ok(messages)
     }
+
+    pub fn get_compact_state_messages_by_fid(
+        &self,
+        fid: u32,
+        page_options: &PageOptions,
+    ) -> Result<MessagesPage, HubError> {
+        let prefix = make_message_primary_key(fid, self.store_def.postfix(), None);
+        let messages =
+            message::get_messages_page_by_prefix(&self.db, &prefix, &page_options, |message| {
+                self.store_def.compact_state_type_supported()
+                    && self.store_def.is_compact_state_type(&message)
+            })?;
+
+        Ok(messages)
+    }
 }
 
 // Neon bindings

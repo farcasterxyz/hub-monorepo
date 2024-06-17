@@ -20,6 +20,7 @@ import {
   isUsernameProofMessage,
   isVerificationAddAddressMessage,
   LinkAddMessage,
+  LinkCompactStateMessage,
   LinkRemoveMessage,
   MergeOnChainEventHubEvent,
   MergeUsernameProofHubEvent,
@@ -1026,6 +1027,26 @@ class Engine extends TypedEmitter<EngineEvents> {
     }
 
     return ResultAsync.fromPromise(this._linkStore.getAllLinkMessagesByFid(fid, pageOptions), (e) => e as HubError);
+  }
+
+  async getLinkCompactStateMessageByFid(
+    fid: number,
+    pageOptions: PageOptions = {},
+  ): HubAsyncResult<MessagesPage<LinkCompactStateMessage>> {
+    const versionCheck = ensureAboveTargetFarcasterVersion("2024.3.20");
+    if (versionCheck.isErr()) {
+      return err(versionCheck.error);
+    }
+
+    const validatedFid = validations.validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
+    return ResultAsync.fromPromise(
+      this._linkStore.getLinkCompactStateMessageByFid(fid, pageOptions),
+      (e) => e as HubError,
+    );
   }
 
   /* -------------------------------------------------------------------------- */

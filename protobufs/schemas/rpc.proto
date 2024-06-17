@@ -91,6 +91,8 @@ service HubService {
   rpc GetAllUserDataMessagesByFid(FidRequest) returns (MessagesResponse);
   // @http-api: none
   rpc GetAllLinkMessagesByFid(FidRequest) returns (MessagesResponse);
+  // @http-api: none
+  rpc GetLinkCompactStateMessageByFid(FidRequest) returns (MessagesResponse);
 
   // Sync Methods    
   rpc GetInfo(HubInfoRequest) returns (HubInfoResponse);
