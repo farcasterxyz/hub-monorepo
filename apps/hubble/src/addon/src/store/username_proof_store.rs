@@ -91,6 +91,13 @@ impl StoreDef for UsernameProofStoreDef {
         })
     }
 
+    fn make_compact_state_prefix(&self, _fid: u32) -> Result<Vec<u8>, HubError> {
+        Err(HubError {
+            code: "bad_request.invalid_param".to_string(),
+            message: "Username Proof Store doesn't support compact state".to_string(),
+        })
+    }
+
     fn is_add_type(&self, message: &Message) -> bool {
         message.signature_scheme == protos::SignatureScheme::Ed25519 as i32
             && message.data.is_some()

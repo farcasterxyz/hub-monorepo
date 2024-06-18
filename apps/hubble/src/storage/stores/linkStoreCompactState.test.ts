@@ -136,8 +136,8 @@ describe("Merge LinkCompactState messages", () => {
     expect(result2.isErr()).toBe(false);
     const result2Value = result2._unsafeUnwrap();
     expect(result2Value.messages.length).toBe(1);
-    expect(result2Value.messages[0].data.linkCompactStateBody.targetFids).toBe(1);
-    expect(result2Value.messages[0].data.linkCompactStateBody.targetFids[0]).toBe(
+    expect(result2Value.messages[0]?.data.linkCompactStateBody?.targetFids.length).toBe(1);
+    expect(result2Value.messages[0]?.data.linkCompactStateBody?.targetFids[0]).toBe(
       linkAdd1.data.linkBody.targetFid as number,
     );
   });

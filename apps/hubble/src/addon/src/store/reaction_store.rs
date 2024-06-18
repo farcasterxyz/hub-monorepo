@@ -153,6 +153,13 @@ impl StoreDef for ReactionStoreDef {
         })
     }
 
+    fn make_compact_state_prefix(&self, _fid: u32) -> Result<Vec<u8>, HubError> {
+        Err(HubError {
+            code: "bad_request.invalid_param".to_string(),
+            message: "Reaction Store doesn't support compact state".to_string(),
+        })
+    }
+
     fn get_prune_size_limit(&self) -> u32 {
         self.prune_size_limit
     }

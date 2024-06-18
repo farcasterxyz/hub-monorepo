@@ -173,7 +173,7 @@ impl LinkStore {
         fid: u32,
         page_options: &PageOptions,
     ) -> Result<MessagesPage, HubError> {
-        store.get_all_messages_by_fid(fid, page_options)
+        store.get_compact_state_messages_by_fid(fid, page_options)
     }
 
     pub fn get_links_by_target(
@@ -947,6 +947,16 @@ impl StoreDef for LinkStore {
                         )),
                     })
             })
+    }
+
+    fn make_compact_state_prefix(&self, fid: u32) -> Result<Vec<u8>, HubError> {
+        let mut prefix =
+            Vec::with_capacity(Self::ROOT_PREFIXED_FID_BYTE_SIZE + Self::POSTFIX_BYTE_SIZE);
+
+        prefix.extend_from_slice(&make_user_key(fid));
+        prefix.push(UserPostfix::LinkCompactStateMessage.as_u8());
+
+        Ok(prefix)
     }
 
     fn make_add_key(&self, message: &Message) -> Result<Vec<u8>, HubError> {

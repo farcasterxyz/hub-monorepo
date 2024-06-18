@@ -13,6 +13,7 @@ import {
   HubServiceServer,
   HubServiceService,
   LinkAddMessage,
+  LinkCompactStateMessage,
   LinkRemoveMessage,
   Message,
   MessagesResponse,
@@ -1213,6 +1214,25 @@ export default class Server {
         });
         result?.match(
           (page: MessagesPage<LinkAddMessage | LinkRemoveMessage>) => {
+            callback(null, messagesPageToResponse(page));
+          },
+          (err: HubError) => {
+            callback(toServiceError(err));
+          },
+        );
+      },
+      getLinkCompactStateMessageByFid: async (call, callback) => {
+        const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
+        log.debug({ method: "getLinkCompactStateMessageByFid", req: call.request }, `RPC call from ${peer}`);
+
+        const { fid, pageSize, pageToken, reverse } = call.request;
+        const result = await this.engine?.getLinkCompactStateMessageByFid(fid, {
+          pageSize,
+          pageToken,
+          reverse,
+        });
+        result?.match(
+          (page: MessagesPage<LinkCompactStateMessage>) => {
             callback(null, messagesPageToResponse(page));
           },
           (err: HubError) => {
