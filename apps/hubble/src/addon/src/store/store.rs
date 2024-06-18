@@ -159,6 +159,7 @@ pub trait StoreDef: Send + Sync {
     fn make_add_key(&self, message: &Message) -> Result<Vec<u8>, HubError>;
     fn make_remove_key(&self, message: &Message) -> Result<Vec<u8>, HubError>;
     fn make_compact_state_add_key(&self, message: &Message) -> Result<Vec<u8>, HubError>;
+    fn make_compact_state_prefix(&self, fid: u32) -> Result<Vec<u8>, HubError>;
 
     fn get_prune_size_limit(&self) -> u32;
 
@@ -1002,6 +1003,33 @@ impl Store {
             })?;
 
         Ok(messages)
+    }
+
+    pub fn get_compact_state_messages_by_fid(
+        &self,
+        fid: u32,
+        page_options: &PageOptions,
+    ) -> Result<MessagesPage, HubError> {
+        if !self.store_def.compact_state_type_supported() {
+            return Err(HubError::invalid_parameter("compact state not supported"));
+        }
+
+        match self.store_def.make_compact_state_prefix(fid) {
+            Ok(prefix) => {
+                let messages = message::get_messages_page_by_prefix(
+                    &self.db,
+                    &prefix,
+                    &page_options,
+                    |message| {
+                        self.store_def.compact_state_type_supported()
+                            && self.store_def.is_compact_state_type(&message)
+                    },
+                )?;
+
+                Ok(messages)
+            }
+            Err(e) => Err(e),
+        }
     }
 }
 

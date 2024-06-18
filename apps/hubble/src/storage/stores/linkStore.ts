@@ -1,4 +1,10 @@
-import { getDefaultStoreLimit, LinkAddMessage, LinkRemoveMessage, StoreType } from "@farcaster/hub-nodejs";
+import {
+  getDefaultStoreLimit,
+  LinkAddMessage,
+  LinkCompactStateMessage,
+  LinkRemoveMessage,
+  StoreType,
+} from "@farcaster/hub-nodejs";
 import { makeFidKey, messageDecode } from "../../storage/db/message.js";
 import { UserPostfix } from "../db/types.js";
 import { MessagesPage, PageOptions, StorePruneOptions } from "./types.js";
@@ -125,6 +131,20 @@ class LinkStore extends RustStoreBase<LinkAddMessage, LinkRemoveMessage> {
     const messages =
       messages_page.messageBytes?.map((message_bytes) => {
         return messageDecode(new Uint8Array(message_bytes)) as LinkAddMessage | LinkRemoveMessage;
+      }) ?? [];
+
+    return { messages, nextPageToken: messages_page.nextPageToken };
+  }
+
+  async getLinkCompactStateMessageByFid(
+    fid: number,
+    pageOptions: PageOptions = {},
+  ): Promise<MessagesPage<LinkCompactStateMessage>> {
+    const messages_page = await rsLinkStore.GetLinkCompactStateMessageByFid(this._rustStore, fid, pageOptions);
+
+    const messages =
+      messages_page.messageBytes?.map((message_bytes) => {
+        return messageDecode(new Uint8Array(message_bytes)) as LinkCompactStateMessage;
       }) ?? [];
 
     return { messages, nextPageToken: messages_page.nextPageToken };

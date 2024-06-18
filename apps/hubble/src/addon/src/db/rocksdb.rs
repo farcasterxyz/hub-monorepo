@@ -942,7 +942,7 @@ impl RocksDB {
     pub fn js_for_each_iterator_by_js_opts(mut cx: FunctionContext) -> JsResult<JsPromise> {
         let db = get_db(&mut cx)?;
 
-        // JS Iterator options 
+        // JS Iterator options
         let js_opts = get_iterator_options(&mut cx, 0)?;
 
         // The argument is a callback function

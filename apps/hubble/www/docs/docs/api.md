@@ -180,12 +180,13 @@ Users to retrieve valid or revoked reactions
 
 ## 5. Link Service
 
-| Method Name             | Request Type         | Response Type    | Description                                                  |
-| ----------------------- | -------------------- | ---------------- | ------------------------------------------------------------ |
-| GetLink                 | LinkRequest          | Message          | Returns a specific Link                                  |
-| GetLinksByFid           | LinksByFidRequest    | MessagesResponse | Returns Links made by an fid in reverse chron order      |
-| GetLinksByTarget        | LinksByTargetRequest | MessagesResponse | Returns LinkAdds for a given target in reverse chron order |
-| GetAllLinkMessagesByFid | FidRequest           | MessagesResponse | Returns Links made by an fid in reverse chron order      |
+| Method Name                     | Request Type         | Response Type    | Description                                                  |
+| ------------------------------- | -------------------- | ---------------- | ------------------------------------------------------------ |
+| GetLink                         | LinkRequest          | Message          | Returns a specific Link                                  |
+| GetLinksByFid                   | LinksByFidRequest    | MessagesResponse | Returns Links made by an fid in reverse chron order      |
+| GetLinksByTarget                | LinksByTargetRequest | MessagesResponse | Returns LinkAdds for a given target in reverse chron order |
+| GetAllLinkMessagesByFid         | FidRequest           | MessagesResponse | Returns Links made by an fid in reverse chron order      |
+| GetLinkCompactStateMessageByFid | FidRequest           | MessagesResponse | Returns the LinkCompactState message made by a fid       |
 
 #### Link Request
 

@@ -168,6 +168,14 @@ impl LinkStore {
         store.get_all_messages_by_fid(fid, page_options)
     }
 
+    pub fn get_link_compact_state_message_by_fid(
+        store: &Store,
+        fid: u32,
+        page_options: &PageOptions,
+    ) -> Result<MessagesPage, HubError> {
+        store.get_compact_state_messages_by_fid(fid, page_options)
+    }
+
     pub fn get_links_by_target(
         store: &Store,
         target: &Target,
@@ -686,6 +694,31 @@ impl LinkStore {
 
         Ok(promise)
     }
+
+    pub fn js_get_link_compact_state_message_by_fid(
+        mut cx: FunctionContext,
+    ) -> JsResult<JsPromise> {
+        let store = get_store(&mut cx)?;
+
+        let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
+        let page_options = get_page_options(&mut cx, 1)?;
+
+        // fid must be specified
+        if fid == 0 {
+            return cx.throw_error("fid is required");
+        }
+
+        let channel = cx.channel();
+        let (deferred, promise) = cx.promise();
+
+        THREAD_POOL.lock().unwrap().execute(move || {
+            let messages = Self::get_link_compact_state_message_by_fid(&store, fid, &page_options);
+
+            deferred_settle_messages(deferred, &channel, messages);
+        });
+
+        Ok(promise)
+    }
 }
 
 impl StoreDef for LinkStore {
@@ -914,6 +947,16 @@ impl StoreDef for LinkStore {
                         )),
                     })
             })
+    }
+
+    fn make_compact_state_prefix(&self, fid: u32) -> Result<Vec<u8>, HubError> {
+        let mut prefix =
+            Vec::with_capacity(Self::ROOT_PREFIXED_FID_BYTE_SIZE + Self::POSTFIX_BYTE_SIZE);
+
+        prefix.extend_from_slice(&make_user_key(fid));
+        prefix.push(UserPostfix::LinkCompactStateMessage.as_u8());
+
+        Ok(prefix)
     }
 
     fn make_add_key(&self, message: &Message) -> Result<Vec<u8>, HubError> {

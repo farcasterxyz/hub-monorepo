@@ -143,6 +143,11 @@ export interface HubService {
   getAllUserDataMessagesByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
   /** @http-api: none */
   getAllLinkMessagesByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
+  /** @http-api: none */
+  getLinkCompactStateMessageByFid(
+    request: DeepPartial<FidRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<MessagesResponse>;
   /** Sync Methods */
   getInfo(request: DeepPartial<HubInfoRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<HubInfoResponse>;
   getCurrentPeers(request: DeepPartial<Empty>, metadata?: grpcWeb.grpc.Metadata): Promise<ContactInfoResponse>;
@@ -202,6 +207,7 @@ export class HubServiceClientImpl implements HubService {
     this.getAllVerificationMessagesByFid = this.getAllVerificationMessagesByFid.bind(this);
     this.getAllUserDataMessagesByFid = this.getAllUserDataMessagesByFid.bind(this);
     this.getAllLinkMessagesByFid = this.getAllLinkMessagesByFid.bind(this);
+    this.getLinkCompactStateMessageByFid = this.getLinkCompactStateMessageByFid.bind(this);
     this.getInfo = this.getInfo.bind(this);
     this.getCurrentPeers = this.getCurrentPeers.bind(this);
     this.getSyncStatus = this.getSyncStatus.bind(this);
@@ -360,6 +366,13 @@ export class HubServiceClientImpl implements HubService {
 
   getAllLinkMessagesByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse> {
     return this.rpc.unary(HubServiceGetAllLinkMessagesByFidDesc, FidRequest.fromPartial(request), metadata);
+  }
+
+  getLinkCompactStateMessageByFid(
+    request: DeepPartial<FidRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<MessagesResponse> {
+    return this.rpc.unary(HubServiceGetLinkCompactStateMessageByFidDesc, FidRequest.fromPartial(request), metadata);
   }
 
   getInfo(request: DeepPartial<HubInfoRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<HubInfoResponse> {
@@ -1137,6 +1150,29 @@ export const HubServiceGetAllUserDataMessagesByFidDesc: UnaryMethodDefinitionish
 
 export const HubServiceGetAllLinkMessagesByFidDesc: UnaryMethodDefinitionish = {
   methodName: "GetAllLinkMessagesByFid",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return FidRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = MessagesResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetLinkCompactStateMessageByFidDesc: UnaryMethodDefinitionish = {
+  methodName: "GetLinkCompactStateMessageByFid",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
