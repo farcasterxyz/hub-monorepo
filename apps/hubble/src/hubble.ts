@@ -1261,12 +1261,16 @@ export class Hub implements HubInterface {
 
   private async handleGossipMessage(gossipMessage: GossipMessage, source: PeerId, msgId: string): HubAsyncResult<void> {
     let reportedAsInvalid = false;
+    const currentTime = getFarcasterTime().unwrapOr(0);
+    const messageFirstGossipedTime = gossipMessage.timestamp ?? 0;
+    const gossipMessageDelay = currentTime - messageFirstGossipedTime;
     if (gossipMessage.timestamp) {
       // If message is older than seenTTL, we will try to merge it, but report it as invalid so it doesn't
       // propogate across the network
       const cutOffTime = getFarcasterTime().unwrapOr(0) - GOSSIP_SEEN_TTL / 1000;
 
       if (gossipMessage.timestamp < cutOffTime) {
+        statsd().timing("gossip.message_bundle_delay.invalid", gossipMessageDelay);
         await this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), false);
         reportedAsInvalid = true;
       }
@@ -1298,10 +1302,6 @@ export class Hub implements HubInterface {
         });
         return err(new HubError("unavailable", msg));
       }
-
-      const currentTime = getFarcasterTime().unwrapOr(0);
-      const messageFirstGossipedTime = gossipMessage.timestamp ?? 0;
-      const gossipMessageDelay = currentTime - messageFirstGossipedTime;
 
       // Merge the message
       if (gossipMessage.message) {
@@ -1353,6 +1353,7 @@ export class Hub implements HubInterface {
           if (!reportedAsInvalid) {
             await this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), true);
           }
+          statsd().timing("gossip.message_bundle_delay.success", gossipMessageDelay);
         } else {
           const errCode = results[0]?._unsafeUnwrapErr()?.errCode as string;
           const errMsg = results[0]?._unsafeUnwrapErr()?.message;
@@ -1378,8 +1379,8 @@ export class Hub implements HubInterface {
           if (!reportedAsInvalid) {
             await this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), false);
           }
+          statsd().timing("gossip.message_bundle_delay.failure", gossipMessageDelay);
         }
-        statsd().timing("gossip.message_bundle_delay", gossipMessageDelay);
 
         return ok(undefined);
       } else {
