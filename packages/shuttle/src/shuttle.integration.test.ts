@@ -2,13 +2,17 @@ import { migrateToLatest } from "./example-app/db";
 import { log } from "./log";
 import { sql } from "kysely";
 import {
+  CallOptions,
   Factories,
+  FidRequest,
   HubEvent,
   HubEventType,
   HubRpcClient,
   LinkCompactStateBody,
   Message,
   MessageType,
+  MessagesResponse,
+  Metadata,
 } from "@farcaster/hub-nodejs";
 import {
   RedisClient,
@@ -21,13 +25,11 @@ import {
   MessageState,
   MessageReconciliation,
 } from "./shuttle";
-import { anything, instance, mock, when } from "ts-mockito";
 import { ok } from "neverthrow";
 
 let db: DB;
 let subscriber: FakeHubSubscriber;
 let redis: RedisClient;
-let client: HubRpcClient;
 
 const signer = Factories.Ed25519Signer.build();
 
@@ -96,9 +98,6 @@ beforeAll(async () => {
 
   redis = RedisClient.create(REDIS_URL);
   await redis.clearForTest();
-
-  const mockRPCClient = mock<HubRpcClient>();
-  client = instance(mockRPCClient);
 });
 
 afterAll(async () => {
@@ -239,24 +238,31 @@ describe("shuttle", () => {
     // set compact message to deleted:
     await db.updateTable("messages").where("hash", "=", compactMessage.hash).set({ deletedAt: new Date() }).execute();
 
-    when(client.getAllLinkMessagesByFid(anything())).thenCall(async () => {
-      return Promise.resolve(
-        ok({
-          messages: [addMessage],
-          nextPageToken: undefined,
-        }),
-      );
-    });
-    when(client.getLinkCompactStateMessageByFid(anything())).thenCall(async () => {
-      return Promise.resolve(
-        ok({
-          messages: [compactMessage],
-          nextPageToken: undefined,
-        }),
-      );
-    });
+    // It's a hack, but mockito is not handling this well:
+    const mockRPCClient = {
+      getAllLinkMessagesByFid: async (_request: FidRequest, _metadata: Metadata, _options: Partial<CallOptions>) => {
+        return ok(
+          MessagesResponse.create({
+            messages: [addMessage],
+            nextPageToken: undefined,
+          }),
+        );
+      },
+      getLinkCompactStateMessageByFid: async (
+        _request: FidRequest,
+        _metadata: Metadata,
+        _options: Partial<CallOptions>,
+      ) => {
+        return ok(
+          MessagesResponse.create({
+            messages: [compactMessage],
+            nextPageToken: undefined,
+          }),
+        );
+      },
+    };
 
-    const reconciler = new MessageReconciliation(client, db, log);
+    const reconciler = new MessageReconciliation(mockRPCClient as unknown as HubRpcClient, db, log);
     const messagesOnHub: Message[] = [];
     const missingFromHub: boolean[] = [];
     const prunedInDb: boolean[] = [];
