@@ -32,6 +32,7 @@ message HubInfoResponse {
   DbStats db_stats = 5;
   string peerId = 6;
   uint64 hub_operator_fid = 7;
+  uint64 last_sync_timestamp = 8;
 }
 
 message DbStats {

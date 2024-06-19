@@ -263,6 +263,9 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   // Has the syncengine started yet?
   private _started = false;
 
+  // Time of last successful sync
+  private _lastSyncTimestamp?: number;
+
   private _dbStats: DbStats = {
     approxSize: 0,
     numItems: 0,
@@ -509,6 +512,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     this._started = false;
     this.curSync.interruptSync = false;
     log.info("Sync engine stopped");
+  }
+
+  public getLastSyncTimestamp(): number | undefined {
+    return this._lastSyncTimestamp;
   }
 
   public getBadPeerIds(): string[] {
@@ -906,6 +913,8 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       await this.processSyncWorkQueue(syncParallelism);
 
       await auditPeerPromise; // Wait for audit to complete
+
+      this._lastSyncTimestamp = Date.now();
 
       log.info({ syncResult: this.curSync.fullResult }, "Perform sync: Sync Complete");
       statsd().timing("syncengine.sync_time_ms", Date.now() - startTimestamp);

@@ -340,6 +340,7 @@ Response Types for the Sync RPC Methods
 | nickname | [string](#string) |  |  |
 | root_hash | [string](#string) |  |  |
 | db_stats | [DbStats](#DbStats) |  |  |
+| last_sync_timestamp | [uint64]([#uint64]) |  |  |
 
 ### SyncStatusRequest
 

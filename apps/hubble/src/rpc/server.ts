@@ -462,6 +462,7 @@ export default class Server {
               (e) => e,
             )().unwrapOr(""),
             hubOperatorFid: this.hub?.hubOperatorFid ?? 0,
+            lastSyncTimestamp: this.syncEngine?.getLastSyncTimestamp() ?? 0,
           });
 
           if (call.request.dbStats && this.syncEngine) {
