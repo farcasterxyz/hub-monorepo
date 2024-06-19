@@ -30,6 +30,7 @@ import { profileGossipServer } from "./profile/gossipProfile.js";
 import { getStatsdInitialization, initializeStatsd } from "./utils/statsd.js";
 import os from "os";
 import { startupCheck, StartupCheckStatus } from "./utils/startupCheck.js";
+import { printSyncHealth } from "./utils/syncHealth.js";
 import { mainnet, optimism } from "viem/chains";
 import { finishAllProgressBars } from "./utils/progressBars.js";
 import { MAINNET_BOOTSTRAP_PEERS } from "./bootstrapPeers.mainnet.js";
@@ -940,6 +941,21 @@ const readPeerId = async (filePath: string) => {
   const proto = await readFile(filePath);
   return createFromProtobuf(proto);
 };
+
+/*//////////////////////////////////////////////////////////////
+                          SYNC HEALTH COMMAND
+//////////////////////////////////////////////////////////////*/
+
+app
+  .command("sync-health")
+  .description("Measure sync health")
+  .option("-s, --start-seconds-ago <number>", "How many seconds ago to start the sync health query", "600")
+  .option("--span <seconds>", "How many seconds to count over", "30")
+  .option("--max-num-peers <count>", "Maximum number of peers to measure for", "20")
+  .option("--primary-node <host:port>", "Node to measure all peers against (required)", "hoyt.farcaster.xyz:2283")
+  .action(async (cliOptions) => {
+    await printSyncHealth(cliOptions.startSecondsAgo, cliOptions.span, cliOptions.maxNumPeers, cliOptions.primaryNode);
+  });
 
 app.parse(process.argv);
 
