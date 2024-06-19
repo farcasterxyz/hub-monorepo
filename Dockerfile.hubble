@@ -61,7 +61,7 @@ RUN rm -rf node_modules && yarn install --production --ignore-scripts --prefer-o
 
 FROM node:21.6-slim as app
 
-RUN apt-get update && apt-get install -y procps
+RUN apt-get update && apt-get install -y curl procps
 
 # Set non-root user and expose ports
 USER node

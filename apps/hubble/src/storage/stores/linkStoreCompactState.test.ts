@@ -131,6 +131,15 @@ describe("Merge LinkCompactState messages", () => {
     });
     const expectError4 = await ResultAsync.fromPromise(set.merge(linkRemove1), (e) => e as HubError);
     expect(expectError4.isErr()).toBe(true);
+
+    const result2 = await ResultAsync.fromPromise(set.getLinkCompactStateMessageByFid(fid), (e) => e as HubError);
+    expect(result2.isErr()).toBe(false);
+    const result2Value = result2._unsafeUnwrap();
+    expect(result2Value.messages.length).toBe(1);
+    expect(result2Value.messages[0]?.data.linkCompactStateBody?.targetFids.length).toBe(1);
+    expect(result2Value.messages[0]?.data.linkCompactStateBody?.targetFids[0]).toBe(
+      linkAdd1.data.linkBody.targetFid as number,
+    );
   });
 
   test("merge link compaction messages can remove all messages", async () => {

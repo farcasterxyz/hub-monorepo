@@ -66,6 +66,9 @@ export function bytesToHex(value: Uint8Array): `0x${string}` {
   return `0x${Buffer.from(value).toString("hex")}`;
 }
 
+export function farcasterTimeToDate(time: number): Date;
+export function farcasterTimeToDate(time: null): null;
+export function farcasterTimeToDate(time: undefined): undefined;
 export function farcasterTimeToDate(time: number | null | undefined): Date | null | undefined {
   if (time === undefined) return undefined;
   if (time === null) return null;
@@ -108,6 +111,7 @@ export function convertProtobufMessageBodyToJson(message: Message): MessageBodyJ
         text,
         parentCastId,
         parentUrl,
+        type,
       } = message.data.castAddBody;
 
       const embeds: string[] = [];
@@ -132,6 +136,7 @@ export function convertProtobufMessageBodyToJson(message: Message): MessageBodyJ
         mentions,
         mentionsPositions,
         text,
+        type,
         parent: parentCastId ? { fid: parentCastId.fid, hash: bytesToHex(parentCastId.hash) } : parentUrl,
       };
       break;

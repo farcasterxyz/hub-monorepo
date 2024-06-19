@@ -40,6 +40,7 @@ import { PruneEventsJobScheduler } from "./storage/jobs/pruneEventsJob.js";
 import { PruneMessagesJobScheduler } from "./storage/jobs/pruneMessagesJob.js";
 import { sleep } from "./utils/crypto.js";
 import { rsDbDestroy, rsValidationMethods } from "./rustfunctions.js";
+import { URL } from "node:url";
 import * as tar from "tar";
 import * as zlib from "zlib";
 import {
@@ -67,7 +68,6 @@ import StoreEventHandler from "./storage/stores/storeEventHandler.js";
 import { FNameRegistryClient, FNameRegistryEventsProvider } from "./eth/fnameRegistryEventsProvider.js";
 import { L2EventsProvider, OptimismConstants } from "./eth/l2EventsProvider.js";
 import { prettyPrintTable } from "./profile/profile.js";
-import packageJson from "./package.json" assert { type: "json" };
 import { createPublicClient, fallback, http } from "viem";
 import { mainnet, optimism } from "viem/chains";
 import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
@@ -98,14 +98,16 @@ import { startupCheck, StartupCheckStatus } from "./utils/startupCheck.js";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
-export const APP_VERSION = packageJson.version;
+export const APP_VERSION = JSON.parse(
+  fs.readFileSync(path.join(new URL(".", import.meta.url).pathname, "..", "./package.json")).toString(),
+).version;
 export const APP_NICKNAME = process.env["HUBBLE_NAME"] ?? "Farcaster Hub";
 
 export const SNAPSHOT_S3_UPLOAD_BUCKET = "farcaster-snapshots";
 export const SNAPSHOT_S3_DOWNLOAD_BUCKET = "download.farcaster.xyz";
 export const S3_REGION = "auto";
 
-export const FARCASTER_VERSION = "2024.5.1";
+export const FARCASTER_VERSION = "2024.6.12";
 export const FARCASTER_VERSIONS_SCHEDULE: VersionSchedule[] = [
   { version: "2023.3.1", expiresAt: 1682553600000 }, // expires at 4/27/23 00:00 UTC
   { version: "2023.4.19", expiresAt: 1686700800000 }, // expires at 6/14/23 00:00 UTC
@@ -118,6 +120,7 @@ export const FARCASTER_VERSIONS_SCHEDULE: VersionSchedule[] = [
   { version: "2024.2.7", expiresAt: 1712102400000 }, // expires at 4/3/24 00:00 UTC
   { version: "2024.3.20", expiresAt: 1715731200000 }, // expires at 5/15/24 00:00 UTC
   { version: "2024.5.1", expiresAt: 1719360000000 }, // expires at 6/26/24 00:00 UTC
+  { version: "2024.6.12", expiresAt: 1722988800000 }, // expires at 8/7/24 00:00 UTC
 ];
 
 const MAX_CONTACT_INFO_AGE_MS = GOSSIP_SEEN_TTL;
@@ -725,9 +728,9 @@ export class Hub implements HubInterface {
       this.options.announceIp ?? undefined,
     );
     if (rpcAddressCheck.isErr()) {
-      const errorMessage = `Error validating RPC address at port ${this.options.rpcPort}. 
+      const errorMessage = `Error validating RPC address at port ${this.options.rpcPort}.
         Please make sure RPC port value is valid and reachable from public internet.
-        Reachable address is required for hub to perform diff sync via gRPC API and sync with the network. 
+        Reachable address is required for hub to perform diff sync via gRPC API and sync with the network.
         Hub operators may need to enable port-forwarding of traffic to hub's host and port if they are behind a NAT.
         `;
       log.warn(
@@ -1258,12 +1261,16 @@ export class Hub implements HubInterface {
 
   private async handleGossipMessage(gossipMessage: GossipMessage, source: PeerId, msgId: string): HubAsyncResult<void> {
     let reportedAsInvalid = false;
+    const currentTime = getFarcasterTime().unwrapOr(0);
+    const messageFirstGossipedTime = gossipMessage.timestamp ?? 0;
+    const gossipMessageDelay = currentTime - messageFirstGossipedTime;
     if (gossipMessage.timestamp) {
       // If message is older than seenTTL, we will try to merge it, but report it as invalid so it doesn't
       // propogate across the network
       const cutOffTime = getFarcasterTime().unwrapOr(0) - GOSSIP_SEEN_TTL / 1000;
 
       if (gossipMessage.timestamp < cutOffTime) {
+        statsd().timing("gossip.message_bundle_delay.invalid", gossipMessageDelay);
         await this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), false);
         reportedAsInvalid = true;
       }
@@ -1295,10 +1302,6 @@ export class Hub implements HubInterface {
         });
         return err(new HubError("unavailable", msg));
       }
-
-      const currentTime = getFarcasterTime().unwrapOr(0);
-      const messageFirstGossipedTime = gossipMessage.timestamp ?? 0;
-      const gossipMessageDelay = currentTime - messageFirstGossipedTime;
 
       // Merge the message
       if (gossipMessage.message) {
@@ -1350,6 +1353,7 @@ export class Hub implements HubInterface {
           if (!reportedAsInvalid) {
             await this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), true);
           }
+          statsd().timing("gossip.message_bundle_delay.success", gossipMessageDelay);
         } else {
           const errCode = results[0]?._unsafeUnwrapErr()?.errCode as string;
           const errMsg = results[0]?._unsafeUnwrapErr()?.message;
@@ -1375,8 +1379,8 @@ export class Hub implements HubInterface {
           if (!reportedAsInvalid) {
             await this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), false);
           }
+          statsd().timing("gossip.message_bundle_delay.failure", gossipMessageDelay);
         }
-        statsd().timing("gossip.message_bundle_delay", gossipMessageDelay);
 
         return ok(undefined);
       } else {

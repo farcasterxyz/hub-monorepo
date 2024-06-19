@@ -11,10 +11,10 @@ Used to retrieve on chain events (id registry, signers, storage rent)
 | Method Name                        | Request Type                    | Response Type         | Description                                                                                                 |
 |------------------------------------|---------------------------------|-----------------------|-------------------------------------------------------------------------------------------------------------|
 | GetOnChainSigner                   | SignerRequest                   | OnChainEvent          | Returns the onchain event for an active signer for an Fid                                                   |
-| GetOnChainSignersByFid             | FidRequest                      | OnChainEventResponse  | Returns all active signers add events for an Fid                                                            |
-| GetIdRegistryOnChainEvent          | FidRequest                      | OnChainEvent          | Returns the most recent register/transfer on chain event for an fid                                         |
+| GetOnChainSignersByFid             | FidRequest                      | OnChainEventResponse  | Returns all active signers add events for a Fid                                                            |
+| GetIdRegistryOnChainEvent          | FidRequest                      | OnChainEvent          | Returns the most recent register/transfer on chain event for a fid                                         |
 | GetIdRegistryOnChainEventByAddress | IdRegistryEventByAddressRequest | OnChainEvent          | Returns the registration/transfer event by address if it exists (allows looking up fid by address)          |
-| GetCurrentStorageLimitsByFid       | FidRequest                      | StorageLimitsResponse | Returns current storage limits for all stores for an Fid                                                    |
+| GetCurrentStorageLimitsByFid       | FidRequest                      | StorageLimitsResponse | Returns current storage limits for all stores for a Fid                                                    |
 | GetOnChainEvents                   | OnChainEventRequest             | OnChainEventResponse  | Returns all on chain events filtered by type for an Fid (includes inactive signers and expired rent events) |
 | GetFids                            | FidsRequest                     | FidsResponse          | Returns the most recent Fids that were registered                                                           |
 
@@ -112,7 +112,7 @@ Used to retrieve valid casts or tombstones for deleted casts
 | GetCastsByFid           | FidRequest   | MessagesResponse | Returns CastAdds for an Fid in reverse chron order             |
 | GetCastsByParent        | CastId       | MessagesResponse | Returns CastAdd replies to a given Cast in reverse chron order |
 | GetCastsByMention       | FidRequest   | MessagesResponse | Returns CastAdds that mention an Fid in reverse chron order    |
-| GetAllCastMessagesByFid | FidRequest   | MessagesResponse | Returns Casts for an Fid in reverse chron order                |
+| GetAllCastMessagesByFid | FidRequest   | MessagesResponse | Returns Casts for a Fid in reverse chron order                |
 
 #### CastsByParentRequest
 
@@ -133,7 +133,7 @@ Used to retrieve valid casts or tombstones for deleted casts
 | GetReactionsByFid           | ReactionsByFidRequest    | MessagesResponse | Returns Reactions made by an Fid in reverse chron order      |
 | GetReactionsByCast          | ReactionsByCastRequest   | MessagesResponse | Returns ReactionAdds for a given Cast in reverse chron order |
 | GetReactionsByTarget        | ReactionsByTargetRequest | MessagesResponse | Returns ReactionAdds for a given Cast in reverse chron order |
-| GetAllReactionMessagesByFid | FidRequest               | MessagesResponse | Returns Reactions made by an Fid in reverse chron order      |
+| GetAllReactionMessagesByFid | FidRequest               | MessagesResponse | Returns Reactions made by a Fid in reverse chron order      |
 
 #### Reaction Request
 
@@ -180,12 +180,13 @@ Users to retrieve valid or revoked reactions
 
 ## 5. Link Service
 
-| Method Name             | Request Type         | Response Type    | Description                                                  |
-| ----------------------- | -------------------- | ---------------- | ------------------------------------------------------------ |
-| GetLink                 | LinkRequest          | Message          | Returns a specific Link                                  |
-| GetLinksByFid           | LinksByFidRequest    | MessagesResponse | Returns Links made by an fid in reverse chron order      |
-| GetLinksByTarget        | LinksByTargetRequest | MessagesResponse | Returns LinkAdds for a given target in reverse chron order |
-| GetAllLinkMessagesByFid | FidRequest           | MessagesResponse | Returns Links made by an fid in reverse chron order      |
+| Method Name                     | Request Type         | Response Type    | Description                                                  |
+| ------------------------------- | -------------------- | ---------------- | ------------------------------------------------------------ |
+| GetLink                         | LinkRequest          | Message          | Returns a specific Link                                  |
+| GetLinksByFid                   | LinksByFidRequest    | MessagesResponse | Returns Links made by an fid in reverse chron order      |
+| GetLinksByTarget                | LinksByTargetRequest | MessagesResponse | Returns LinkAdds for a given target in reverse chron order |
+| GetAllLinkMessagesByFid         | FidRequest           | MessagesResponse | Returns Links made by an fid in reverse chron order      |
+| GetLinkCompactStateMessageByFid | FidRequest           | MessagesResponse | Returns the LinkCompactState message made by a fid       |
 
 #### Link Request
 

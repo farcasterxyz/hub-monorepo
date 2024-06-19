@@ -153,6 +153,10 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
         "getAllLinkMessagesByFid",
         LinkStore::js_get_all_link_messages_by_fid,
     )?;
+    cx.export_function(
+        "getLinkCompactStateMessageByFid",
+        LinkStore::js_get_link_compact_state_message_by_fid,
+    )?;
 
     // ReactionStore methods
     cx.export_function("createReactionStore", ReactionStore::create_reaction_store)?;

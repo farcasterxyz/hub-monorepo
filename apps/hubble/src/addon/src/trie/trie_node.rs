@@ -196,7 +196,7 @@ impl TrieNode {
                 return Ok(results);
             }
 
-            // See if the any of the keys already exists
+            // See if any of the keys already exists
             remaining_keys = keys
                 .into_iter()
                 .enumerate()
