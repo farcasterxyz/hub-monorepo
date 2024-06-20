@@ -1,7 +1,19 @@
 import { migrateToLatest } from "./example-app/db";
 import { log } from "./log";
 import { sql } from "kysely";
-import { Factories, HubEvent, HubEventType, Message } from "@farcaster/hub-nodejs";
+import {
+  CallOptions,
+  Factories,
+  FidRequest,
+  HubEvent,
+  HubEventType,
+  HubRpcClient,
+  LinkCompactStateBody,
+  Message,
+  MessageType,
+  MessagesResponse,
+  Metadata,
+} from "@farcaster/hub-nodejs";
 import {
   RedisClient,
   HubSubscriber,
@@ -11,7 +23,9 @@ import {
   StoreMessageOperation,
   HubEventProcessor,
   MessageState,
+  MessageReconciliation,
 } from "./shuttle";
+import { ok } from "neverthrow";
 
 let db: DB;
 let subscriber: FakeHubSubscriber;
@@ -193,6 +207,99 @@ describe("shuttle", () => {
     expect(removeMessageInDb.deletedAt).toBeNull();
   });
 
+  test("reconciler flags incorrectly deleted messages", async () => {
+    const addMessage = await Factories.LinkAddMessage.create({}, { transient: { signer } });
+    const targetFid = addMessage.data.linkBody.targetFid;
+    expect(targetFid).toBeDefined();
+    const compactMessage = await Factories.LinkCompactStateMessage.create(
+      {
+        data: {
+          fid: addMessage.data.fid,
+          linkCompactStateBody: {
+            type: addMessage.data.linkBody.type,
+            targetFids: [targetFid ?? 0],
+          },
+        },
+      },
+      { transient: { signer } },
+    );
+
+    await subscriber.processHubEvent(
+      HubEvent.create({ id: 1, type: HubEventType.MERGE_MESSAGE, mergeMessageBody: { message: addMessage } }),
+    );
+    await subscriber.processHubEvent(
+      HubEvent.create({
+        id: 2,
+        type: HubEventType.MERGE_MESSAGE,
+        mergeMessageBody: { message: compactMessage },
+      }),
+    );
+
+    // set compact message to deleted:
+    await db.updateTable("messages").where("hash", "=", compactMessage.hash).set({ deletedAt: new Date() }).execute();
+
+    // It's a hack, but mockito is not handling this well:
+    const mockRPCClient = {
+      getAllLinkMessagesByFid: async (_request: FidRequest, _metadata: Metadata, _options: Partial<CallOptions>) => {
+        return ok(
+          MessagesResponse.create({
+            messages: [addMessage],
+            nextPageToken: undefined,
+          }),
+        );
+      },
+      getLinkCompactStateMessageByFid: async (
+        _request: FidRequest,
+        _metadata: Metadata,
+        _options: Partial<CallOptions>,
+      ) => {
+        return ok(
+          MessagesResponse.create({
+            messages: [compactMessage],
+            nextPageToken: undefined,
+          }),
+        );
+      },
+    };
+
+    const reconciler = new MessageReconciliation(mockRPCClient as unknown as HubRpcClient, db, log);
+    const messagesOnHub: Message[] = [];
+    const missingFromHub: boolean[] = [];
+    const prunedInDb: boolean[] = [];
+    const revokedInDb: boolean[] = [];
+    const messagesInDb: {
+      hash: Uint8Array;
+      prunedAt: Date | null;
+      revokedAt: Date | null;
+      fid: number;
+      type: MessageType;
+      raw: Uint8Array;
+      signer: Uint8Array;
+    }[] = [];
+    const missingFromDb: boolean[] = [];
+    const a = await reconciler.reconcileMessagesOfTypeForFid(
+      addMessage.data.fid,
+      MessageType.LINK_ADD,
+      async (msg, missing, pruned, revoked) => {
+        messagesOnHub.push(msg);
+        missingFromHub.push(missing);
+        prunedInDb.push(pruned);
+        revokedInDb.push(revoked);
+      },
+      async (dbMsg, missing) => {
+        messagesInDb.push(dbMsg);
+        missingFromDb.push(missing);
+      },
+    );
+
+    expect(messagesOnHub.length).toBe(2);
+    expect(messagesInDb.length).toBe(1);
+    expect(missingFromHub).toMatchObject([false, false]);
+    expect(prunedInDb).toMatchObject([false, false]);
+    expect(revokedInDb).toMatchObject([false, false]);
+    expect(missingFromDb).toMatchObject([false]);
+  });
+
   test("marks messages as pruned", async () => {
     const addMessage = await Factories.ReactionAddMessage.create({}, { transient: { signer } });
     subscriber.addMessageCallback((msg, operation, state, isNew, wasMissed) => {
@@ -272,7 +379,7 @@ describe("shuttle", () => {
         .select(["hash", "body"])
         .where("hash", "=", message.hash)
         .executeTakeFirstOrThrow();
-      expect(res.body.targetFids).toEqual([1, 2, 3]);
+      expect((res.body as LinkCompactStateBody).targetFids).toEqual([1, 2, 3]);
     });
   });
 });

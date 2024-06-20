@@ -174,6 +174,20 @@ export class MessageReconciliation {
       if (!pageToken?.length) break;
       result = await this.client.getAllLinkMessagesByFid({ pageSize, pageToken, fid });
     }
+
+    let deltaResult = await this.client.getLinkCompactStateMessageByFid({ fid, pageSize });
+    for (;;) {
+      if (deltaResult.isErr()) {
+        throw new Error(`Unable to get all link compact results for FID ${fid}: ${deltaResult.error?.message}`);
+      }
+
+      const { messages, nextPageToken: pageToken } = deltaResult.value;
+
+      yield messages;
+
+      if (!pageToken?.length) break;
+      deltaResult = await this.client.getLinkCompactStateMessageByFid({ pageSize, pageToken, fid });
+    }
   }
 
   private async *getAllVerificationMessagesByFidInBatchesOf(fid: number, pageSize: number) {
