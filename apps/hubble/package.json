@@ -34,7 +34,7 @@
     "dbreset": "node build/cli.js dbreset",
     "events-reset": "node build/cli.js events-reset",
     "console": "node build/cli.js console",
-    "profile": "node --max-old-space-size=4096 build/cli.js profile",
+    "profile": "node --max-old-space-size=8192 build/cli.js profile",
     "status": "node build/cli.js status",
     "test": "yarn test:ts && yarn test:rust",
     "test:ts": "yarn build:all && NODE_OPTIONS=\"--experimental-vm-modules --max-old-space-size=4096\" jest",
