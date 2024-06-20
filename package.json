@@ -17,7 +17,8 @@
     "prepare": "husky install",
     "version-packages": "changeset version --ignore @farcaster/hubble",
     "release-packages": "yarn build && changeset publish",
-    "release-all": "yarn build && changeset publish && changeset tag"
+    "release-all": "yarn build && changeset publish && changeset tag",
+    "postinstall": "patch-package"
   },
   "engines": {
     "npm": ">=8.0.0",
