@@ -42,6 +42,7 @@ COPY --chown=node:node --from=prune /home/node/app/out/json/ .
 COPY --chown=node:node --from=prune /home/node/app/out/yarn.lock ./yarn.lock
 
 RUN yarn install --frozen-lockfile --network-timeout 1800000
+RUN yarn postinstall
 
 # Copy source code (and all other relevant files)
 COPY --chown=node:node --from=prune /home/node/app/out/full/ .
