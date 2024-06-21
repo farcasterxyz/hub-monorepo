@@ -1,5 +1,13 @@
 # @farcaster/hub-nodejs
 
+## 0.11.17
+
+### Patch Changes
+
+- dab95118: Add rpc to expose LinkCompactStateMessage + explicit handling of type
+- Updated dependencies [dab95118]
+  - @farcaster/core@0.14.16
+
 ## 0.11.16
 
 ### Patch Changes

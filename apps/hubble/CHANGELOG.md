@@ -1,5 +1,17 @@
 # @farcaster/hubble
 
+## 1.13.2
+
+### Patch Changes
+
+- e58e963d: fix: Always log when updating contact info
+- 27a1cfc8: fix: updated the cli tool to flush logs before exiting
+- f25f133f: chore: Segment bundle delay stats by message status
+- dab95118: Add rpc to expose LinkCompactStateMessage + explicit handling of type
+- 6ceb8f54: add libp2p/peer-store patch to resolve corrupt peer id loads
+- Updated dependencies [dab95118]
+  - @farcaster/hub-nodejs@0.11.17
+
 ## 1.13.1
 
 ### Patch Changes
