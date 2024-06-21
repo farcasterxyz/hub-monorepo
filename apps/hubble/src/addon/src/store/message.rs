@@ -1,10 +1,11 @@
-use super::{store::HubError, PageOptions, PAGE_SIZE_MAX};
+use prost::Message as _;
+
 use crate::{
     db::{RocksDB, RocksDbTransactionBatch},
     protos::{CastId, Message as MessageProto, MessageData, MessageType},
 };
-use prost::Message as _;
-use std::convert::TryFrom;
+
+use super::{store::HubError, PageOptions, PAGE_SIZE_MAX};
 
 pub const FID_BYTES: usize = 4;
 
@@ -295,10 +296,9 @@ pub fn get_many_messages_as_bytes(
         if let Ok(Some(value)) = db.get(&key) {
             messages.push(value);
         } else {
-            return Err(HubError {
-                code: "db.internal_error".to_string(),
-                message: format!("could not get message with key: {:?}", key),
-            });
+            return Err(HubError::not_found(
+                format!("could not get message with key: {:?}", key).as_str(),
+            ));
         }
     }
 
