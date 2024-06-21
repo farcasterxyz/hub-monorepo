@@ -42,11 +42,21 @@ export class EventStreamConnection {
    * Creates a consumer group for the given stream.
    */
   async createGroup(key: string, consumerGroup: string) {
+    // Check if the group already exists
     try {
-      // Check if the group already exists
       const groups = (await this.client.xinfo("GROUPS", key)) as [string, string][];
       if (groups.some(([_fieldName, groupName]) => groupName === consumerGroup)) return;
+    } catch (e: unknown) {
+      if (typeof e === "object" && e !== null && e instanceof ReplyError) {
+        if ("message" in e && (e.message as string).startsWith("ERR no such key")) {
+          // Ignore if the group hasn't been created yet
+        } else {
+          throw e;
+        }
+      }
+    }
 
+    try {
       // Otherwise create the group
       return await this.client.xgroup("CREATE", key, consumerGroup, "0", "MKSTREAM");
     } catch (e: unknown) {
