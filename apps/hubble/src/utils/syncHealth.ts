@@ -7,14 +7,18 @@ import {
   HubResult,
   HubRpcClient,
   TrieNodeMetadataResponse,
+  Message,
+  HubError,
 } from "@farcaster/hub-nodejs";
+
+import { appendFile } from "fs/promises";
 
 import { addressInfoFromGossip, addressInfoToString } from "./p2p.js";
 
-import { timestampToPaddedTimestampPrefix } from "../network/sync/syncId.js";
+import { SyncId, timestampToPaddedTimestampPrefix } from "../network/sync/syncId.js";
 import { err, ok } from "neverthrow";
 
-class SyncHealthStats {
+class SyncHealthMessageStats {
   primaryNumMessages: number;
   peerNumMessages: number;
 
@@ -29,6 +33,95 @@ class SyncHealthStats {
 
   computeDiffPercentage = () => {
     return this.computeDiff() / this.primaryNumMessages;
+  };
+}
+
+class Stats {
+  syncHealthMessageStats: SyncHealthMessageStats;
+  resultsUploadingToPeer: HubResult<Message>[];
+  resultsUploadingToPrimary: HubResult<Message>[];
+  primary: string;
+  peer: string;
+  startTime: number;
+  stopTime: number;
+
+  constructor(
+    startTime: number,
+    stopTime: number,
+    primary: string,
+    peer: string,
+    syncHealthMessageStats: SyncHealthMessageStats,
+    resultsUploadingToPeer: HubResult<Message>[],
+    resultsUploadingToPrimary: HubResult<Message>[],
+  ) {
+    this.startTime = startTime;
+    this.stopTime = stopTime;
+    this.primary = primary;
+    this.peer = peer;
+    this.syncHealthMessageStats = syncHealthMessageStats;
+    this.resultsUploadingToPeer = resultsUploadingToPeer;
+    this.resultsUploadingToPrimary = resultsUploadingToPrimary;
+  }
+
+  results = (who: "Primary" | "Peer") => {
+    if (who === "Primary") {
+      return this.resultsUploadingToPrimary;
+    } else {
+      return this.resultsUploadingToPeer;
+    }
+  };
+
+  errorResults = (who: "Primary" | "Peer") => {
+    return this.results(who).filter((result) => {
+      return result.isErr();
+    });
+  };
+
+  errorReasons = (who: "Primary" | "Peer") => {
+    const errorReasons = new Set();
+    for (const error of this.errorResults(who)) {
+      if (error.isErr()) {
+        errorReasons.add(error.error.message);
+      }
+    }
+    return [...errorReasons];
+  };
+
+  successResults = (who: "Primary" | "Peer") => {
+    return this.results(who).filter((result) => {
+      return result.isOk();
+    });
+  };
+
+  successTypes = (who: "Primary" | "Peer") => {
+    const successTypes = new Set();
+    for (const success of this.successResults(who)) {
+      if (success.isOk()) {
+        successTypes.add(success.value.data?.userDataBody?.type);
+      }
+    }
+    return [...successTypes];
+  };
+
+  serializedSummary = () => {
+    return JSON.stringify({
+      startTime: new Date(this.startTime),
+      stopTime: new Date(this.stopTime),
+      primary: this.primary,
+      peer: this.peer,
+      primaryMessageCount: this.syncHealthMessageStats.primaryNumMessages,
+      peerMessageCount: this.syncHealthMessageStats.peerNumMessages,
+      diff: this.syncHealthMessageStats.computeDiff(),
+      diffPercentage: this.syncHealthMessageStats.computeDiffPercentage(),
+      numSuccessToPeer: this.successResults("Peer").length,
+      numErrorToPeer: this.errorResults("Peer").length,
+      successTypesToPeer: this.successTypes("Peer"),
+      errorMessagesToPeer: this.errorReasons("Peer"),
+      numSuccessToPrimary: this.successResults("Primary").length,
+      numErrorToPrimary: this.errorResults("Primary").length,
+      successTypesToPrimary: this.successTypes("Primary"),
+      errorMessagesToPrimary: this.errorReasons("Primary"),
+    });
   };
 }
 
@@ -64,35 +157,6 @@ const isPrefix = (prefix1: Buffer, prefix2: Buffer): boolean => {
   return prefix1.toString().startsWith(prefix2.toString());
 };
 
-// Currently unused but will be useful for understanding where diffs are coming from. It's also an alternate way to get message counts and can replace traverseRange
-const traverseSubtree = async (
-  node: TrieNodeMetadataResponse,
-  startTimePrefix: Buffer,
-  stopTimePrefix: Buffer,
-  rpcClient: HubRpcClient,
-  f: (node: TrieNodeMetadataResponse) => undefined,
-) => {
-  const metadata = await getMetadata(Buffer.from(node.prefix), rpcClient);
-
-  if (metadata.isErr()) {
-    return err(metadata.error);
-  }
-
-  f(metadata.value);
-
-  for (const child of metadata.value.children) {
-    const childValue = Buffer.from(child.prefix);
-    const notBeforeStart = Buffer.compare(childValue, startTimePrefix) !== -1;
-    const notAfterStop = Buffer.compare(childValue, stopTimePrefix) !== 1;
-    const onStartPath = isPrefix(startTimePrefix, childValue);
-    if ((onStartPath || notBeforeStart) && notAfterStop) {
-      await traverseSubtree(child, startTimePrefix, stopTimePrefix, rpcClient, f);
-    }
-  }
-
-  return ok(undefined);
-};
-
 const traverseRange = async (
   node: TrieNodeMetadataResponse,
   startTimePrefix: Buffer,
@@ -120,9 +184,7 @@ const traverseRange = async (
   return ok(undefined);
 };
 
-// Queries for the number of messages between the start time and stop time and is efficient with respect to the number of rpcs to the peer. It only queries down along the start prefix and stop prefix starting at the common prefix.
-
-const getNumMessagesInSpanOptimized = async (rpcClient: HubRpcClient, startTime: number, stopTime: number) => {
+const getPrefixInfo = async (rpcClient: HubRpcClient, startTime: number, stopTime: number) => {
   const startTimePrefix = getTimePrefix(startTime);
   if (startTimePrefix.isErr()) {
     return err(startTimePrefix.error);
@@ -142,11 +204,27 @@ const getNumMessagesInSpanOptimized = async (rpcClient: HubRpcClient, startTime:
     return err(commonPrefixMetadata.error);
   }
 
+  return ok({
+    startTimePrefix: startTimePrefix.value,
+    stopTimePrefix: stopTimePrefix.value,
+    commonPrefixMetadata: commonPrefixMetadata.value,
+  });
+};
+
+// Queries for the number of messages between the start time and stop time and is efficient with respect to the number of rpcs to the peer. It only queries down along the start prefix and stop prefix starting at the common prefix.
+
+const getNumMessagesInSpanOptimized = async (rpcClient: HubRpcClient, startTime: number, stopTime: number) => {
+  const prefixInfo = await getPrefixInfo(rpcClient, startTime, stopTime);
+
+  if (prefixInfo.isErr()) {
+    return err(prefixInfo.error);
+  }
+
   let numMessages = 0;
   const result = await traverseRange(
-    commonPrefixMetadata.value,
-    startTimePrefix.value,
-    stopTimePrefix.value,
+    prefixInfo.value.commonPrefixMetadata,
+    prefixInfo.value.startTimePrefix,
+    prefixInfo.value.stopTimePrefix,
     rpcClient,
     (node: TrieNodeMetadataResponse) => {
       numMessages += node.numMessages;
@@ -183,7 +261,7 @@ const getNumMessagesInSpan = async (rpcClient: HubRpcClient, startTime: number, 
   return ok(numMessages);
 };
 
-const computeSyncHealthStats = async (
+const computeSyncHealthMessageStats = async (
   startTime: number,
   stopTime: number,
   primaryRpcClient: HubRpcClient,
@@ -201,10 +279,7 @@ const computeSyncHealthStats = async (
     return err(numMessagesPeer.error);
   }
 
-  console.log("Primary node num messages", numMessagesPrimary.value);
-  console.log("Peer num messages", numMessagesPeer.value);
-
-  return ok(new SyncHealthStats(numMessagesPrimary.value, numMessagesPeer.value));
+  return ok(new SyncHealthMessageStats(numMessagesPrimary.value, numMessagesPeer.value));
 };
 
 const pickPeers = async (rpcClient: HubRpcClient, count: number): Promise<HubResult<(string | undefined)[]>> => {
@@ -228,27 +303,159 @@ const pickPeers = async (rpcClient: HubRpcClient, count: number): Promise<HubRes
   });
 };
 
+const computeSyncIdsInSpan = async (rpcClient: HubRpcClient, startTime: number, stopTime: number) => {
+  const prefixInfo = await getPrefixInfo(rpcClient, startTime, stopTime);
+
+  if (prefixInfo.isErr()) {
+    return err(prefixInfo.error);
+  }
+
+  const prefixes: Uint8Array[] = [];
+  const result = await traverseRange(
+    prefixInfo.value.commonPrefixMetadata,
+    prefixInfo.value.startTimePrefix,
+    prefixInfo.value.stopTimePrefix,
+    rpcClient,
+    (node: TrieNodeMetadataResponse) => {
+      prefixes.push(node.prefix);
+    },
+  );
+
+  if (result.isErr()) {
+    return err(result.error);
+  }
+
+  const syncIds = [];
+  for (const prefix of prefixes) {
+    const prefixSyncIds = await rpcClient.getAllSyncIdsByPrefix(TrieNodePrefix.create({ prefix }));
+    if (prefixSyncIds.isOk()) {
+      syncIds.push(...prefixSyncIds.value.syncIds);
+    }
+  }
+
+  return ok(syncIds);
+};
+
+const tryPushingMissingMessages = async (
+  rpcClientWithMessages: HubRpcClient,
+  rpcClientMissingMessages: HubRpcClient,
+  missingSyncIds: Buffer[],
+) => {
+  if (missingSyncIds.length === 0) {
+    return ok([]);
+  }
+
+  const messages = await rpcClientWithMessages.getAllMessagesBySyncIds({
+    syncIds: missingSyncIds,
+  });
+
+  if (messages.isErr()) {
+    return err(messages.error);
+  }
+
+  const results = [];
+  for (const message of messages.value.messages) {
+    const result = await rpcClientMissingMessages.submitMessage(message);
+    results.push(result);
+  }
+
+  return ok(results);
+};
+
+const uniqueSyncIds = (mySyncIds: Uint8Array[], otherSyncIds: Uint8Array[]) => {
+  const idsOnlyInPrimary = [];
+
+  // This is really slow. It's n^2 in the number of sync ids. It seems somwhat complicated to figure out how to hash a sync id or get a string representation that can be hashed.
+
+  for (const syncId of mySyncIds) {
+    const syncIdBuffer = Buffer.from(syncId);
+    const otherSyncId = otherSyncIds.find((otherSyncId) => {
+      const otherSyncIdBuffer = Buffer.from(otherSyncId);
+      return Buffer.compare(syncIdBuffer, otherSyncIdBuffer) === 0;
+    });
+
+    if (otherSyncId === undefined) {
+      idsOnlyInPrimary.push(syncIdBuffer);
+    }
+  }
+
+  return idsOnlyInPrimary;
+};
+
+const investigateDiff = async (
+  primaryRpcClient: HubRpcClient,
+  peerRpcClient: HubRpcClient,
+  startTime: number,
+  stopTime: number,
+) => {
+  const primarySyncIds = await computeSyncIdsInSpan(primaryRpcClient, startTime, stopTime);
+
+  if (primarySyncIds.isErr()) {
+    return err(primarySyncIds.error);
+  }
+
+  const peerSyncIds = await computeSyncIdsInSpan(peerRpcClient, startTime, stopTime);
+
+  if (peerSyncIds.isErr()) {
+    return err(peerSyncIds.error);
+  }
+
+  const idsOnlyInPrimary = uniqueSyncIds(primarySyncIds.value, peerSyncIds.value);
+  const idsOnlyInPeer = uniqueSyncIds(peerSyncIds.value, primarySyncIds.value);
+
+  const resultsPushingToPeer = await tryPushingMissingMessages(primaryRpcClient, peerRpcClient, idsOnlyInPrimary);
+
+  if (resultsPushingToPeer.isErr()) {
+    return err(resultsPushingToPeer.error);
+  }
+
+  const resultsPushingToPrimary = await tryPushingMissingMessages(peerRpcClient, primaryRpcClient, idsOnlyInPeer);
+
+  if (resultsPushingToPrimary.isErr()) {
+    return err(resultsPushingToPrimary.error);
+  }
+
+  return ok({
+    resultsPushingToPeer: resultsPushingToPeer.value,
+    resultsPushingToPrimary: resultsPushingToPrimary.value,
+  });
+};
+
+const parseTime = (timeString: string) => {
+  // Use current date with specified times. Time must be in HH:MM:SS format
+  const now = new Date();
+  const [hours, minutes, seconds] = timeString.split(":");
+  if (hours && minutes && seconds) {
+    return now.setHours(parseInt(hours), parseInt(minutes), parseInt(seconds), 0);
+  }
+  return;
+};
+
 export const printSyncHealth = async (
-  rangeStartSecondsAgo: number,
-  rangeSpanSeconds: number,
+  startTimeOfDay: string,
+  stopTimeOfDay: string,
   maxNumPeers: number,
   primaryNode: string,
+  outfile: string,
 ) => {
-  const startTime = Math.floor((Date.now() - rangeStartSecondsAgo * 1000) / 1000) * 1000;
-  const stopTime = startTime + rangeSpanSeconds * 1000;
-  console.log("Start time: %d, Stop time: %d", startTime, stopTime);
-  const node1RpcClient = getSSLHubRpcClient(primaryNode);
+  const startTime = parseTime(startTimeOfDay);
+  const stopTime = parseTime(stopTimeOfDay);
 
-  let numErrors = 0;
-  let numSuccess = 0;
-  let sumScores = 0;
+  if (startTime === undefined || stopTime === undefined) {
+    console.log("Unable to parse time, must specify as HH:MM:SS");
+    return;
+  }
 
-  node1RpcClient.$.waitForReady(Date.now() + RPC_TIMEOUT_SECONDS * 1000, async (err) => {
+  console.log("Start time", new Date(startTime), "Stop time", stopTimeOfDay, new Date(stopTime));
+
+  const primaryRpcClient = getSSLHubRpcClient(primaryNode);
+
+  primaryRpcClient.$.waitForReady(Date.now() + RPC_TIMEOUT_SECONDS * 1000, async (err) => {
     if (err) {
       console.log("Primary rpc client not ready", err);
       throw Error();
     } else {
-      const peers = await pickPeers(node1RpcClient, maxNumPeers);
+      const peers = await pickPeers(primaryRpcClient, maxNumPeers);
       if (peers.isErr()) {
         console.log("Error querying peers");
         return;
@@ -274,10 +481,11 @@ export const printSyncHealth = async (
         }
 
         try {
-          const syncHealthStats = await computeSyncHealthStats(
+          console.log("Connecting to peer", peer);
+          const syncHealthStats = await computeSyncHealthMessageStats(
             startTime,
             stopTime,
-            node1RpcClient,
+            primaryRpcClient,
             peerRpcClient,
             // getNumMessagesInSpan, keeping this in here so it's easy to flip which computation we use. This one is simpler.
             getNumMessagesInSpanOptimized,
@@ -285,25 +493,47 @@ export const printSyncHealth = async (
           if (syncHealthStats.isOk()) {
             // Sync health is us relative to peer. If the sync health is high, means we have more messages. If it's low, we have less.
             const score = syncHealthStats.value.computeDiff();
-            console.log("Peer:", peer);
-            console.log("Message count diff: %d", score);
-            console.log("Message count diff percentage: %d", syncHealthStats.value.computeDiffPercentage());
-            console.log();
-            numSuccess++;
-            sumScores += score;
+
+            // Useful to see progress
+            console.log("Computed sync health score", score);
+
+            let aggregateStats;
+            if (score !== 0) {
+              console.log("Investigating diff");
+              const result = await investigateDiff(primaryRpcClient, peerRpcClient, startTime, stopTime);
+
+              if (result.isErr()) {
+                console.log("Error investigating diff", result.error);
+                // Report the stats anyway, but with no investigation results
+                aggregateStats = new Stats(startTime, stopTime, primaryNode, peer, syncHealthStats.value, [], []);
+              } else {
+                aggregateStats = new Stats(
+                  startTime,
+                  stopTime,
+                  primaryNode,
+                  peer,
+                  syncHealthStats.value,
+                  result.value.resultsPushingToPeer,
+                  result.value.resultsPushingToPrimary,
+                );
+              }
+            } else {
+              // Report the stats anyway, but with no investigation results
+              aggregateStats = new Stats(startTime, stopTime, primaryNode, peer, syncHealthStats.value, [], []);
+            }
+
+            // The data is valuable, let's just wait to write it. Note, data is appended to any existing file.
+            await appendFile(outfile, aggregateStats.serializedSummary());
           } else {
-            numErrors++;
+            console.log("Error computing sync health stats", syncHealthStats.error);
           }
           peerRpcClient.close();
         } catch (err) {
-          numErrors += 1;
+          console.log("Rasied while computing sync health", err);
         }
       }
     }
 
-    console.log("Error count: %d", numErrors);
-    console.log("Average health: %d", sumScores / numSuccess);
-
-    node1RpcClient.close();
+    primaryRpcClient.close();
   });
 };

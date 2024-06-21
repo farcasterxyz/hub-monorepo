@@ -949,12 +949,19 @@ const readPeerId = async (filePath: string) => {
 app
   .command("sync-health")
   .description("Measure sync health")
-  .option("-s, --start-seconds-ago <number>", "How many seconds ago to start the sync health query", "600")
-  .option("--span <seconds>", "How many seconds to count over", "30")
+  .requiredOption("--start-time-ofday <time>", "How many seconds ago to start the sync health query")
+  .requiredOption("--stop-time-ofday <time>", "How many seconds to count over")
   .option("--max-num-peers <count>", "Maximum number of peers to measure for", "20")
   .option("--primary-node <host:port>", "Node to measure all peers against (required)", "hoyt.farcaster.xyz:2283")
+  .option("--outfile <filename>", "File to output measurements to", "health.out")
   .action(async (cliOptions) => {
-    await printSyncHealth(cliOptions.startSecondsAgo, cliOptions.span, cliOptions.maxNumPeers, cliOptions.primaryNode);
+    await printSyncHealth(
+      cliOptions.startTimeOfday,
+      cliOptions.stopTimeOfday,
+      cliOptions.maxNumPeers,
+      cliOptions.primaryNode,
+      cliOptions.outfile,
+    );
   });
 
 app.parse(process.argv);
