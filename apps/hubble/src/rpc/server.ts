@@ -757,6 +757,13 @@ export default class Server {
 
         const { parentCastId, parentUrl, pageSize, pageToken, reverse } = call.request;
 
+        if (!parentCastId && !parentUrl) {
+          callback(
+            toServiceError(new HubError("bad_request.invalid_param", "Parent cast identifier must be provided")),
+          );
+          return;
+        }
+
         const castsResult = await this.engine?.getCastsByParent(parentCastId ?? parentUrl ?? "", {
           pageSize,
           pageToken,

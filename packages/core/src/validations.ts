@@ -439,7 +439,7 @@ export const validateVerificationAddEthAddressSignature = async (
 };
 
 export const validateUrl = (url: string): HubResult<string> => {
-  if (typeof url !== "string" || url.length === 0) {
+  if (typeof url !== "string") {
     return err(new HubError("bad_request.validation_failure", "url must be a string"));
   }
 
