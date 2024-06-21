@@ -1,5 +1,13 @@
 # @farcaster/hub-web
 
+## 0.8.11
+
+### Patch Changes
+
+- dab95118: Add rpc to expose LinkCompactStateMessage + explicit handling of type
+- Updated dependencies [dab95118]
+  - @farcaster/core@0.14.16
+
 ## 0.8.10
 
 ### Patch Changes

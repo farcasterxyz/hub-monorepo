@@ -1,8 +1,14 @@
-import { RootPrefix, UserMessagePostfixMax, UserPostfix } from "../storage/db/types.js";
+import { OnChainEventPostfix, RootPrefix, UserMessagePostfixMax, UserPostfix } from "../storage/db/types.js";
 import { logger } from "../utils/logger.js";
 import RocksDB from "../storage/db/rocksdb.js";
 import { createWriteStream, unlinkSync } from "fs";
 import { Result } from "neverthrow";
+import { HubError, OnChainEvent, OnChainEventType, toFarcasterTime } from "@farcaster/core";
+import { once } from "events";
+
+const currentFarcasterTimestamp = (): number => {
+  return toFarcasterTime(Date.now())._unsafeUnwrap();
+};
 
 // biome-ignore lint/suspicious/noExplicitAny: Generic check for enums needs 'any'
 function getMaxValue(enumType: any): number {
@@ -81,9 +87,7 @@ class ValueStats {
   count: number;
   min: number;
   max: number;
-  median: number;
   average: number;
-  p95: number;
   sum: number;
 
   allValues: number[];
@@ -92,12 +96,10 @@ class ValueStats {
 
   constructor(label = "") {
     this.count = 0;
-    this.min = 0;
-    this.max = 0;
-    this.median = 0;
+    this.min = Number.MAX_SAFE_INTEGER;
+    this.max = Number.MIN_SAFE_INTEGER;
     this.average = 0;
     this.sum = 0;
-    this.p95 = 0;
     this.allValues = [];
 
     this.label = label;
@@ -106,31 +108,14 @@ class ValueStats {
   addValue(value: number) {
     this.count++;
 
-    this.allValues.push(value);
-  }
-
-  calculate() {
-    this.sum = this.allValues.reduce((a, b) => a + b, 0);
-
-    let min = Number.MAX_SAFE_INTEGER;
-    let max = Number.MIN_SAFE_INTEGER;
-    for (let i = 0; i < this.allValues.length; i++) {
-      if ((this.allValues[i] as number) < min) {
-        min = this.allValues[i] as number;
-      }
-
-      if ((this.allValues[i] as number) > max) {
-        max = this.allValues[i] as number;
-      }
+    if (value < this.min) {
+      this.min = value;
     }
-
-    this.min = this.sum === 0 ? 0 : min;
-    this.max = this.sum === 0 ? 0 : max;
-
-    this.median = this.allValues[Math.floor(this.allValues.length / 2)] || 0;
+    if (value > this.max) {
+      this.max = value;
+    }
+    this.sum += value;
     this.average = this.sum === 0 ? 0 : this.sum / this.count;
-
-    this.p95 = this.allValues[Math.floor(this.allValues.length * 0.95)] || 0;
   }
 }
 
@@ -204,14 +189,9 @@ function KeysProfileToPrettyPrintObject(keysProfile: KeysProfile[], calculateOve
 }
 
 function ValueStatsToPrettyPrintObject(valueStats: ValueStats[]): string[][] {
-  // First, calculate all the valueStats
-  for (let i = 0; i < valueStats.length; i++) {
-    valueStats[i]?.calculate();
-  }
-
   const data = [];
   // First, write the headers to the first row
-  data.push(["Prefix", "Count", "Total", "Min", "Max", "Median", "Average"]);
+  data.push(["Prefix", "Count", "Total", "Min", "Max", "Average"]);
 
   // Then, for each prefix, write a row with the prefix and the count, key bytes, and value bytes
   // for that prefix
@@ -224,7 +204,6 @@ function ValueStatsToPrettyPrintObject(valueStats: ValueStats[]): string[][] {
         formatNumber(valueStats[i]?.sum),
         formatNumber(valueStats[i]?.min),
         formatNumber(valueStats[i]?.max),
-        formatNumber(valueStats[i]?.median),
         formatNumber(valueStats[i]?.average),
       ]);
     }
@@ -309,9 +288,25 @@ export async function profileStorageUsed(rocksDB: RocksDB, fidProfileFileName?: 
     (_v, i: number) => new KeysProfile(UserPostfix[i]?.toString()),
   );
 
-  // Caclulate the individual message sizes
+  const onchainPostfixKeys = Array.from(
+    { length: getMaxValue(OnChainEventPostfix) + 1 },
+    (_v, i: number) => new KeysProfile(OnChainEventPostfix[i]?.toString()),
+  );
+
+  // Calculate the individual message sizes
   const valueStats = Array.from({ length: 8 }, (_v, i: number) => new ValueStats(UserPostfix[i]?.toString()));
   const allFids = new Map<number, ValueStats[]>();
+
+  // Calculate the number of storage slots rented per FID
+  // ValueStats will contain total & current storage slots rented.
+  // ValueStats[0]: Total = expired + non-expired
+  // ValueStats[1]: Current = non-expired
+  enum StorageRentStat {
+    TotalStorage = 0,
+    CurrentStorage = 1,
+  }
+  const rentStats = Array.from({ length: 2 }, (_v, i: number) => new ValueStats(StorageRentStat[i]?.toString()));
+  const fidRentStats = new Map<number, ValueStats[]>();
 
   // Iterate over all the keys in the DB
   await rocksDB.forEachIteratorByPrefix(Buffer.from([]), (key, value) => {
@@ -327,6 +322,49 @@ export async function profileStorageUsed(rocksDB: RocksDB, fidProfileFileName?: 
         (prefixKeys[prefix] as KeysProfile).keyBytes += key?.length || 0;
         (prefixKeys[prefix] as KeysProfile).valueBytes += value?.length || 0;
 
+        // Categorize on chain data for per FID storage units rented
+        if (prefix === RootPrefix.OnChainEvent) {
+          const postfix = (key as Buffer).readUint8(1);
+          if (postfix > 0 && postfix < onchainPostfixKeys.length) {
+            (onchainPostfixKeys[postfix] as KeysProfile).count++;
+            (onchainPostfixKeys[postfix] as KeysProfile).keyBytes += key?.length || 0;
+            (onchainPostfixKeys[postfix] as KeysProfile).valueBytes += value?.length || 0;
+
+            const onchainEventType = key[2] as OnChainEventType;
+            if (onchainEventType === OnChainEventType.EVENT_TYPE_STORAGE_RENT && key.length >= 7) {
+              const fid = key.slice(3, 7).readUint32BE();
+              if (fid > 0) {
+                if (value) {
+                  let valueStats: ValueStats[] = Array.from(
+                    { length: Object.keys(StorageRentStat).length / 2 },
+                    (_v, i: number) => {
+                      return new ValueStats(StorageRentStat[i]?.toString() ?? "");
+                    },
+                  );
+                  if (fidRentStats.has(fid)) {
+                    valueStats = fidRentStats.get(fid) as ValueStats[];
+                  }
+
+                  const onChainEvent = Result.fromThrowable(
+                    () => OnChainEvent.decode(new Uint8Array(value as Buffer)),
+                    (e) => e as HubError,
+                  )();
+                  if (onChainEvent.isOk()) {
+                    const event = onChainEvent.value;
+                    const body = event.storageRentEventBody;
+                    const expiry = body?.expiry;
+                    if (expiry && expiry > currentFarcasterTimestamp()) {
+                      valueStats[StorageRentStat.CurrentStorage]?.addValue(body.units ?? 0);
+                    }
+                    valueStats[StorageRentStat.TotalStorage]?.addValue(body?.units ?? 0);
+
+                    fidRentStats.set(fid, valueStats);
+                  }
+                }
+              }
+            }
+          }
+        }
         // Further categorize user data into user postfixes
         if (prefix === RootPrefix.User) {
           const postfix = key[1 + 4] as number;
@@ -382,6 +420,9 @@ export async function profileStorageUsed(rocksDB: RocksDB, fidProfileFileName?: 
     prettyPrintTable(KeysProfileToPrettyPrintObject(prefixProfileToDataType(prefixKeys, userPostfixKeys), true)),
   );
 
+  console.log("\nBy OnChain Event Postfix:\n");
+  console.log(prettyPrintTable(KeysProfileToPrettyPrintObject(onchainPostfixKeys)));
+
   console.log("\nBy User Data type:\n");
   console.log(prettyPrintTable(KeysProfileToPrettyPrintObject(userPostfixKeys)));
 
@@ -405,10 +446,21 @@ export async function profileStorageUsed(rocksDB: RocksDB, fidProfileFileName?: 
     csvStream.write("FID,");
     // For each valuestat, write the headers, prefixing the label
     for (let i = 1; i < valueStats.length; i++) {
+      if (i === 5) {
+        // Ignore signer key
+        continue;
+      }
+      // User Postfix related headers
       csvStream.write(`Count_${valueStats[i]?.label},Sum_${valueStats[i]?.label},Min_${valueStats[i]?.label},`);
-      csvStream.write(`Max_${valueStats[i]?.label},Median_${valueStats[i]?.label},Average_${valueStats[i]?.label},`);
-      csvStream.write(`P95_${valueStats[i]?.label},`);
+      csvStream.write(`Max_${valueStats[i]?.label},Average_${valueStats[i]?.label},`);
     }
+
+    // For each storage stat, write the headers, prefixing the label
+    for (let i = 0; i < rentStats.length; i++) {
+      csvStream.write(`Count_${rentStats[i]?.label},Sum_${rentStats[i]?.label},Min_${rentStats[i]?.label},`);
+      csvStream.write(`Max_${rentStats[i]?.label},Average_${rentStats[i]?.label},`);
+    }
+
     csvStream.write("\n");
 
     // Iterate over all the FIDs
@@ -420,11 +472,43 @@ export async function profileStorageUsed(rocksDB: RocksDB, fidProfileFileName?: 
 
       // Go over each valuestat in the fidprofile and calculate the stats
       for (let i = 1; i < fidProfile.length; i++) {
-        fidProfile[i]?.calculate();
+        if (i === 5) {
+          // Ignore signer key
+          continue;
+        }
+
+        const prettyPrint = (num: number | undefined) => {
+          if (num === Number.MAX_SAFE_INTEGER || num === Number.MIN_SAFE_INTEGER) return "";
+          return num?.toString() || "";
+        };
 
         // Write the stats to the CSV file
-        csvStream.write(`${fidProfile[i]?.count},${fidProfile[i]?.sum},${fidProfile[i]?.min},${fidProfile[i]?.max},`);
-        csvStream.write(`${fidProfile[i]?.median},${fidProfile[i]?.average},${fidProfile[i]?.p95},`);
+        csvStream.write(
+          `${prettyPrint(fidProfile[i]?.count)},${prettyPrint(fidProfile[i]?.sum)},${prettyPrint(
+            fidProfile[i]?.min,
+          )},${prettyPrint(fidProfile[i]?.max)},`,
+        );
+        csvStream.write(`${prettyPrint(fidProfile[i]?.average)},`);
+      }
+
+      // Go over each storage rent statistic for the FID and calculate the stats
+      if (fidRentStats.has(fid)) {
+        const rentStat = fidRentStats.get(fid) as ValueStats[];
+
+        for (let i = 0; i < rentStat.length; i++) {
+          const prettyPrint = (num: number | undefined) => {
+            if (num === Number.MAX_SAFE_INTEGER || num === Number.MIN_SAFE_INTEGER) return "";
+            return num?.toString() || "";
+          };
+
+          // Write the stats to the CSV file
+          csvStream.write(
+            `${prettyPrint(rentStat[i]?.count)},${prettyPrint(rentStat[i]?.sum)},${prettyPrint(
+              rentStat[i]?.min,
+            )},${prettyPrint(rentStat[i]?.max)},`,
+          );
+          csvStream.write(`${prettyPrint(rentStat[i]?.average)},`);
+        }
       }
 
       // End the line
@@ -435,6 +519,9 @@ export async function profileStorageUsed(rocksDB: RocksDB, fidProfileFileName?: 
     csvStream.end();
     csvStream.close();
 
-    console.log(`\nCSV file written to ${fidProfileFileName}`);
+    await once(csvStream, "finish");
+    console.log(
+      `\nCSV file written to ${fidProfileFileName} ${csvStream.bytesWritten} ${csvStream.errored} ${csvStream.pending}`,
+    );
   }
 }

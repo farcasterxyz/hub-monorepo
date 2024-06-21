@@ -41,6 +41,7 @@ ENV RUSTFLAGS="-C target-feature=-crt-static"
 COPY --chown=node:node --from=prune /home/node/app/out/json/ .
 COPY --chown=node:node --from=prune /home/node/app/out/yarn.lock ./yarn.lock
 
+COPY --chown=node:node patches patches
 RUN yarn install --frozen-lockfile --network-timeout 1800000
 RUN yarn postinstall
 
