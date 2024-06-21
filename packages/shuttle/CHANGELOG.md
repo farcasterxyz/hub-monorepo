@@ -1,5 +1,18 @@
 # @farcaster/hub-shuttle
 
+## 0.4.0
+
+### Minor Changes
+
+- ad281729: Link reconciliation now calls the compact state rpc as well
+
+### Patch Changes
+
+- 76c0504f: Lower level of shuttle logs to debug
+- dab95118: Add rpc to expose LinkCompactStateMessage + explicit handling of type
+- Updated dependencies [dab95118]
+  - @farcaster/hub-nodejs@0.11.17
+
 ## 0.3.3
 
 ### Patch Changes

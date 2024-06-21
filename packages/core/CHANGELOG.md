@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.14.16
+
+### Patch Changes
+
+- dab95118: Add rpc to expose LinkCompactStateMessage + explicit handling of type
+
 ## 0.14.15
 
 ### Patch Changes

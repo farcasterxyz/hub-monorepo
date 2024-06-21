@@ -7,6 +7,8 @@ import {
   getSSLHubRpcClient,
   toFarcasterTime,
   fromFarcasterTime,
+  bytesToHexString,
+  hexStringToBytes,
 } from "@farcaster/hub-nodejs";
 import path from "path";
 import * as repl from "repl";
@@ -94,6 +96,8 @@ export const startConsole = async (addressString: string, useInsecure: boolean) 
   replServer.context["SyncId"] = SyncId;
   replServer.context["toFarcasterTime"] = toFarcasterTime;
   replServer.context["fromFarcasterTime"] = fromFarcasterTime;
+  replServer.context["bytesToHex"] = bytesToHexString;
+  replServer.context["hexToBytes"] = hexStringToBytes;
 
   // Run the info command to start
 
