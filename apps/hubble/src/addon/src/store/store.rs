@@ -51,6 +51,13 @@ impl HubError {
             message: error_message.to_string(),
         }
     }
+
+    pub fn not_found(error_message: &str) -> HubError {
+        HubError {
+            code: "not_found".to_string(),
+            message: error_message.to_string(),
+        }
+    }
 }
 
 impl Display for HubError {
@@ -226,7 +233,7 @@ pub trait StoreDef: Send + Sync {
                 if maybe_existing_remove.is_some() {
                     conflicts.push(maybe_existing_remove.unwrap());
                 } else {
-                    warn!(LOGGER, "Message's ts_hash exists but message not found in store"; 
+                    warn!(LOGGER, "Message's ts_hash exists but message not found in store";
                         o!("remove_ts_hash" => format!("{:x?}", remove_ts_hash.unwrap())));
                 }
             }
@@ -267,7 +274,7 @@ pub trait StoreDef: Send + Sync {
             )?;
 
             if maybe_existing_add.is_none() {
-                warn!(LOGGER, "Message's ts_hash exists but message not found in store"; 
+                warn!(LOGGER, "Message's ts_hash exists but message not found in store";
                     o!("add_ts_hash" => format!("{:x?}", add_ts_hash.unwrap())));
             } else {
                 conflicts.push(maybe_existing_add.unwrap());
