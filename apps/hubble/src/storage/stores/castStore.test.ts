@@ -6,12 +6,14 @@ import {
   CastRemoveMessage,
   CastType,
   Factories,
+  getDefaultStoreLimit,
   getFarcasterTime,
   HubError,
   MergeMessageHubEvent,
   Message,
   PruneMessageHubEvent,
   RevokeMessageHubEvent,
+  StoreType,
 } from "@farcaster/hub-nodejs";
 import { jestRocksDB } from "../db/jestUtils.js";
 import { getMessage, makeTsHash } from "../db/message.js";
@@ -752,6 +754,17 @@ describe("pruneMessages", () => {
 
   describe("with size limit", () => {
     const sizePrunedStore = new CastStore(db, eventHandler, { pruneSizeLimit: 3 });
+
+    test("size limit changes in the future", () => {
+      expect(getDefaultStoreLimit(StoreType.CASTS)).toEqual(5000);
+      const originalDate = Date.now;
+      try {
+        Date.now = () => new Date("2024-08-22").getTime();
+        expect(getDefaultStoreLimit(StoreType.CASTS)).toEqual(4000);
+      } finally {
+        Date.now = originalDate;
+      }
+    });
 
     test("no-ops when no messages have been merged", async () => {
       const result = await sizePrunedStore.pruneMessages(fid);
