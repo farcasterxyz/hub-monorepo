@@ -55,7 +55,7 @@ COPY --chown=node:node protobufs protobufs
 RUN yarn build
 
 # Purge dev dependencies and only install production dependencies
-RUN rm -rf node_modules && yarn install --production --ignore-scripts --prefer-offline --force --frozen-lockfile
+RUN rm -rf node_modules && yarn install --production --ignore-scripts --prefer-offline --force --frozen-lockfile && yarn postinstall
 
 ###############################################################################
 ########## Stage 3: Copy over the built code to a leaner alpine image #########
