@@ -142,6 +142,11 @@ export class LibP2PNode {
       ? process.env["GOSSIPSUB_FLOOD_PUBLISH"] === "true"
       : false;
 
+    // Default timeout is 5 mins, which is too long for us
+    const socketTimeout = process.env["GOSSIPSUB_SOCKET_TIMEOUT"]
+      ? parseInt(process.env["GOSSIPSUB_SOCKET_TIMEOUT"])
+      : 30000;
+
     const gossip = gossipsub({
       allowPublishToZeroPeers: true,
       asyncValidation: true, // Do not forward messages until we've merged it (prevents forwarding known bad messages)
@@ -202,7 +207,9 @@ export class LibP2PNode {
           listen: [listenMultiAddrStr],
           announce: announceMultiAddrStrList,
         },
-        transports: [tcp()],
+        transports: [
+          tcp({ inboundSocketInactivityTimeout: socketTimeout, outboundSocketInactivityTimeout: socketTimeout }),
+        ],
         streamMuxers: [mplex()],
         connectionEncryption: [noise()],
         pubsub: gossip,
