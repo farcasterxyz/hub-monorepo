@@ -1,5 +1,14 @@
 # @farcaster/hubble
 
+## 1.13.3
+
+### Patch Changes
+
+- 2d26d305: CLI tool for measuring sync health
+- b150e900: fix: Use stricter socket timeout for gossip
+- eacf29c9: fix: http endoint return not found instead of internal database error
+  - @farcaster/hub-nodejs@0.11.18
+
 ## 1.13.2
 
 ### Patch Changes
