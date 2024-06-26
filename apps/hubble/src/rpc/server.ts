@@ -65,6 +65,7 @@ import { AddressInfo } from "net";
 import * as net from "node:net";
 import axios from "axios";
 import { fidFromEvent } from "../storage/stores/storeEventHandler.js";
+import { rustErrorToHubError } from "../rustfunctions.js";
 
 const HUBEVENTS_READER_TIMEOUT = 1 * 60 * 60 * 1000; // 1 hour
 
@@ -204,6 +205,10 @@ export const checkPortAndPublicAddress = async (
 };
 
 export const toServiceError = (err: HubError): ServiceError => {
+  // hack: After rust migration, requests that propagate to RocksDB may yield string errors that don't have an errCode.
+  //      Since the rustErrorToHubError function is not called in these cases, we attempt conversion here.
+  const hubErr: HubError = err.errCode ? err : rustErrorToHubError(err);
+
   let grpcCode: number;
   if (err.errCode === "unauthenticated") {
     grpcCode = status.UNAUTHENTICATED;
@@ -231,10 +236,10 @@ export const toServiceError = (err: HubError): ServiceError => {
     grpcCode = status.UNKNOWN;
   }
   const metadata = new Metadata();
-  metadata.set("errCode", err.errCode);
-  return Object.assign(err, {
+  metadata.set("errCode", hubErr.errCode);
+  return Object.assign(hubErr, {
     code: grpcCode,
-    details: err.message,
+    details: hubErr.message,
     metadata,
   });
 };
@@ -751,6 +756,13 @@ export default class Server {
         log.debug({ method: "getCastsByParent", req: call.request }, `RPC call from ${peer}`);
 
         const { parentCastId, parentUrl, pageSize, pageToken, reverse } = call.request;
+
+        if (!parentCastId && !parentUrl) {
+          callback(
+            toServiceError(new HubError("bad_request.invalid_param", "Parent cast identifier must be provided")),
+          );
+          return;
+        }
 
         const castsResult = await this.engine?.getCastsByParent(parentCastId ?? parentUrl ?? "", {
           pageSize,
