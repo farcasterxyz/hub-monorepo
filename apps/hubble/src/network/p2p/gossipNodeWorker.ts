@@ -208,8 +208,8 @@ export class LibP2PNode {
           dialTimeout: 2000,
           inboundUpgradeTimeout: 2000,
           maxEventLoopDelay: 5000,
-          maxAddrsToDial: 3,
-          inboundConnectionThreshold: 2,
+          maxAddrsToDial: 5,
+          inboundConnectionThreshold: 5,
         },
         addresses: {
           listen: [listenMultiAddrStr],
