@@ -1388,8 +1388,8 @@ export class Hub implements HubInterface {
         return err(new HubError("bad_request.invalid_param", "Unknown message type while handlgGossipMessage"));
       }
     } else if (gossipMessage.contactInfoContent) {
-      const _ = await this.handleContactInfo(peerIdResult.value, gossipMessage.contactInfoContent);
-      await this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), false);
+      const result = await this.handleContactInfo(peerIdResult.value, gossipMessage.contactInfoContent);
+      await this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), result);
       return ok(undefined);
     } else {
       return err(new HubError("bad_request.invalid_param", "invalid message type"));

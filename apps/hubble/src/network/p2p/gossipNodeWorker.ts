@@ -203,6 +203,14 @@ export class LibP2PNode {
         // Only set optional fields if defined to avoid errors
         ...(peerId && { peerId }),
         connectionGater: this._connectionGater,
+        connectionManager: {
+          maxConnections: 256,
+          dialTimeout: 2000,
+          inboundUpgradeTimeout: 2000,
+          maxEventLoopDelay: 5000,
+          maxAddrsToDial: 3,
+          inboundConnectionThreshold: 2,
+        },
         addresses: {
           listen: [listenMultiAddrStr],
           announce: announceMultiAddrStrList,
