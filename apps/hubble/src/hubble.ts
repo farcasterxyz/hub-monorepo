@@ -1397,7 +1397,7 @@ export class Hub implements HubInterface {
   }
 
   private async handleContactInfo(peerId: PeerId, content: ContactInfoContent): Promise<boolean> {
-    // statsd().gauge("peer_store.count", await this.gossipNode.peerStoreCount());
+    statsd().gauge("peer_store.count", await this.gossipNode.peerStoreCount());
 
     let message: ContactInfoContentBody = content.body
       ? content.body
