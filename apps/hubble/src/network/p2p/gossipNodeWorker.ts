@@ -823,7 +823,6 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
       const sourceId = peerIdFromBytes(source);
       await libp2pNode.reportValid(msgId, sourceId, isValid);
 
-      const postMessageStart = Date.now();
       parentPort?.postMessage({
         methodCallId,
         result: makeResult<"reportValid">(undefined),
