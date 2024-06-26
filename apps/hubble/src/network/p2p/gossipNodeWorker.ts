@@ -363,6 +363,7 @@ export class LibP2PNode {
   }
 
   async peerStoreCount() {
+    // Note this is performance intensive and blocks the event loop if there are many peers
     const peers = await this._node?.peerStore.all();
     return peers?.length ?? 0;
   }
