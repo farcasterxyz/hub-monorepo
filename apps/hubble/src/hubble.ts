@@ -1388,8 +1388,8 @@ export class Hub implements HubInterface {
         return err(new HubError("bad_request.invalid_param", "Unknown message type while handlgGossipMessage"));
       }
     } else if (gossipMessage.contactInfoContent) {
-      const result = await this.handleContactInfo(peerIdResult.value, gossipMessage.contactInfoContent);
-      await this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), result);
+      const _ = await this.handleContactInfo(peerIdResult.value, gossipMessage.contactInfoContent);
+      await this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), false);
       return ok(undefined);
     } else {
       return err(new HubError("bad_request.invalid_param", "invalid message type"));
@@ -1397,7 +1397,7 @@ export class Hub implements HubInterface {
   }
 
   private async handleContactInfo(peerId: PeerId, content: ContactInfoContent): Promise<boolean> {
-    statsd().gauge("peer_store.count", await this.gossipNode.peerStoreCount());
+    // statsd().gauge("peer_store.count", await this.gossipNode.peerStoreCount());
 
     let message: ContactInfoContentBody = content.body
       ? content.body
@@ -1414,6 +1414,7 @@ export class Hub implements HubInterface {
 
     // Don't process messages that are too old
     if (message.timestamp && message.timestamp < Date.now() - MAX_CONTACT_INFO_AGE_MS) {
+      statsd().increment("gossip.contact_info.too_old", 1);
       log.debug({ message }, "contact info message is too old");
       return false;
     }

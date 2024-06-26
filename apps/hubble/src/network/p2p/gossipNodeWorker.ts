@@ -607,9 +607,14 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
     }
     case "allPeerIds": {
       const peerIds = libp2pNode.allPeerIds();
+
+      const postMessageStart = Date.now();
       parentPort?.postMessage({
         methodCallId,
         result: makeResult<"allPeerIds">(peerIds),
+      });
+      statsd().timing("gossip.worker.parent_port_post_message", Date.now() - postMessageStart, 1, {
+        method: "allPeerIds",
       });
       break;
     }
@@ -618,18 +623,26 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
       const [peerId, multiaddr] = specificMsg.args;
 
       await libp2pNode.addPeerToAddressBook(await createFromProtobuf(peerId), MultiAddr.multiaddr(multiaddr));
+      const postMessageStart = Date.now();
       parentPort?.postMessage({
         methodCallId,
         result: makeResult<"addToAddressBook">(undefined),
+      });
+      statsd().timing("gossip.worker.parent_port_post_message", Date.now() - postMessageStart, 1, {
+        method: "addToAddressBook",
       });
       break;
     }
     case "peerStoreCount": {
       const count = await libp2pNode.peerStoreCount();
 
+      const postMessageStart = Date.now();
       parentPort?.postMessage({
         methodCallId,
         result: makeResult<"peerStoreCount">(count),
+      });
+      statsd().timing("gossip.worker.parent_port_post_message", Date.now() - postMessageStart, 1, {
+        method: "peerStoreCount",
       });
       break;
     }
@@ -652,6 +665,7 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
       const [multiaddr] = specificMsg.args;
 
       const result = await libp2pNode.connectAddress(MultiAddr.multiaddr(multiaddr));
+      const postMessageStart = Date.now();
       parentPort?.postMessage({
         methodCallId,
         result: makeResult<"connectAddress">({
@@ -659,6 +673,9 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
           errorType: result?.isErr() ? result.error.errCode : undefined,
           errorMessage: result?.isErr() ? result.error.message : undefined,
         }),
+      });
+      statsd().timing("gossip.worker.parent_port_post_message", Date.now() - postMessageStart, 1, {
+        method: "connectAddress",
       });
       break;
     }
@@ -731,6 +748,7 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
       const publishResult = await libp2pNode.broadcastMessage(Message.decode(message));
       const combinedResult = Result.combine(publishResult ?? []);
 
+      const postMessageStart = Date.now();
       parentPort?.postMessage({
         methodCallId,
         result: makeResult<"broadcastMessage">({
@@ -741,6 +759,9 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
             ? combinedResult.value.flatMap((r) => r.recipients).map((p) => exportToProtobuf(p))
             : [],
         }),
+      });
+      statsd().timing("gossip.worker.parent_port_post_message", Date.now() - postMessageStart, 1, {
+        method: "broadcastMessage",
       });
       break;
     }
@@ -813,9 +834,14 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
       const [msgId, source, isValid] = specificMsg.args;
       const sourceId = peerIdFromBytes(source);
       await libp2pNode.reportValid(msgId, sourceId, isValid);
+
+      const postMessageStart = Date.now();
       parentPort?.postMessage({
         methodCallId,
         result: makeResult<"reportValid">(undefined),
+      });
+      statsd().timing("gossip.worker.parent_port_post_message", Date.now() - postMessageStart, 1, {
+        method: "reportValid",
       });
       break;
     }
