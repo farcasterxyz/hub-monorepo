@@ -198,13 +198,20 @@ export class LibP2PNode {
     }
     this._connectionGater = new ConnectionFilter(options.allowedPeerIdStrs, options.deniedPeerIdStrs);
 
+    // libp2p default max connections is infinity, which is too high
+    const maxConnections = process.env["LIBP2P_MAX_CONNECTIONS"]
+      ? parseInt(process.env["LIBP2P_MAX_CONNECTIONS"])
+      : 256;
+
     const result = await ResultAsync.fromPromise(
       createLibp2p({
         // Only set optional fields if defined to avoid errors
         ...(peerId && { peerId }),
         connectionGater: this._connectionGater,
         connectionManager: {
-          maxConnections: 256,
+          // Hub CRDTs stream messages, and setting min to 1 guards against max being set to 0 erroneously
+          minConnections: 1,
+          maxConnections: maxConnections,
           dialTimeout: 2000,
           inboundUpgradeTimeout: 2000,
           maxEventLoopDelay: 5000,
