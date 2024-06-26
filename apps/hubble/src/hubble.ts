@@ -1176,7 +1176,7 @@ export class Hub implements HubInterface {
   /** Stop the GossipNode and RPC Server */
   async stop(reason: HubShutdownReason, terminateGossipWorker = true) {
     log.info("Stopping Hubble...");
-    clearInterval(this.contactTimer);
+    clearInterval(this.contactTimer as NodeJS.Timeout);
 
     // First, stop the RPC/Gossip server so we don't get any more messages
     if (!this.options.httpServerDisabled) {
