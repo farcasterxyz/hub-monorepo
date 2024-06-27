@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.4.2
+
+### Patch Changes
+
+- fad0f179: Switch where clause to use more efficient form
+
 ## 0.4.1
 
 ### Patch Changes
