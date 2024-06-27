@@ -16,8 +16,14 @@ export type HubClient = {
   client: HubRpcClient;
 };
 
+const MAX_RECEIVE_MESSAGE_LENGTH = 10 * 1024 * 1024; // 10mb
+
+const defaultOptions = {
+  "grpc.max_receive_message_length": MAX_RECEIVE_MESSAGE_LENGTH,
+};
+
 export function getHubClient(host: string, { ssl }: { ssl?: boolean }) {
-  const hub = ssl ? getSSLHubRpcClient(host) : getInsecureHubRpcClient(host);
+  const hub = ssl ? getSSLHubRpcClient(host, defaultOptions) : getInsecureHubRpcClient(host, defaultOptions);
   return { host, client: hub };
 }
 
