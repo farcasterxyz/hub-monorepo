@@ -433,6 +433,24 @@ export const HubServiceService = {
     responseSerialize: (value: ContactInfoResponse) => Buffer.from(ContactInfoResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer) => ContactInfoResponse.decode(value),
   },
+  stopSync: {
+    path: "/HubService/StopSync",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: Empty) => Buffer.from(Empty.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => Empty.decode(value),
+    responseSerialize: (value: SyncStatusResponse) => Buffer.from(SyncStatusResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => SyncStatusResponse.decode(value),
+  },
+  forceSync: {
+    path: "/HubService/ForceSync",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: SyncStatusRequest) => Buffer.from(SyncStatusRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => SyncStatusRequest.decode(value),
+    responseSerialize: (value: SyncStatusResponse) => Buffer.from(SyncStatusResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => SyncStatusResponse.decode(value),
+  },
   /** @http-api: none */
   getSyncStatus: {
     path: "/HubService/GetSyncStatus",
@@ -577,6 +595,8 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   /** Sync Methods */
   getInfo: handleUnaryCall<HubInfoRequest, HubInfoResponse>;
   getCurrentPeers: handleUnaryCall<Empty, ContactInfoResponse>;
+  stopSync: handleUnaryCall<Empty, SyncStatusResponse>;
+  forceSync: handleUnaryCall<SyncStatusRequest, SyncStatusResponse>;
   /** @http-api: none */
   getSyncStatus: handleUnaryCall<SyncStatusRequest, SyncStatusResponse>;
   /** @http-api: none */
@@ -1161,6 +1181,36 @@ export interface HubServiceClient extends Client {
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: ContactInfoResponse) => void,
+  ): ClientUnaryCall;
+  stopSync(
+    request: Empty,
+    callback: (error: ServiceError | null, response: SyncStatusResponse) => void,
+  ): ClientUnaryCall;
+  stopSync(
+    request: Empty,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: SyncStatusResponse) => void,
+  ): ClientUnaryCall;
+  stopSync(
+    request: Empty,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: SyncStatusResponse) => void,
+  ): ClientUnaryCall;
+  forceSync(
+    request: SyncStatusRequest,
+    callback: (error: ServiceError | null, response: SyncStatusResponse) => void,
+  ): ClientUnaryCall;
+  forceSync(
+    request: SyncStatusRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: SyncStatusResponse) => void,
+  ): ClientUnaryCall;
+  forceSync(
+    request: SyncStatusRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: SyncStatusResponse) => void,
   ): ClientUnaryCall;
   /** @http-api: none */
   getSyncStatus(

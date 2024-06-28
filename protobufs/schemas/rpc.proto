@@ -97,6 +97,9 @@ service HubService {
   // Sync Methods    
   rpc GetInfo(HubInfoRequest) returns (HubInfoResponse);
   rpc GetCurrentPeers(Empty) returns (ContactInfoResponse);
+  rpc StopSync(Empty) returns (SyncStatusResponse);
+  // This is experimental, do not rely on this endpoint existing in the future
+  rpc ForceSync(SyncStatusRequest) returns (SyncStatusResponse);
   // @http-api: none
   rpc GetSyncStatus(SyncStatusRequest) returns (SyncStatusResponse);
   // @http-api: none

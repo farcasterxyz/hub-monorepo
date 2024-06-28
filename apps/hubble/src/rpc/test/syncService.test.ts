@@ -4,6 +4,7 @@ import {
   Factories,
   FarcasterNetwork,
   getInsecureHubRpcClient,
+  HubError,
   HubInfoRequest,
   HubRpcClient,
   OnChainEvent,
@@ -98,5 +99,21 @@ describe("getSyncStatus", () => {
     expect(result.isOk()).toBeTruthy();
     expect(result._unsafeUnwrap().isSyncing).toEqual(false);
     expect(result._unsafeUnwrap().syncStatus).toHaveLength(0);
+  });
+});
+
+describe("stopSync", () => {
+  test("succeeds", async () => {
+    const result = await client.stopSync({});
+    expect(result.isOk()).toBeTruthy();
+    expect(result._unsafeUnwrap().isSyncing).toEqual(false);
+    expect(result._unsafeUnwrap().syncStatus).toHaveLength(0);
+  });
+});
+
+describe("forceSync", () => {
+  test("fails when peer is not found", async () => {
+    const result = await client.forceSync(SyncStatusRequest.create({ peerId: "test" }));
+    expect(result._unsafeUnwrapErr()).toEqual(new HubError("bad_request", "Peer not found"));
   });
 });

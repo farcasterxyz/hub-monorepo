@@ -349,7 +349,6 @@ export class Hub implements HubInterface {
   private adminServer: AdminServer;
   private httpApiServer: HttpAPIServer;
 
-  private contactTimer?: NodeJS.Timer;
   private rocksDB: RocksDB;
   private syncEngine: SyncEngine;
   private allowedPeerIds: string[] | undefined;
@@ -1176,7 +1175,6 @@ export class Hub implements HubInterface {
   /** Stop the GossipNode and RPC Server */
   async stop(reason: HubShutdownReason, terminateGossipWorker = true) {
     log.info("Stopping Hubble...");
-    clearInterval(this.contactTimer);
 
     // First, stop the RPC/Gossip server so we don't get any more messages
     if (!this.options.httpServerDisabled) {

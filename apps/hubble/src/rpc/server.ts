@@ -488,20 +488,71 @@ export default class Server {
           const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
           log.debug({ method: "getCurrentPeers", req: call.request }, `RPC call from ${peer}`);
 
-          (async () => {
-            const currentHubPeerContacts = this.syncEngine?.getCurrentHubPeerContacts();
+          const currentHubPeerContacts = this.syncEngine?.getCurrentHubPeerContacts();
 
-            if (!currentHubPeerContacts) {
-              callback(null, ContactInfoResponse.create({ contacts: [] }));
-              return;
-            }
+          if (!currentHubPeerContacts) {
+            callback(null, ContactInfoResponse.create({ contacts: [] }));
+            return;
+          }
 
-            const contactInfoArray = Array.from(currentHubPeerContacts).map((peerContact) => peerContact.contactInfo);
-            callback(null, ContactInfoResponse.create({ contacts: contactInfoArray }));
-          })();
+          const contactInfoArray = Array.from(currentHubPeerContacts).map((peerContact) => peerContact.contactInfo);
+          callback(null, ContactInfoResponse.create({ contacts: contactInfoArray }));
         })();
       },
+      stopSync: (call, callback) => {
+        (async () => {
+          const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
+          log.debug({ method: "stopSync", req: call.request }, `RPC call from ${peer}`);
 
+          const result = await this.syncEngine?.stopSync();
+          if (!result) {
+            callback(toServiceError(new HubError("bad_request", "Stop sync timed out")));
+          } else {
+            callback(
+              null,
+              SyncStatusResponse.create({
+                isSyncing: this.syncEngine?.isSyncing() || false,
+                engineStarted: this.syncEngine?.isStarted() || false,
+                syncStatus: [],
+              }),
+            );
+          }
+        })();
+      },
+      forceSync: (call, callback) => {
+        (async () => {
+          const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
+          log.debug({ method: "forceSync", req: call.request }, `RPC call from ${peer}`);
+
+          const peerId = call.request.peerId;
+          if (!peerId || peerId.length === 0) {
+            callback(toServiceError(new HubError("bad_request", "peerId is required")));
+            return;
+          }
+          const result = await this.syncEngine?.forceSyncWithPeer(peerId);
+          if (!result || result.isErr()) {
+            callback(toServiceError(result?.error || new HubError("bad_request", "sync engine not available")));
+          } else {
+            const status = result.value;
+            const response = SyncStatusResponse.create({
+              isSyncing: this.syncEngine?.isSyncing() || false,
+              engineStarted: this.syncEngine?.isStarted() || false,
+              syncStatus: [
+                SyncStatus.create({
+                  peerId,
+                  inSync: status.inSync,
+                  shouldSync: status.shouldSync,
+                  lastBadSync: status.lastBadSync,
+                  ourMessages: status.ourSnapshot.numMessages,
+                  theirMessages: status.theirSnapshot.numMessages,
+                  score: status.score,
+                }),
+              ],
+            });
+            callback(null, response);
+          }
+        })();
+      },
       getSyncStatus: (call, callback) => {
         (async () => {
           const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
