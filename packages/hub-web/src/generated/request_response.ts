@@ -102,6 +102,7 @@ export interface HubInfoResponse {
   dbStats: DbStats | undefined;
   peerId: string;
   hubOperatorFid: number;
+  lastSyncTimestamp: number;
 }
 
 export interface DbStats {
@@ -580,6 +581,7 @@ function createBaseHubInfoResponse(): HubInfoResponse {
     dbStats: undefined,
     peerId: "",
     hubOperatorFid: 0,
+    lastSyncTimestamp: 0,
   };
 }
 
@@ -605,6 +607,9 @@ export const HubInfoResponse = {
     }
     if (message.hubOperatorFid !== 0) {
       writer.uint32(56).uint64(message.hubOperatorFid);
+    }
+    if (message.lastSyncTimestamp !== 0) {
+      writer.uint32(64).uint64(message.lastSyncTimestamp);
     }
     return writer;
   },
@@ -665,6 +670,13 @@ export const HubInfoResponse = {
 
           message.hubOperatorFid = longToNumber(reader.uint64() as Long);
           continue;
+        case 8:
+          if (tag != 64) {
+            break;
+          }
+
+          message.lastSyncTimestamp = longToNumber(reader.uint64() as Long);
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -683,6 +695,7 @@ export const HubInfoResponse = {
       dbStats: isSet(object.dbStats) ? DbStats.fromJSON(object.dbStats) : undefined,
       peerId: isSet(object.peerId) ? String(object.peerId) : "",
       hubOperatorFid: isSet(object.hubOperatorFid) ? Number(object.hubOperatorFid) : 0,
+      lastSyncTimestamp: isSet(object.lastSyncTimestamp) ? Number(object.lastSyncTimestamp) : 0,
     };
   },
 
@@ -695,6 +708,7 @@ export const HubInfoResponse = {
     message.dbStats !== undefined && (obj.dbStats = message.dbStats ? DbStats.toJSON(message.dbStats) : undefined);
     message.peerId !== undefined && (obj.peerId = message.peerId);
     message.hubOperatorFid !== undefined && (obj.hubOperatorFid = Math.round(message.hubOperatorFid));
+    message.lastSyncTimestamp !== undefined && (obj.lastSyncTimestamp = Math.round(message.lastSyncTimestamp));
     return obj;
   },
 
@@ -713,6 +727,7 @@ export const HubInfoResponse = {
       : undefined;
     message.peerId = object.peerId ?? "";
     message.hubOperatorFid = object.hubOperatorFid ?? 0;
+    message.lastSyncTimestamp = object.lastSyncTimestamp ?? 0;
     return message;
   },
 };

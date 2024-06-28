@@ -75,6 +75,7 @@ describe("getInfo", () => {
     await engine.mergeOnChainEvent(storageEvent);
     await engine.mergeMessage(castAdd);
     await engine.mergeMessage(castAdd2);
+    await syncEngine.performSync("test", client);
 
     await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
@@ -84,6 +85,7 @@ describe("getInfo", () => {
     expect(result._unsafeUnwrap().dbStats?.numFidEvents).toEqual(1);
     expect(result._unsafeUnwrap().dbStats?.numFnameEvents).toEqual(0);
     expect(result._unsafeUnwrap().dbStats?.approxSize).toBeGreaterThan(0);
+    expect(result._unsafeUnwrap().lastSyncTimestamp).toBeGreaterThan(0);
   });
 });
 
