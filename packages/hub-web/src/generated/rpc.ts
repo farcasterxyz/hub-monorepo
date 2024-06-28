@@ -151,7 +151,12 @@ export interface HubService {
   /** Sync Methods */
   getInfo(request: DeepPartial<HubInfoRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<HubInfoResponse>;
   getCurrentPeers(request: DeepPartial<Empty>, metadata?: grpcWeb.grpc.Metadata): Promise<ContactInfoResponse>;
+  /** @http-api: none */
   stopSync(request: DeepPartial<Empty>, metadata?: grpcWeb.grpc.Metadata): Promise<SyncStatusResponse>;
+  /**
+   * This is experimental, do not rely on this endpoint existing in the future
+   * @http-api: none
+   */
   forceSync(request: DeepPartial<SyncStatusRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<SyncStatusResponse>;
   /** @http-api: none */
   getSyncStatus(request: DeepPartial<SyncStatusRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<SyncStatusResponse>;

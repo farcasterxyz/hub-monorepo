@@ -433,6 +433,7 @@ export const HubServiceService = {
     responseSerialize: (value: ContactInfoResponse) => Buffer.from(ContactInfoResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer) => ContactInfoResponse.decode(value),
   },
+  /** @http-api: none */
   stopSync: {
     path: "/HubService/StopSync",
     requestStream: false,
@@ -442,6 +443,10 @@ export const HubServiceService = {
     responseSerialize: (value: SyncStatusResponse) => Buffer.from(SyncStatusResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer) => SyncStatusResponse.decode(value),
   },
+  /**
+   * This is experimental, do not rely on this endpoint existing in the future
+   * @http-api: none
+   */
   forceSync: {
     path: "/HubService/ForceSync",
     requestStream: false,
@@ -595,7 +600,12 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   /** Sync Methods */
   getInfo: handleUnaryCall<HubInfoRequest, HubInfoResponse>;
   getCurrentPeers: handleUnaryCall<Empty, ContactInfoResponse>;
+  /** @http-api: none */
   stopSync: handleUnaryCall<Empty, SyncStatusResponse>;
+  /**
+   * This is experimental, do not rely on this endpoint existing in the future
+   * @http-api: none
+   */
   forceSync: handleUnaryCall<SyncStatusRequest, SyncStatusResponse>;
   /** @http-api: none */
   getSyncStatus: handleUnaryCall<SyncStatusRequest, SyncStatusResponse>;
@@ -1182,6 +1192,7 @@ export interface HubServiceClient extends Client {
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: ContactInfoResponse) => void,
   ): ClientUnaryCall;
+  /** @http-api: none */
   stopSync(
     request: Empty,
     callback: (error: ServiceError | null, response: SyncStatusResponse) => void,
@@ -1197,6 +1208,10 @@ export interface HubServiceClient extends Client {
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: SyncStatusResponse) => void,
   ): ClientUnaryCall;
+  /**
+   * This is experimental, do not rely on this endpoint existing in the future
+   * @http-api: none
+   */
   forceSync(
     request: SyncStatusRequest,
     callback: (error: ServiceError | null, response: SyncStatusResponse) => void,

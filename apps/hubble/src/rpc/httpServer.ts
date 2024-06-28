@@ -23,6 +23,7 @@ import {
   ValidationResponse,
   base58ToBytes,
   bytesToBase58,
+  SyncStatusResponse,
 } from "@farcaster/hub-nodejs";
 import { Metadata, ServerUnaryCall } from "@grpc/grpc-js";
 import fastify from "fastify";
@@ -265,6 +266,29 @@ export class HttpAPIServer {
       const call = getCallObject("getCurrentPeers", {}, request);
       this.grpcImpl.getCurrentPeers(call, handleResponse(reply, ContactInfoResponse));
     });
+
+    // //================stopSync================
+    // // @doc-tag: /stopSync
+    // this.app.get("/v1/stopSync", (request, reply) => {
+    //   const call = getCallObject("stopSync", {}, request);
+    //   this.grpcImpl.stopSync(call, handleResponse(reply, SyncStatusResponse));
+    // });
+    //
+    // //================syncStatus================
+    // // @doc-tag: /syncStatus
+    // this.app.get<{ Querystring: { peer_id: string } }>("/v1/syncStatus", (request, reply) => {
+    //   const { peer_id } = request.query;
+    //   const call = getCallObject("syncStatus", { peerId: peer_id }, request);
+    //   this.grpcImpl.getSyncStatus(call, handleResponse(reply, SyncStatusResponse));
+    // });
+    //
+    // //================forceSync================
+    // // @doc-tag: /forceSync
+    // this.app.get<{ Querystring: { peer_id: string } }>("/v1/forceSync", (request, reply) => {
+    //   const { peer_id } = request.query;
+    //   const call = getCallObject("forceSync", { peerId: peer_id }, request);
+    //   this.grpcImpl.forceSync(call, handleResponse(reply, SyncStatusResponse));
+    // });
 
     //================Casts================
     // @doc-tag: /castById?fid=...&hash=...
