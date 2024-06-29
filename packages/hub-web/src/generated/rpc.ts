@@ -152,6 +152,13 @@ export interface HubService {
   getInfo(request: DeepPartial<HubInfoRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<HubInfoResponse>;
   getCurrentPeers(request: DeepPartial<Empty>, metadata?: grpcWeb.grpc.Metadata): Promise<ContactInfoResponse>;
   /** @http-api: none */
+  stopSync(request: DeepPartial<Empty>, metadata?: grpcWeb.grpc.Metadata): Promise<SyncStatusResponse>;
+  /**
+   * This is experimental, do not rely on this endpoint existing in the future
+   * @http-api: none
+   */
+  forceSync(request: DeepPartial<SyncStatusRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<SyncStatusResponse>;
+  /** @http-api: none */
   getSyncStatus(request: DeepPartial<SyncStatusRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<SyncStatusResponse>;
   /** @http-api: none */
   getAllSyncIdsByPrefix(request: DeepPartial<TrieNodePrefix>, metadata?: grpcWeb.grpc.Metadata): Promise<SyncIds>;
@@ -210,6 +217,8 @@ export class HubServiceClientImpl implements HubService {
     this.getLinkCompactStateMessageByFid = this.getLinkCompactStateMessageByFid.bind(this);
     this.getInfo = this.getInfo.bind(this);
     this.getCurrentPeers = this.getCurrentPeers.bind(this);
+    this.stopSync = this.stopSync.bind(this);
+    this.forceSync = this.forceSync.bind(this);
     this.getSyncStatus = this.getSyncStatus.bind(this);
     this.getAllSyncIdsByPrefix = this.getAllSyncIdsByPrefix.bind(this);
     this.getAllMessagesBySyncIds = this.getAllMessagesBySyncIds.bind(this);
@@ -381,6 +390,14 @@ export class HubServiceClientImpl implements HubService {
 
   getCurrentPeers(request: DeepPartial<Empty>, metadata?: grpcWeb.grpc.Metadata): Promise<ContactInfoResponse> {
     return this.rpc.unary(HubServiceGetCurrentPeersDesc, Empty.fromPartial(request), metadata);
+  }
+
+  stopSync(request: DeepPartial<Empty>, metadata?: grpcWeb.grpc.Metadata): Promise<SyncStatusResponse> {
+    return this.rpc.unary(HubServiceStopSyncDesc, Empty.fromPartial(request), metadata);
+  }
+
+  forceSync(request: DeepPartial<SyncStatusRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<SyncStatusResponse> {
+    return this.rpc.unary(HubServiceForceSyncDesc, SyncStatusRequest.fromPartial(request), metadata);
   }
 
   getSyncStatus(request: DeepPartial<SyncStatusRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<SyncStatusResponse> {
@@ -1230,6 +1247,52 @@ export const HubServiceGetCurrentPeersDesc: UnaryMethodDefinitionish = {
   responseType: {
     deserializeBinary(data: Uint8Array) {
       const value = ContactInfoResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceStopSyncDesc: UnaryMethodDefinitionish = {
+  methodName: "StopSync",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return Empty.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = SyncStatusResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceForceSyncDesc: UnaryMethodDefinitionish = {
+  methodName: "ForceSync",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return SyncStatusRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = SyncStatusResponse.decode(data);
       return {
         ...value,
         toObject() {

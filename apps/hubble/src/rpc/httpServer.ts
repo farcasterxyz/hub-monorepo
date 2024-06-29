@@ -23,6 +23,7 @@ import {
   ValidationResponse,
   base58ToBytes,
   bytesToBase58,
+  SyncStatusResponse,
 } from "@farcaster/hub-nodejs";
 import { Metadata, ServerUnaryCall } from "@grpc/grpc-js";
 import fastify from "fastify";

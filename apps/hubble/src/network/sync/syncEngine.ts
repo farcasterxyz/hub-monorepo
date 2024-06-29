@@ -493,6 +493,18 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   }
 
   public async stop() {
+    await this.stopSync();
+    await this._trie.stop();
+
+    this._started = false;
+    this.curSync.interruptSync = false;
+    log.info("Sync engine stopped");
+  }
+
+  public async stopSync() {
+    if (!this.isSyncing()) {
+      return true;
+    }
     // Interrupt any ongoing sync
     this.curSync.interruptSync = true;
 
@@ -502,13 +514,9 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       await sleepWhile(() => this.syncTrieQSize > 0, SYNC_INTERRUPT_TIMEOUT);
     } catch (e) {
       log.error({ err: e }, "Interrupting sync timed out");
+      return false;
     }
-
-    await this._trie.stop();
-
-    this._started = false;
-    this.curSync.interruptSync = false;
-    log.info("Sync engine stopped");
+    return true;
   }
 
   public getBadPeerIds(): string[] {
@@ -793,6 +801,46 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         }
       }
     }
+  }
+
+  public async forceSyncWithPeer(peerId: string) {
+    if (this.isSyncing()) {
+      return err(new HubError("bad_request", "Already syncing"));
+    }
+
+    const contactInfo = this.getContactInfoForPeerId(peerId);
+    if (!contactInfo) {
+      return err(new HubError("bad_request", "Peer not found"));
+    }
+
+    const rpcClient = await this._hub.getRPCClientForPeer(contactInfo.peerId, contactInfo.contactInfo);
+    if (!rpcClient) {
+      return err(new HubError("bad_request", "Unreachable peer"));
+    }
+
+    log.info({ peerId }, "Force sync: Starting sync");
+
+    const peerStateResult = await rpcClient.getSyncSnapshotByPrefix(
+      TrieNodePrefix.create({ prefix: new Uint8Array() }),
+      new Metadata(),
+      rpcDeadline(),
+    );
+
+    if (peerStateResult.isErr()) {
+      return err(peerStateResult.error);
+    }
+
+    const syncStatus = await this.syncStatus(peerId, peerStateResult.value);
+    if (syncStatus.isErr()) {
+      return err(syncStatus.error);
+    }
+
+    // Ignore sync status because we always want to sync, we return it to the clients can get visibility into the peer's state
+    // Intentionally not available here, so the grpc call can succeed immediately
+    this.performSync(peerId, rpcClient, false).then((result) => {
+      log.info({ result }, "Force sync: complete");
+    });
+    return ok(syncStatus.value);
   }
 
   public async syncStatus(peerId: string, theirSnapshot: TrieSnapshot): HubAsyncResult<SyncStatus> {

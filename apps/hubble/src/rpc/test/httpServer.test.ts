@@ -14,6 +14,7 @@ import {
   ReactionAddMessage,
   ReactionType,
   reactionTypeToJSON,
+  SyncStatusResponse,
   toFarcasterTime,
   UserDataAddMessage,
   UserDataType,
