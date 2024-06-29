@@ -837,25 +837,6 @@ describe("httpServer", () => {
       expect(response5.data).toEqual(protoToJSON(idRegistryEvent, OnChainEvent));
     });
   });
-
-  //   describe("sync APIs", () => {
-  //     test("stopSync", async () => {
-  //       const url = getFullUrl("/v1/stopSync");
-  //       const response = await axiosGet(url);
-  //
-  //       expect(response.status).toBe(200);
-  //       expect(response.data).toEqual(
-  //         protoToJSON(
-  //           SyncStatusResponse.create({
-  //             isSyncing: false,
-  //             engineStarted: true,
-  //             syncStatus: [],
-  //           }),
-  //           SyncStatusResponse,
-  //         ),
-  //       );
-  //     });
-  //   });
 });
 
 async function axiosGet(url: string) {
