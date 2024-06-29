@@ -839,6 +839,25 @@ describe("httpServer", () => {
   });
 });
 
+describe("sync APIs", () => {
+  test("stopSync", async () => {
+    const url = getFullUrl("/v1/stopSync");
+    const response = await axios.post(url, {});
+
+    expect(response.status).toBe(200);
+    expect(response.data).toEqual(
+      protoToJSON(
+        SyncStatusResponse.create({
+          isSyncing: false,
+          engineStarted: true,
+          syncStatus: [],
+        }),
+        SyncStatusResponse,
+      ),
+    );
+  });
+});
+
 async function axiosGet(url: string) {
   try {
     return await axios.get(url);
