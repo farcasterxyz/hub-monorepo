@@ -123,7 +123,8 @@ export const FARCASTER_VERSIONS_SCHEDULE: VersionSchedule[] = [
   { version: "2024.6.12", expiresAt: 1722988800000 }, // expires at 8/7/24 00:00 UTC
 ];
 
-const MAX_CONTACT_INFO_AGE_MS = GOSSIP_SEEN_TTL;
+const MAX_CONTACT_INFO_AGE_MS = 1000 * 60 * 60; // 60 minutes
+const CONTACT_INFO_UPDATE_THRESHOLD_MS = 1000 * 60 * 30; // 30 minutes
 
 export interface HubInterface {
   engine: Engine;
@@ -789,7 +790,9 @@ export class Hub implements HubInterface {
     this.pruneEventsJobScheduler.start(this.options.pruneEventsJobCron);
     this.checkFarcasterVersionJobScheduler.start();
     this.validateOrRevokeMessagesJobScheduler.start();
-    this.gossipContactInfoJobScheduler.start("*/1 * * * *"); // Every minute
+
+    const randomMinute = Math.floor(Math.random() * 30);
+    this.gossipContactInfoJobScheduler.start(`${randomMinute} */30 * * * *`); // Random minute every 30 minutes
     this.checkIncomingPortsJobScheduler.start();
 
     // Mainnet only jobs
@@ -1513,7 +1516,7 @@ export class Hub implements HubInterface {
     log.debug({ identity: this.identity, peer: peerId, message }, "received peer ContactInfo");
 
     // Check if we already have this client
-    const result = this.syncEngine.addContactInfoForPeerId(peerId, message);
+    const result = this.syncEngine.addContactInfoForPeerId(peerId, message, CONTACT_INFO_UPDATE_THRESHOLD_MS);
     if (result.isOk() && !this.performedFirstSync) {
       // Sync with the first peer so we are upto date on startup.
       this.performedFirstSync = true;
@@ -1640,11 +1643,15 @@ export class Hub implements HubInterface {
     });
 
     this.gossipNode.on("peerConnect", async () => {
+      // NB: Gossiping our own contact info is commented out, since at the time of
+      // writing this the p2p network has overwhelming number of peers and spends more
+      // time processing contact info than messages. We may uncomment in the future
+      // if peer counts drop.
       // When we connect to a new node, gossip out our contact info 1 second later.
       // The setTimeout is to ensure that we have a chance to receive the peer's info properly.
-      setTimeout(async () => {
-        await this.gossipContactInfo();
-      }, 1 * 1000);
+      // setTimeout(async () => {
+      //   await this.gossipContactInfo();
+      // }, 1 * 1000);
       statsd().increment("peer_connect.count");
     });
 
