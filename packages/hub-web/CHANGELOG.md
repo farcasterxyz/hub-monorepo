@@ -1,5 +1,11 @@
 # @farcaster/hub-web
 
+## 0.8.12
+
+### Patch Changes
+
+- c723f655: feat: Add endpoints to control sync
+
 ## 0.8.11
 
 ### Patch Changes
