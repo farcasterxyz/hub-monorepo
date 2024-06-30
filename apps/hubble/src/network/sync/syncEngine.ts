@@ -77,6 +77,8 @@ const log = logger.child({
   component: "SyncEngine",
 });
 
+type NonNegativeInteger<T extends number> = `${T}` extends `-${string}` | `${string}.${string}` ? never : T;
+
 interface SyncEvents {
   /** Emit an event when diff starts */
   syncStart: () => void;
@@ -547,27 +549,39 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     return this.currentHubPeerContacts.values();
   }
 
-  public addContactInfoForPeerId(peerId: PeerId, contactInfo: ContactInfoContentBody) {
+  public addContactInfoForPeerId(
+    peerId: PeerId,
+    contactInfo: ContactInfoContentBody,
+    updateThresholdMilliseconds: NonNegativeInteger<number>,
+  ) {
     const existingPeerInfo = this.getContactInfoForPeerId(peerId.toString());
     if (existingPeerInfo && contactInfo.timestamp <= existingPeerInfo.contactInfo.timestamp) {
       return err(new HubError("bad_request.duplicate", "peer already exists"));
     }
-    log.info(
-      {
-        peerInfo: contactInfo,
-        theirMessages: contactInfo.count,
-        peerNetwork: contactInfo.network,
-        peerVersion: contactInfo.hubVersion,
-        peerAppVersion: contactInfo.appVersion,
-        connectedPeers: this.getPeerCount(),
-        peerId: peerId.toString(),
-        isNew: !!existingPeerInfo,
-        gossipDelay: (Date.now() - contactInfo.timestamp) / 1000,
-      },
-      "Updated Peer ContactInfo",
-    );
-    this.currentHubPeerContacts.set(peerId.toString(), { peerId, contactInfo });
-    return ok(undefined);
+    const previousTimestamp = existingPeerInfo ? existingPeerInfo.contactInfo.timestamp : -Infinity;
+    const elapsed = Date.now() - previousTimestamp;
+
+    // only update if contact info was updated more than ${updateThresholdMilliseconds} ago
+    if (elapsed > updateThresholdMilliseconds) {
+      log.info(
+        {
+          peerInfo: contactInfo,
+          theirMessages: contactInfo.count,
+          peerNetwork: contactInfo.network,
+          peerVersion: contactInfo.hubVersion,
+          peerAppVersion: contactInfo.appVersion,
+          connectedPeers: this.getPeerCount(),
+          peerId: peerId.toString(),
+          isNew: !!existingPeerInfo,
+          gossipDelay: (Date.now() - contactInfo.timestamp) / 1000,
+        },
+        "Updated Peer ContactInfo",
+      );
+      this.currentHubPeerContacts.set(peerId.toString(), { peerId, contactInfo });
+      return ok(undefined);
+    } else {
+      return err(new HubError("bad_request.duplicate", "recent contact update found for peer"));
+    }
   }
 
   public removeContactInfoForPeerId(peerId: string) {
