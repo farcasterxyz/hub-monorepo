@@ -1,5 +1,12 @@
 # @farcaster/hubble
 
+## 1.13.4
+
+### Patch Changes
+
+- 3f0fb85c: fix: remove nemes from mainnet bootstrap peers (deprecated)
+- 366ce95c: fix: Fix gossip worker spending too much time iterating peer store
+
 ## 1.13.3
 
 ### Patch Changes

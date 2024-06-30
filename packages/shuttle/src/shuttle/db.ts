@@ -242,3 +242,4 @@ export function getEstimateOfTablesRowCount(db: DB, tablesToMonitor: Array<keyof
 
 export type DBTransaction = Transaction<HubTables>;
 export type DB = Kysely<HubTables>;
+export { sql } from "kysely";

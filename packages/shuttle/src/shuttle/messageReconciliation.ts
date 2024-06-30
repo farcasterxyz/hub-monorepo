@@ -1,5 +1,5 @@
 import { HubRpcClient, Message, MessageType } from "@farcaster/hub-nodejs";
-import { DB, MessageRow } from "./db";
+import { DB, MessageRow, sql } from "./db";
 import { pino } from "pino";
 
 const MAX_PAGE_SIZE = 3_000;
@@ -64,7 +64,7 @@ export class MessageReconciliation {
       const dbMessages = await this.db
         .selectFrom("messages")
         .select(["prunedAt", "revokedAt", "hash", "fid", "type", "raw"])
-        .where("hash", "in", messageHashes)
+        .where("hash", "=", sql`any(${messageHashes})`)
         .execute();
 
       const dbMessageHashes = dbMessages.reduce((acc, msg) => {

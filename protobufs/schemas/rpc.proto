@@ -98,6 +98,11 @@ service HubService {
   rpc GetInfo(HubInfoRequest) returns (HubInfoResponse);
   rpc GetCurrentPeers(Empty) returns (ContactInfoResponse);
   // @http-api: none
+  rpc StopSync(Empty) returns (SyncStatusResponse);
+  // This is experimental, do not rely on this endpoint existing in the future
+  // @http-api: none
+  rpc ForceSync(SyncStatusRequest) returns (SyncStatusResponse);
+  // @http-api: none
   rpc GetSyncStatus(SyncStatusRequest) returns (SyncStatusResponse);
   // @http-api: none
   rpc GetAllSyncIdsByPrefix(TrieNodePrefix) returns (SyncIds);

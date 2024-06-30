@@ -1,5 +1,17 @@
 # @farcaster/hub-shuttle
 
+## 0.4.2
+
+### Patch Changes
+
+- fad0f179: Switch where clause to use more efficient form
+
+## 0.4.1
+
+### Patch Changes
+
+- fix: Bump max receive size to fix resource exhaustion error
+
 ## 0.4.0
 
 ### Minor Changes
