@@ -123,7 +123,7 @@ export const FARCASTER_VERSIONS_SCHEDULE: VersionSchedule[] = [
   { version: "2024.6.12", expiresAt: 1722988800000 }, // expires at 8/7/24 00:00 UTC
 ];
 
-const MAX_CONTACT_INFO_AGE_MS = GOSSIP_SEEN_TTL;
+const MAX_CONTACT_INFO_AGE_MS = 1000 * 60 * 2; // 2 minutes
 
 export interface HubInterface {
   engine: Engine;
@@ -1249,7 +1249,13 @@ export class Hub implements HubInterface {
       );
 
       await this.gossipNode.gossipContactInfo(contactInfo);
-      statsd().gauge("peer_store.count", await this.gossipNode.peerStoreCount());
+      // hack: If the current time in seconds is divisible by 5, we gauge the peer store count.
+      // Given that we schedule gossiping our contact info on minute intervals, we assume that this should be invoked
+      // at regular cadence. We do this to avoid unnecessary calculation of the peer store count,
+      // which can be expensive O(n) operation when there are many peers.
+      if ((Math.floor(Date.now()) / 1000) % 5 === 0) {
+        statsd().gauge("peer_store.count", await this.gossipNode.peerStoreCount());
+      }
       return Promise.resolve(ok(undefined));
     }
   }
@@ -1643,9 +1649,9 @@ export class Hub implements HubInterface {
     this.gossipNode.on("peerConnect", async () => {
       // When we connect to a new node, gossip out our contact info 1 second later.
       // The setTimeout is to ensure that we have a chance to receive the peer's info properly.
-      setTimeout(async () => {
-        await this.gossipContactInfo();
-      }, 1 * 1000);
+      // setTimeout(async () => {
+      //   await this.gossipContactInfo();
+      // }, 1 * 1000);
       statsd().increment("peer_connect.count");
     });
 
