@@ -1,5 +1,15 @@
 # @farcaster/hubble
 
+## 1.13.5
+
+### Patch Changes
+
+- 224e75fa: fix: gossip contact info every 30 minutes instead of every minute, avoid gossiping contact info on peer connect, skip contact info updates that happen too frequently
+- c723f655: feat: Add endpoints to control sync
+- 667a5b30: feat: add experimental HTTP APIs to control sync
+- Updated dependencies [c723f655]
+  - @farcaster/hub-nodejs@0.11.19
+
 ## 1.13.4
 
 ### Patch Changes

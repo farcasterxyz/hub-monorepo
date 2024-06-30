@@ -1,5 +1,11 @@
 # @farcaster/hub-nodejs
 
+## 0.11.19
+
+### Patch Changes
+
+- c723f655: feat: Add endpoints to control sync
+
 ## 0.11.18
 
 ### Patch Changes
