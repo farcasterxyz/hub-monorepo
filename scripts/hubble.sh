@@ -342,7 +342,7 @@ setup_identity() {
     chmod 777 .hub .rocks
 
    if [[ ! -f "./.hub/default_id.protobuf" ]]; then
-        $COMPOSE_CMD run -T hubble yarn identity create
+        $COMPOSE_CMD run --rm -T hubble yarn identity create
         echo "✅ Created Peer Identity"
     else
         echo "✅ Peer Identity exists"
