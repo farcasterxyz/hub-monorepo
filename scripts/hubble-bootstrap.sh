@@ -67,6 +67,20 @@ fetch_file_from_repo() {
     curl -sS -o "$local_filename" "$download_url" || { echo "Failed to fetch $download_url."; exit 1; }
 }
 
+setup_hubble_command() {
+    if command -v hubbly >/dev/null 2>&1; then
+        echo "✅ Hubbly command is installed."
+        return 0
+    fi
+    
+cat > /usr/local/bin/hubble <<EOF
+#!/bin/bash
+cd ~/hubble
+exec ./hubble.sh \$1 < /dev/tty
+EOF
+    chmod +x /usr/local/bin/hubble
+}
+
 do_bootstrap() {
     # Make the ~/hubble directory if it doesn't exist
     mkdir -p ~/hubble
@@ -77,6 +91,9 @@ do_bootstrap() {
 
     mv "$tmp_file" ~/hubble/hubble.sh
     chmod +x ~/hubble/hubble.sh
+
+    #Setting hubble system commands
+    setup_hubble_command
 
     # Run the hubble.sh script
     cd ~/hubble
