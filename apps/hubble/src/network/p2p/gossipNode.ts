@@ -34,7 +34,7 @@ import { sleep } from "../../utils/crypto.js";
 /** The maximum number of pending merge messages before we drop new incoming gossip or sync messages. */
 export const MAX_SYNCTRIE_QUEUE_SIZE = 100_000;
 /** The TTL for messages in the seen cache */
-export const GOSSIP_SEEN_TTL = 1000 * 60 * 5;
+export const GOSSIP_SEEN_TTL = 1000 * 60 * 5; // 5 minutes
 
 /** The maximum amount of time to dial a peer in libp2p network in milliseconds */
 export const LIBP2P_CONNECT_TIMEOUT_MS = 2000;
