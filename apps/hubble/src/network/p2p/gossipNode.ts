@@ -1,5 +1,6 @@
 import { PublishResult } from "@libp2p/interface-pubsub";
 import { Worker } from "worker_threads";
+import { PeerInfo } from "@libp2p/interface-peer-info";
 import {
   ContactInfoContent,
   FarcasterNetwork,
@@ -50,6 +51,8 @@ interface NodeEvents {
   peerConnect: (connection: Connection) => void;
   /** Triggers when a peer disconnects and includes the libp2p Connection object */
   peerDisconnect: (connection: Connection) => void;
+  /** Triggers when a peer is discovered and includes the libp2p PeerInfo object */
+  peerDiscovery: (peerInfo: PeerInfo) => void;
 }
 
 /** Optional arguments provided when creating a Farcaster Gossip Node */

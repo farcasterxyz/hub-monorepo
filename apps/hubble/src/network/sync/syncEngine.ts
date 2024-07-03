@@ -52,6 +52,14 @@ import { PeerScore, PeerScorer } from "./peerScore.js";
 import { getOnChainEvent } from "../../storage/db/onChainEvent.js";
 import { getUserNameProof } from "../../storage/db/nameRegistryEvent.js";
 import { MaxPriorityQueue } from "@datastructures-js/priority-queue";
+import { TTLMap } from "../../utils/ttl_map.js";
+import * as buffer from "node:buffer";
+import { peerIdFromString } from "@libp2p/peer-id";
+
+// Time to live for peer contact info in the Peer TTLMap
+const PEER_TTL_MAP_EXPIRATION_TIME_MILLISECONDS = 1000 * 60 * 60 * 24; // 24 hours
+// Time interval to run cleanup on the Peer TTLMap
+const PEER_TTL_MAP_CLEANUP_INTERVAL_MILLISECONDS = 1000 * 60 * 60 * 36; // 36 hours
 
 // Number of seconds to wait for the network to "settle" before syncing. We will only
 // attempt to sync messages that are older than this time.
@@ -246,6 +254,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   private _syncProfiler?: SyncEngineProfiler;
 
   private currentHubPeerContacts: Map<string, PeerContact> = new Map();
+  private uniquePeerMap: TTLMap<string, ContactInfoContentBody>;
 
   // Number of messages waiting to get into the SyncTrie.
   private _syncTrieQ = 0;
@@ -282,6 +291,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   ) {
     super();
 
+    this.uniquePeerMap = new TTLMap<string, ContactInfoContentBody>(
+      PEER_TTL_MAP_EXPIRATION_TIME_MILLISECONDS,
+      PEER_TTL_MAP_CLEANUP_INTERVAL_MILLISECONDS,
+    );
     this._db = rocksDb;
     this._trie = new MerkleTrie(rocksDb);
     this._l2EventsProvider = l2EventsProvider;
@@ -541,12 +554,17 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     return this.currentHubPeerContacts.size;
   }
 
+  public getActivePeerCount(): number {
+    return this.uniquePeerMap.size();
+  }
+
   public getContactInfoForPeerId(peerId: string): PeerContact | undefined {
     return this.currentHubPeerContacts.get(peerId);
   }
 
   public getCurrentHubPeerContacts() {
-    return this.currentHubPeerContacts.values();
+    // return non-expired active peers
+    return this.uniquePeerMap.getAll();
   }
 
   public addContactInfoForPeerId(
@@ -577,7 +595,9 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         },
         "Updated Peer ContactInfo",
       );
-      this.currentHubPeerContacts.set(peerId.toString(), { peerId, contactInfo });
+      const id = peerId.toString();
+      this.uniquePeerMap.set(id, contactInfo);
+      this.currentHubPeerContacts.set(id, { peerId, contactInfo });
       return ok(undefined);
     } else {
       return err(new HubError("bad_request.duplicate", "recent contact update found for peer"));
@@ -585,6 +605,11 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   }
 
   public removeContactInfoForPeerId(peerId: string) {
+    // NB: We don't remove the peer from the uniquePeerMap here - there can be many (valid) reasons to remove a
+    // peer from current hub peer contacts that are due to peer behavior but not indicative of whether that peer is active.
+    // For example, the peer may have a bad peer score or be disallowed for this hub, but it may still be an active peer.
+    // Since the unique peer map is meant to return the set of all active non-expired peers, we only remove
+    // peers from it when their TTL expires (i.e, if we don't get updates to their contact info for 24 hours)
     this.currentHubPeerContacts.delete(peerId);
   }
 
@@ -636,7 +661,16 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         // Use a buffer of 5% of our messages so the peer with the highest message count does not get picked
         // disproportionately
         const messageThreshold = snapshotResult.value.numMessages * 0.95;
-        peers = Array.from(this.currentHubPeerContacts.values()).filter((p) => p.contactInfo.count > messageThreshold);
+        peers = this.uniquePeerMap
+          .getAll()
+          .filter((p) => this.currentHubPeerContacts.has(p[0]) && p[1].count > messageThreshold)
+          .map(
+            (p) =>
+              ({
+                peerId: peerIdFromString(p[0]),
+                contactInfo: p[1],
+              }) as PeerContact,
+          );
       }
 
       if (peers.length === 0) {

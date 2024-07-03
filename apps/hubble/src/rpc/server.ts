@@ -495,7 +495,7 @@ export default class Server {
             return;
           }
 
-          const contactInfoArray = Array.from(currentHubPeerContacts).map((peerContact) => peerContact.contactInfo);
+          const contactInfoArray = Array.from(currentHubPeerContacts).map((peerContact) => peerContact[1]);
           callback(null, ContactInfoResponse.create({ contacts: contactInfoArray }));
         })();
       },
