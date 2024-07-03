@@ -1220,7 +1220,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     this._syncMergeQ += messages.length;
     statsd().gauge("syncengine.merge_q", this._syncMergeQ);
 
-    const startTime = Date.now();
+    const startTime = getFarcasterTime().unwrapOr(0);
     const results = await this._hub.submitMessageBundle(startTime, MessageBundle.create({ messages }), "sync");
 
     for (let i = 0; i < results.length; i++) {
