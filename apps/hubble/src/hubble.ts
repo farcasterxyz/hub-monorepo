@@ -1260,6 +1260,7 @@ export class Hub implements HubInterface {
 
       await this.gossipNode.gossipContactInfo(contactInfo);
       statsd().gauge("peer_store.count", await this.gossipNode.peerStoreCount());
+      statsd().gauge("active_peers.count", this.syncEngine.getActivePeerCount());
       return Promise.resolve(ok(undefined));
     }
   }
@@ -1684,6 +1685,28 @@ export class Hub implements HubInterface {
       // Remove this peer's connection
       this.syncEngine.removeContactInfoForPeerId(connection.remotePeer.toString());
       statsd().increment("peer_disconnect.count");
+    });
+
+    this.gossipNode.on("peerDiscovery", async (peerInfo) => {
+      // NB: The current code is not in use - we would require a source to emit peerDiscovery events.
+      // This is a placeholder for future use.
+
+      // Add discovered peer to sync engine
+      const peerId = peerInfo.id;
+      const peerAddresses = peerInfo.multiaddrs;
+
+      // sorts addresses by Public IPs first
+      const addr = peerAddresses.sort((a, b) =>
+        publicAddressesFirst({ multiaddr: a, isCertified: false }, { multiaddr: b, isCertified: false }),
+      )[0];
+      if (addr === undefined) {
+        log.info(
+          { function: "peerDiscovery", peerId: peerId.toString() },
+          "peer found but no address is available to request sync",
+        );
+        return;
+      }
+      await this.gossipNode.addPeerToAddressBook(peerId, addr);
     });
   }
 
