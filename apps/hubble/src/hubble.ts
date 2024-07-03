@@ -18,7 +18,6 @@ import {
   Message,
   OnChainEvent,
   onChainEventTypeToJSON,
-  toFarcasterTime,
   UserNameProof,
   validations,
 } from "@farcaster/hub-nodejs";
@@ -127,6 +126,7 @@ export const FARCASTER_VERSIONS_SCHEDULE: VersionSchedule[] = [
 
 const MAX_CONTACT_INFO_AGE_MS = 1000 * 60 * 60; // 60 minutes
 const CONTACT_INFO_UPDATE_THRESHOLD_MS = 1000 * 60 * 30; // 30 minutes
+const ALLOWED_CLOCK_SKEW_SECONDS = 60 * 10; // 10 minutes
 
 export interface HubInterface {
   engine: Engine;
@@ -1274,6 +1274,24 @@ export class Hub implements HubInterface {
     const messageFirstGossipedTime = gossipMessage.timestamp ?? 0;
     const gossipMessageDelay = currentTime - messageFirstGossipedTime;
     if (gossipMessage.timestamp) {
+      if (gossipMessage.timestamp > currentTime && gossipMessage.timestamp - currentTime > ALLOWED_CLOCK_SKEW_SECONDS) {
+        log.error(
+          {
+            allowedClockSkew: ALLOWED_CLOCK_SKEW_SECONDS,
+            currentTime,
+            gossipMessageTimestamp: gossipMessage.timestamp,
+            source: source.toString(),
+          },
+          "Received gossip message with future timestamp",
+        );
+        await this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), false);
+        return err(
+          new HubError(
+            "bad_request.invalid_param",
+            "Invalid Farcaster timestamp in gossip message - future timestamp found in seconds from Farcaster Epoch",
+          ),
+        );
+      }
       // If message is older than seenTTL, we will try to merge it, but report it as invalid so it doesn't
       // propogate across the network
       const cutOffTime = getFarcasterTime().unwrapOr(0) - GOSSIP_SEEN_TTL / 1000;
