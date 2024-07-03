@@ -43,8 +43,10 @@ export class MockHub implements HubInterface {
   }
 
   async submitMessageBundle(
+    _creationTimeMs: number,
     messageBundle: MessageBundle,
     source?: HubSubmitSource | undefined,
+    _peerId?: PeerId,
   ): Promise<HubResult<number>[]> {
     const results: HubResult<number>[] = [];
     for (const message of messageBundle.messages) {

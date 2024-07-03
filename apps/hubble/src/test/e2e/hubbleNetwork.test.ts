@@ -147,7 +147,7 @@ describe("hubble gossip and sync tests", () => {
           messages: castAddMessages,
         });
         // Submit it to hub1 via rpc so it gets gossiped
-        const bundleMergeResult = await hub1.submitMessageBundle(messageBundle, "rpc");
+        const bundleMergeResult = await hub1.submitMessageBundle(Date.now(), messageBundle, "rpc");
         expect(bundleMergeResult.length).toEqual(5);
         for (let i = 0; i < 5; i++) {
           expect(bundleMergeResult[i]?.isOk()).toBeTruthy();
@@ -167,7 +167,7 @@ describe("hubble gossip and sync tests", () => {
         }
 
         // Submitting the same bundle again should result in a duplicate error if we submit via gossip
-        const errResult2 = await hub1.submitMessageBundle(messageBundle, "gossip");
+        const errResult2 = await hub1.submitMessageBundle(Date.now(), messageBundle, "gossip");
         // Expect all the messages to be duplicates
         for (let i = 0; i < 5; i++) {
           expect(errResult2[i]?.isErr()).toBeTruthy();
@@ -193,7 +193,7 @@ describe("hubble gossip and sync tests", () => {
           hash: new Uint8Array([0, 1, 2, 1, 2]),
           messages: castAddMessages2,
         });
-        const errResult3 = await hub1.submitMessageBundle(messageBundle2, "gossip");
+        const errResult3 = await hub1.submitMessageBundle(Date.now(), messageBundle2, "gossip");
         expect(errResult3.length).toEqual(5);
         expect(errResult3[0]?.isOk()).toBeTruthy();
         expect(errResult3[1]?.isErr()).toBeTruthy();

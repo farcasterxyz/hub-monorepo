@@ -1187,7 +1187,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     statsd().gauge("syncengine.merge_q", this._syncMergeQ);
 
     const startTime = Date.now();
-    const results = await this._hub.submitMessageBundle(MessageBundle.create({ messages }), "sync");
+    const results = await this._hub.submitMessageBundle(startTime, MessageBundle.create({ messages }), "sync");
 
     for (let i = 0; i < results.length; i++) {
       const result = results[i] as HubResult<number>;

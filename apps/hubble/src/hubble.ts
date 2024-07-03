@@ -5,6 +5,7 @@ import {
   ContactInfoContent,
   ContactInfoContentBody,
   FarcasterNetwork,
+  fromFarcasterTime,
   getInsecureHubRpcClient,
   getSSLHubRpcClient,
   GossipAddressInfo,
@@ -17,6 +18,7 @@ import {
   Message,
   OnChainEvent,
   onChainEventTypeToJSON,
+  toFarcasterTime,
   UserNameProof,
   validations,
 } from "@farcaster/hub-nodejs";
@@ -131,7 +133,12 @@ export interface HubInterface {
   identity: string;
   hubOperatorFid?: number;
   submitMessage(message: Message, source?: HubSubmitSource): HubAsyncResult<number>;
-  submitMessageBundle(messageBundle: MessageBundle, source?: HubSubmitSource): Promise<HubResult<number>[]>;
+  submitMessageBundle(
+    creationFarcasterTime: number,
+    messageBundle: MessageBundle,
+    source?: HubSubmitSource,
+    peerId?: PeerId,
+  ): Promise<HubResult<number>[]>;
   validateMessage(message: Message): HubAsyncResult<Message>;
   submitUserNameProof(usernameProof: UserNameProof, source?: HubSubmitSource): HubAsyncResult<number>;
   submitOnChainEvent(event: OnChainEvent, source?: HubSubmitSource): HubAsyncResult<number>;
@@ -1340,14 +1347,13 @@ export class Hub implements HubInterface {
             await this.gossipNode.reportValid(msgId, peerIdFromString(source.toString()).toBytes(), false);
           }
         }
-        statsd().timing("gossip.message_delay", gossipMessageDelay);
         const mergeResult = result.isOk() ? "success" : "failure";
-        statsd().timing(`gossip.message_delay.${mergeResult}`, gossipMessageDelay);
+        statsd().timing("gossip.message_delay", gossipMessageDelay, { status: mergeResult });
 
         return result.map(() => undefined);
       } else if (gossipMessage.messageBundle) {
         const bundle = gossipMessage.messageBundle;
-        const results = await this.submitMessageBundle(bundle, "gossip");
+        const results = await this.submitMessageBundle(messageFirstGossipedTime, bundle, "gossip", source);
 
         // If at least one is Ok, report as valid
         const atLeastOneOk = results.find((r) => r.isOk());
@@ -1414,6 +1420,7 @@ export class Hub implements HubInterface {
 
     // Don't process messages that are too old
     if (message.timestamp && message.timestamp < Date.now() - MAX_CONTACT_INFO_AGE_MS) {
+      statsd().increment("gossip.contact_info.too_old", 1);
       log.debug({ message }, "contact info message is too old");
       return false;
     }
@@ -1666,7 +1673,12 @@ export class Hub implements HubInterface {
   /*                               RPC Handler API                              */
   /* -------------------------------------------------------------------------- */
 
-  async submitMessageBundle(messageBundle: MessageBundle, source?: HubSubmitSource): Promise<HubResult<number>[]> {
+  async submitMessageBundle(
+    creationFarcasterTime: number,
+    messageBundle: MessageBundle,
+    source?: HubSubmitSource,
+    peerId?: PeerId,
+  ): Promise<HubResult<number>[]> {
     if (this.syncEngine.syncTrieQSize > MAX_SYNCTRIE_QUEUE_SIZE) {
       log.warn({ syncTrieQSize: this.syncEngine.syncTrieQSize }, "SubmitMessage rejected: Sync trie queue is full");
       // Since we're rejecting the full bundle, return an error for each message
@@ -1679,6 +1691,8 @@ export class Hub implements HubInterface {
     const allResults: Map<number, HubResult<number>> = new Map();
 
     const dedupedMessages: { i: number; message: Message }[] = [];
+    let earliestTimestamp = Infinity;
+    let latestTimestamp = -Infinity;
     if (source === "gossip") {
       // Go over all the messages and see if they are in the DB. If they are, don't bother processing them
       const messagesExist = await areMessagesInDb(this.rocksDB, messageBundle.messages);
@@ -1688,12 +1702,51 @@ export class Hub implements HubInterface {
           log.debug({ source }, "submitMessageBundle rejected: Message already exists");
           allResults.set(i, err(new HubError("bad_request.duplicate", "message has already been merged")));
         } else {
-          dedupedMessages.push({ i, message: ensureMessageData(messageBundle.messages[i] as Message) });
+          const message = ensureMessageData(messageBundle.messages[i] as Message);
+          earliestTimestamp = Math.min(earliestTimestamp, message.data?.timestamp ?? Infinity);
+          latestTimestamp = Math.max(latestTimestamp, message.data?.timestamp ?? -Infinity);
+          dedupedMessages.push({ i, message });
         }
       }
     } else {
-      dedupedMessages.push(...messageBundle.messages.map((message, i) => ({ i, message: ensureMessageData(message) })));
+      const initialResult = {
+        earliest: Infinity,
+        latest: -Infinity,
+        deduped: [] as { i: number; message: Message }[],
+      };
+      const { deduped, earliest, latest } = messageBundle.messages.reduce((acc, message, i) => {
+        const messageData = ensureMessageData(message);
+        acc.earliest = Math.min(acc.earliest, messageData.data?.timestamp ?? Infinity);
+        acc.latest = Math.max(acc.latest, messageData.data?.timestamp ?? -Infinity);
+        acc.deduped.push({ i, message: messageData });
+        return acc;
+      }, initialResult);
+      earliestTimestamp = earliest;
+      latestTimestamp = latest;
+      dedupedMessages.push(...deduped);
     }
+    const tags: { [key: string]: string } = {
+      ...(source ? { source } : {}),
+      ...(peerId ? { peer_id: peerId.toString() } : {}),
+    };
+
+    statsd().gauge("hub.submit_message_bundle.size", dedupedMessages.length, tags);
+    statsd().gauge(
+      "hub.submit_message_bundle.earliest_timestamp_ms",
+      fromFarcasterTime(earliestTimestamp).unwrapOr(0),
+      tags,
+    );
+    statsd().gauge(
+      "hub.submit_message_bundle.latest_timestamp_ms",
+      fromFarcasterTime(latestTimestamp).unwrapOr(0),
+      tags,
+    );
+    statsd().gauge(
+      "hub.submit_message_bundle.creation_time_ms",
+      fromFarcasterTime(creationFarcasterTime).unwrapOr(0),
+      tags,
+    );
+    statsd().gauge("hub.submit_message_bundle.max_delay_ms", creationFarcasterTime - earliestTimestamp, tags);
 
     // Merge the messages
     const mergeResults = await this.engine.mergeMessages(dedupedMessages.map((m) => m.message));
