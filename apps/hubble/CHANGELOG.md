@@ -23,7 +23,7 @@
 
 - 2d26d305: CLI tool for measuring sync health
 - b150e900: fix: Use stricter socket timeout for gossip
-- eacf29c9: fix: http endoint return not found instead of internal database error
+- eacf29c9: fix: http endpoint return not found instead of internal database error
   - @farcaster/hub-nodejs@0.11.18
 
 ## 1.13.2
@@ -608,7 +608,7 @@
 - 08b652e: fix: Add txIndex to onchain events, fix wrong index being used in the primary key
 - b36eef2: fix: Extract snapshot on the fly while downloading snapshot
 - 93e43a8: fix: Use hashes to compare upgrade 'hubble.sh' versions
-- 7daaae4: fix: Simplify IP addr fetching, prefering ipv4
+- 7daaae4: fix: Simplify IP addr fetching, preferring ipv4
 - ac1f6ac: fix: Fetch envoy config during hubble.sh
 - baf983f: fix: Consume the FID rate limit only after a successful merge
 - Updated dependencies [08b652e]
@@ -742,7 +742,7 @@
 - f00d7d2: fix: Move validatorOrRevokeMessage and storageCache iterators to be managed
 - 115f1b5: feat: Do the validateOrRevokeMessages job fid-by-fid
 - 998979d: feat: Warn if there are no incoming connections
-- c1bb21c: fix: When retring messages due to failed signers, use a queue
+- c1bb21c: fix: When retrying messages due to failed signers, use a queue
 - 376ae0f: feat: Use a web based network config for hubble
   - @farcaster/hub-nodejs@0.9.1
 
