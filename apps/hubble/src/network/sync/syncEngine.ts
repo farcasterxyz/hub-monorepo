@@ -59,7 +59,7 @@ import { peerIdFromString } from "@libp2p/peer-id";
 // Time to live for peer contact info in the Peer TTLMap
 const PEER_TTL_MAP_EXPIRATION_TIME_MILLISECONDS = 1000 * 60 * 60 * 24; // 24 hours
 // Time interval to run cleanup on the Peer TTLMap
-const PEER_TTL_MAP_CLEANUP_INTERVAL_MILLISECONDS = 1000 * 60 * 60 * 36; // 36 hours
+const PEER_TTL_MAP_CLEANUP_INTERVAL_MILLISECONDS = 1000 * 60 * 60 * 25; // 25 hours
 
 // Number of seconds to wait for the network to "settle" before syncing. We will only
 // attempt to sync messages that are older than this time.
