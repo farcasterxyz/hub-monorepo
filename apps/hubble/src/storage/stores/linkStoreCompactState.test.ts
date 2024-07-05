@@ -112,7 +112,7 @@ describe("Merge LinkCompactState messages", () => {
 
     // Make sure that the hub event was proper.
     expect(hubEvent?.mergeMessageBody?.message?.data?.fid).toEqual(fid);
-    expect(hubEvent?.mergeMessageBody?.deletedMessages).toEqual([linkAdd2]);
+    expect(hubEvent?.mergeMessageBody?.deletedMessages).toEqual([]);
 
     // Now that there's a compact state message, linkAdd2 still won't merge because it is not in the target_fids
     const expectError2 = await ResultAsync.fromPromise(set.merge(linkAdd2), (e) => e as HubError);
@@ -185,7 +185,7 @@ describe("Merge LinkCompactState messages", () => {
 
     // Make sure that the hub event was proper.
     expect(hubEvent?.mergeMessageBody?.message?.data?.fid).toEqual(fid);
-    expect(hubEvent?.mergeMessageBody?.deletedMessages?.length).toEqual(2);
+    expect(hubEvent?.mergeMessageBody?.deletedMessages?.length).toEqual(0);
   });
 
   test("merge link compaction messages removes LinkRemove messages", async () => {
@@ -236,7 +236,7 @@ describe("Merge LinkCompactState messages", () => {
 
     // Expect the hub event to be proper
     expect(hubEvent?.mergeMessageBody?.message?.data?.fid).toEqual(fid);
-    expect(hubEvent?.mergeMessageBody?.deletedMessages).toEqual([linkRemove1]);
+    expect(hubEvent?.mergeMessageBody?.deletedMessages).toEqual([]);
 
     // linkAdd1 and linkRemove1 are both not in the set
     // Trying to merge them will fail
@@ -298,7 +298,7 @@ describe("Merge LinkCompactState messages", () => {
 
     // Expect the hub event to be proper
     expect(hubEvent?.mergeMessageBody?.message?.data?.fid).toEqual(fid);
-    expect(hubEvent?.mergeMessageBody?.deletedMessages).toEqual([linkAdd1]);
+    expect(hubEvent?.mergeMessageBody?.deletedMessages).toEqual([]);
 
     // Merge a new compact state after linkAdd2
     const linkCompactState2 = await Factories.LinkCompactStateMessage.create({
@@ -318,7 +318,7 @@ describe("Merge LinkCompactState messages", () => {
 
     // Expect the hub event to be proper. The deleted messages should also have the previous compact state
     expect(hubEvent?.mergeMessageBody?.message?.data?.fid).toEqual(fid);
-    expect(hubEvent?.mergeMessageBody?.deletedMessages).toEqual([linkCompactState, linkAdd2]);
+    expect(hubEvent?.mergeMessageBody?.deletedMessages).toEqual([]);
   });
 
   test("link compact can be inserted in the middle of a set", async () => {
@@ -559,7 +559,8 @@ describe("Merge LinkCompactState messages", () => {
 
       // Make sure the hub event is proper
       expect(hubEvent?.mergeMessageBody?.message?.data?.fid).toEqual(fid);
-      expect(hubEvent?.mergeMessageBody?.deletedMessages).toEqual([linkAdd3]);
+      // merging compact state messages do not yield deleted deltas, they are implicit:
+      expect(hubEvent?.mergeMessageBody?.deletedMessages).toEqual([]);
 
       // linkAdd3 is now removed
       allMessages = (await set.getAllLinkMessagesByFid(fid)).messages;
