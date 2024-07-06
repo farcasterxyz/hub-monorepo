@@ -1792,6 +1792,8 @@ export class Hub implements HubInterface {
     // Merge the messages
     const mergeResults = await this.engine.mergeMessages(dedupedMessages.map((m) => m.message));
 
+    const errorLogs: string[] = [];
+    const infoLogs: string[] = [];
     for (const [j, result] of mergeResults.entries()) {
       const message = dedupedMessages[j]?.message as Message;
       const type = messageTypeToName(message.data?.type);
@@ -1800,32 +1802,28 @@ export class Hub implements HubInterface {
 
       result.match(
         (eventId) => {
-          if (this.options.logIndividualMessages) {
-            const logData = {
-              eventId,
-              fid: message.data?.fid,
-              type: type,
-              submittedMessage: messageToLog(message),
-              source,
-            };
-            const msg = "submitMessage success";
-
-            if (source === "sync") {
-              log.debug(logData, msg);
-            } else {
-              log.info(logData, msg);
-            }
-          } else {
-            this.submitMessageLogger.log(source ?? "unknown-source");
-          }
+          const parts = [
+            `event_id:${eventId}`,
+            `farcaster_ts:${message.data?.timestamp ?? "no-timestamp"}`,
+            `fid:${message.data?.fid ?? "no-fid"}`,
+            `hash:${bytesToHexString(message.hash).unwrapOr("no-hash")}`,
+            `message_type:${type}`,
+            `source:${source}`,
+          ];
+          infoLogs.push(`[${parts.join("|")}]`);
         },
         (e) => {
-          // message is a reserved key in some logging systems, so we use submittedMessage instead
-          const logMessage = log.child({
-            submittedMessage: messageToLog(message),
-            source,
-          });
-          logMessage.warn({ errCode: e.errCode, source }, `submitMessage error: ${e.message}`);
+          const parts = [
+            `farcaster_ts:${message.data?.timestamp ?? "no-timestamp"}`,
+            `fid:${message.data?.fid ?? "no-fid"}`,
+            `hash:${bytesToHexString(message.hash).unwrapOr("no-hash")}`,
+            `message_type:${type}`,
+            `source:${source ?? "unknown-source"}`,
+            `error:${e.message}`,
+            `error_code:${e.errCode}`,
+          ];
+          errorLogs.push(`[${parts.join("|")}]`);
+
           const tags: { [key: string]: string } = {
             error_code: e.errCode,
             message_type: type,
@@ -1834,6 +1832,12 @@ export class Hub implements HubInterface {
           statsd().increment("submit_message.error", 1, tags);
         },
       );
+    }
+    if (infoLogs.length > 0) {
+      log.info(infoLogs, "successful submit messages");
+    }
+    if (errorLogs.length > 0) {
+      log.error(errorLogs, "failed submit messages");
     }
 
     // Convert the merge results to an Array of HubResults with the key
