@@ -1567,16 +1567,25 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     const result = await this.validateAndMergeOnChainEvents(
       missingSyncIds.filter((id) => id.type() === SyncIdType.OnChainEvent),
     );
+    statsd().increment("syncengine.sync_messages.onchain.success", result.successCount);
+    statsd().increment("syncengine.sync_messages.onchain.error", result.errCount);
+    statsd().increment("syncengine.sync_messages.onchain.deferred", result.deferredCount);
 
     // Then Fnames
     const fnameResult = await this.validateAndMergeFnames(
       missingSyncIds.filter((id) => id.type() === SyncIdType.FName),
     );
     result.addResult(fnameResult);
+    statsd().increment("syncengine.sync_messages.fname.success", fnameResult.successCount);
+    statsd().increment("syncengine.sync_messages.fname.error", fnameResult.errCount);
+    statsd().increment("syncengine.sync_messages.fname.deferred", fnameResult.deferredCount);
 
     // And finally messages
     const messagesResult = await this.fetchAndMergeMessages(missingMessageIds, rpcClient);
     result.addResult(messagesResult);
+    statsd().increment("syncengine.sync_messages.message.success", messagesResult.successCount);
+    statsd().increment("syncengine.sync_messages.message.error", messagesResult.errCount);
+    statsd().increment("syncengine.sync_messages.message.deferred", messagesResult.deferredCount);
 
     this.curSync.fullResult.addResult(result);
 
