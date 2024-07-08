@@ -8,8 +8,6 @@
 #
 #   git fetch --tags --force && git checkout @latest && docker compose up
 
-version: '3.9'
-
 services:
   hubble:
     image: farcasterxyz/hubble:latest
