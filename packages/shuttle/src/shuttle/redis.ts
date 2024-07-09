@@ -1,4 +1,4 @@
-import { Redis, RedisOptions } from "ioredis";
+import { Redis, Cluster, RedisOptions } from "ioredis";
 
 export const getRedisClient = (redisUrl: string, redisOpts?: RedisOptions) => {
   const client = new Redis(redisUrl, {
@@ -10,8 +10,8 @@ export const getRedisClient = (redisUrl: string, redisOpts?: RedisOptions) => {
 };
 
 export class RedisClient {
-  public client: Redis;
-  constructor(client: Redis) {
+  public client: Redis | Cluster;
+  constructor(client: Redis | Cluster) {
     this.client = client;
   }
   static create(redisUrl: string, redisOpts?: RedisOptions) {
