@@ -28,11 +28,19 @@ If you want to run the test the app, do the following:
 ```bash
 
 # Ensure you have node 21 installed, use nvm to install it
+nvm install 21
 
-# Within the package directory 
+# If necessary, build packages/core dependency
+( cd packages/core && yarn install && yarn build; )
+
+# If necessary, build packages/hub-nodejs dependency
+( cd packages/hub-nodejs && yarn install && yarn build; )
+
+# Do remainder within the packages/shuttle directory
+cd packages/shuttle
 yarn install && yarn build
 
-# Start the dependencies
+# Start the db dependencies
 docker compose up postgres redis
  
 # To perform reconciliation/backfill, start the worker (can run multiple processes to speed this up)
