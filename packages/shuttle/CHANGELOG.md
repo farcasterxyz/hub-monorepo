@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.4.4
+
+### Patch Changes
+
+- 864261b7: feat(shuttle) Allow Redis client to be a cluster instance
+
 ## 0.4.3
 
 ### Patch Changes
