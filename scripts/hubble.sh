@@ -120,6 +120,26 @@ fetch_latest_docker_compose_and_dashboard() {
     fetch_file_from_repo "$GRAFANA_INI_PATH" "grafana/grafana.ini"
 }
 
+prompt_for_hub_operator_agreement() {
+  # Check if stdin is a terminal
+  if [ -t 0 ]; then
+    while true; do
+        printf "⚠️  IMPORTANT: You will NOT get any rewards for running this hub\n"
+        printf "> Please type \"Yes\" to continue: "
+        read -r response
+        case $(printf "%s" "$response" | tr '[:upper:]' '[:lower:]') in
+            yes|y)
+                printf "✅ You have agreed to the terms of service. Proceeding with hub startup...\n"
+                return 0
+                ;;
+            *)
+                printf "[i] Incorrect input. Please try again.\n"
+                ;;
+        esac
+    done
+  fi
+}
+
 validate_and_store() {
     local rpc_name=$1
     local expected_chain_id=$2
@@ -498,6 +518,9 @@ if [ "$1" == "up" ]; then
    # Setup the docker-compose command
     set_compose_command
 
+    # Prompt for hub operator agreement
+    prompt_for_hub_operator_agreement
+
     # Run docker compose up -d hubble
     $COMPOSE_CMD up -d hubble statsd grafana
 
@@ -542,6 +565,9 @@ if [ "$1" == "upgrade" ]; then
 
     # Call the function to set the COMPOSE_CMD variable
     set_compose_command
+
+    # Prompt for hub operator agreement
+    prompt_for_hub_operator_agreement
 
     # Update the env file if needed
     write_env_file
