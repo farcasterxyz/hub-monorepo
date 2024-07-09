@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.4.3
+
+### Patch Changes
+
+- 45180584: Gracefully handle "no such key" when querying group on first start
+
 ## 0.4.2
 
 ### Patch Changes
