@@ -1,5 +1,17 @@
 # @farcaster/hubble
 
+## 1.13.6
+
+### Patch Changes
+
+- fdcc3b52: chore: add stats for bundle message delays, stale contact info
+- fa5eef40: fix: Increase message threshold to reduce snapshot bandwidth usage
+- 795815af: fixed issue with cli arguments order in docker-compose.yml causing hub operator fid to be unset
+- b5ff774a: feat: add hub service agreement - there will be no rewards for running a hub
+- 2a82b3dc: feat: add unique peer map to sync engine to represent current active peers
+- aa02a48d: fix: validate gossip message for clock skew
+- 2bae6fb9: chore: Update curve25519-dalek from 4.1.1 to 4.1.3 in Rust extension
+
 ## 1.13.5
 
 ### Patch Changes
