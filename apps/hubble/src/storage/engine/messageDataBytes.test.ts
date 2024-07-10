@@ -211,7 +211,8 @@ describe("messageDataBytes", () => {
       newVarintBytes.push(value);
 
       // Add leading zero to the most significant byte
-      newVarintBytes[newVarintBytes.length - 1] |= 0x80;
+      // TS: force cast to number since we know it will exist but typescript can't infer this
+      (newVarintBytes[newVarintBytes.length - 1] as number) |= 0x80;
       newVarintBytes.push(0x00);
 
       // Create the new bytes array with the alternative varint encoding for fid

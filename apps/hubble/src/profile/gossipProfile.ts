@@ -165,7 +165,7 @@ function computeStats(peerIds: string[], datas: number[][], expected: number): s
     return formattedData;
   }
 
-  const allNodes = [0, 0, 0, 0, 0];
+  const allNodes: [number, number, number, number, number] = [0, 0, 0, 0, 0];
 
   // Go over all the nodes and compute the stats
   for (let i = 0; i < peerIds?.length; i++) {
