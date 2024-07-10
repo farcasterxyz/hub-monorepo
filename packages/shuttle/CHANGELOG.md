@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.5.0
+
+### Minor Changes
+
+- Support customization of event batch size and time between flushes
+
 ## 0.4.4
 
 ### Patch Changes
