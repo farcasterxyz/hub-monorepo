@@ -222,6 +222,7 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
     ) {
       // Empties the current batch
       const eventBatch = this.eventsToAdd.splice(0, this.eventsToAdd.length);
+      this.eventBatchBytes = 0;
 
       // Copies the removed events to the stream
       await this.eventStream.add(

@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.5.1
+
+### Patch Changes
+
+- Fix reset of limit for total batch bytes
+
 ## 0.5.0
 
 ### Minor Changes
