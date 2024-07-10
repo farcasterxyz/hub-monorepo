@@ -1,11 +1,11 @@
-import { Redis } from "ioredis";
+import { Cluster, Redis } from "ioredis";
 import { Job, Queue, Worker } from "bullmq";
 import { App } from "./app";
 import { pino } from "pino";
 
 const QUEUE_NAME = "default";
 
-export function getWorker(app: App, redis: Redis, log: pino.Logger, concurrency = 1) {
+export function getWorker(app: App, redis: Redis | Cluster, log: pino.Logger, concurrency = 1) {
   const worker = new Worker(
     QUEUE_NAME,
     async (job: Job) => {
@@ -38,7 +38,7 @@ export function getWorker(app: App, redis: Redis, log: pino.Logger, concurrency 
   return worker;
 }
 
-export function getQueue(redis: Redis) {
+export function getQueue(redis: Redis | Cluster) {
   return new Queue("default", {
     connection: redis,
     defaultJobOptions: { attempts: 3, backoff: { delay: 1000, type: "exponential" } },
