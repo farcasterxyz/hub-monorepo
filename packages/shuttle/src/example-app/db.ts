@@ -7,10 +7,11 @@ import { fileURLToPath } from "node:url";
 import { HubTables } from "@farcaster/hub-shuttle";
 import { Fid } from "../shuttle";
 
-const createMigrator = async (db: Kysely<HubTables>, log: Logger) => {
+const createMigrator = async (db: Kysely<HubTables>, dbSchema: string, log: Logger) => {
   const currentDir = path.dirname(fileURLToPath(import.meta.url));
   const migrator = new Migrator({
     db,
+    migrationTableSchema: dbSchema,
     provider: new FileMigrationProvider({
       fs,
       path,
@@ -21,8 +22,12 @@ const createMigrator = async (db: Kysely<HubTables>, log: Logger) => {
   return migrator;
 };
 
-export const migrateToLatest = async (db: Kysely<HubTables>, log: Logger): Promise<Result<void, unknown>> => {
-  const migrator = await createMigrator(db, log);
+export const migrateToLatest = async (
+  db: Kysely<HubTables>,
+  dbSchema: string,
+  log: Logger,
+): Promise<Result<void, unknown>> => {
+  const migrator = await createMigrator(db, dbSchema, log);
 
   const { error, results } = await migrator.migrateToLatest();
 
