@@ -10,7 +10,7 @@ const DEFAULT_GOSSIP_PORT = 2282;
 const DEFAULT_RPC_PORT = 2283;
 const DEFAULT_HTTP_API_PORT = 2281;
 const DEFAULT_NETWORK = 3; // Farcaster Devnet
-export const DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT = 25_000_000;
+export const DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT = 50_000_000;
 
 export const Config = {
   /** Path to a PeerId file */
