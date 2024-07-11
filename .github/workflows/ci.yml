@@ -85,7 +85,7 @@ jobs:
         options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
 
     steps:
-      # Ensure that Rust version matches dev environment specified in rust-toolchain.toml
+      # Make sure this matches what we do locally and what we build with our Docker image
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: 1.77.0

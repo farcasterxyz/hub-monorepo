@@ -1,2 +1,3 @@
 [toolchain]
+# Make sure this matches what we do in CI and what we build with our Docker image
 channel = "1.70.0"

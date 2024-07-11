@@ -31,6 +31,7 @@ RUN mkdir /home/node/app
 WORKDIR /home/node/app
 
 # Install Rust
+# Make sure this matches what we do locally and in CI
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.70.0
 ENV PATH="/home/node/.cargo/bin:${PATH}"
 
