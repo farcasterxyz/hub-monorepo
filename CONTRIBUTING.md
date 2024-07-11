@@ -42,17 +42,20 @@ Before you get down to coding, take a minute to consider this:
 
 First, ensure that the following are installed globally on your machine:
 
-- [Node.js 18.7+](https://nodejs.org/en/download/releases)
+- [Node.js 20.11+](https://nodejs.org/en/download/releases) using [nvm](https://github.com/nvm-sh/nvm)
 - [Yarn](https://classic.yarnpkg.com/lang/en/docs/install)
 - [Foundry](https://book.getfoundry.sh/getting-started/installation#using-foundryup)
 - [Protobuf compiler](https://protobuf.dev/downloads/)
 - [Rust](https://www.rust-lang.org/tools/install)
+- [CMake](https://formulae.brew.sh/formula/cmake)
 
 Then, from the root folder run:
 
 - `yarn install` to install dependencies
 - `yarn build` to build Hubble and its dependencies
 - `yarn test` to ensure that the test suite runs correctly
+
+NOTE: running `yarn test` currently fails due to an environment issue with shuttle. you can still run yarn test successfully from all the other repositories.
 
 ### 2.2. Signing Commits
 
@@ -78,7 +81,7 @@ max-cache-ttl 100000000
 
 ### 2.3. Navigating the Monorepo
 
-The repository is a monorepo with a primary application in the `/apps/` folder that imports several packages `/packages/`. It is composed of yarn workspaces and uses [TurboRepo](https://turbo.build/) as its build system.
+The repository is a monorepo with a primary application in the `/apps/` folder that imports several packages `/packages/`. It is written primarily in Typescript and uses Yarn to orchestrate tasks and [TurboRepo](https://turbo.build/) as its build system. Some performance intensive code is written in Rust and compiled with Cargo.
 
 You can run commands like `yarn test` and `yarn build` which TurboRepo will automatically parallelize and execute across all workspaces. To execute the application, you'll need to navigate into the app folder and follow the instructions there. The TurboRepo documentation covers other important topics like:
 
