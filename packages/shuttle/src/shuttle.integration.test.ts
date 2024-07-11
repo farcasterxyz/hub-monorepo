@@ -26,6 +26,7 @@ import {
   MessageReconciliation,
 } from "./shuttle";
 import { ok } from "neverthrow";
+import { bytesToHex } from "./utils";
 
 let db: DB;
 let subscriber: FakeHubSubscriber;
@@ -207,20 +208,30 @@ describe("shuttle", () => {
     expect(removeMessageInDb.deletedAt).toBeNull();
   });
 
-  test("marks messages as deleted", async () => {
-    const addMessage1 = await Factories.LinkAddMessage.create({}, { transient: { signer } });
-    const addMessage2 = await Factories.LinkAddMessage.create({}, { transient: { signer } });
-    const addMessage3 = await Factories.LinkAddMessage.create({}, { transient: { signer } });
+  test("marks messages as deleted for compact types", async () => {
+    const addMessage1 = await Factories.LinkAddMessage.create(
+      { data: { timestamp: 1, linkBody: { type: "follow", targetFid: 1 } } },
+      { transient: { signer } },
+    );
+    const addMessage2 = await Factories.LinkAddMessage.create(
+      { data: { timestamp: 2, fid: addMessage1.data.fid, linkBody: { type: "follow", targetFid: 2 } } },
+      { transient: { signer } },
+    );
+    const addMessage3 = await Factories.LinkAddMessage.create(
+      { data: { timestamp: 3, fid: addMessage1.data.fid, linkBody: { type: "follow", targetFid: 3 } } },
+      { transient: { signer } },
+    );
     const removeMessage = await Factories.LinkRemoveMessage.create(
-      { data: { fid: addMessage1.data.fid, linkBody: addMessage1.data.linkBody } },
+      { data: { timestamp: 4, fid: addMessage1.data.fid, linkBody: addMessage1.data.linkBody } },
       { transient: { signer } },
     );
     const compactMessage = await Factories.LinkCompactStateMessage.create(
       {
         data: {
+          timestamp: 5,
           fid: addMessage1.data.fid,
           linkCompactStateBody: {
-            type: addMessage1.data.linkBody.type,
+            type: "follow",
             targetFids: [addMessage2.data.linkBody.targetFid || 0],
           },
         },
@@ -233,52 +244,32 @@ describe("shuttle", () => {
     subscriber.addMessageCallback((msg, operation, state, isNew, wasMissed) => {
       expect(operation).toEqual("merge");
       expect(state).toEqual("created");
-      expect(msg.hash).toEqual(addMessage1.hash);
+      expect(bytesToHex(msg.hash)).toEqual(bytesToHex(addMessage1.hash));
       expect(isNew).toEqual(true);
     });
     subscriber.addMessageCallback((msg, operation, state, isNew, wasMissed) => {
       expect(operation).toEqual("merge");
       expect(state).toEqual("created");
-      expect(msg.hash).toEqual(addMessage2.hash);
+      expect(bytesToHex(msg.hash)).toEqual(bytesToHex(addMessage2.hash));
       expect(isNew).toEqual(true);
     });
     subscriber.addMessageCallback((msg, operation, state, isNew, wasMissed) => {
       expect(operation).toEqual("merge");
       expect(state).toEqual("created");
-      expect(msg.hash).toEqual(addMessage3.hash);
+      expect(bytesToHex(msg.hash)).toEqual(bytesToHex(addMessage3.hash));
       expect(isNew).toEqual(true);
     });
     subscriber.addMessageCallback((msg, operation, state, isNew, wasMissed) => {
       expect(operation).toEqual("delete");
       expect(state).toEqual("deleted");
-      expect(msg.hash).toEqual(addMessage1.hash);
+      expect(bytesToHex(msg.hash)).toEqual(bytesToHex(addMessage1.hash));
       // isNew is true because the message was updated in the db
       expect(isNew).toEqual(true);
     });
     subscriber.addMessageCallback((msg, operation, state, isNew, wasMissed) => {
       expect(operation).toEqual("merge");
       expect(state).toEqual("deleted");
-      expect(msg.hash).toEqual(removeMessage.hash);
-      expect(isNew).toEqual(true);
-    });
-    subscriber.addMessageCallback((msg, operation, state, isNew, wasMissed) => {
-      expect(operation).toEqual("delete");
-      expect(state).toEqual("deleted");
-      expect(msg.hash).toEqual(removeMessage.hash);
-      // isNew is true because the message was updated in the db
-      expect(isNew).toEqual(true);
-    });
-    subscriber.addMessageCallback((msg, operation, state, isNew, wasMissed) => {
-      expect(operation).toEqual("delete");
-      expect(state).toEqual("deleted");
-      expect(msg.hash).toEqual(addMessage3.hash);
-      // isNew is true because the message was updated in the db
-      expect(isNew).toEqual(true);
-    });
-    subscriber.addMessageCallback((msg, operation, state, isNew, wasMissed) => {
-      expect(operation).toEqual("merge");
-      expect(state).toEqual("created");
-      expect(msg.hash).toEqual(compactMessage.hash);
+      expect(bytesToHex(msg.hash)).toEqual(bytesToHex(removeMessage.hash));
       expect(isNew).toEqual(true);
     });
 
@@ -298,6 +289,34 @@ describe("shuttle", () => {
         mergeMessageBody: { message: removeMessage, deletedMessages: [addMessage1] },
       }),
     );
+
+    const hashes = await db
+      .selectFrom("messages")
+      .select("hash")
+      .where((eb) =>
+        eb.and([eb("fid", "=", addMessage1.data.fid), eb("hash", "in", [removeMessage.hash, addMessage3.hash])]),
+      )
+      .execute();
+
+    // preserve order from db:
+    for (const hash of hashes.map((h) => bytesToHex(h.hash))) {
+      const message = bytesToHex(removeMessage.hash) === hash ? removeMessage : addMessage3;
+      subscriber.addMessageCallback((msg, operation, state, isNew, wasMissed) => {
+        expect(operation).toEqual("delete");
+        expect(state).toEqual("deleted");
+        expect(bytesToHex(msg.hash)).toEqual(bytesToHex(message.hash));
+        // isNew is true because the message was updated in the db
+        expect(isNew).toEqual(true);
+      });
+    }
+
+    subscriber.addMessageCallback((msg, operation, state, isNew, wasMissed) => {
+      expect(operation).toEqual("merge");
+      expect(state).toEqual("created");
+      expect(bytesToHex(msg.hash)).toEqual(bytesToHex(compactMessage.hash));
+      expect(isNew).toEqual(true);
+    });
+
     await subscriber.processHubEvent(
       HubEvent.create({
         id: 5,

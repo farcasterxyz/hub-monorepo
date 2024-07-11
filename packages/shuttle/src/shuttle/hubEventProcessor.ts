@@ -69,7 +69,7 @@ export class HubEventProcessor {
         await Promise.all(
           affectedMessages.map(async (deletedMessage) => {
             const state = this.getMessageState(deletedMessage, "delete");
-            await handler.handleMessageMerge(deletedMessage, trx, "delete", state, isNew, wasMissed);
+            await handler.handleMessageMerge(deletedMessage, trx, "delete", state, true, wasMissed);
           }),
         );
 
