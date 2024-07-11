@@ -34,6 +34,7 @@ let redis: RedisClient;
 const signer = Factories.Ed25519Signer.build();
 
 const POSTGRES_URL = process.env["POSTGRES_URL"] || "postgres://shuttle:password@localhost:6541";
+const POSTGRES_SCHEMA = process.env["POSTGRES_SCHEMA"] || "shuttle_test";
 const REDIS_URL = process.env["REDIS_URL"] || "localhost:16379";
 
 class FakeHubSubscriber extends HubSubscriber implements MessageHandler {
@@ -88,12 +89,12 @@ beforeAll(async () => {
   if (process.env["NODE_ENV"] !== "test") {
     throw new Error("NODE_ENV must be set to test");
   }
-  db = getDbClient(POSTGRES_URL);
+  db = getDbClient(POSTGRES_URL, POSTGRES_SCHEMA);
   await sql`DROP DATABASE IF EXISTS shuttle_test`.execute(db);
   await sql`CREATE DATABASE shuttle_test`.execute(db);
 
-  db = getDbClient(`${POSTGRES_URL}/${dbName}`);
-  const result = await migrateToLatest(db, log);
+  db = getDbClient(`${POSTGRES_URL}/${dbName}`, POSTGRES_SCHEMA);
+  const result = await migrateToLatest(db, POSTGRES_SCHEMA, log);
   expect(result.isOk()).toBe(true);
 
   redis = RedisClient.create(REDIS_URL);

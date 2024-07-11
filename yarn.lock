@@ -1283,6 +1283,11 @@
     human-id "^1.0.2"
     prettier "^2.7.1"
 
+"@commander-js/extra-typings@11.0.0":
+  version "11.0.0"
+  resolved "https://registry.npmjs.org/@commander-js/extra-typings/-/extra-typings-11.0.0.tgz#eb922a59550454cad1f319d3d33e675e12e92fa0"
+  integrity sha512-06ol6Kn5gPjFY6v0vWOZ84nQwyqhZdaeZCHYH3vhwewjpOEjniF1KHZxh18887G3poWiJ8qyq5pb6ANuiddfPQ==
+
 "@cspotcode/source-map-support@^0.8.0":
   version "0.8.1"
   resolved "https://registry.npmjs.org/@cspotcode/source-map-support/-/source-map-support-0.8.1.tgz#00629c35a688e05a88b1cda684fb9d5e73f000a1"
@@ -5238,6 +5243,11 @@ combined-stream@^1.0.8:
   dependencies:
     delayed-stream "~1.0.0"
 
+commander@11.0.0:
+  version "11.0.0"
+  resolved "https://registry.npmjs.org/commander/-/commander-11.0.0.tgz#43e19c25dbedc8256203538e8d7e9346877a6f67"
+  integrity sha512-9HMlXtt/BNoYr8ooyjjNRdIilOTkVJXB+GhxMTtOKwk0R4j4lS4NpjuqmRxroBfnfTSHQIHQB7wryHhXarNjmQ==
+
 commander@2.15.1:
   version "2.15.1"
   resolved "https://registry.npmjs.org/commander/-/commander-2.15.1.tgz#df46e867d0fc2aec66a34662b406a9ccafff5b0f"
@@ -5247,11 +5257,6 @@ commander@^10.0.0, commander@~10.0.0:
   version "10.0.0"
   resolved "https://registry.npmjs.org/commander/-/commander-10.0.0.tgz#71797971162cd3cf65f0b9d24eb28f8d303acdf1"
   integrity sha512-zS5PnTI22FIRM6ylNW8G4Ap0IEOyk62fhLSD0+uHRT9McRCLGpkVNvao4bjimpK/GShynyQkFFxHhwMcETmduA==
-
-commander@^11.0.0:
-  version "11.0.0"
-  resolved "https://registry.npmjs.org/commander/-/commander-11.0.0.tgz#43e19c25dbedc8256203538e8d7e9346877a6f67"
-  integrity sha512-9HMlXtt/BNoYr8ooyjjNRdIilOTkVJXB+GhxMTtOKwk0R4j4lS4NpjuqmRxroBfnfTSHQIHQB7wryHhXarNjmQ==
 
 commander@^2.19.0:
   version "2.20.3"
@@ -5601,6 +5606,11 @@ dns-over-http-resolver@^2.1.0:
     native-fetch "^4.0.2"
     receptacle "^1.3.2"
     undici "^5.12.0"
+
+dotenv@16.4.5:
+  version "16.4.5"
+  resolved "https://registry.npmjs.org/dotenv/-/dotenv-16.4.5.tgz#cdd3b3b604cb327e286b4762e13502f717cb099f"
+  integrity sha512-ZmdL2rui+eB2YwhsWzjInR8LldtZHGDoQ1ugH85ppHKwpUHL7j7rN0Ti9NCnGiQbhaZ11FpR+7ao1dNsmduNUg==
 
 dprint-node@^1.0.7:
   version "1.0.7"
