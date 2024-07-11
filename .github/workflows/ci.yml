@@ -123,9 +123,6 @@ jobs:
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
-        with:
-          # Pinning until https://github.com/foundry-rs/foundry/issues/5749 is fixed
-          version: nightly-ca67d15f4abd46394b324c50e21e66f306a1162d
 
       - name: Install dependencies
         run: yarn install
