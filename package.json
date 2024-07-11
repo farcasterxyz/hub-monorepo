@@ -38,7 +38,7 @@
     "rimraf": "^5.0.1",
     "ts-node": "^10.9.1",
     "tsup": "^6.5.0",
-    "turbo": "1.10.3",
+    "turbo": "^2.0.6",
     "typescript": "^5.4.5"
   },
   "lint-staged": {
