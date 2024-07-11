@@ -1,24 +1,29 @@
 # Hubble Monorepo
 
-This monorepo contains Hubble, an official Farcaster Hub implementation, and other packages used to communicate with Hubble.
-
+This monorepo contains [Hubble](https://docs.farcaster.xyz/hubble/hubble), a Farcaster Hub implementation, and other packages used to communicate with Hubble.
 
 ## Getting Started
 
-1. To run Hubble, see the [Hubble docs](https://www.thehubble.xyz/).
-1. To use Hubble, see the [hub-nodejs docs](./packages/hub-nodejs/docs/README.md).
-1. To use the HTTP API to read Hubble data, see the [HTTP API docs](https://www.thehubble.xyz/docs/httpapi/httpapi.html)
+See [CONTRIBUTING.md](./CONTRIBUTING.md) to set up your developer environment and learn about how to contribute. 
 
-## Packages
+## Code Organization
+
+The repository is a monorepo with a primary application in the `/apps/` folder that imports several packages `/packages/`. It is written primarily in Typescript and uses Yarn to orchestrate tasks and [TurboRepo](https://turbo.build/) as its build system. Some performance intensive code is written in Rust and compiled with Cargo.
+
+### Applications
+
+| App Name                                      | Description                                                                    |
+| --------------------------------------------- | ------------------------------------------------------------------------------ |
+| [@farcaster/hubble](./apps/hubble)             | A Farcaster Hub implementation |
+
+To run Hubble, please see the [Hubble docs](https://docs.farcaster.xyz/hubble/hubble).
+
+### Packages
 
 | Package Name                                  | Description                                                                    |
 | --------------------------------------------- | ------------------------------------------------------------------------------ |
-| [@farcaster/hubble](./apps/hubble)             | A Farcaster Hub implementation |
+| [@farcaster/shuttle](./packages/shuttle)       | A package that streams Hubble events to Postgres |
 | [@farcaster/hub-nodejs](./packages/hub-nodejs) | A Node.js client library for Hubble |
 | [@farcaster/hub-web](./packages/hub-web)       | A Browser client library for Hubble |
 | [@farcaster/core](./packages/core)             | Shared code between all packages |
 
-
-## Contributing
-
-Please see [CONTRIBUTING.md](./CONTRIBUTING.md)

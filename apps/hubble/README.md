@@ -1,20 +1,15 @@
 # Hubble
 
+Hubble is an implementation of a [Farcaster Hub](https://docs.farcaster.xyz/hubble/hubble) written in Typescript and Rust. 
 
-[Install](https://www.thehubble.xyz/intro/install.html) | [Documentation](https://www.thehubble.xyz/)
+## Get Started
 
-## What is Hubble?
+Hubble is part of the hub-monorepo repository. To set up your developer environment: 
 
-Hubble is a Typescript implementation of a [Farcaster Hub](https://github.com/farcasterxyz/protocol).
+1. Follow the instructions in the [CONTRIBUTING.md](../../CONTRIBUTING.md) first. 
+2. From this folder, run `yarn test`.
 
-
-A Hub will download an entire copy of the network to your machine and keep it in sync. Messages can be created and uploaded to a Hub and they will propagate to all other Hubs. Running a Hub gives you a private instance that you can query as much as you like and helps decentralize the network.
-
-
-
-## Support 
-
-If you have any questions or need help, please reach out to us on [Telegram](https://t.me/farcasterdevchat).
+If the typescript and rust tests pass successfully, you are ready to go.
 
 ## Contributing
 
