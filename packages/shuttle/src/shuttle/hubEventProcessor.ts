@@ -51,7 +51,12 @@ export class HubEventProcessor {
     wasMissed = false,
   ) {
     await db.transaction().execute(async (trx) => {
-      if (deletedMessages.length > 0 && (operation !== "merge" || !MessageProcessor.isCompactStateMessage(message))) {
+      if (
+        deletedMessages.length > 0 &&
+        (process.env["SHUTTLE_PROCESS_EACH_DELETE"] ||
+          operation !== "merge" ||
+          !MessageProcessor.isCompactStateMessage(message))
+      ) {
         await Promise.all(
           deletedMessages.map(async (deletedMessage) => {
             const isNew = await MessageProcessor.storeMessage(deletedMessage, trx, "delete", log);
@@ -62,19 +67,14 @@ export class HubEventProcessor {
       } else if (operation === "merge" && MessageProcessor.isCompactStateMessage(message)) {
         const affectedMessages = await MessageProcessor.deleteDifferenceMessages(message, trx, log);
         await Promise.all(
-          deletedMessages.map(async (deletedMessage) => {
-            let isNew = affectedMessages.get(bytesToHex(deletedMessage.hash));
-            if (isNew === undefined) {
-              log.warn(`Message ${bytesToHex(message.hash)} was not already in set, inserting as deleted row.`);
-              isNew = await MessageProcessor.storeMessage(deletedMessage, trx, "delete", log);
-            }
+          affectedMessages.map(async (deletedMessage) => {
             const state = this.getMessageState(deletedMessage, "delete");
             await handler.handleMessageMerge(deletedMessage, trx, "delete", state, isNew, wasMissed);
           }),
         );
 
-        const eventSet = new Set(deletedMessages.map((m) => bytesToHex(m.hash)));
-        for (const hash of [...affectedMessages.keys()].filter((m) => !eventSet.has(m))) {
+        const eventSet = new Set(affectedMessages.map((m) => bytesToHex(m.hash)));
+        for (const hash of deletedMessages.filter((m) => !eventSet.has(bytesToHex(m.hash)))) {
           log.warn(`Message ${hash} was updated, but was not in deleted messages from merge event.`);
         }
       }

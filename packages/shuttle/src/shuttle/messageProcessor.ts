@@ -94,7 +94,7 @@ export class MessageProcessor {
     trx: DB,
     log: pino.Logger | undefined = undefined,
     validate = true,
-  ): Promise<Map<`0x${string}`, boolean>> {
+  ): Promise<Message[]> {
     if (!MessageProcessor.isCompactStateMessage(message)) {
       log?.warn(`Invalid message type for set difference deletion ${message.data?.type}`);
       throw new Error(`Invalid message type for set difference deletion ${message.data?.type}`);
@@ -108,30 +108,16 @@ export class MessageProcessor {
       }
     }
 
-    const potentialConflicts = await trx
-      .selectFrom("messages")
-      .select(["hash"])
-      .where(this.getConflictCriteria(message))
-      .execute();
-
     const result = await trx
       .updateTable("messages")
       .set({
         deletedAt: new Date(),
       })
-      .returning(["hash"])
+      .returningAll()
       .where(this.getConflictCriteria(message))
       .execute();
 
-    const updateSet = new Set(result.map((r) => bytesToHex(r.hash)));
-    const resultMap = new Map<`0x${string}`, boolean>();
-
-    for (const row of potentialConflicts) {
-      const hash = bytesToHex(row.hash);
-      resultMap.set(hash, updateSet.has(hash));
-    }
-
-    return resultMap;
+    return result.map((m) => Message.decode(m.raw));
   }
 
   // Returns the conflicting record criteria for a given message. Assumes message is a full state type
@@ -159,6 +145,7 @@ export class MessageProcessor {
         eb("revokedAt", "is", null),
         eb("timestamp", "<", farcasterTimeToDate(data.timestamp)),
       ];
+
       return eb.and(conditions);
     };
   }
