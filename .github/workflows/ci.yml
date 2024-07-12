@@ -60,7 +60,7 @@ jobs:
         include:
           - node_version: 20
             runs_on: 'warp-ubuntu-latest-x64-16x'
-          - node_version: 21
+          - node_version: 22
             runs_on: 'warp-ubuntu-latest-arm64-16x' # Only works on ARM for now
           - node_version: 22
             runs_on: 'warp-ubuntu-latest-x64-16x'
