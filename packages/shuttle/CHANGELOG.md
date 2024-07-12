@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.5.3
+
+### Patch Changes
+
+- 57b9c6ab: Re-build package
+
 ## 0.5.2
 
 ### Patch Changes
