@@ -837,7 +837,7 @@ export const validateFrameActionBody = (body: protobufs.FrameActionBody): HubRes
     return err(new HubError("bad_request.validation_failure", "invalid button index"));
   }
 
-  if (validateBytesAsString(body.url, 256, true).isErr()) {
+  if (validateBytesAsString(body.url, 1024, true).isErr()) {
     return err(new HubError("bad_request.validation_failure", "invalid url"));
   }
   if (validateBytesAsString(body.inputText, 256).isErr()) {
