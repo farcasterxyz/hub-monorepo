@@ -1110,6 +1110,11 @@ export class Hub implements HubInterface {
   }
 
   async getContactInfoContent(): HubAsyncResult<ContactInfoContent> {
+    const fid = this.options.hubOperatorFid;
+    if (!fid) {
+      return err(new HubError("unavailable", "no fid provided"));
+    }
+
     const nodeMultiAddr = this.gossipAddresses[0] as Multiaddr;
     const family = nodeMultiAddr?.nodeAddress().family;
     const announceIp = this.options.announceIp ?? nodeMultiAddr?.nodeAddress().address;
@@ -1142,6 +1147,7 @@ export class Hub implements HubInterface {
       network: this.options.network,
       appVersion: APP_VERSION,
       timestamp: Date.now(),
+      fid: fid,
     });
     const content = ContactInfoContent.create({
       gossipAddress: gossipAddressContactInfo,
@@ -1152,6 +1158,7 @@ export class Hub implements HubInterface {
       network: this.options.network,
       appVersion: APP_VERSION,
       timestamp: Date.now(),
+      fid: fid,
       // omit above in a subsequent version
       body: body,
     });
@@ -1435,6 +1442,7 @@ export class Hub implements HubInterface {
           network: content.network,
           appVersion: content.appVersion,
           timestamp: content.timestamp,
+          // TODO: fid is not included yet for backwards compatibility
         });
 
     // Don't process messages that are too old

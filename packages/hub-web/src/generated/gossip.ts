@@ -48,6 +48,7 @@ export interface ContactInfoContentBody {
   network: FarcasterNetwork;
   appVersion: string;
   timestamp: number;
+  fid: number;
 }
 
 export interface ContactInfoContent {
@@ -59,6 +60,7 @@ export interface ContactInfoContent {
   network: FarcasterNetwork;
   appVersion: string;
   timestamp: number;
+  fid: number;
   body:
     | ContactInfoContentBody
     | undefined;
@@ -217,6 +219,7 @@ function createBaseContactInfoContentBody(): ContactInfoContentBody {
     network: 0,
     appVersion: "",
     timestamp: 0,
+    fid: 0,
   };
 }
 
@@ -245,6 +248,9 @@ export const ContactInfoContentBody = {
     }
     if (message.timestamp !== 0) {
       writer.uint32(64).uint64(message.timestamp);
+    }
+    if (message.fid !== 0) {
+      writer.uint32(72).uint64(message.fid);
     }
     return writer;
   },
@@ -312,6 +318,13 @@ export const ContactInfoContentBody = {
 
           message.timestamp = longToNumber(reader.uint64() as Long);
           continue;
+        case 9:
+          if (tag != 72) {
+            break;
+          }
+
+          message.fid = longToNumber(reader.uint64() as Long);
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -331,6 +344,7 @@ export const ContactInfoContentBody = {
       network: isSet(object.network) ? farcasterNetworkFromJSON(object.network) : 0,
       appVersion: isSet(object.appVersion) ? String(object.appVersion) : "",
       timestamp: isSet(object.timestamp) ? Number(object.timestamp) : 0,
+      fid: isSet(object.fid) ? Number(object.fid) : 0,
     };
   },
 
@@ -350,6 +364,7 @@ export const ContactInfoContentBody = {
     message.network !== undefined && (obj.network = farcasterNetworkToJSON(message.network));
     message.appVersion !== undefined && (obj.appVersion = message.appVersion);
     message.timestamp !== undefined && (obj.timestamp = Math.round(message.timestamp));
+    message.fid !== undefined && (obj.fid = Math.round(message.fid));
     return obj;
   },
 
@@ -371,6 +386,7 @@ export const ContactInfoContentBody = {
     message.network = object.network ?? 0;
     message.appVersion = object.appVersion ?? "";
     message.timestamp = object.timestamp ?? 0;
+    message.fid = object.fid ?? 0;
     return message;
   },
 };
@@ -385,6 +401,7 @@ function createBaseContactInfoContent(): ContactInfoContent {
     network: 0,
     appVersion: "",
     timestamp: 0,
+    fid: 0,
     body: undefined,
     signature: new Uint8Array(),
     signer: new Uint8Array(),
@@ -418,17 +435,20 @@ export const ContactInfoContent = {
     if (message.timestamp !== 0) {
       writer.uint32(64).uint64(message.timestamp);
     }
+    if (message.fid !== 0) {
+      writer.uint32(72).uint64(message.fid);
+    }
     if (message.body !== undefined) {
-      ContactInfoContentBody.encode(message.body, writer.uint32(74).fork()).ldelim();
+      ContactInfoContentBody.encode(message.body, writer.uint32(82).fork()).ldelim();
     }
     if (message.signature.length !== 0) {
-      writer.uint32(82).bytes(message.signature);
+      writer.uint32(90).bytes(message.signature);
     }
     if (message.signer.length !== 0) {
-      writer.uint32(90).bytes(message.signer);
+      writer.uint32(98).bytes(message.signer);
     }
     if (message.dataBytes !== undefined) {
-      writer.uint32(98).bytes(message.dataBytes);
+      writer.uint32(106).bytes(message.dataBytes);
     }
     return writer;
   },
@@ -497,28 +517,35 @@ export const ContactInfoContent = {
           message.timestamp = longToNumber(reader.uint64() as Long);
           continue;
         case 9:
-          if (tag != 74) {
+          if (tag != 72) {
             break;
           }
 
-          message.body = ContactInfoContentBody.decode(reader, reader.uint32());
+          message.fid = longToNumber(reader.uint64() as Long);
           continue;
         case 10:
           if (tag != 82) {
             break;
           }
 
-          message.signature = reader.bytes();
+          message.body = ContactInfoContentBody.decode(reader, reader.uint32());
           continue;
         case 11:
           if (tag != 90) {
             break;
           }
 
-          message.signer = reader.bytes();
+          message.signature = reader.bytes();
           continue;
         case 12:
           if (tag != 98) {
+            break;
+          }
+
+          message.signer = reader.bytes();
+          continue;
+        case 13:
+          if (tag != 106) {
             break;
           }
 
@@ -543,6 +570,7 @@ export const ContactInfoContent = {
       network: isSet(object.network) ? farcasterNetworkFromJSON(object.network) : 0,
       appVersion: isSet(object.appVersion) ? String(object.appVersion) : "",
       timestamp: isSet(object.timestamp) ? Number(object.timestamp) : 0,
+      fid: isSet(object.fid) ? Number(object.fid) : 0,
       body: isSet(object.body) ? ContactInfoContentBody.fromJSON(object.body) : undefined,
       signature: isSet(object.signature) ? bytesFromBase64(object.signature) : new Uint8Array(),
       signer: isSet(object.signer) ? bytesFromBase64(object.signer) : new Uint8Array(),
@@ -566,6 +594,7 @@ export const ContactInfoContent = {
     message.network !== undefined && (obj.network = farcasterNetworkToJSON(message.network));
     message.appVersion !== undefined && (obj.appVersion = message.appVersion);
     message.timestamp !== undefined && (obj.timestamp = Math.round(message.timestamp));
+    message.fid !== undefined && (obj.fid = Math.round(message.fid));
     message.body !== undefined && (obj.body = message.body ? ContactInfoContentBody.toJSON(message.body) : undefined);
     message.signature !== undefined &&
       (obj.signature = base64FromBytes(message.signature !== undefined ? message.signature : new Uint8Array()));
@@ -594,6 +623,7 @@ export const ContactInfoContent = {
     message.network = object.network ?? 0;
     message.appVersion = object.appVersion ?? "";
     message.timestamp = object.timestamp ?? 0;
+    message.fid = object.fid ?? 0;
     message.body = (object.body !== undefined && object.body !== null)
       ? ContactInfoContentBody.fromPartial(object.body)
       : undefined;

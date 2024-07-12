@@ -212,8 +212,17 @@ describe("GossipNode", () => {
 
       const contactInfo = ContactInfoContent.create();
       await node.gossipContactInfo(contactInfo);
+      // should be detected as a duplicate
       const res2 = await node.gossipContactInfo(contactInfo);
       expect(res2.isErr()).toBeTruthy();
+    });
+
+    test("Gossip contact info with FID should not return error", async () => {
+      await node.start([]);
+
+      const contactInfo = ContactInfoContent.create({ fid: Factories.Fid.build() });
+      const res = await node.gossipContactInfo(contactInfo);
+      expect(res.isOk()).toBeTruthy();
     });
 
     test("Gossip Ids do match for gossip V1 messages", async () => {

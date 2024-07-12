@@ -583,34 +583,35 @@ app
     };
 
     // Startup check for Hub Operator FID
-    if (options.hubOperatorFid && !isNaN(options.hubOperatorFid)) {
-      try {
-        const fid = options.hubOperatorFid;
-        const response = await axios.get(`https://fnames.farcaster.xyz/transfers?fid=${fid}`);
-        const transfers = response.data.transfers;
-        if (transfers && transfers.length > 0) {
-          const usernameField = transfers[transfers.length - 1].username;
-          if (usernameField !== null && usernameField !== undefined) {
-            startupCheck.printStartupCheckStatus(StartupCheckStatus.OK, `Hub Operator FID is ${fid}(${usernameField})`);
-          } else {
-            startupCheck.printStartupCheckStatus(
-              StartupCheckStatus.WARNING,
-              `Hub Operator FID is ${fid}, but no username was found`,
-            );
-          }
-        }
-      } catch (e) {
-        logger.error(e, `Error fetching username for Hub Operator FID ${options.hubOperatorFid}`);
-        startupCheck.printStartupCheckStatus(
-          StartupCheckStatus.WARNING,
-          `Hub Operator FID is ${options.hubOperatorFid}, but no username was found`,
-        );
-      }
-    } else {
+    if (!options.hubOperatorFid || isNaN(options.hubOperatorFid)) {
       startupCheck.printStartupCheckStatus(
-        StartupCheckStatus.WARNING,
+        StartupCheckStatus.ERROR,
         "Hub Operator FID is not set",
         "https://www.thehubble.xyz/intro/install.html#troubleshooting",
+      );
+      return flushAndExit(1);
+    }
+
+    try {
+      const fid = options.hubOperatorFid;
+      const response = await axios.get(`https://fnames.farcaster.xyz/transfers?fid=${fid}`);
+      const transfers = response.data.transfers;
+      if (transfers && transfers.length > 0) {
+        const usernameField = transfers[transfers.length - 1].username;
+        if (usernameField !== null && usernameField !== undefined) {
+          startupCheck.printStartupCheckStatus(StartupCheckStatus.OK, `Hub Operator FID is ${fid}(${usernameField})`);
+        } else {
+          startupCheck.printStartupCheckStatus(
+            StartupCheckStatus.WARNING,
+            `Hub Operator FID is ${fid}, but no username was found`,
+          );
+        }
+      }
+    } catch (e) {
+      logger.error(e, `Error fetching username for Hub Operator FID ${options.hubOperatorFid}`);
+      startupCheck.printStartupCheckStatus(
+        StartupCheckStatus.WARNING,
+        `Hub Operator FID is ${options.hubOperatorFid}, but no username was found`,
       );
     }
 
