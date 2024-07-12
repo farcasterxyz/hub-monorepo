@@ -1,6 +1,8 @@
 import { ResultAsync, err } from "neverthrow";
 import { LocalAccount } from "viem/accounts";
-import { bytesToHex, encodeAbiParameters } from "viem/utils";
+import { bytesToHex } from "viem/utils";
+import { encodeAbiParameters } from "viem";
+
 import { bytesToHexString, hexStringToBytes } from "../bytes";
 import {
   EIP_712_FARCASTER_VERIFICATION_CLAIM,
