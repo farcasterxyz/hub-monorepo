@@ -35,11 +35,11 @@ message ContactInfoContent {
   FarcasterNetwork network = 6;
   string app_version = 7;
   uint64 timestamp = 8;
-  uint64 fid = 9;
-  ContactInfoContentBody body = 10;
-  bytes signature = 11; // Signature of the message digest
-  bytes signer = 12; // Public key of the peer that originated the contact info
-  optional bytes data_bytes = 13; // Optional alternative serialization used for signing
+  ContactInfoContentBody body = 9;
+  bytes signature = 10; // Signature of the message digest
+  bytes signer = 11; // Public key of the peer that originated the contact info
+  optional bytes data_bytes = 12; // Optional alternative serialization used for signing
+  uint64 fid = 13;
 }
 
 message PingMessageBody {
