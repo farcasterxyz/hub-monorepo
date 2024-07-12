@@ -21,7 +21,7 @@ RUN /home/node/.yarn/bin/turbo prune --scope=@farcaster/hubble --docker
 ############## Stage 2: Build the code using a full node image ################
 ###############################################################################
 
-FROM node:21.6-slim AS build
+FROM node:22.4.1-slim AS build
 
 # Needed for compilation step
 RUN apt-get update && apt-get install -y python3 make g++ linux-headers-generic curl protobuf-compiler libclang-dev cmake
