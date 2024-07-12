@@ -31,7 +31,8 @@ RUN mkdir /home/node/app
 WORKDIR /home/node/app
 
 # Install Rust
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.70.0
+# Make sure this matches what we do locally and in CI
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.77.0
 ENV PATH="/home/node/.cargo/bin:${PATH}"
 
 # Rust flags to allow building with musl, which is needed for alpine
@@ -61,7 +62,7 @@ RUN rm -rf node_modules && yarn install --production --ignore-scripts --prefer-o
 ########## Stage 3: Copy over the built code to a leaner alpine image #########
 ###############################################################################
 
-FROM node:21.6-slim as app
+FROM node:22.4.1-slim as app
 
 RUN apt-get update && apt-get install -y curl procps
 

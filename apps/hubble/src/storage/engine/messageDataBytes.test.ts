@@ -105,7 +105,7 @@ describe("messageDataBytes", () => {
 
       const castAddDecoded = Message.decode(castAddBytes);
       expect(castAddDecoded.data).toBeUndefined();
-      expect(bytesCompare(castAddDecoded.dataBytes as Uint8Array, castAddClone.dataBytes)).toEqual(0);
+      expect(bytesCompare(castAddDecoded.dataBytes as Uint8Array, castAddClone.dataBytes as Uint8Array)).toEqual(0);
 
       // Then, get it via the engine. The castAdd should be fetched correctly and the data body should be populated
       const fetched = await engine.getCast(fid, castAdd.hash);

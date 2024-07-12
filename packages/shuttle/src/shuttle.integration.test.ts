@@ -26,6 +26,7 @@ import {
   MessageReconciliation,
 } from "./shuttle";
 import { ok } from "neverthrow";
+import { bytesToHex } from "./utils";
 
 let db: DB;
 let subscriber: FakeHubSubscriber;
@@ -206,6 +207,167 @@ describe("shuttle", () => {
       .executeTakeFirstOrThrow();
     expect(Buffer.from(removeMessageInDb.hash)).toEqual(Buffer.from(removeMessage.hash));
     expect(removeMessageInDb.deletedAt).toBeNull();
+  });
+
+  test("marks messages as deleted for compact types", async () => {
+    const addMessage1 = await Factories.LinkAddMessage.create(
+      { data: { timestamp: 1, linkBody: { type: "follow", targetFid: 1 } } },
+      { transient: { signer } },
+    );
+    const addMessage2 = await Factories.LinkAddMessage.create(
+      { data: { timestamp: 2, fid: addMessage1.data.fid, linkBody: { type: "follow", targetFid: 2 } } },
+      { transient: { signer } },
+    );
+    const addMessage3 = await Factories.LinkAddMessage.create(
+      { data: { timestamp: 3, fid: addMessage1.data.fid, linkBody: { type: "follow", targetFid: 3 } } },
+      { transient: { signer } },
+    );
+    const removeMessage = await Factories.LinkRemoveMessage.create(
+      { data: { timestamp: 4, fid: addMessage1.data.fid, linkBody: addMessage1.data.linkBody } },
+      { transient: { signer } },
+    );
+    const compactMessage = await Factories.LinkCompactStateMessage.create(
+      {
+        data: {
+          timestamp: 5,
+          fid: addMessage1.data.fid,
+          linkCompactStateBody: {
+            type: "follow",
+            targetFids: [addMessage2.data.linkBody.targetFid || 0],
+          },
+        },
+      },
+      { transient: { signer } },
+    );
+
+    // We expect 8 callbacks, three for the adds, one for the delete of the add, one for the remove,
+    // two for the deletes of the compact, one for the compact, in that order
+    subscriber.addMessageCallback((msg, operation, state, isNew, wasMissed) => {
+      expect(operation).toEqual("merge");
+      expect(state).toEqual("created");
+      expect(bytesToHex(msg.hash)).toEqual(bytesToHex(addMessage1.hash));
+      expect(isNew).toEqual(true);
+    });
+    subscriber.addMessageCallback((msg, operation, state, isNew, wasMissed) => {
+      expect(operation).toEqual("merge");
+      expect(state).toEqual("created");
+      expect(bytesToHex(msg.hash)).toEqual(bytesToHex(addMessage2.hash));
+      expect(isNew).toEqual(true);
+    });
+    subscriber.addMessageCallback((msg, operation, state, isNew, wasMissed) => {
+      expect(operation).toEqual("merge");
+      expect(state).toEqual("created");
+      expect(bytesToHex(msg.hash)).toEqual(bytesToHex(addMessage3.hash));
+      expect(isNew).toEqual(true);
+    });
+    subscriber.addMessageCallback((msg, operation, state, isNew, wasMissed) => {
+      expect(operation).toEqual("delete");
+      expect(state).toEqual("deleted");
+      expect(bytesToHex(msg.hash)).toEqual(bytesToHex(addMessage1.hash));
+      // isNew is true because the message was updated in the db
+      expect(isNew).toEqual(true);
+    });
+    subscriber.addMessageCallback((msg, operation, state, isNew, wasMissed) => {
+      expect(operation).toEqual("merge");
+      expect(state).toEqual("deleted");
+      expect(bytesToHex(msg.hash)).toEqual(bytesToHex(removeMessage.hash));
+      expect(isNew).toEqual(true);
+    });
+
+    await subscriber.processHubEvent(
+      HubEvent.create({ id: 1, type: HubEventType.MERGE_MESSAGE, mergeMessageBody: { message: addMessage1 } }),
+    );
+    await subscriber.processHubEvent(
+      HubEvent.create({ id: 2, type: HubEventType.MERGE_MESSAGE, mergeMessageBody: { message: addMessage2 } }),
+    );
+    await subscriber.processHubEvent(
+      HubEvent.create({ id: 3, type: HubEventType.MERGE_MESSAGE, mergeMessageBody: { message: addMessage3 } }),
+    );
+    await subscriber.processHubEvent(
+      HubEvent.create({
+        id: 4,
+        type: HubEventType.MERGE_MESSAGE,
+        mergeMessageBody: { message: removeMessage, deletedMessages: [addMessage1] },
+      }),
+    );
+
+    const hashes = await db
+      .selectFrom("messages")
+      .select("hash")
+      .where((eb) =>
+        eb.and([eb("fid", "=", addMessage1.data.fid), eb("hash", "in", [removeMessage.hash, addMessage3.hash])]),
+      )
+      .execute();
+
+    // preserve order from db:
+    for (const hash of hashes.map((h) => bytesToHex(h.hash))) {
+      const message = bytesToHex(removeMessage.hash) === hash ? removeMessage : addMessage3;
+      subscriber.addMessageCallback((msg, operation, state, isNew, wasMissed) => {
+        expect(operation).toEqual("delete");
+        expect(state).toEqual("deleted");
+        expect(bytesToHex(msg.hash)).toEqual(bytesToHex(message.hash));
+        // isNew is true because the message was updated in the db
+        expect(isNew).toEqual(true);
+      });
+    }
+
+    subscriber.addMessageCallback((msg, operation, state, isNew, wasMissed) => {
+      expect(operation).toEqual("merge");
+      expect(state).toEqual("created");
+      expect(bytesToHex(msg.hash)).toEqual(bytesToHex(compactMessage.hash));
+      expect(isNew).toEqual(true);
+    });
+
+    await subscriber.processHubEvent(
+      HubEvent.create({
+        id: 5,
+        type: HubEventType.MERGE_MESSAGE,
+        mergeMessageBody: {
+          message: compactMessage,
+          deletedMessages: [removeMessage, addMessage3],
+        },
+      }),
+    );
+
+    const addMessage1InDb = await db
+      .selectFrom("messages")
+      .select(["hash", "deletedAt"])
+      .where("hash", "=", addMessage1.hash)
+      .executeTakeFirstOrThrow();
+    expect(Buffer.from(addMessage1InDb.hash)).toEqual(Buffer.from(addMessage1.hash));
+    expect(addMessage1InDb.deletedAt).not.toBeNull();
+
+    const addMessage2InDb = await db
+      .selectFrom("messages")
+      .select(["hash", "deletedAt"])
+      .where("hash", "=", addMessage2.hash)
+      .executeTakeFirstOrThrow();
+    expect(Buffer.from(addMessage2InDb.hash)).toEqual(Buffer.from(addMessage2.hash));
+    expect(addMessage2InDb.deletedAt).toBeNull();
+
+    const addMessage3InDb = await db
+      .selectFrom("messages")
+      .select(["hash", "deletedAt"])
+      .where("hash", "=", addMessage3.hash)
+      .executeTakeFirstOrThrow();
+    expect(Buffer.from(addMessage3InDb.hash)).toEqual(Buffer.from(addMessage3.hash));
+    expect(addMessage3InDb.deletedAt).not.toBeNull();
+
+    const removeMessageInDb = await db
+      .selectFrom("messages")
+      .select(["hash", "deletedAt"])
+      .where("hash", "=", removeMessage.hash)
+      .executeTakeFirstOrThrow();
+    expect(Buffer.from(removeMessageInDb.hash)).toEqual(Buffer.from(removeMessage.hash));
+    expect(removeMessageInDb.deletedAt).not.toBeNull();
+
+    const compactMessageInDb = await db
+      .selectFrom("messages")
+      .select(["hash", "deletedAt"])
+      .where("hash", "=", compactMessage.hash)
+      .executeTakeFirstOrThrow();
+    expect(Buffer.from(compactMessageInDb.hash)).toEqual(Buffer.from(compactMessage.hash));
+    expect(compactMessageInDb.deletedAt).toBeNull();
   });
 
   test("reconciler flags incorrectly deleted messages", async () => {

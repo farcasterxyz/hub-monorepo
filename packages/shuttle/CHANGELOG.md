@@ -1,5 +1,12 @@
 # @farcaster/hub-shuttle
 
+## 0.5.2
+
+### Patch Changes
+
+- a8b69a07: feat: make message processor handle removals for compact state explicitly, warn on mismatching deletes
+- cc357b4b: feat(shuttle): Enables shuttle and its example-app to optionally use a postgres schema other than "public"
+
 ## 0.5.1
 
 ### Patch Changes
