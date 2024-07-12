@@ -1,7 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalDependencies": [ "tsconfig.json"],
-  "tasks": {
+  "pipeline": {
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["build/**", "dist/**"]
@@ -31,5 +30,6 @@
       "dependsOn": ["lint:ci", "build"],
       "outputs": ["coverage/**"]
     }
-  }
+  },
+  "globalDependencies": ["tsconfig.json"]
 }
