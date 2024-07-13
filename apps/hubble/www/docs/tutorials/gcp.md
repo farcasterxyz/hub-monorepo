@@ -29,7 +29,7 @@ nano main.tf
 Now paste the content of below into your main.tf \ 
 Replace "$YOUR_PROJECT_ID" with your personal ID.
 
-<figure><img src="../assets/images/gcp_project_id.png"
+<figure><img src="../assets/images/gcp_project_id.png" /></figure>
 
 This is the configuration of your GCP virtual machine that will be created.
 
@@ -98,7 +98,7 @@ Example output:
 
 Enable Compute Engine API
 
-<figure><img src="../assets/images/gcp_compute_engine_api.png"
+<figure><img src="../assets/images/gcp_compute_engine_api.png" /></figure>
 
 Now execute this command:
 
