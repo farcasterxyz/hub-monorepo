@@ -1,5 +1,12 @@
 # @farcaster/hub-shuttle
 
+## 0.5.5
+
+### Patch Changes
+
+- a5262796: Switch before/after hooks to work with batches for efficiency
+  - @farcaster/hub-nodejs@0.11.20
+
 ## 0.5.4
 
 ### Patch Changes
