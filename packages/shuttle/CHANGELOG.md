@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.5.4
+
+### Patch Changes
+
+- 41f32cd0: Add support for running before/after hooks when processing events
+
 ## 0.5.3
 
 ### Patch Changes
