@@ -170,8 +170,8 @@ export class BaseHubSubscriber extends HubSubscriber {
   }
 }
 
-type PreProcessHandler = (event: HubEvent, eventBytes: Uint8Array) => Promise<ProcessResult>;
-type PostProcessHandler = (event: HubEvent, eventBytes: Uint8Array) => Promise<void>;
+type PreProcessHandler = (events: HubEvent[], eventBytes: Uint8Array[]) => Promise<ProcessResult[]>;
+type PostProcessHandler = (events: HubEvent[], eventBytes: Uint8Array[]) => Promise<void>;
 
 type EventStreamHubSubscriberOptions = {
   beforeProcess?: PreProcessHandler;
@@ -227,9 +227,6 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
   public override async processHubEvent(event: HubEvent): Promise<boolean> {
     const eventBytes = Buffer.from(HubEvent.encode(event).finish());
 
-    const preprocessResult = await this.beforeProcess?.call(this, event, eventBytes);
-    if (preprocessResult?.skipped) return false; // Skip event
-
     this.eventBatchBytes += eventBytes.length;
     this.eventsToAdd.push([event, eventBytes]);
     if (
@@ -239,13 +236,20 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
     ) {
       // Empties the current batch
       const eventBatch = this.eventsToAdd.splice(0, this.eventsToAdd.length);
+      const events = eventBatch.map(([evt, _evtBytes]) => evt);
       this.eventBatchBytes = 0;
 
+      let eventsToWriteBatch = eventBatch;
+      if (this.beforeProcess) {
+        const eventBytesBatch = eventBatch.map(([_evt, evtBytes]) => evtBytes);
+        const preprocessResult = await this.beforeProcess.call(this, events, eventBytesBatch);
+        eventsToWriteBatch = eventBatch.filter((evt, idx) => !preprocessResult[idx]?.skipped);
+      }
+
+      const eventToWriteBatch = eventsToWriteBatch.map(([evt, _evtBytes]) => evt);
+      const eventBytesToWriteBatch = eventsToWriteBatch.map(([_evt, evtBytes]) => evtBytes);
       // Copies the removed events to the stream
-      await this.eventStream.add(
-        this.streamKey,
-        eventBatch.map(([_event, eventBytes]) => eventBytes),
-      );
+      await this.eventStream.add(this.streamKey, eventBytesToWriteBatch);
 
       this.eventBatchLastFlushedAt = Date.now();
 
@@ -255,9 +259,7 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
       await this.redis.setLastProcessedEvent(this.redisKey, lastEventId);
 
       if (this.afterProcess) {
-        for (const [evt, evtBytes] of eventBatch) {
-          await this.afterProcess.call(this, evt, evtBytes);
-        }
+        await this.afterProcess.call(this, eventToWriteBatch, eventBytesToWriteBatch);
       }
     }
 

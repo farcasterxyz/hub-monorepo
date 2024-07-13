@@ -204,8 +204,8 @@ const MESSAGE_PROCESSING_CONCURRENCY = 10;
 const EVENT_PROCESSING_TIMEOUT = 10_000; // How long before retrying processing (millis)
 const EVENT_DELETION_THRESHOLD = 1000 * 60 * 60 * 24; // 1 day
 
-type PreProcessHandler = (event: HubEvent, eventBytes: Uint8Array) => Promise<ProcessResult>;
-type PostProcessHandler = (event: HubEvent, eventBytes: Uint8Array) => Promise<void>;
+type PreProcessHandler = (events: HubEvent[], eventsBytes: Uint8Array[]) => Promise<ProcessResult[]>;
+type PostProcessHandler = (events: HubEvent[], eventsBytes: Uint8Array[]) => Promise<void>;
 
 export type EventStreamConsumerOptions = {
   maxEventsPerFetch?: number;
@@ -296,27 +296,32 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
 
         eventsRead += events.length;
 
-        await inBatchesOf(events, this.messageProcessingConcurrency, async (batchedEvents) => {
+        let eventChunk: [string, HubEvent, Buffer][] = events.map(({ id, data: eventBytes }) => [
+          id,
+          HubEvent.decode(eventBytes),
+          eventBytes,
+        ]);
+        if (this.beforeProcess) {
+          const allEventsInChunk = eventChunk.map(([_id, evt, _evtBytes]) => evt);
+          const allEventsBytesInChunk = eventChunk.map(([_id, _evt, evtBytes]) => evtBytes);
+          const preprocessResult = await this.beforeProcess.call(this, allEventsInChunk, allEventsBytesInChunk);
+          eventChunk = eventChunk.filter((_evt, idx) => !preprocessResult[idx]?.skipped);
+        }
+
+        await inBatchesOf(eventChunk, this.messageProcessingConcurrency, async (batchedEvents) => {
           const eventIdsProcessed: string[] = [];
+          const eventIdsSkipped: string[] = [];
           await Promise.allSettled(
-            batchedEvents.map((event) =>
-              (async (streamEvent) => {
+            batchedEvents.map(([id, hubEvt, evtBytes]) =>
+              (async (streamId, hubEvent, eventBytes) => {
                 try {
-                  const dequeueDelay = Date.now() - Number(streamEvent.id.split("-")[0]);
+                  const dequeueDelay = Date.now() - Number(streamId.split("-")[0]);
                   statsd.timing("hub.event.stream.dequeue_delay", dequeueDelay, {
                     hub: this.hub.host,
                     source: this.shardKey,
                   });
 
                   const startTime = Date.now();
-                  const hubEvent = HubEvent.decode(streamEvent.data);
-
-                  const preprocessResult = await this.beforeProcess?.call(this, hubEvent, streamEvent.data);
-                  if (preprocessResult?.skipped) {
-                    eventIdsProcessed.push(streamEvent.id);
-                    return; // Skip event
-                  }
-
                   const result = await onEvent(hubEvent);
                   const processingTime = Date.now() - startTime;
                   statsd.timing("hub.event.stream.time", processingTime, {
@@ -327,17 +332,16 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
 
                   if (result.isErr()) {
                     this.emit("onError", hubEvent, result.error);
+                    eventIdsSkipped.push(streamId);
                     throw result.error;
                   }
 
-                  eventIdsProcessed.push(streamEvent.id);
+                  eventIdsProcessed.push(streamId);
                   if (result.value.skipped) {
                     statsd.increment("hub.event.stream.skipped", 1, {
                       hub: this.hub.host,
                       source: this.shardKey,
                     });
-                  } else {
-                    await this.afterProcess?.call(this, hubEvent, streamEvent.data);
                   }
 
                   if (!result.value.skipped) {
@@ -352,7 +356,7 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
                   statsd.increment("hub.event.stream.errors", { hub: this.hub.host, source: this.shardKey });
                   this.log.error(e); // Report and move on to next event
                 }
-              })(event),
+              })(id, hubEvt, evtBytes),
             ),
           );
 
@@ -368,6 +372,13 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
               hub: this.hub.host,
               source: this.shardKey,
             });
+
+            if (this.afterProcess) {
+              const eventsProcessed = eventChunk.filter(([id, ,]) => !eventIdsSkipped.includes(id));
+              const hubEventsProcessed = eventChunk.map(([_id, evt, _evtBytes]) => evt);
+              const eventsBytesProcessed = eventChunk.map(([_id, _evt, evtBytes]) => evtBytes);
+              await this.afterProcess.call(this, hubEventsProcessed, eventsBytesProcessed);
+            }
           }
         });
 
