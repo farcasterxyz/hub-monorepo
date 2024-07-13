@@ -7,6 +7,7 @@ import { log } from "../log";
 import { pino } from "pino";
 import { ProcessResult } from "./index";
 import { Result } from "neverthrow";
+import { TypedEmitter } from "tiny-typed-emitter";
 
 // Dummy name since we don't need unique names to get desired semantics
 const DUMMY_CONSUMER_GROUP = "x";
@@ -203,15 +204,25 @@ const MESSAGE_PROCESSING_CONCURRENCY = 10;
 const EVENT_PROCESSING_TIMEOUT = 10_000; // How long before retrying processing (millis)
 const EVENT_DELETION_THRESHOLD = 1000 * 60 * 60 * 24; // 1 day
 
+type PreProcessHandler = (event: HubEvent, eventBytes: Uint8Array) => Promise<ProcessResult>;
+type PostProcessHandler = (event: HubEvent, eventBytes: Uint8Array) => Promise<void>;
+
 export type EventStreamConsumerOptions = {
   maxEventsPerFetch?: number;
   messageProcessingConcurrency?: number;
   groupName?: string;
   eventProcessingTimeout?: number;
   eventDeletionThreshold?: number;
+  beforeProcess?: PreProcessHandler;
+  afterProcess?: PostProcessHandler;
 };
 
-export class HubEventStreamConsumer {
+// Provides a way for custom tracking to be implemented
+interface HubEventStreamConsumerEventsEmitter {
+  onError: (hubEvent: HubEvent, error: Error) => void;
+}
+
+export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerEventsEmitter> {
   public hub: HubClient;
   private stream: EventStreamConnection;
   public readonly streamKey: string;
@@ -223,6 +234,8 @@ export class HubEventStreamConsumer {
   public stopped = true;
   public readonly groupName: string;
   private log: pino.Logger;
+  private beforeProcess?: PreProcessHandler;
+  private afterProcess?: PostProcessHandler;
 
   constructor(
     hub: HubClient,
@@ -231,6 +244,7 @@ export class HubEventStreamConsumer {
     options: EventStreamConsumerOptions = {},
     logger: pino.Logger = log,
   ) {
+    super();
     this.hub = hub;
     this.stream = eventStream;
     this.streamKey = `hub:${this.hub.host}:evt:msg:${shardKey}`;
@@ -241,6 +255,8 @@ export class HubEventStreamConsumer {
     this.eventDeletionThreshold = options.eventDeletionThreshold || EVENT_DELETION_THRESHOLD;
     this.shardKey = shardKey;
     this.log = logger;
+    this.beforeProcess = options.beforeProcess;
+    this.afterProcess = options.afterProcess;
   }
 
   async start(onEvent: (event: HubEvent) => Promise<Result<ProcessResult, Error>>) {
@@ -294,6 +310,13 @@ export class HubEventStreamConsumer {
 
                   const startTime = Date.now();
                   const hubEvent = HubEvent.decode(streamEvent.data);
+
+                  const preprocessResult = await this.beforeProcess?.call(this, hubEvent, streamEvent.data);
+                  if (preprocessResult?.skipped) {
+                    eventIdsProcessed.push(streamEvent.id);
+                    return; // Skip event
+                  }
+
                   const result = await onEvent(hubEvent);
                   const processingTime = Date.now() - startTime;
                   statsd.timing("hub.event.stream.time", processingTime, {
@@ -302,15 +325,20 @@ export class HubEventStreamConsumer {
                     hubEventType: hubEvent.type.toString(),
                   });
 
-                  if (result.isErr()) throw result.error;
+                  if (result.isErr()) {
+                    this.emit("onError", hubEvent, result.error);
+                    throw result.error;
+                  }
 
+                  eventIdsProcessed.push(streamEvent.id);
                   if (result.value.skipped) {
                     statsd.increment("hub.event.stream.skipped", 1, {
                       hub: this.hub.host,
                       source: this.shardKey,
                     });
+                  } else {
+                    await this.afterProcess?.call(this, hubEvent, streamEvent.data);
                   }
-                  eventIdsProcessed.push(streamEvent.id);
 
                   if (!result.value.skipped) {
                     const e2eTime = Date.now() - extractEventTimestamp(hubEvent.id);
