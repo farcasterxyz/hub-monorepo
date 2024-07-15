@@ -1,4 +1,5 @@
 import { PublicClient, WatchBlockNumberParameters, WatchBlockNumberReturnType } from "viem";
+import { watchBlockNumber } from "viem/actions";
 import { logger, Logger } from "../utils/logger.js";
 import { HubError, HubResult } from "@farcaster/core";
 import { err, ok, Result } from "neverthrow";
@@ -20,7 +21,7 @@ export class WatchBlockNumber {
   }
 
   public start() {
-    this._unwatch = this._publicClient.watchBlockNumber({
+    this._unwatch = watchBlockNumber(this._publicClient, {
       ...this._params,
       onBlockNumber: (blockNumber, prevBlockNumber) => {
         this.lastBlockNumber = blockNumber;

@@ -69,7 +69,7 @@ import StoreEventHandler from "./storage/stores/storeEventHandler.js";
 import { FNameRegistryClient, FNameRegistryEventsProvider } from "./eth/fnameRegistryEventsProvider.js";
 import { L2EventsProvider, OptimismConstants } from "./eth/l2EventsProvider.js";
 import { prettyPrintTable } from "./profile/profile.js";
-import { createPublicClient, fallback, http } from "viem";
+import { createPublicClient, fallback, http, type PublicClient } from "viem";
 import { mainnet, optimism } from "viem/chains";
 import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
 import { CheckIncomingPortsJobScheduler } from "./storage/jobs/checkIncomingPortsJob.js";
@@ -453,7 +453,7 @@ export class Hub implements HubInterface {
       options.network,
       eventHandler,
       mainnetClient,
-      opClient,
+      opClient as PublicClient,
       this.fNameRegistryEventsProvider,
     );
 
@@ -1427,15 +1427,15 @@ export class Hub implements HubInterface {
     let message: ContactInfoContentBody = content.body
       ? content.body
       : ContactInfoContentBody.create({
-          gossipAddress: content.gossipAddress,
-          rpcAddress: content.rpcAddress,
-          excludedHashes: content.excludedHashes,
-          count: content.count,
-          hubVersion: content.hubVersion,
-          network: content.network,
-          appVersion: content.appVersion,
-          timestamp: content.timestamp,
-        });
+        gossipAddress: content.gossipAddress,
+        rpcAddress: content.rpcAddress,
+        excludedHashes: content.excludedHashes,
+        count: content.count,
+        hubVersion: content.hubVersion,
+        network: content.network,
+        appVersion: content.appVersion,
+        timestamp: content.timestamp,
+      });
 
     // Don't process messages that are too old
     if (message.timestamp && message.timestamp < Date.now() - MAX_CONTACT_INFO_AGE_MS) {
@@ -1987,8 +1987,7 @@ export class Hub implements HubInterface {
     mergeResult.match(
       (eventId) => {
         logEvent.info(
-          `submitOnChainEvent success ${eventId}: event ${onChainEventTypeToJSON(event.type)} in block ${
-            event.blockNumber
+          `submitOnChainEvent success ${eventId}: event ${onChainEventTypeToJSON(event.type)} in block ${event.blockNumber
           }`,
         );
       },

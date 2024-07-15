@@ -33,6 +33,14 @@ import {
 import { optimism } from "viem/chains";
 import { ed25519 } from "@noble/curves/ed25519";
 import axios from "axios";
+import {
+  readContract,
+  getBalance,
+  writeContract,
+  simulateContract,
+  waitForTransactionReceipt,
+  getChainId,
+} from "viem/actions";
 
 /**
  * Populate the following constants with your own values
@@ -67,8 +75,8 @@ const hubClient = USE_SSL ? getSSLHubRpcClient(HUB_URL) : getInsecureHubRpcClien
 const metadata = HUB_USERNAME !== "" && HUB_PASS !== "" ? getAuthMetadata(HUB_USERNAME, HUB_PASS) : new Metadata();
 
 const getOrRegisterFid = async (): Promise<number> => {
-  const balance = await walletClient.getBalance({ address: account.address });
-  const existingFid = (await walletClient.readContract({
+  const balance = await getBalance(walletClient, { address: account.address });
+  const existingFid = (await readContract(walletClient, {
     ...IdContract,
     functionName: "idOf",
     args: [account.address],
@@ -85,7 +93,7 @@ const getOrRegisterFid = async (): Promise<number> => {
     return parseInt(existingFid.toString());
   }
 
-  const price = await walletClient.readContract({
+  const price = await readContract(walletClient, {
     ...IdGateway,
     functionName: "price",
   });
@@ -96,15 +104,15 @@ const getOrRegisterFid = async (): Promise<number> => {
     throw new Error(`Insufficient balance to rent storage, required: ${price}, balance: ${balance}`);
   }
 
-  const { request: registerRequest } = await walletClient.simulateContract({
+  const { request: registerRequest } = await simulateContract(walletClient, {
     ...IdGateway,
     functionName: "register",
     args: [RECOVERY_ADDRESS],
     value: price,
   });
-  const registerTxHash = await walletClient.writeContract(registerRequest);
+  const registerTxHash = await writeContract(walletClient, registerRequest);
   console.log(`Waiting for register tx to confirm: ${registerTxHash}`);
-  const registerTxReceipt = await walletClient.waitForTransactionReceipt({ hash: registerTxHash });
+  const registerTxReceipt = await waitForTransactionReceipt(walletClient, { hash: registerTxHash });
   // Now extract the FID from the logs
   const registerLog = decodeEventLog({
     abi: idRegistryABI,
@@ -144,15 +152,15 @@ const getOrRegisterSigner = async (fid: number) => {
 
   const metadataHex = toHex(metadata.unwrapOr(new Uint8Array()));
 
-  const { request: signerAddRequest } = await walletClient.simulateContract({
+  const { request: signerAddRequest } = await simulateContract(walletClient, {
     ...KeyContract,
     functionName: "add",
     args: [1, publicKey, 1, metadataHex], // keyType, publicKey, metadataType, metadata
   });
 
-  const signerAddTxHash = await walletClient.writeContract(signerAddRequest);
+  const signerAddTxHash = await writeContract(walletClient, signerAddRequest);
   console.log(`Waiting for signer add tx to confirm: ${signerAddTxHash}`);
-  await walletClient.waitForTransactionReceipt({ hash: signerAddTxHash });
+  await waitForTransactionReceipt(walletClient, { hash: signerAddTxHash });
   console.log(`Registered new signer with public key: ${publicKey}`);
   console.log("Sleeping 30 seconds to allow hubs to pick up the signer tx");
   await new Promise((resolve) => setTimeout(resolve, 30000));
@@ -210,7 +218,7 @@ const submitMessage = async (resultPromise: HubAsyncResult<Message>) => {
 };
 
 (async () => {
-  const chainId = await walletClient.getChainId();
+  const chainId = await getChainId(walletClient);
 
   if (chainId !== CHAIN.id) {
     throw new Error(`Chain ID ${chainId} not supported`);

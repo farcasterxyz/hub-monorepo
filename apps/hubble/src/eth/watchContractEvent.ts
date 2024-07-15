@@ -1,5 +1,5 @@
-import { Abi } from "abitype";
-import { PublicClient, WatchContractEventParameters, WatchContractEventReturnType } from "viem";
+import type { PublicClient, WatchContractEventReturnType } from "viem";
+import { watchContractEvent } from "viem/actions";
 import { logger, Logger } from "../utils/logger.js";
 import { HubError, HubResult } from "@farcaster/core";
 import { err, ok, Result } from "neverthrow";
@@ -11,19 +11,15 @@ import { diagnosticReporter } from "../utils/diagnosticReport.js";
  * filter becomes stale, we can recover by making a new call to
  * watchContractEvent.
  */
-export class WatchContractEvent<
-  TAbi extends Abi | readonly unknown[] = readonly unknown[],
-  TEventName extends string = string,
-  TStrict extends boolean | undefined = undefined,
-> {
+export class WatchContractEvent {
   private _publicClient: PublicClient;
-  private _params: WatchContractEventParameters<TAbi, TEventName, TStrict>;
+  private _params: Parameters<typeof watchContractEvent>[1];
   private _unwatch?: WatchContractEventReturnType;
   private _log: Logger;
 
   constructor(
     publicClient: PublicClient,
-    params: WatchContractEventParameters<TAbi, TEventName, TStrict>,
+    params: Parameters<typeof watchContractEvent>[1],
     key: string,
   ) {
     this._publicClient = publicClient;
@@ -35,7 +31,7 @@ export class WatchContractEvent<
   }
 
   public start() {
-    this._unwatch = this._publicClient.watchContractEvent({
+    this._unwatch = watchContractEvent(this._publicClient, {
       ...this._params,
       onError: (error) => {
         diagnosticReporter().reportError(error);

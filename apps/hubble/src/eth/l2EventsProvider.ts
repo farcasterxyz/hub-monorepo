@@ -18,6 +18,7 @@ import { err, ok, Result, ResultAsync } from "neverthrow";
 import { IdRegistry, KeyRegistry, StorageRegistry } from "./abis.js";
 import { HubInterface } from "../hubble.js";
 import { logger } from "../utils/logger.js";
+import { createContractEventFilter, createEventFilter, getBlock, getBlockNumber, getContractEvents, getFilterLogs } from "viem/actions";
 import { optimismGoerli } from "viem/chains";
 import {
   createPublicClient,
@@ -29,6 +30,14 @@ import {
   Hex,
   FallbackTransport,
   HttpRequestError,
+  HttpTransport,
+  ContractEventName,
+  Chain,
+  BlockNumber,
+  BlockTag,
+  GetContractEventsParameters,
+  MaybeExtractEventArgsFromAbi,
+  CreateContractEventFilterParameters,
 } from "viem";
 import { WatchContractEvent } from "./watchContractEvent.js";
 import { WatchBlockNumber } from "./watchBlockNumber.js";
@@ -78,9 +87,9 @@ export class L2EventsProvider {
   private keyRegistryV2Address: `0x${string}` | undefined;
   private idRegistryV2Address: `0x${string}` | undefined;
 
-  private _watchStorageContractEvents?: WatchContractEvent<typeof StorageRegistry.abi, string, true>;
-  private _watchKeyRegistryV2ContractEvents?: WatchContractEvent<typeof KeyRegistry.abi, string, true>;
-  private _watchIdRegistryV2ContractEvents?: WatchContractEvent<typeof IdRegistry.abi, string, true>;
+  private _watchStorageContractEvents?: WatchContractEvent;
+  private _watchKeyRegistryV2ContractEvents?: WatchContractEvent;
+  private _watchIdRegistryV2ContractEvents?: WatchContractEvent;
   private _watchBlockNumber?: WatchBlockNumber;
 
   // Whether the historical events have been synced. This is used to avoid syncing the events multiple times.
@@ -100,7 +109,7 @@ export class L2EventsProvider {
 
   constructor(
     hub: HubInterface,
-    publicClient: PublicClient<FallbackTransport>,
+    publicClient: PublicClient<FallbackTransport<HttpTransport[]>>,
     storageRegistryAddress: `0x${string}`,
     keyRegistryV2Address: `0x${string}`,
     idRegistryV2Address: `0x${string}`,
@@ -174,6 +183,7 @@ export class L2EventsProvider {
 
     const provider = new L2EventsProvider(
       hub,
+      // @ts-ignore
       publicClient,
       storageRegistryAddress,
       keyRegistryV2Address,
@@ -239,7 +249,7 @@ export class L2EventsProvider {
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  private async processStorageEvents(logs: WatchContractEventOnLogsParameter<Abi, string, true>, version = 0) {
+  private async processStorageEvents(logs: WatchContractEventOnLogsParameter<typeof StorageRegistry.abi>, version = 0) {
     for (const event of logs) {
       const { blockNumber, blockHash, transactionHash, transactionIndex, logIndex } = event;
 
@@ -301,11 +311,11 @@ export class L2EventsProvider {
     }
   }
 
-  private async processKeyRegistryEventsV2(logs: WatchContractEventOnLogsParameter<Abi, string, true>) {
+  private async processKeyRegistryEventsV2(logs: WatchContractEventOnLogsParameter<typeof KeyRegistry.abi>) {
     await this.processKeyRegistryEvents(logs, 2);
   }
 
-  private async processKeyRegistryEvents(logs: WatchContractEventOnLogsParameter<Abi, string, true>, version = 0) {
+  private async processKeyRegistryEvents(logs: WatchContractEventOnLogsParameter<typeof KeyRegistry.abi>, version = 0) {
     for (const event of logs) {
       const { blockNumber, blockHash, transactionHash, transactionIndex, logIndex } = event;
 
@@ -428,11 +438,11 @@ export class L2EventsProvider {
     }
   }
 
-  private async processIdRegistryV2Events(logs: WatchContractEventOnLogsParameter<Abi, string, true>) {
+  private async processIdRegistryV2Events(logs: WatchContractEventOnLogsParameter<typeof IdRegistry.abi>) {
     await this.processIdRegistryEvents(logs, 2);
   }
 
-  private async processIdRegistryEvents(logs: WatchContractEventOnLogsParameter<Abi, string, true>, version = 0) {
+  private async processIdRegistryEvents(logs: WatchContractEventOnLogsParameter<typeof IdRegistry.abi>, version = 0) {
     for (const event of logs) {
       const { blockNumber, blockHash, transactionHash, transactionIndex, logIndex } = event;
 
@@ -539,7 +549,7 @@ export class L2EventsProvider {
 
   /** Connect to OP RPC and sync events. Returns the highest block that was synced */
   private async connectAndSyncHistoricalEvents(): HubAsyncResult<number> {
-    const latestBlockResult = await ResultAsync.fromPromise(this._publicClient.getBlockNumber(), (err) => err);
+    const latestBlockResult = await ResultAsync.fromPromise(getBlockNumber(this._publicClient), (err) => err);
     if (latestBlockResult.isErr()) {
       diagnosticReporter().reportError(latestBlockResult.error as Error);
       const msg = "failed to connect to optimism node. Check your eth RPC URL (e.g. --l2-rpc-url)";
@@ -632,6 +642,7 @@ export class L2EventsProvider {
       {
         address: storageRegistryAddress,
         abi: StorageRegistry.abi,
+        // @ts-ignore
         onLogs: this.processStorageEvents.bind(this),
         pollingInterval: L2EventsProvider.eventPollingInterval,
         strict: true,
@@ -644,6 +655,7 @@ export class L2EventsProvider {
       {
         address: keyRegistryV2Address,
         abi: KeyRegistry.abi,
+        // @ts-ignore
         onLogs: this.processKeyRegistryEventsV2.bind(this),
         pollingInterval: L2EventsProvider.eventPollingInterval,
         strict: true,
@@ -656,6 +668,7 @@ export class L2EventsProvider {
       {
         address: idRegistryV2Address,
         abi: IdRegistry.abi,
+        // @ts-ignore
         onLogs: this.processIdRegistryV2Events.bind(this),
         pollingInterval: L2EventsProvider.eventPollingInterval,
         strict: true,
@@ -754,9 +767,9 @@ export class L2EventsProvider {
         strict: true,
       });
 
-      await this.processStorageEvents(await storageLogsPromise);
-      await this.processIdRegistryV2Events(await idV2LogsPromise);
-      await this.processKeyRegistryEventsV2(await keyV2LogsPromise);
+      await this.processStorageEvents(await storageLogsPromise as WatchContractEventOnLogsParameter<typeof StorageRegistry.abi>);
+      await this.processIdRegistryV2Events(await idV2LogsPromise as WatchContractEventOnLogsParameter<typeof IdRegistry.abi>);
+      await this.processKeyRegistryEventsV2(await keyV2LogsPromise as WatchContractEventOnLogsParameter<typeof KeyRegistry.abi>);
 
       // Write out all the cached blocks first
       await this.writeCachedBlocks(toBlock);
@@ -778,20 +791,14 @@ export class L2EventsProvider {
   /** Wrapper around Viem client getFilterLogs/getContractEvents. Uses filters
    *  when supported, otherwise falls back to getContractEvents.
    */
-  private async getContractEvents(params: {
-    address: Hex;
-    abi: Abi;
-    fromBlock: bigint;
-    toBlock: bigint;
-    strict: boolean;
-  }) {
+  private async getContractEvents(params: GetContractEventsParameters | CreateContractEventFilterParameters) {
     return this.withRetry(
       async () => {
         if (this._useFilters) {
-          const filter = await this._publicClient.createContractEventFilter(params);
-          return this._publicClient.getFilterLogs({ filter });
+          const filter = await createContractEventFilter(this._publicClient, params);
+          return getFilterLogs(this._publicClient, { filter });
         } else {
-          return this._publicClient.getContractEvents(params);
+          return getContractEvents(this._publicClient, params);
         }
       },
       3, // attempts
@@ -820,7 +827,7 @@ export class L2EventsProvider {
 
     // Handling: intentionally catch to test for filter support
     try {
-      await testClient.createEventFilter({
+      await createEventFilter(testClient, {
         fromBlock: BigInt(1),
         toBlock: BigInt(1),
       });
@@ -954,7 +961,7 @@ export class L2EventsProvider {
     if (cachedTimestamp) {
       return cachedTimestamp;
     }
-    const block = await this._publicClient.getBlock({
+    const block = await getBlock(this._publicClient, {
       blockHash: blockHash as `0x${string}`,
     });
     const timestamp = Number(block.timestamp);

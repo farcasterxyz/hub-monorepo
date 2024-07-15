@@ -64,7 +64,7 @@ import VerificationStore from "../stores/verificationStore.js";
 import { logger } from "../../utils/logger.js";
 import { RevokeMessagesBySignerJobQueue, RevokeMessagesBySignerJobWorker } from "../jobs/revokeMessagesBySignerJob.js";
 import { ensureAboveTargetFarcasterVersion } from "../../utils/versions.js";
-import { PublicClient } from "viem";
+import type { PublicClient } from "viem";
 import { normalize } from "viem/ens";
 import UsernameProofStore from "../stores/usernameProofStore.js";
 import OnChainEventStore from "../stores/onChainEventStore.js";
@@ -1139,9 +1139,9 @@ class Engine extends TypedEmitter<EngineEvents> {
         const nameProof = (await this.getUserNameProof(nameBytes.value)).mapErr((e) =>
           e.errCode === "not_found"
             ? new HubError(
-                "bad_request.validation_failure",
-                `name ${message.data.userDataBody.value} is not registered`,
-              )
+              "bad_request.validation_failure",
+              `name ${message.data.userDataBody.value} is not registered`,
+            )
             : e,
         );
         if (nameProof.isErr()) {
@@ -1308,8 +1308,7 @@ class Engine extends TypedEmitter<EngineEvents> {
           (e) =>
             log.error(
               { errCode: e.errCode },
-              `failed to revoke message ${usernameAddHex._unsafeUnwrap()} for fid ${fid} due to name proof invalidation: ${
-                e.message
+              `failed to revoke message ${usernameAddHex._unsafeUnwrap()} for fid ${fid} due to name proof invalidation: ${e.message
               }`,
             ),
         );
@@ -1349,7 +1348,7 @@ class Engine extends TypedEmitter<EngineEvents> {
       clients[this._publicClient.chain.id] = this._publicClient;
     }
     if (this._l2PublicClient?.chain) {
-      clients[this._l2PublicClient.chain.id] = this._l2PublicClient;
+      clients[this._l2PublicClient.chain.id] = this._l2PublicClient as PublicClient;
     }
     return clients;
   }
