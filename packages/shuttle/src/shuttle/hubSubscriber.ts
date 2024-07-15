@@ -6,9 +6,9 @@ import { EventStreamConnection } from "./eventStream";
 import { sleep } from "../utils";
 import { RedisClient } from "./redis";
 import { HubClient } from "./hub";
+import { ProcessResult } from "./index";
 
 interface HubEventsEmitter {
-  event: (hubEvent: HubEvent) => void;
   onError: (error: Error, stopped: boolean) => void;
 }
 
@@ -170,6 +170,14 @@ export class BaseHubSubscriber extends HubSubscriber {
   }
 }
 
+type PreProcessHandler = (events: HubEvent[], eventBytes: Uint8Array[]) => Promise<ProcessResult[]>;
+type PostProcessHandler = (events: HubEvent[], eventBytes: Uint8Array[]) => Promise<void>;
+
+type EventStreamHubSubscriberOptions = {
+  beforeProcess?: PreProcessHandler;
+  afterProcess?: PostProcessHandler;
+};
+
 export class EventStreamHubSubscriber extends BaseHubSubscriber {
   private eventStream: EventStreamConnection;
   private redis: RedisClient;
@@ -181,6 +189,8 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
   public maxTimeBetweenBatchFlushes = 200; // Millis
   public maxBatchBytesBeforeForceFlush = 2 ** 20; // 2 MiB
   private eventBatchBytes = 0;
+  private beforeProcess?: PreProcessHandler;
+  private afterProcess?: PostProcessHandler;
 
   constructor(
     label: string,
@@ -192,6 +202,7 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
     eventTypes?: HubEventType[],
     totalShards?: number,
     shardIndex?: number,
+    options?: EventStreamHubSubscriberOptions,
   ) {
     super(label, hubClient.client, log, eventTypes, totalShards, shardIndex);
     this.eventStream = eventStream;
@@ -199,6 +210,8 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
     this.streamKey = `hub:${hubClient.host}:evt:msg:${shardKey}`;
     this.redisKey = `${hubClient.host}:${shardKey}`;
     this.eventsToAdd = [];
+    this.beforeProcess = options?.beforeProcess;
+    this.afterProcess = options?.afterProcess;
   }
 
   public override async getLastEventId(): Promise<number | undefined> {
@@ -213,6 +226,7 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
 
   public override async processHubEvent(event: HubEvent): Promise<boolean> {
     const eventBytes = Buffer.from(HubEvent.encode(event).finish());
+
     this.eventBatchBytes += eventBytes.length;
     this.eventsToAdd.push([event, eventBytes]);
     if (
@@ -222,13 +236,20 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
     ) {
       // Empties the current batch
       const eventBatch = this.eventsToAdd.splice(0, this.eventsToAdd.length);
+      const events = eventBatch.map(([evt, _evtBytes]) => evt);
       this.eventBatchBytes = 0;
 
+      let eventsToWriteBatch = eventBatch;
+      if (this.beforeProcess) {
+        const eventBytesBatch = eventBatch.map(([_evt, evtBytes]) => evtBytes);
+        const preprocessResult = await this.beforeProcess.call(this, events, eventBytesBatch);
+        eventsToWriteBatch = eventBatch.filter((evt, idx) => !preprocessResult[idx]?.skipped);
+      }
+
+      const eventToWriteBatch = eventsToWriteBatch.map(([evt, _evtBytes]) => evt);
+      const eventBytesToWriteBatch = eventsToWriteBatch.map(([_evt, evtBytes]) => evtBytes);
       // Copies the removed events to the stream
-      await this.eventStream.add(
-        this.streamKey,
-        eventBatch.map(([_event, eventBytes]) => eventBytes),
-      );
+      await this.eventStream.add(this.streamKey, eventBytesToWriteBatch);
 
       this.eventBatchLastFlushedAt = Date.now();
 
@@ -236,6 +257,10 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
       const [evt, eventBytes] = eventBatch[eventBatch.length - 1]!;
       const lastEventId = evt.id;
       await this.redis.setLastProcessedEvent(this.redisKey, lastEventId);
+
+      if (this.afterProcess) {
+        await this.afterProcess.call(this, eventToWriteBatch, eventBytesToWriteBatch);
+      }
     }
 
     return true;

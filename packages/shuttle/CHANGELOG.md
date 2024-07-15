@@ -1,5 +1,24 @@
 # @farcaster/hub-shuttle
 
+## 0.5.5
+
+### Patch Changes
+
+- a5262796: Switch before/after hooks to work with batches for efficiency
+  - @farcaster/hub-nodejs@0.11.20
+
+## 0.5.4
+
+### Patch Changes
+
+- 41f32cd0: Add support for running before/after hooks when processing events
+
+## 0.5.3
+
+### Patch Changes
+
+- 57b9c6ab: Re-build package
+
 ## 0.5.2
 
 ### Patch Changes

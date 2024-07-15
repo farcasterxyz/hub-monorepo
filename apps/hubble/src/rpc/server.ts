@@ -58,6 +58,7 @@ import {
   SLOW_CLIENT_GRACE_PERIOD_MS,
 } from "./bufferedStreamWriter.js";
 import { sleep } from "../utils/crypto.js";
+import { jumpConsistentHash } from "../utils/jumpConsistentHash.js";
 import { SUBMIT_MESSAGE_RATE_LIMIT, rateLimitByIp } from "../utils/rateLimits.js";
 import { statsd } from "../utils/statsd.js";
 import { SyncId } from "../network/sync/syncId.js";
@@ -1364,7 +1365,7 @@ export default class Server {
             bufferedStreamWriter.writeToStream(event);
           } else {
             const fid = fidFromEvent(event);
-            if (fid % totalShards === shardIndex) {
+            if (jumpConsistentHash(fid, totalShards) === shardIndex) {
               bufferedStreamWriter.writeToStream(event);
             }
           }

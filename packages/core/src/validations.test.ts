@@ -1301,7 +1301,7 @@ describe("validateFrameActionBody", () => {
   });
   test("fails when url is too long", async () => {
     const body = Factories.FrameActionBody.build({
-      url: Buffer.from(faker.datatype.string(257)),
+      url: Buffer.from(faker.datatype.string(1025)),
     });
     const result = validations.validateFrameActionBody(body);
     expect(result._unsafeUnwrapErr().message).toMatch("invalid url");

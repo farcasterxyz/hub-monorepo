@@ -7,6 +7,7 @@ import { log } from "../log";
 import { pino } from "pino";
 import { ProcessResult } from "./index";
 import { Result } from "neverthrow";
+import { TypedEmitter } from "tiny-typed-emitter";
 
 // Dummy name since we don't need unique names to get desired semantics
 const DUMMY_CONSUMER_GROUP = "x";
@@ -203,15 +204,25 @@ const MESSAGE_PROCESSING_CONCURRENCY = 10;
 const EVENT_PROCESSING_TIMEOUT = 10_000; // How long before retrying processing (millis)
 const EVENT_DELETION_THRESHOLD = 1000 * 60 * 60 * 24; // 1 day
 
+type PreProcessHandler = (events: HubEvent[], eventsBytes: Uint8Array[]) => Promise<ProcessResult[]>;
+type PostProcessHandler = (events: HubEvent[], eventsBytes: Uint8Array[]) => Promise<void>;
+
 export type EventStreamConsumerOptions = {
   maxEventsPerFetch?: number;
   messageProcessingConcurrency?: number;
   groupName?: string;
   eventProcessingTimeout?: number;
   eventDeletionThreshold?: number;
+  beforeProcess?: PreProcessHandler;
+  afterProcess?: PostProcessHandler;
 };
 
-export class HubEventStreamConsumer {
+// Provides a way for custom tracking to be implemented
+interface HubEventStreamConsumerEventsEmitter {
+  onError: (hubEvent: HubEvent, error: Error) => void;
+}
+
+export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerEventsEmitter> {
   public hub: HubClient;
   private stream: EventStreamConnection;
   public readonly streamKey: string;
@@ -223,6 +234,8 @@ export class HubEventStreamConsumer {
   public stopped = true;
   public readonly groupName: string;
   private log: pino.Logger;
+  private beforeProcess?: PreProcessHandler;
+  private afterProcess?: PostProcessHandler;
 
   constructor(
     hub: HubClient,
@@ -231,6 +244,7 @@ export class HubEventStreamConsumer {
     options: EventStreamConsumerOptions = {},
     logger: pino.Logger = log,
   ) {
+    super();
     this.hub = hub;
     this.stream = eventStream;
     this.streamKey = `hub:${this.hub.host}:evt:msg:${shardKey}`;
@@ -241,6 +255,8 @@ export class HubEventStreamConsumer {
     this.eventDeletionThreshold = options.eventDeletionThreshold || EVENT_DELETION_THRESHOLD;
     this.shardKey = shardKey;
     this.log = logger;
+    this.beforeProcess = options.beforeProcess;
+    this.afterProcess = options.afterProcess;
   }
 
   async start(onEvent: (event: HubEvent) => Promise<Result<ProcessResult, Error>>) {
@@ -280,20 +296,32 @@ export class HubEventStreamConsumer {
 
         eventsRead += events.length;
 
-        await inBatchesOf(events, this.messageProcessingConcurrency, async (batchedEvents) => {
+        let eventChunk: [string, HubEvent, Buffer][] = events.map(({ id, data: eventBytes }) => [
+          id,
+          HubEvent.decode(eventBytes),
+          eventBytes,
+        ]);
+        if (this.beforeProcess) {
+          const allEventsInChunk = eventChunk.map(([_id, evt, _evtBytes]) => evt);
+          const allEventsBytesInChunk = eventChunk.map(([_id, _evt, evtBytes]) => evtBytes);
+          const preprocessResult = await this.beforeProcess.call(this, allEventsInChunk, allEventsBytesInChunk);
+          eventChunk = eventChunk.filter((_evt, idx) => !preprocessResult[idx]?.skipped);
+        }
+
+        await inBatchesOf(eventChunk, this.messageProcessingConcurrency, async (batchedEvents) => {
           const eventIdsProcessed: string[] = [];
+          const eventIdsSkipped: string[] = [];
           await Promise.allSettled(
-            batchedEvents.map((event) =>
-              (async (streamEvent) => {
+            batchedEvents.map(([id, hubEvt, evtBytes]) =>
+              (async (streamId, hubEvent, eventBytes) => {
                 try {
-                  const dequeueDelay = Date.now() - Number(streamEvent.id.split("-")[0]);
+                  const dequeueDelay = Date.now() - Number(streamId.split("-")[0]);
                   statsd.timing("hub.event.stream.dequeue_delay", dequeueDelay, {
                     hub: this.hub.host,
                     source: this.shardKey,
                   });
 
                   const startTime = Date.now();
-                  const hubEvent = HubEvent.decode(streamEvent.data);
                   const result = await onEvent(hubEvent);
                   const processingTime = Date.now() - startTime;
                   statsd.timing("hub.event.stream.time", processingTime, {
@@ -302,15 +330,19 @@ export class HubEventStreamConsumer {
                     hubEventType: hubEvent.type.toString(),
                   });
 
-                  if (result.isErr()) throw result.error;
+                  if (result.isErr()) {
+                    this.emit("onError", hubEvent, result.error);
+                    eventIdsSkipped.push(streamId);
+                    throw result.error;
+                  }
 
+                  eventIdsProcessed.push(streamId);
                   if (result.value.skipped) {
                     statsd.increment("hub.event.stream.skipped", 1, {
                       hub: this.hub.host,
                       source: this.shardKey,
                     });
                   }
-                  eventIdsProcessed.push(streamEvent.id);
 
                   if (!result.value.skipped) {
                     const e2eTime = Date.now() - extractEventTimestamp(hubEvent.id);
@@ -324,7 +356,7 @@ export class HubEventStreamConsumer {
                   statsd.increment("hub.event.stream.errors", { hub: this.hub.host, source: this.shardKey });
                   this.log.error(e); // Report and move on to next event
                 }
-              })(event),
+              })(id, hubEvt, evtBytes),
             ),
           );
 
@@ -340,6 +372,13 @@ export class HubEventStreamConsumer {
               hub: this.hub.host,
               source: this.shardKey,
             });
+
+            if (this.afterProcess) {
+              const eventsProcessed = eventChunk.filter(([id, ,]) => !eventIdsSkipped.includes(id));
+              const hubEventsProcessed = eventChunk.map(([_id, evt, _evtBytes]) => evt);
+              const eventsBytesProcessed = eventChunk.map(([_id, _evt, evtBytes]) => evtBytes);
+              await this.afterProcess.call(this, hubEventsProcessed, eventsBytesProcessed);
+            }
           }
         });
 
