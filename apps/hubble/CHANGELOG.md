@@ -1,5 +1,15 @@
 # @farcaster/hubble
 
+## 1.14.0
+
+### Minor Changes
+
+- 312340d2: feat: Assign shards using jump consistent hashing algorithm
+
+### Patch Changes
+
+- @farcaster/hub-nodejs@0.11.20
+
 ## 1.13.6
 
 ### Patch Changes

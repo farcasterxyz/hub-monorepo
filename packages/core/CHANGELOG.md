@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.14.18
+
+### Patch Changes
+
+- fb0a083a: feat: extend frame message URL max length
+
 ## 0.14.17
 
 ### Patch Changes
