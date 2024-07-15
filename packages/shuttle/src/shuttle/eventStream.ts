@@ -236,6 +236,7 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
   private log: pino.Logger;
   private beforeProcess?: PreProcessHandler;
   private afterProcess?: PostProcessHandler;
+  private interval?: NodeJS.Timeout;
 
   constructor(
     hub: HubClient,
@@ -263,10 +264,23 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
     this.stopped = false;
     await this.stream.waitUntilReady();
     await this.stream.createGroup(this.streamKey, this.groupName);
+
+    this.interval = setInterval(() => {
+      // Run separately from the run loop since it consumes wall clock time and
+      // doesn't need to happen often, as long as it happens at some frequency
+      this.clearOldEvents();
+
+      // While we do process stale events regularly, it's possible that a stream
+      // will be so busy that we won't have had an opportunity, so make sure we
+      // guarantee at least one invocation on some cadence.
+      this.processStale(onEvent);
+    }, 1000 * 60 /* 1 min */);
+
     void this._runLoop(onEvent);
   }
 
   stop() {
+    clearInterval(this.interval);
     this.stopped = true;
   }
 
@@ -375,9 +389,7 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
 
         if (eventsRead === 0) {
           if (this.stopped) break;
-          const numProcessed = await this.processStale(onEvent);
-          const numCleared = await this.clearOldEvents();
-          if (numProcessed + numCleared === 0) await sleep(10); // No events, so wait a bit to prevent CPU thrash
+          await this.processStale(onEvent);
         }
       } catch (e: unknown) {
         this.log.error(e, "Error processing event, skipping");
