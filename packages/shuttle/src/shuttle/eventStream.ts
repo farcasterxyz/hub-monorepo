@@ -273,15 +273,6 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
   private async _runLoop(onEvent: (event: HubEvent) => Promise<Result<ProcessResult, Error>>) {
     while (!this.stopped) {
       try {
-        const sizeStartTime = Date.now();
-        const size = await this.stream.streamSize(this.streamKey);
-        statsd.gauge("hub.event.stream.size", size, { hub: this.hub.host, source: this.shardKey });
-        const sizeTime = Date.now() - sizeStartTime;
-
-        statsd.timing("hub.event.stream.size_time", sizeTime, {
-          hub: this.hub.host,
-          source: this.shardKey,
-        });
         let eventsRead = 0;
 
         const startTime = Date.now();
