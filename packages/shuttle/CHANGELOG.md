@@ -1,5 +1,13 @@
 # @farcaster/hub-shuttle
 
+## 0.5.6
+
+### Patch Changes
+
+- e5760da0: Trim stream at regular interval instead of every loop
+- fc67ccf0: Stop recording stream size
+  - @farcaster/hub-nodejs@0.11.20
+
 ## 0.5.5
 
 ### Patch Changes

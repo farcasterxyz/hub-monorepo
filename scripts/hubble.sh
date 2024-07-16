@@ -187,7 +187,15 @@ prompt_for_hub_operator_agreement() {
                 return $?
             fi
 
+            # If we've reached this point, shut down existing services since agreement is required
+
+            # Setup the docker-compose command
+            set_compose_command
+
+            # Run docker compose down
+            $COMPOSE_CMD down
             printf "❌ You have not agreed to the terms of service. Please run script again manually to agree and continue.\n"
+
             return 1
         fi
     )

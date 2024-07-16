@@ -26,7 +26,11 @@ Execute the below commands in the cloud shell:
 nano main.tf
 </code></pre>
 
-Now paste the content of below into your main.tf \
+Now paste the content of below into your main.tf \ 
+Replace "$YOUR_PROJECT_ID" with your personal ID.
+
+<figure><img src="../assets/images/gcp_project_id.png" /></figure>
+
 This is the configuration of your GCP virtual machine that will be created.
 
 ```
@@ -44,7 +48,7 @@ resource "google_compute_instance" "farcaster-hub-vm" {
   boot_disk {
     initialize_params {
       image = "ubuntu-2004-focal-v20231213"  # Ubuntu 20.04 LTS image URL
-      size = 160  # 160 GB disk size
+      size = 200  # 200 GB disk size
     }
   }
 
@@ -92,6 +96,10 @@ Example output:
 
 <figure><img src="../assets/images/gcp_terraform_plan.png" alt=""><figcaption><p>Example output of terraform plan</p></figcaption></figure>
 
+Enable Compute Engine API
+
+<figure><img src="../assets/images/gcp_compute_engine_api.png" /></figure>
+
 Now execute this command:
 
 ```bash
@@ -110,7 +118,7 @@ Now you should be able to connect to your VM by clicking on the **SSH** button.
 Now Install Docker as described here [https://docs.docker.com/engine/install/ubuntu/](https://docs.docker.com/engine/install/ubuntu/)
 
 
-Now follow the steps as described on [Install page](../intro/install.md) page \
+Now follow the steps as described on [Install page](../intro/install.md) \
 \
 Your Hubble is up and running when you see below :white\_check\_mark:
 
