@@ -48,7 +48,7 @@ resource "google_compute_instance" "farcaster-hub-vm" {
   boot_disk {
     initialize_params {
       image = "ubuntu-2004-focal-v20231213"  # Ubuntu 20.04 LTS image URL
-      size = 160  # 160 GB disk size
+      size = 200  # 200 GB disk size
     }
   }
 
