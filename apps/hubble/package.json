@@ -25,7 +25,7 @@
     "dev": "yarn start | yarn pino-pretty",
     "lint": "yarn lint:ts && yarn lint:rust",
     "lint:ts": "yarn lint:customjs && biome format src/ --write && biome check src/ --apply",
-    "lint:rust": "cargo fmt --manifest-path ./src/addon/Cargo.toml && cargo fmt --manifest-path ./src/addon/Cargo.toml --check",
+    "lint:rust": "cargo fix --manifest-path ./src/addon/Cargo.toml && cargo fix --manifest-path ./src/addon/Cargo.toml --check",
     "lint:ci": "yarn lint:customjs && biome ci src/",
     "lint:customjs": "node scripts/linter.cjs",
     "snapshot-url": "node --no-warnings build/cli.js snapshot-url",
