@@ -401,8 +401,8 @@ export class LibP2PNode {
 
   async getPeerAddresses(peerId: PeerId): Promise<MultiAddr.Multiaddr[]> {
     const existingConnections = this._node?.getConnections(peerId);
+    const knownAddrs = await this._node?.peerStore.addressBook.get(peerId);
     for (const conn of existingConnections ?? []) {
-      const knownAddrs = await this._node?.peerStore.addressBook.get(peerId);
       if (knownAddrs && !knownAddrs.find((addr) => addr.multiaddr.equals(conn.remoteAddr))) {
         await this._node?.peerStore.addressBook.add(peerId, [conn.remoteAddr]);
       }
