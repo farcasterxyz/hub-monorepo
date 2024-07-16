@@ -788,7 +788,10 @@ export class L2EventsProvider {
     return this.withRetry(
       async () => {
         if (this._useFilters) {
-          const filter = await this._publicClient.createContractEventFilter(params);
+          const filter = (await this._publicClient.createContractEventFilter(
+            params,
+            // biome-ignore lint/suspicious/noExplicitAny: viem upgraded needed
+          )) as any;
           return this._publicClient.getFilterLogs({ filter });
         } else {
           return this._publicClient.getContractEvents(params);
