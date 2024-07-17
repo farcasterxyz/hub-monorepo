@@ -1139,9 +1139,9 @@ class Engine extends TypedEmitter<EngineEvents> {
         const nameProof = (await this.getUserNameProof(nameBytes.value)).mapErr((e) =>
           e.errCode === "not_found"
             ? new HubError(
-              "bad_request.validation_failure",
-              `name ${message.data.userDataBody.value} is not registered`,
-            )
+                "bad_request.validation_failure",
+                `name ${message.data.userDataBody.value} is not registered`,
+              )
             : e,
         );
         if (nameProof.isErr()) {
@@ -1308,7 +1308,8 @@ class Engine extends TypedEmitter<EngineEvents> {
           (e) =>
             log.error(
               { errCode: e.errCode },
-              `failed to revoke message ${usernameAddHex._unsafeUnwrap()} for fid ${fid} due to name proof invalidation: ${e.message
+              `failed to revoke message ${usernameAddHex._unsafeUnwrap()} for fid ${fid} due to name proof invalidation: ${
+                e.message
               }`,
             ),
         );

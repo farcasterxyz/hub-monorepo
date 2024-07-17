@@ -17,11 +17,7 @@ export class WatchContractEvent {
   private _unwatch?: WatchContractEventReturnType;
   private _log: Logger;
 
-  constructor(
-    publicClient: PublicClient,
-    params: Parameters<typeof watchContractEvent>[1],
-    key: string,
-  ) {
+  constructor(publicClient: PublicClient, params: Parameters<typeof watchContractEvent>[1], key: string) {
     this._publicClient = publicClient;
     this._params = params;
     this._log = logger.child({

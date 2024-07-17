@@ -161,7 +161,8 @@ describe("process events", () => {
         account: accounts[0].address,
         args: [BigInt(100000000000000)],
       });
-      const setDeprecationTimestampHash = await writeContract(walletClientWithAccount,
+      const setDeprecationTimestampHash = await writeContract(
+        walletClientWithAccount,
         setDeprecationTimestampSim.request,
       );
       await waitForTransactionReceipt(publicClient, { hash: setDeprecationTimestampHash });

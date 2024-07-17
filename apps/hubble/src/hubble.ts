@@ -1987,7 +1987,8 @@ export class Hub implements HubInterface {
     mergeResult.match(
       (eventId) => {
         logEvent.info(
-          `submitOnChainEvent success ${eventId}: event ${onChainEventTypeToJSON(event.type)} in block ${event.blockNumber
+          `submitOnChainEvent success ${eventId}: event ${onChainEventTypeToJSON(event.type)} in block ${
+            event.blockNumber
           }`,
         );
       },

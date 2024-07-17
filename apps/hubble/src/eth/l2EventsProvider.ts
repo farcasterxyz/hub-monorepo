@@ -18,7 +18,14 @@ import { err, ok, Result, ResultAsync } from "neverthrow";
 import { IdRegistry, KeyRegistry, StorageRegistry } from "./abis.js";
 import { HubInterface } from "../hubble.js";
 import { logger } from "../utils/logger.js";
-import { createContractEventFilter, createEventFilter, getBlock, getBlockNumber, getContractEvents, getFilterLogs } from "viem/actions";
+import {
+  createContractEventFilter,
+  createEventFilter,
+  getBlock,
+  getBlockNumber,
+  getContractEvents,
+  getFilterLogs
+} from "viem/actions";
 import { optimismGoerli } from "viem/chains";
 import {
   createPublicClient,
@@ -767,9 +774,15 @@ export class L2EventsProvider {
         strict: true,
       });
 
-      await this.processStorageEvents(await storageLogsPromise as WatchContractEventOnLogsParameter<typeof StorageRegistry.abi>);
-      await this.processIdRegistryV2Events(await idV2LogsPromise as WatchContractEventOnLogsParameter<typeof IdRegistry.abi>);
-      await this.processKeyRegistryEventsV2(await keyV2LogsPromise as WatchContractEventOnLogsParameter<typeof KeyRegistry.abi>);
+      await this.processStorageEvents(
+        (await storageLogsPromise) as WatchContractEventOnLogsParameter<typeof StorageRegistry.abi>,
+      );
+      await this.processIdRegistryV2Events(
+        (await idV2LogsPromise) as WatchContractEventOnLogsParameter<typeof IdRegistry.abi>,
+      );
+      await this.processKeyRegistryEventsV2(
+        (await keyV2LogsPromise) as WatchContractEventOnLogsParameter<typeof KeyRegistry.abi>,
+      );
 
       // Write out all the cached blocks first
       await this.writeCachedBlocks(toBlock);
