@@ -11,6 +11,7 @@ import {
   isMergeUsernameProofHubEvent,
   isPruneMessageHubEvent,
   isRevokeMessageHubEvent,
+  makeEventId,
   MergeMessageHubEvent,
   MergeOnChainEventHubEvent,
   MergeUsernameProofHubEvent,
@@ -106,22 +107,6 @@ export type StoreEvents = {
 };
 
 export type HubEventArgs = Omit<HubEvent, "id">;
-
-// Chosen to keep number under Number.MAX_SAFE_INTEGER
-const TIMESTAMP_BITS = 41;
-const SEQUENCE_BITS = 12;
-
-const makeEventId = (timestamp: number, seq: number): number => {
-  const binaryTimestamp = timestamp.toString(2);
-  let binarySeq = seq.toString(2);
-  if (binarySeq.length) {
-    while (binarySeq.length < SEQUENCE_BITS) {
-      binarySeq = `0${binarySeq}`;
-    }
-  }
-
-  return parseInt(binaryTimestamp + binarySeq, 2);
-};
 
 const makeEventKey = (id?: number): Buffer => {
   const buffer = Buffer.alloc(1 + (id ? 8 : 0));
@@ -369,7 +354,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
   }
 
   async pruneEvents(timeLimit?: number): HubAsyncResult<void> {
-    const toId = makeEventId(Date.now() - FARCASTER_EPOCH - (timeLimit ?? PRUNE_TIME_LIMIT_DEFAULT), 0);
+    const toId = makeEventId(Date.now() - (timeLimit ?? PRUNE_TIME_LIMIT_DEFAULT), 0);
 
     const iteratorOpts = this.getEventsIteratorOpts({ toId });
 

@@ -36,10 +36,26 @@ export const fromFarcasterTime = (time: number): HubResult<number> => {
   return ok(time * 1000 + FARCASTER_EPOCH);
 };
 
-/** Extracts the timestamp from an event ID. */
+// Chosen to keep number under Number.MAX_SAFE_INTEGER
+const TIMESTAMP_BITS = 41;
+const SEQUENCE_BITS = 12;
+
+/** Extracts a unix timestamp (ms resolution) from an event ID. */
 export const extractEventTimestamp = (eventId: number): number => {
   const binaryEventId = eventId.toString(2);
-  const SEQUENCE_BITS = 12;
   const binaryTimestamp = binaryEventId.slice(0, binaryEventId.length - SEQUENCE_BITS);
   return parseInt(binaryTimestamp, 2) + FARCASTER_EPOCH;
+};
+
+/** Generates a hub event id from a unix timestamp (ms resolution) and an optional sequence number */
+export const makeEventId = (timestamp: number, seq = 0): number => {
+  const binaryTimestamp = (timestamp - FARCASTER_EPOCH).toString(2);
+  let binarySeq = seq.toString(2);
+  if (binarySeq.length) {
+    while (binarySeq.length < SEQUENCE_BITS) {
+      binarySeq = `0${binarySeq}`;
+    }
+  }
+
+  return parseInt(binaryTimestamp + binarySeq, 2);
 };
