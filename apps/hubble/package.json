@@ -22,6 +22,7 @@
     "build:all": "yarn build:rust && yarn build:ts && yarn copy:rust",
     "build": "yarn build:all",
     "clean": "rimraf ./build && cargo clean --manifest-path ./src/addon/Cargo.toml",
+		"claim-peer-id": "node --no-warnings build/cli.js claim-peer-id",
     "dev": "yarn start | yarn pino-pretty",
     "lint": "yarn lint:ts && yarn lint:rust",
     "lint:ts": "yarn lint:customjs && biome format src/ --write && biome check src/ --apply",

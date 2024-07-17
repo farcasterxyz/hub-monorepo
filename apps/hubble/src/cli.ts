@@ -37,6 +37,7 @@ import axios from "axios";
 import { r2Endpoint, snapshotURLAndMetadata } from "./utils/snapshot.js";
 import { DEFAULT_DIAGNOSTIC_REPORT_URL, initDiagnosticReporter } from "./utils/diagnosticReport.js";
 import { ListObjectsV2Command, S3Client } from "@aws-sdk/client-s3";
+import { generateClaimForPeerID } from "@farcaster/core";
 
 /** A CLI to accept options from the user and start the Hub */
 
@@ -801,6 +802,27 @@ app
   .description("Create or verify a peerID")
   .addCommand(createIdCommand)
   .addCommand(verifyIdCommand);
+
+/*//////////////////////////////////////////////////////////////
+                        PEER ID CLAIM COMMAND
+//////////////////////////////////////////////////////////////*/
+const claimPeerIdCommand = new Command("claim-peer-id")
+  .description(
+    "Create a signed message to claim a Peer ID for a given FID with a verified address. " +
+      "For more details, see: https://github.com/farcasterxyz/protocol/blob/main/docs/SPECIFICATION.md#25-verifications",
+  )
+  .option("-I, --id <filepath>", "Path to the PeerId file", DEFAULT_PEER_ID_LOCATION)
+  .option("-F, --fid <number>", "FID of the user claiming the Peer ID")
+  .action(async (options) => {
+    const peerId = await readPeerId(options.id);
+    if (!options.fid || isNaN(options.fid)) {
+      logger.error("FID is required");
+      return flushAndExit(1);
+    }
+    const fid = parseInt(options.fid);
+    const message = await generateClaimForPeerID(peerId, fid);
+  });
+app.addCommand(claimPeerIdCommand);
 
 /*//////////////////////////////////////////////////////////////
                           STATUS COMMAND
