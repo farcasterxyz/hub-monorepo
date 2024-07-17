@@ -87,7 +87,6 @@ describe("process events", () => {
 
     l2EventsProvider = new L2EventsProvider(
       hub,
-      // @ts-ignore
       publicClient,
       storageRegistryAddress,
       keyRegistryV2Address,

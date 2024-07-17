@@ -1,18 +1,24 @@
-import { PublicClient, WatchBlockNumberParameters, WatchBlockNumberReturnType } from "viem";
+import { Chain, PublicClient, Transport, WatchBlockNumberParameters, WatchBlockNumberReturnType } from "viem";
 import { watchBlockNumber } from "viem/actions";
 import { logger, Logger } from "../utils/logger.js";
 import { HubError, HubResult } from "@farcaster/core";
 import { err, ok, Result } from "neverthrow";
 
-export class WatchBlockNumber {
-  private _publicClient: PublicClient;
-  private _params: WatchBlockNumberParameters;
+export class WatchBlockNumber<
+  transport extends Transport = Transport,
+  chain extends Chain = Chain
+> {
+  private _publicClient: PublicClient<transport, chain>;
+  private _params: WatchBlockNumberParameters<transport>;
   private _unwatch?: WatchBlockNumberReturnType;
   private _log: Logger;
 
   public lastBlockNumber?: bigint;
 
-  constructor(publicClient: PublicClient, params: WatchBlockNumberParameters) {
+  constructor(
+    publicClient: PublicClient<transport, chain>,
+    params: WatchBlockNumberParameters<transport>
+  ) {
     this._publicClient = publicClient;
     this._params = params;
     this._log = logger.child({

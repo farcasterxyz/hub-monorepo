@@ -45,6 +45,7 @@ import {
   GetContractEventsParameters,
   MaybeExtractEventArgsFromAbi,
   CreateContractEventFilterParameters,
+  Transport,
 } from "viem";
 import { WatchContractEvent } from "./watchContractEvent.js";
 import { WatchBlockNumber } from "./watchBlockNumber.js";
@@ -73,9 +74,12 @@ const RENT_EXPIRY_IN_SECONDS = 365 * 24 * 60 * 60; // One year
 /**
  * Class that follows the Optimism chain to handle on-chain events from the Storage Registry contract.
  */
-export class L2EventsProvider {
+export class L2EventsProvider<
+  chain extends Chain = Chain,
+  transport extends Transport = Transport,
+> {
   private _hub: HubInterface;
-  private _publicClient: PublicClient<FallbackTransport>;
+  private _publicClient: PublicClient<transport, chain>;
 
   private _firstBlock: number;
   private _chunkSize: number;
@@ -94,10 +98,10 @@ export class L2EventsProvider {
   private keyRegistryV2Address: `0x${string}` | undefined;
   private idRegistryV2Address: `0x${string}` | undefined;
 
-  private _watchStorageContractEvents?: WatchContractEvent;
-  private _watchKeyRegistryV2ContractEvents?: WatchContractEvent;
-  private _watchIdRegistryV2ContractEvents?: WatchContractEvent;
-  private _watchBlockNumber?: WatchBlockNumber;
+  private _watchStorageContractEvents?: WatchContractEvent<chain, typeof StorageRegistry.abi, ContractEventName<typeof StorageRegistry.abi>, true, transport>;
+  private _watchKeyRegistryV2ContractEvents?: WatchContractEvent<chain, typeof KeyRegistry.abi, ContractEventName<typeof KeyRegistry.abi>, true, transport>;
+  private _watchIdRegistryV2ContractEvents?: WatchContractEvent<chain, typeof IdRegistry.abi, ContractEventName<typeof IdRegistry.abi>, true, transport>;
+  private _watchBlockNumber?: WatchBlockNumber<transport, chain>;
 
   // Whether the historical events have been synced. This is used to avoid syncing the events multiple times.
   private _isHistoricalSyncDone = false;
@@ -116,7 +120,7 @@ export class L2EventsProvider {
 
   constructor(
     hub: HubInterface,
-    publicClient: PublicClient<FallbackTransport<HttpTransport[]>>,
+    publicClient: PublicClient<transport, chain>,
     storageRegistryAddress: `0x${string}`,
     keyRegistryV2Address: `0x${string}`,
     idRegistryV2Address: `0x${string}`,
@@ -154,7 +158,9 @@ export class L2EventsProvider {
    *
    * Build an L2 Events Provider for the ID Registry and Name Registry contracts.
    */
-  public static build(
+  public static build<
+    chain extends Chain = typeof optimismGoerli
+  >(
     hub: HubInterface,
     l2RpcUrl: string,
     rankRpcs: boolean,
@@ -166,7 +172,7 @@ export class L2EventsProvider {
     chainId: number,
     resyncEvents: boolean,
     expiryOverride?: number,
-  ): L2EventsProvider {
+  ): L2EventsProvider<chain> {
     const l2RpcUrls = l2RpcUrl.split(",");
     const transports = l2RpcUrls.map((url) =>
       http(url, {
@@ -182,7 +188,8 @@ export class L2EventsProvider {
     );
 
     const publicClient = createPublicClient({
-      chain: optimismGoerli,
+      // Fallback; provided RPC URLs override this
+      chain: optimismGoerli as unknown as chain,
       transport: fallback(transports, {
         rank: rankRpcs,
       }),
@@ -190,7 +197,6 @@ export class L2EventsProvider {
 
     const provider = new L2EventsProvider(
       hub,
-      // @ts-ignore
       publicClient,
       storageRegistryAddress,
       keyRegistryV2Address,
@@ -256,7 +262,10 @@ export class L2EventsProvider {
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  private async processStorageEvents(logs: WatchContractEventOnLogsParameter<typeof StorageRegistry.abi>, version = 0) {
+  private async processStorageEvents(
+    logs: WatchContractEventOnLogsParameter<typeof StorageRegistry.abi, ContractEventName<typeof StorageRegistry.abi>, true>,
+    version = 0
+  ) {
     for (const event of logs) {
       const { blockNumber, blockHash, transactionHash, transactionIndex, logIndex } = event;
 
@@ -644,12 +653,17 @@ export class L2EventsProvider {
     this.idRegistryV2Address = idRegistryV2Address;
     this.keyRegistryV2Address = keyRegistryV2Address;
 
-    this._watchStorageContractEvents = new WatchContractEvent(
+    this._watchStorageContractEvents = new WatchContractEvent<
+      chain,
+      typeof StorageRegistry.abi,
+      ContractEventName<typeof StorageRegistry.abi>,
+      true,
+      transport
+    >(
       this._publicClient,
       {
         address: storageRegistryAddress,
         abi: StorageRegistry.abi,
-        // @ts-ignore
         onLogs: this.processStorageEvents.bind(this),
         pollingInterval: L2EventsProvider.eventPollingInterval,
         strict: true,
@@ -657,12 +671,17 @@ export class L2EventsProvider {
       "StorageRegistry",
     );
 
-    this._watchKeyRegistryV2ContractEvents = new WatchContractEvent(
+    this._watchKeyRegistryV2ContractEvents = new WatchContractEvent<
+      chain,
+      typeof KeyRegistry.abi,
+      ContractEventName<typeof KeyRegistry.abi>,
+      true,
+      transport
+    >(
       this._publicClient,
       {
         address: keyRegistryV2Address,
         abi: KeyRegistry.abi,
-        // @ts-ignore
         onLogs: this.processKeyRegistryEventsV2.bind(this),
         pollingInterval: L2EventsProvider.eventPollingInterval,
         strict: true,
@@ -670,12 +689,17 @@ export class L2EventsProvider {
       "KeyRegistryV2",
     );
 
-    this._watchIdRegistryV2ContractEvents = new WatchContractEvent(
+    this._watchIdRegistryV2ContractEvents = new WatchContractEvent<
+      chain,
+      typeof IdRegistry.abi,
+      ContractEventName<typeof IdRegistry.abi>,
+      true,
+      transport
+    >(
       this._publicClient,
       {
         address: idRegistryV2Address,
         abi: IdRegistry.abi,
-        // @ts-ignore
         onLogs: this.processIdRegistryV2Events.bind(this),
         pollingInterval: L2EventsProvider.eventPollingInterval,
         strict: true,
@@ -827,11 +851,14 @@ export class L2EventsProvider {
   private async detectFilterSupport() {
     // Set up a client with fewer retries and shorter timeout
     const urls: string[] = [];
-    this._publicClient.transport["transports"].forEach((transport) => {
-      if (transport?.value) {
-        urls.push(transport.value["url"]);
-      }
-    });
+
+    if (this._publicClient.transport["transports"]?.[0]?.value?.["url"]) {
+      (this._publicClient as PublicClient<FallbackTransport<HttpTransport[]>, chain>).transport["transports"].forEach((transport) => {
+        if (transport?.value?.["url"]) {
+          urls.push(transport.value["url"]);
+        }
+      });
+    }
     const transports = urls.map((url) => http(url, { retryCount: 1, timeout: 1000 }));
     const testClient = createPublicClient({
       chain: optimismGoerli,
