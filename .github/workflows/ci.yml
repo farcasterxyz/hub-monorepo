@@ -36,7 +36,7 @@ jobs:
 
       - name: Run Hubble
         shell: bash
-        run: docker run --name hub --detach -p2282:2282 -p2283:2283 farcasterxyz/hubble:test sh -c 'node build/cli.js identity create && HUBBLE_ARGS="start --rpc-port 2283 --ip 0.0.0.0 --gossip-port 2282 --eth-mainnet-rpc-url https://eth-mainnet.g.alchemy.com/v2/8cz__IXnQ5FK_GNYDlfooLzYhBAW7ta0 --l2-rpc-url https://opt-mainnet.g.alchemy.com/v2/3xWX-cWV-an3IPXmVCRXX51PpQzc-8iJ --network 3 --allowed-peers none --catchup-sync-with-snapshot false --hub-operator-fid 9152" npx pm2-runtime start pm2.config.cjs'
+        run: docker run --name hub --detach -p2282:2282 -p2283:2283 farcasterxyz/hubble:test sh -c 'node build/cli.js identity create && HUBBLE_ARGS="start --rpc-port 2283 --ip 0.0.0.0 --gossip-port 2282 --eth-mainnet-rpc-url https://eth-mainnet.g.alchemy.com/v2/8cz__IXnQ5FK_GNYDlfooLzYhBAW7ta0 --l2-rpc-url https://opt-mainnet.g.alchemy.com/v2/3xWX-cWV-an3IPXmVCRXX51PpQzc-8iJ --network 3 --allowed-peers none --catchup-sync-with-snapshot false --hub-operator-fid 1" npx pm2-runtime start pm2.config.cjs'
 
       - name: Download grpcurl
         shell: bash
