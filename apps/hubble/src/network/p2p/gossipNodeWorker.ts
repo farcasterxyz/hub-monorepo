@@ -203,6 +203,9 @@ export class LibP2PNode {
         // Only set optional fields if defined to avoid errors
         ...(peerId && { peerId }),
         connectionGater: this._connectionGater,
+        connectionManager: {
+          minConnections: 0,
+        },
         addresses: {
           listen: [listenMultiAddrStr],
           announce: announceMultiAddrStrList,
