@@ -468,7 +468,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     }
   }
 
-  /** Connects to a peer GossipNode */
+  /** Connects to a peer GossipNode through at least one multiaddr */
   async connect(peerNode: GossipNode): Promise<HubResult<void>> {
     const multiaddrs = peerNode.multiaddrs();
     if (!multiaddrs || multiaddr.length === 0) {
