@@ -24,7 +24,7 @@ import {
   getBlock,
   getBlockNumber,
   getContractEvents,
-  getFilterLogs
+  getFilterLogs,
 } from "viem/actions";
 import { optimismGoerli } from "viem/chains";
 import {
@@ -74,10 +74,7 @@ const RENT_EXPIRY_IN_SECONDS = 365 * 24 * 60 * 60; // One year
 /**
  * Class that follows the Optimism chain to handle on-chain events from the Storage Registry contract.
  */
-export class L2EventsProvider<
-  chain extends Chain = Chain,
-  transport extends Transport = Transport,
-> {
+export class L2EventsProvider<chain extends Chain = Chain, transport extends Transport = Transport> {
   private _hub: HubInterface;
   private _publicClient: PublicClient<transport, chain>;
 
@@ -98,9 +95,27 @@ export class L2EventsProvider<
   private keyRegistryV2Address: `0x${string}` | undefined;
   private idRegistryV2Address: `0x${string}` | undefined;
 
-  private _watchStorageContractEvents?: WatchContractEvent<chain, typeof StorageRegistry.abi, ContractEventName<typeof StorageRegistry.abi>, true, transport>;
-  private _watchKeyRegistryV2ContractEvents?: WatchContractEvent<chain, typeof KeyRegistry.abi, ContractEventName<typeof KeyRegistry.abi>, true, transport>;
-  private _watchIdRegistryV2ContractEvents?: WatchContractEvent<chain, typeof IdRegistry.abi, ContractEventName<typeof IdRegistry.abi>, true, transport>;
+  private _watchStorageContractEvents?: WatchContractEvent<
+    chain,
+    typeof StorageRegistry.abi,
+    ContractEventName<typeof StorageRegistry.abi>,
+    true,
+    transport
+  >;
+  private _watchKeyRegistryV2ContractEvents?: WatchContractEvent<
+    chain,
+    typeof KeyRegistry.abi,
+    ContractEventName<typeof KeyRegistry.abi>,
+    true,
+    transport
+  >;
+  private _watchIdRegistryV2ContractEvents?: WatchContractEvent<
+    chain,
+    typeof IdRegistry.abi,
+    ContractEventName<typeof IdRegistry.abi>,
+    true,
+    transport
+  >;
   private _watchBlockNumber?: WatchBlockNumber<transport, chain>;
 
   // Whether the historical events have been synced. This is used to avoid syncing the events multiple times.
@@ -158,9 +173,7 @@ export class L2EventsProvider<
    *
    * Build an L2 Events Provider for the ID Registry and Name Registry contracts.
    */
-  public static build<
-    chain extends Chain = typeof optimismGoerli
-  >(
+  public static build<chain extends Chain = typeof optimismGoerli>(
     hub: HubInterface,
     l2RpcUrl: string,
     rankRpcs: boolean,
@@ -263,8 +276,12 @@ export class L2EventsProvider<
   /* -------------------------------------------------------------------------- */
 
   private async processStorageEvents(
-    logs: WatchContractEventOnLogsParameter<typeof StorageRegistry.abi, ContractEventName<typeof StorageRegistry.abi>, true>,
-    version = 0
+    logs: WatchContractEventOnLogsParameter<
+      typeof StorageRegistry.abi,
+      ContractEventName<typeof StorageRegistry.abi>,
+      true
+    >,
+    version = 0,
   ) {
     for (const event of logs) {
       const { blockNumber, blockHash, transactionHash, transactionIndex, logIndex } = event;
@@ -853,11 +870,13 @@ export class L2EventsProvider<
     const urls: string[] = [];
 
     if (this._publicClient.transport["transports"]?.[0]?.value?.["url"]) {
-      (this._publicClient as PublicClient<FallbackTransport<HttpTransport[]>, chain>).transport["transports"].forEach((transport) => {
-        if (transport?.value?.["url"]) {
-          urls.push(transport.value["url"]);
-        }
-      });
+      (this._publicClient as PublicClient<FallbackTransport<HttpTransport[]>, chain>).transport["transports"].forEach(
+        (transport) => {
+          if (transport?.value?.["url"]) {
+            urls.push(transport.value["url"]);
+          }
+        },
+      );
     }
     const transports = urls.map((url) => http(url, { retryCount: 1, timeout: 1000 }));
     const testClient = createPublicClient({

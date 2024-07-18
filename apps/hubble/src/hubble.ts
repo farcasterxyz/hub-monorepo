@@ -1427,15 +1427,15 @@ export class Hub implements HubInterface {
     let message: ContactInfoContentBody = content.body
       ? content.body
       : ContactInfoContentBody.create({
-        gossipAddress: content.gossipAddress,
-        rpcAddress: content.rpcAddress,
-        excludedHashes: content.excludedHashes,
-        count: content.count,
-        hubVersion: content.hubVersion,
-        network: content.network,
-        appVersion: content.appVersion,
-        timestamp: content.timestamp,
-      });
+          gossipAddress: content.gossipAddress,
+          rpcAddress: content.rpcAddress,
+          excludedHashes: content.excludedHashes,
+          count: content.count,
+          hubVersion: content.hubVersion,
+          network: content.network,
+          appVersion: content.appVersion,
+          timestamp: content.timestamp,
+        });
 
     // Don't process messages that are too old
     if (message.timestamp && message.timestamp < Date.now() - MAX_CONTACT_INFO_AGE_MS) {

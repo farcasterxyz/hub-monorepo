@@ -1,4 +1,12 @@
-import type { Abi, Chain, ContractEventName, PublicClient, Transport, WatchContractEventParameters, WatchContractEventReturnType } from "viem";
+import type {
+  Abi,
+  Chain,
+  ContractEventName,
+  PublicClient,
+  Transport,
+  WatchContractEventParameters,
+  WatchContractEventReturnType,
+} from "viem";
 import { watchContractEvent } from "viem/actions";
 import { logger, Logger } from "../utils/logger.js";
 import { HubError, HubResult } from "@farcaster/core";
@@ -26,7 +34,7 @@ export class WatchContractEvent<
   constructor(
     publicClient: PublicClient<transport, chain>,
     params: WatchContractEventParameters<abi, eventName, strict, transport>,
-    key: string
+    key: string,
   ) {
     this._publicClient = publicClient;
     this._params = params;
@@ -37,23 +45,20 @@ export class WatchContractEvent<
   }
 
   public start() {
-    this._unwatch = watchContractEvent<chain, abi, eventName, strict, transport>(
-      this._publicClient,
-      {
-        ...this._params,
-        onError: (error) => {
-          diagnosticReporter().reportError(error);
-          this._log.error(`Error watching contract events: ${error}`, { error });
-          const restartResult = this.restart();
-          if (restartResult.isErr()) {
-            // Note: restart returns error if start fails - if start fails, we throw the error since
-            // it can lead to an inconsistent state.
-            throw restartResult.error;
-          }
-          if (this._params.onError) this._params.onError(error);
-        },
-      }
-    );
+    this._unwatch = watchContractEvent<chain, abi, eventName, strict, transport>(this._publicClient, {
+      ...this._params,
+      onError: (error) => {
+        diagnosticReporter().reportError(error);
+        this._log.error(`Error watching contract events: ${error}`, { error });
+        const restartResult = this.restart();
+        if (restartResult.isErr()) {
+          // Note: restart returns error if start fails - if start fails, we throw the error since
+          // it can lead to an inconsistent state.
+          throw restartResult.error;
+        }
+        if (this._params.onError) this._params.onError(error);
+      },
+    });
 
     this._log.info(`Started watching contract events at address ${this._params.address}`);
   }

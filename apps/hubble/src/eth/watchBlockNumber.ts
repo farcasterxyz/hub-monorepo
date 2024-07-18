@@ -4,10 +4,7 @@ import { logger, Logger } from "../utils/logger.js";
 import { HubError, HubResult } from "@farcaster/core";
 import { err, ok, Result } from "neverthrow";
 
-export class WatchBlockNumber<
-  transport extends Transport = Transport,
-  chain extends Chain = Chain
-> {
+export class WatchBlockNumber<transport extends Transport = Transport, chain extends Chain = Chain> {
   private _publicClient: PublicClient<transport, chain>;
   private _params: WatchBlockNumberParameters<transport>;
   private _unwatch?: WatchBlockNumberReturnType;
@@ -15,10 +12,7 @@ export class WatchBlockNumber<
 
   public lastBlockNumber?: bigint;
 
-  constructor(
-    publicClient: PublicClient<transport, chain>,
-    params: WatchBlockNumberParameters<transport>
-  ) {
+  constructor(publicClient: PublicClient<transport, chain>, params: WatchBlockNumberParameters<transport>) {
     this._publicClient = publicClient;
     this._params = params;
     this._log = logger.child({
