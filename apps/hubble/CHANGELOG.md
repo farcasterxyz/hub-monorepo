@@ -1,5 +1,14 @@
 # @farcaster/hubble
 
+## 1.13.8
+
+### Patch Changes
+
+- 76ad1ac2: feat: Expost event id functions
+- e2b1c7c6: - upgrade libp2p to 0.44.0
+- 97d0a7ea: fix: update hub storage requirement to 200 GB
+  - @farcaster/hub-nodejs@0.11.21
+
 ## 1.13.7
 
 ### Patch Changes

@@ -47,7 +47,7 @@ export class MessageProcessor {
     }
 
     // @ts-ignore
-    const result = await trx
+    let result = await trx
       .insertInto("messages")
       .values({
         fid: message.data.fid,
@@ -62,28 +62,35 @@ export class MessageProcessor {
         ...opData,
       })
       .returning(["id"])
-      .onConflict((oc) =>
-        oc
-          .columns(["hash", "fid", "type"])
-          // In case the signer was changed, make sure to always update it
-          .doUpdateSet({
-            signatureScheme: message.signatureScheme,
-            signer: message.signer,
-            raw: Message.encode(message).finish(),
-            ...opData,
-          })
-          .where(({ eb, or }) =>
-            or([
-              eb("excluded.deletedAt", "is not", null).and("messages.deletedAt", "is", null),
-              eb("excluded.deletedAt", "is", null).and("messages.deletedAt", "is not", null),
-              eb("excluded.prunedAt", "is not", null).and("messages.prunedAt", "is", null),
-              eb("excluded.prunedAt", "is", null).and("messages.prunedAt", "is not", null),
-              eb("excluded.revokedAt", "is not", null).and("messages.revokedAt", "is", null),
-              eb("excluded.revokedAt", "is", null).and("messages.revokedAt", "is not", null),
-            ]),
-          ),
-      )
+      .onConflict((oc) => oc.doNothing())
       .executeTakeFirst();
+
+    if (!result) {
+      const data = message.data;
+      result = await trx
+        .updateTable("messages")
+        .set({
+          signatureScheme: message.signatureScheme,
+          signer: message.signer,
+          raw: Message.encode(message).finish(),
+          ...opData,
+        })
+        .returning(["id"])
+        .where((eb) =>
+          eb.and([
+            eb("hash", "=", message.hash),
+            eb("fid", "=", data.fid),
+            eb("type", "=", data.type),
+            eb.or([
+              eb("deletedAt", !opData.deletedAt ? "is not" : "is", null),
+              eb("prunedAt", !opData.prunedAt ? "is not" : "is", null),
+              eb("revokedAt", !opData.revokedAt ? "is not" : "is", null),
+            ]),
+          ]),
+        )
+        .executeTakeFirst();
+    }
+
     return !!result;
   }
 
