@@ -1,5 +1,12 @@
 # @farcaster/hub-shuttle
 
+## 0.5.7
+
+### Patch Changes
+
+- ee0947ec: fix: on conflict criteria is ambiguous and cannot be used for upsert
+  - @farcaster/hub-nodejs@0.11.21
+
 ## 0.5.6
 
 ### Patch Changes

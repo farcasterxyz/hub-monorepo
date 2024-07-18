@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.14.19
+
+### Patch Changes
+
+- 76ad1ac2: feat: Expost event id functions
+
 ## 0.14.18
 
 ### Patch Changes
