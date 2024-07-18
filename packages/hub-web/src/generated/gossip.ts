@@ -40,7 +40,7 @@ export interface GossipAddressInfo {
 }
 
 /**
- * Gossip repesentation of PeerIdentityClaimWithAccountSignature
+ * Gossip representation of PeerIdentityClaimWithAccountSignature
  * Peer Identity Claim attempts to associate a given FID with a given Peer ID
  * A valid claim is signed by the peer and the account key (aka delegate signer) associated with
  * custody address of a given FID
