@@ -14,6 +14,21 @@ message GossipAddressInfo {
   string dns_name = 4;
 }
 
+// Gossip repesentation of PeerIdentityClaimWithAccountSignature
+// Peer Identity Claim attempts to associate a given FID with a given Peer ID
+// A valid claim is signed by the peer and the account key (aka delegate signer) associated with
+// custody address of a given FID
+message PeerIdentityClaim {
+  uint64 fid = 1;
+  // Note: peer id is excluded because all gossip messages are signed by the peer id
+
+  uint64 deadline = 2; // Unix timestamp in milliseconds
+  uint64 created_at = 3; // Unix timestamp in milliesconds
+  bytes peer_signature = 4; // Hex encoded signature from private key of the peer
+  bytes account_signature = 5; // Hex encoded signature from private key of the account
+  bytes account_public_key = 6; // Hex encoded public key of the account
+}
+
 message ContactInfoContentBody {
   GossipAddressInfo gossip_address = 1;
   GossipAddressInfo rpc_address = 2;
@@ -23,7 +38,7 @@ message ContactInfoContentBody {
   FarcasterNetwork network = 6;
   string app_version = 7;
   uint64 timestamp = 8;
-  uint64 fid = 9;
+  PeerIdentityClaim peer_identity_claim = 9;
 }
 
 message ContactInfoContent {
@@ -39,7 +54,6 @@ message ContactInfoContent {
   bytes signature = 10; // Signature of the message digest
   bytes signer = 11; // Public key of the peer that originated the contact info
   optional bytes data_bytes = 12; // Optional alternative serialization used for signing
-  uint64 fid = 13;
 }
 
 message PingMessageBody {

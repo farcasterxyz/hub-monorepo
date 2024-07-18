@@ -220,7 +220,7 @@ describe("GossipNode", () => {
     test("Gossip contact info with FID should not return error", async () => {
       await node.start([]);
 
-      const contactInfo = ContactInfoContent.create({ fid: Factories.Fid.build() });
+      const contactInfo = ContactInfoContent.create({});
       const res = await node.gossipContactInfo(contactInfo);
       expect(res.isOk()).toBeTruthy();
     });

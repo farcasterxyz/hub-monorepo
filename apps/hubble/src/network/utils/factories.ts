@@ -21,11 +21,19 @@ const GossipAddressInfoFactory = Factory.define<GossipAddressInfo>(() => {
 });
 
 const ContactInfoContentFactory = Factory.define<ContactInfoContent>(() => {
+  const gossipAddress = GossipAddressInfoFactory.build();
+  const rpcAddress = GossipAddressInfoFactory.build();
+  const count = faker.datatype.number({ min: 0, max: 100 });
   return ContactInfoContent.create({
-    gossipAddress: GossipAddressInfoFactory.build(),
-    rpcAddress: GossipAddressInfoFactory.build(),
+    gossipAddress,
+    rpcAddress,
     excludedHashes: [],
-    count: 0,
+    count,
+    body: {
+      gossipAddress,
+      rpcAddress,
+      count,
+    },
   });
 });
 

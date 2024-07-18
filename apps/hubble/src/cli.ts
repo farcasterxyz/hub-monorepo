@@ -1,4 +1,4 @@
-import { FarcasterNetwork, farcasterNetworkFromJSON } from "@farcaster/hub-nodejs";
+import { FarcasterNetwork, farcasterNetworkFromJSON, HubResult } from "@farcaster/hub-nodejs";
 import { peerIdFromString } from "@libp2p/peer-id";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { createEd25519PeerId, createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
@@ -37,7 +37,7 @@ import axios from "axios";
 import { r2Endpoint, snapshotURLAndMetadata } from "./utils/snapshot.js";
 import { DEFAULT_DIAGNOSTIC_REPORT_URL, initDiagnosticReporter } from "./utils/diagnosticReport.js";
 import { ListObjectsV2Command, S3Client } from "@aws-sdk/client-s3";
-import { generateClaimForPeerID } from "@farcaster/core";
+import { generateClaimForPeerID, PeerIdentityClaimWithAccountSignature } from "./peerclaim/index.js";
 
 /** A CLI to accept options from the user and start the Hub */
 
@@ -813,6 +813,10 @@ const claimPeerIdCommand = new Command("claim-peer-id")
   )
   .option("-I, --id <filepath>", "Path to the PeerId file", DEFAULT_PEER_ID_LOCATION)
   .option("-F, --fid <number>", "FID of the user claiming the Peer ID")
+  .option(
+    "-K, --account-key <filepath>",
+    "Path to the account key file, where account key is a signer registered for a given FID",
+  )
   .action(async (options) => {
     const peerId = await readPeerId(options.id);
     if (!options.fid || isNaN(options.fid)) {
@@ -820,7 +824,23 @@ const claimPeerIdCommand = new Command("claim-peer-id")
       return flushAndExit(1);
     }
     const fid = parseInt(options.fid);
-    const message = await generateClaimForPeerID(peerId, fid);
+    if (!options.accountKey) {
+      logger.error("Account key path is required");
+      return flushAndExit(1);
+    }
+    const privateKeyBuffer = await readFile(options.accountKey);
+    const accountPrivateKey = new Uint8Array(privateKeyBuffer);
+
+    const message: HubResult<PeerIdentityClaimWithAccountSignature> = await generateClaimForPeerID(
+      fid,
+      peerId,
+      accountPrivateKey,
+    );
+    if (message.isErr()) {
+      logger.error("Failed to generate claim message", message.error);
+      return flushAndExit(1);
+    }
+    console.log(message.value);
   });
 app.addCommand(claimPeerIdCommand);
 

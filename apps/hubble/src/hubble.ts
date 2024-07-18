@@ -1147,7 +1147,6 @@ export class Hub implements HubInterface {
       network: this.options.network,
       appVersion: APP_VERSION,
       timestamp: Date.now(),
-      fid: fid,
     });
     const content = ContactInfoContent.create({
       gossipAddress: gossipAddressContactInfo,
@@ -1158,7 +1157,6 @@ export class Hub implements HubInterface {
       network: this.options.network,
       appVersion: APP_VERSION,
       timestamp: Date.now(),
-      fid: fid,
       // omit above in a subsequent version
       body: body,
     });
