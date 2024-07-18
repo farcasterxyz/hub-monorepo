@@ -600,12 +600,21 @@ describe("SyncEngine", () => {
 
     test("replaces contact info if newer", async () => {
       const now = Date.now();
-      const contactInfo: ContactInfoContent = NetworkFactories.GossipContactInfoContent.build({ timestamp: now });
+      const contactInfo: ContactInfoContent = NetworkFactories.GossipContactInfoContent.build({
+        timestamp: now,
+        body: { timestamp: now },
+      });
       const olderContactInfo: ContactInfoContent = NetworkFactories.GossipContactInfoContent.build({
         timestamp: now - 10,
+        body: {
+          timestamp: now - 10,
+        },
       });
       const newerContactInfo: ContactInfoContent = NetworkFactories.GossipContactInfoContent.build({
         timestamp: now + 10,
+        body: {
+          timestamp: now + 10,
+        },
       });
       const peerId = await createEd25519PeerId();
 
@@ -618,7 +627,7 @@ describe("SyncEngine", () => {
       expect(syncEngine.addContactInfoForPeerId(peerId, contactInfo.body, updateThresholdMilliseconds)).toBeInstanceOf(
         Ok,
       );
-      expect(syncEngine.getContactInfoForPeerId(peerId.toString())?.contactInfo).toEqual(contactInfo);
+      expect(syncEngine.getContactInfoForPeerId(peerId.toString())?.contactInfo).toEqual(contactInfo.body);
 
       // Adding an older contact info should not replace the existing one
       if (!olderContactInfo.body) {
@@ -627,16 +636,18 @@ describe("SyncEngine", () => {
       expect(
         syncEngine.addContactInfoForPeerId(peerId, olderContactInfo.body, updateThresholdMilliseconds),
       ).toBeInstanceOf(Err);
-      expect(syncEngine.getContactInfoForPeerId(peerId.toString())?.contactInfo).toEqual(contactInfo);
+      expect(syncEngine.getContactInfoForPeerId(peerId.toString())?.contactInfo).toEqual(contactInfo.body);
 
       // Adding a newer contact info should replace the existing one
       if (!newerContactInfo.body) {
         throw new Error("newerContactInfo.body is undefined");
       }
-      expect(
-        syncEngine.addContactInfoForPeerId(peerId, newerContactInfo.body, updateThresholdMilliseconds),
-      ).toBeInstanceOf(Ok);
-      expect(syncEngine.getContactInfoForPeerId(peerId.toString())?.contactInfo).toEqual(newerContactInfo);
+      const result = syncEngine.addContactInfoForPeerId(peerId, newerContactInfo.body, updateThresholdMilliseconds);
+      if (result.isErr()) {
+        throw new Error(`Error adding newer contact info: ${result.error.message}`);
+      }
+      expect(result).toBeInstanceOf(Ok);
+      expect(syncEngine.getContactInfoForPeerId(peerId.toString())?.contactInfo).toEqual(newerContactInfo.body);
     });
   });
 });

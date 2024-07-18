@@ -1440,7 +1440,6 @@ export class Hub implements HubInterface {
           network: content.network,
           appVersion: content.appVersion,
           timestamp: content.timestamp,
-          // TODO: fid is not included yet for backwards compatibility
         });
 
     // Don't process messages that are too old
