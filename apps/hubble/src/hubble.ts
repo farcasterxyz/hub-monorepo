@@ -783,39 +783,16 @@ export class Hub implements HubInterface {
     // TODO: move this to separate function
     if (this.options.hubOperatorFid && this.options.peerIdentityClaim) {
       const accountPublicKey = this.options.peerIdentityClaim.accountPublicKey;
-      const signersResult: HubResult<OnChainEventResponse> = await this.engine.getOnChainSignersByFid(
-        this.options.hubOperatorFid,
-      );
-      if (signersResult.isErr()) {
-        throw signersResult.error;
+      const accountKeyBytesResult = hexStringToBytes(accountPublicKey);
+      if (accountKeyBytesResult.isErr()) {
+        throw accountKeyBytesResult.error;
       }
-      const signers: OnChainEventResponse = signersResult.value;
-      const found = signers.events.find((event: OnChainEvent) => {
-        if (!event.signerEventBody) {
-          return false;
-        }
-        const hexKeyResult = bytesToHexString(event.signerEventBody.key);
-        if (hexKeyResult.isErr()) {
-          return false;
-        }
-        const hexKey = hexKeyResult.value;
-        return hexKey === accountPublicKey;
-      });
-      if (!found) {
+      const accountPublicKeyBytes = accountKeyBytesResult.value;
+      const signerResult = await this.engine.getActiveSigner(this.options.hubOperatorFid, accountPublicKeyBytes);
+      if (signerResult.isErr()) {
         throw new HubError("unavailable", "Hub Operator FID not associated with account key");
       }
     }
-    // if (!this.options.hubOperatorFid) {
-    //   throw new HubError("unavailable", "Hub Operator FID is required");
-    // }
-    // if (!this.options.peerIdentityClaim) {
-    //   throw new HubError("unavailable", "Peer Identity Claim is required");
-    // }
-    // const pubkeyResult = hexStringToBytes(this.options.peerIdentityClaim.accountPublicKey);
-    // if (pubkeyResult.isErr()) {
-    //   throw pubkeyResult.error
-    // }
-    // const accountPublicKey: Uint8Array = pubkeyResult.value;
 
     const bootstrapAddrs = this.options.bootstrapAddrs ?? [];
 
@@ -1567,19 +1544,28 @@ export class Hub implements HubInterface {
     }
 
     // if peer identity claim is present, validate it
-    // TODO: add check for key match with FID - account keys can be removed, and so claims can become invalidated
     if (message.peerIdentityClaim) {
+      const fid = message.peerIdentityClaim.fid;
+      const accountPublicKey = message.peerIdentityClaim.accountPublicKey;
+
+      // check if account key (signer) used for claim is active - otherwise claim is invalid
+      const signerResult = await this.engine.getActiveSigner(fid, accountPublicKey);
+      if (signerResult.isErr()) {
+        log.warn({ message: content, error: signerResult.error }, "failed to get active signer for claim");
+        return false;
+      }
+
       const claim: PeerIdentityClaimWithAccountSignature = {
         claim: {
           message: {
-            fid: message.peerIdentityClaim.fid,
+            fid,
             peerId: `0x${peerId.toString()}`,
           },
           deadline: message.peerIdentityClaim.deadline,
           createdAt: message.peerIdentityClaim.createdAt,
           peerSignature: `0x${Buffer.from(message.peerIdentityClaim.peerSignature).toString("hex")}`,
         },
-        accountPublicKey: `0x${Buffer.from(message.peerIdentityClaim.accountPublicKey).toString("hex")}`,
+        accountPublicKey: `0x${Buffer.from(accountPublicKey).toString("hex")}`,
         accountSignature: `0x${Buffer.from(message.peerIdentityClaim.accountSignature).toString("hex")}`,
       };
       const result: HubResult<boolean> = await verifyPeerIdentityClaimWithAccountSignature(claim);
