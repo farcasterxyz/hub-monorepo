@@ -400,18 +400,15 @@ app
 
     try {
       const fid = hubOperatorFid;
-      const response = await axios.get(`https://fnames.farcaster.xyz/transfers?fid=${fid}`);
-      const transfers = response.data.transfers;
-      if (transfers && transfers.length > 0) {
-        const usernameField = transfers[transfers.length - 1].username;
-        if (usernameField !== null && usernameField !== undefined) {
-          startupCheck.printStartupCheckStatus(StartupCheckStatus.OK, `Hub Operator FID is ${fid}(${usernameField})`);
-        } else {
-          startupCheck.printStartupCheckStatus(
-            StartupCheckStatus.WARNING,
-            `Hub Operator FID is ${fid}, but no username was found`,
-          );
-        }
+      const response = await axios.get(`https://fnames.farcaster.xyz/transfers/current?fid=${fid}`);
+      const transfer = response.data.transfer;
+      if (transfer?.username) {
+        startupCheck.printStartupCheckStatus(StartupCheckStatus.OK, `Hub Operator FID is ${fid}(${transfer.username})`);
+      } else {
+        startupCheck.printStartupCheckStatus(
+          StartupCheckStatus.WARNING,
+          `Hub Operator FID is ${fid}, but no username was found`,
+        );
       }
     } catch (e) {
       logger.error(e, `Error fetching username for Hub Operator FID ${hubOperatorFid}`);
