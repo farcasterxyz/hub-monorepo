@@ -19,6 +19,12 @@ import { makeFidKey, makeMessagePrimaryKey, makeTsHash, typeToSetPostfix } from 
 import { bytesCompare, getFarcasterTime, HubAsyncResult } from "@farcaster/core";
 import { forEachOnChainEvent } from "../db/onChainEvent.js";
 import { addProgressBar } from "../../utils/progressBars.js";
+import {
+  rsClearEarliestTsHash,
+  rsCreateStorageCache,
+  rsGetEarliestTsHash,
+  RustStorageCache,
+} from "../../rustfunctions.js";
 
 const MAX_PENDING_MESSAGE_COUNT_SCANS = 100;
 
@@ -38,14 +44,15 @@ export class StorageCache {
   private _counts: Map<string, number>;
   private _pendingMessageCountScans = new Map<string, Promise<number>>();
 
-  private _earliestTsHashes: Map<string, Uint8Array>;
   private _activeStorageSlots: Map<number, StorageSlot>;
+
+  private _rustStorageCache: RustStorageCache;
 
   constructor(db: RocksDB, usage?: Map<string, number>) {
     this._counts = usage ?? new Map();
-    this._earliestTsHashes = new Map();
     this._activeStorageSlots = new Map();
     this._db = db;
+    this._rustStorageCache = rsCreateStorageCache(db.rustDb);
   }
 
   async syncFromDb(): Promise<void> {
@@ -83,7 +90,6 @@ export class StorageCache {
     progressBar?.stop();
 
     this._counts = new Map();
-    this._earliestTsHashes = new Map();
 
     // Start prepopulating the cache in the background
     if (this._db.status !== "open") {
@@ -166,41 +172,14 @@ export class StorageCache {
   }
 
   async getEarliestTsHash(fid: number, set: UserMessagePostfix): HubAsyncResult<Uint8Array | undefined> {
-    const key = makeKey(fid, set);
-    const messageCount = await this.getMessageCount(fid, set);
-    if (messageCount.isErr()) {
-      return err(messageCount.error);
+    const result = await rsGetEarliestTsHash(this._rustStorageCache, fid, set);
+    if (result.isErr()) {
+      return err(result.error);
     }
-    if (messageCount.value === 0) {
+    if (result.value.length === 0) {
       return ok(undefined);
-    }
-    const value = this._earliestTsHashes.get(key);
-    if (value === undefined) {
-      const prefix = makeMessagePrimaryKey(fid, set);
-
-      let firstKey: Buffer | undefined;
-      await this._db.forEachIteratorByPrefix(
-        prefix,
-        (key) => {
-          firstKey = key as Buffer;
-          return true; // Finish the iteration after the first key-value pair
-        },
-        { pageSize: 1 },
-      );
-
-      if (firstKey === undefined) {
-        return ok(undefined);
-      }
-
-      if (firstKey && firstKey.length === 0) {
-        return err(new HubError("unavailable.storage_failure", "could not read earliest message from db"));
-      }
-
-      const tsHash = Uint8Array.from(firstKey.subarray(1 + FID_BYTES + 1));
-      this._earliestTsHashes.set(key, tsHash);
-      return ok(tsHash);
     } else {
-      return ok(value);
+      return ok(new Uint8Array(result.value));
     }
   }
 
@@ -250,9 +229,12 @@ export class StorageCache {
         log.error(`error: could not make ts hash for message ${message.hash}`);
         return;
       }
-      const currentEarliest = this._earliestTsHashes.get(key);
-      if (currentEarliest === undefined || bytesCompare(currentEarliest, tsHashResult.value) > 0) {
-        this._earliestTsHashes.set(key, tsHashResult.value);
+      const currentEarliest = await this.getEarliestTsHash(fid, set);
+      if (currentEarliest.isOk()) {
+        if (currentEarliest.value === undefined || bytesCompare(currentEarliest.value, tsHashResult.value) > 0) {
+          // TODO: We should be setting here instead, but we'll do that when we migrate the processEvent logic to rust
+          rsClearEarliestTsHash(this._rustStorageCache, fid, set);
+        }
       }
     }
   }
@@ -280,9 +262,11 @@ export class StorageCache {
         log.error(`error: could not make ts hash for message ${message.hash}`);
         return;
       }
-      const currentEarliest = this._earliestTsHashes.get(key);
-      if (currentEarliest === undefined || bytesCompare(currentEarliest, tsHashResult.value) === 0) {
-        this._earliestTsHashes.delete(key);
+      const currentEarliest = await this.getEarliestTsHash(fid, set);
+      if (currentEarliest.isOk()) {
+        if (currentEarliest.value === undefined || bytesCompare(currentEarliest.value, tsHashResult.value) === 0) {
+          rsClearEarliestTsHash(this._rustStorageCache, fid, set);
+        }
       }
     }
   }

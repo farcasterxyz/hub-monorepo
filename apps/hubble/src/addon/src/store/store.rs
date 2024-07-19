@@ -347,7 +347,7 @@ pub trait StoreDef: Send + Sync {
 pub struct Store {
     store_def: Box<dyn StoreDef>,
     store_event_handler: Arc<StoreEventHandler>,
-    fid_locks: Arc<[Mutex<()>; 4]>,
+    fid_locks: Arc<[Mutex<()>; FID_LOCKS_COUNT]>,
     db: Arc<RocksDB>,
     logger: slog::Logger,
 }

@@ -44,6 +44,12 @@ export class RustStoreEventHandler {
   private [RustStoreEventHandlerBrand]: never;
 }
 
+const RustStorageCacheBrand = Symbol("RustStorageCache");
+export class RustStorageCache {
+  // @ts-ignore
+  private [RustStorageCacheBrand]: never;
+}
+
 // Type returned from Rust which is equivalent to the TypeScript type `MessagesPage`
 export class RustMessagesPage {
   messageBytes?: Buffer[];
@@ -290,6 +296,26 @@ export const rsGetNextEventId = (
   currentTimestamp?: number,
 ): Result<number, HubError> => {
   return Result.fromThrowable(() => lib.getNextEventId.call(eventHandler, currentTimestamp), rustErrorToHubError)();
+};
+
+export const rsCreateStorageCache = (db: RustDb): RustStorageCache => {
+  return lib.createStorageCache(db) as RustStorageCache;
+};
+
+export const rsGetEarliestTsHash = async (
+  storageCache: RustStorageCache,
+  fid: number,
+  set: number,
+): Promise<Result<Buffer, HubError>> => {
+  return await lib.getEarliestTsHash(storageCache, fid, set);
+};
+
+export const rsClearEarliestTsHash = (
+  storageCache: RustStorageCache,
+  fid: number,
+  set: number,
+): Result<number, HubError> => {
+  return Result.fromThrowable(() => lib.clearEarliestTsHash.call(storageCache, fid, set), rustErrorToHubError)();
 };
 
 /** Create a reaction Store */
