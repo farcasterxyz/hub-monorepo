@@ -366,6 +366,7 @@ export class Hub implements HubInterface {
   private rpcServer: Server;
   private adminServer: AdminServer;
   private httpApiServer: HttpAPIServer;
+  private peerIdentityClaimMessage: PeerIdentityClaim | undefined;
 
   private rocksDB: RocksDB;
   private syncEngine: SyncEngine;
@@ -778,20 +779,11 @@ export class Hub implements HubInterface {
 
     await this.l2RegistryProvider.start();
     await this.fNameRegistryEventsProvider.start();
-    // After hub syncs on-chain key registry events, validate peer identity claim to ensure account key is associated with FID
-    // NOTE: At this point, the claim's internal consistency has been verified on startup, the remaining step is on-chain identity verification
-    // TODO: move this to separate function
-    if (this.options.hubOperatorFid && this.options.peerIdentityClaim) {
-      const accountPublicKey = this.options.peerIdentityClaim.accountPublicKey;
-      const accountKeyBytesResult = hexStringToBytes(accountPublicKey);
-      if (accountKeyBytesResult.isErr()) {
-        throw accountKeyBytesResult.error;
-      }
-      const accountPublicKeyBytes = accountKeyBytesResult.value;
-      const signerResult = await this.engine.getActiveSigner(this.options.hubOperatorFid, accountPublicKeyBytes);
-      if (signerResult.isErr()) {
-        throw new HubError("unavailable", "Hub Operator FID not associated with account key");
-      }
+    // NB: Peer Identity claim is used to establish secure, verifiable association between FID and Peer ID.
+    // Verification happens after on-chain events are synced to check the account key (signer) is valid for the given FID.
+    const peerIdentityClaimResult = await this.initPeerIdentityClaim();
+    if (peerIdentityClaimResult.isErr()) {
+      throw new HubError("unavailable", `Error initializing peer identity claim: ${peerIdentityClaimResult.error}`);
     }
 
     const bootstrapAddrs = this.options.bootstrapAddrs ?? [];
@@ -1134,6 +1126,57 @@ export class Hub implements HubInterface {
     });
   }
 
+  async initPeerIdentityClaim(): HubAsyncResult<void> {
+    // After hub syncs on-chain key registry events, validate peer identity claim to ensure account key is associated with FID
+    // NOTE: At this point, the claim's internal consistency has been verified on startup, the remaining step is on-chain identity verification
+    if (this.options.hubOperatorFid && this.options.peerIdentityClaim) {
+      const claim: PeerIdentityClaimWithAccountSignature = this.options.peerIdentityClaim;
+      const accountPublicKey = claim.accountPublicKey;
+      const accountKeyBytesResult = hexStringToBytes(accountPublicKey);
+      if (accountKeyBytesResult.isErr()) {
+        return err(accountKeyBytesResult.error);
+      }
+      const accountPublicKeyBytes = accountKeyBytesResult.value;
+      const signerResult = await this.engine.getActiveSigner(this.options.hubOperatorFid, accountPublicKeyBytes);
+      if (signerResult.isErr()) {
+        return err(signerResult.error);
+      }
+      const peerSignatureResult = hexStringToBytes(claim.claim.peerSignature);
+      if (peerSignatureResult.isErr()) {
+        return err(peerSignatureResult.error);
+      }
+      const peerSignature = peerSignatureResult.value;
+      const accountSignatureResult = hexStringToBytes(claim.accountSignature);
+      if (accountSignatureResult.isErr()) {
+        return err(accountSignatureResult.error);
+      }
+      const accountSignature = accountSignatureResult.value;
+      this.peerIdentityClaimMessage = {
+        fid: claim.claim.message.fid,
+        peerSignature,
+        accountSignature,
+        accountPublicKey: accountPublicKeyBytes,
+        deadline: claim.claim.deadline,
+        createdAt: claim.claim.createdAt,
+      };
+    }
+    return ok(undefined);
+  }
+
+  async getPeerIdentityClaim(): HubAsyncResult<PeerIdentityClaim> {
+    if (!this.peerIdentityClaimMessage) {
+      return err(new HubError("unavailable", "Peer identity claim not available"));
+    }
+    const signerResult = await this.engine.getActiveSigner(
+      this.peerIdentityClaimMessage.fid,
+      this.peerIdentityClaimMessage.accountPublicKey,
+    );
+    if (signerResult.isErr()) {
+      return err(signerResult.error);
+    }
+    return ok(this.peerIdentityClaimMessage);
+  }
+
   async getContactInfoContent(): HubAsyncResult<ContactInfoContent> {
     const nodeMultiAddr = this.gossipAddresses[0] as Multiaddr;
     const family = nodeMultiAddr?.nodeAddress().family;
@@ -1158,32 +1201,13 @@ export class Hub implements HubInterface {
       return err(snapshot.error);
     }
 
-    // TODO: move this to separate function on initialization since peer claim is static
-    let claim: PeerIdentityClaim | undefined;
+    let peerIdentityClaim: PeerIdentityClaim | undefined;
     if (this.options.peerIdentityClaim) {
-      const peerSignatureResult = hexStringToBytes(this.options.peerIdentityClaim.claim.peerSignature);
-      if (peerSignatureResult.isErr()) {
-        return err(peerSignatureResult.error);
+      const claimResult = await this.getPeerIdentityClaim();
+      if (claimResult.isErr()) {
+        return err(claimResult.error);
       }
-      const peerSignature = peerSignatureResult.value;
-      const accountPublicKeyResult = hexStringToBytes(this.options.peerIdentityClaim.accountPublicKey);
-      if (accountPublicKeyResult.isErr()) {
-        return err(accountPublicKeyResult.error);
-      }
-      const accountPublicKey = accountPublicKeyResult.value;
-      const accountSignatureResult = hexStringToBytes(this.options.peerIdentityClaim.accountSignature);
-      if (accountSignatureResult.isErr()) {
-        return err(accountSignatureResult.error);
-      }
-      const accountSignature = accountSignatureResult.value;
-      claim = {
-        fid: this.options.peerIdentityClaim.claim.message.fid,
-        peerSignature,
-        accountPublicKey,
-        accountSignature,
-        createdAt: this.options.peerIdentityClaim.claim.createdAt,
-        deadline: this.options.peerIdentityClaim.claim.deadline,
-      };
+      peerIdentityClaim = claimResult.value;
     }
 
     const body: ContactInfoContentBody = ContactInfoContentBody.create({
@@ -1195,7 +1219,7 @@ export class Hub implements HubInterface {
       network: this.options.network,
       appVersion: APP_VERSION,
       timestamp: Date.now(),
-      ...(claim && { peerIdentityClaim: claim }),
+      ...(peerIdentityClaim && { peerIdentityClaim }),
     });
     const content = ContactInfoContent.create({
       gossipAddress: gossipAddressContactInfo,

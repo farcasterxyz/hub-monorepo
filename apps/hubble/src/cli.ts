@@ -843,10 +843,7 @@ app
                         PEER ID CLAIM COMMAND
 //////////////////////////////////////////////////////////////*/
 const claimPeerIdCommand = new Command("claim-peer-id")
-  .description(
-    "Create a signed message to claim a Peer ID for a given FID with a verified address. " +
-      "For more details, see: https://github.com/farcasterxyz/protocol/blob/main/docs/SPECIFICATION.md#25-verifications",
-  )
+  .description("Create a signed message to claim a Peer ID for a given FID with a verified address.")
   .option("-I, --id <filepath>", "Path to the PeerId file", DEFAULT_PEER_ID_LOCATION)
   .option("-F, --fid <number>", "FID of the user claiming the Peer ID")
   .option("-O, --output <directory>", "Directory where the generated claim should be stored", DEFAULT_PEER_ID_DIR)
