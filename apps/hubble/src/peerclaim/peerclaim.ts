@@ -120,7 +120,7 @@ export const isPeerClaimValid = async (
     return verificationResult;
   }
 
-  return ok(true);
+  return ok(verificationResult.value);
 };
 
 export const generateClaimForPeerID = async (

@@ -5,7 +5,9 @@
  * Note: CLI options take precedence over the options specified in a config file
  */
 import { DEFAULT_DIAGNOSTIC_REPORT_URL } from "./utils/diagnosticReport.js";
+import { join } from "path";
 
+export const DEFAULT_PEER_IDENTITY_FILENAME = "peer_identity_claim.json";
 const DEFAULT_GOSSIP_PORT = 2282;
 const DEFAULT_RPC_PORT = 2283;
 const DEFAULT_HTTP_API_PORT = 2281;
@@ -15,6 +17,8 @@ export const DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT = 50_000_000;
 export const Config = {
   /** Path to a PeerId file */
   id: "./.hub/default_id.protobuf",
+  /** Path to Peer Identity claim file */
+  peerIdentityClaim: join(".hub", DEFAULT_PEER_IDENTITY_FILENAME),
   /** ETH mainnet RPC URL */
   // ethMainnetRpcUrl: '',
   /** FName Registry Server URL */
