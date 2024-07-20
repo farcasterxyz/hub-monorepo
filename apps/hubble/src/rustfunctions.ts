@@ -307,7 +307,7 @@ export const rsGetEarliestTsHash = async (
   fid: number,
   set: number,
 ): Promise<Result<Buffer, HubError>> => {
-  return await lib.getEarliestTsHash(storageCache, fid, set);
+  return ResultAsync.fromPromise(lib.getEarliestTsHash.call(storageCache, fid, set), rustErrorToHubError);
 };
 
 export const rsClearEarliestTsHash = (

@@ -7,8 +7,8 @@ use neon::{
 };
 
 use crate::store::{
-    get_db, get_storage_cache, hub_error_to_js_throw, make_message_primary_key, HubError,
-    PageOptions, FID_BYTES, PRIMARY_KEY_LENGTH,
+    get_storage_cache, hub_error_to_js_throw, make_message_primary_key, HubError, PageOptions,
+    FID_BYTES, PRIMARY_KEY_LENGTH,
 };
 use neon::prelude::Finalize;
 use neon::types::JsBoolean;
@@ -45,7 +45,8 @@ impl StorageCache {
     pub fn get_earliest_ts_hash(&self, fid: u32, set: u8) -> Result<Option<Vec<u8>>, HubError> {
         let prefix = make_message_primary_key(fid, set, None);
 
-        return if let Some(value) = self.earliest_ts_hashes.read().unwrap().get(&prefix) {
+        let existing_value = self.get_earliest_ts_hash_from_cache(&prefix);
+        return if let Some(value) = existing_value {
             // We have a cached value
             if let Some(value) = value {
                 Ok(Some(value.clone()))
@@ -94,13 +95,18 @@ impl StorageCache {
         }
         return Ok(earliest_ts_hash);
     }
+
+    fn get_earliest_ts_hash_from_cache(&self, prefix: &Vec<u8>) -> Option<Option<Vec<u8>>> {
+        let lock = self.earliest_ts_hashes.read();
+        let guard = lock.unwrap();
+        return guard.get(prefix).cloned();
+    }
 }
 
 impl StorageCache {
     pub fn js_create_storage_cache(mut cx: FunctionContext) -> JsResult<JsBox<Arc<StorageCache>>> {
-        let db = get_db(&mut cx)?;
-
-        return Ok(cx.boxed(Arc::new(StorageCache::new(db))));
+        let db = cx.argument::<JsBox<Arc<RocksDB>>>(0)?;
+        return Ok(cx.boxed(Arc::new(StorageCache::new((**db).clone()))));
     }
 
     pub fn js_get_earliest_ts_hash(mut cx: FunctionContext) -> JsResult<JsPromise> {
@@ -113,7 +119,6 @@ impl StorageCache {
         let (deferred, promise) = cx.promise();
 
         THREAD_POOL.lock().unwrap().execute(move || {
-            // Delete all keys in the range
             let result = storage_cache.get_earliest_ts_hash(fid, set);
 
             deferred.settle_with(&channel, move |mut cx| match result {
@@ -123,7 +128,7 @@ impl StorageCache {
                     Ok(js_buffer)
                 }
                 Ok(None) => Ok(cx.buffer(0)?.into()),
-                Err(e) => return hub_error_to_js_throw(&mut cx, e),
+                Err(e) => hub_error_to_js_throw(&mut cx, e),
             });
         });
         Ok(promise)
