@@ -76,8 +76,10 @@ pub fn delete_username_proof_transaction(
     txn: &mut RocksDbTransactionBatch,
     username_proof: &UserNameProof,
 ) {
+    let buf = username_proof.encode_to_vec();
+
     let primary_key = make_fname_username_proof_key(&username_proof.name);
-    txn.delete(primary_key);
+    txn.put(primary_key.clone(), buf);
 
     let secondary_key = make_fname_username_proof_by_fid_key(username_proof.fid as u32);
     txn.delete(secondary_key);
