@@ -75,7 +75,9 @@ describe("fnameRegistryEventsProvider", () => {
       await provider.start();
       expect(await engine.getUserNameProof(utf8ToBytes("test1"))).toBeTruthy();
       expect(await engine.getUserNameProof(utf8ToBytes("test2"))).toBeTruthy();
-      await expect(engine.getUserNameProof(utf8ToBytes("test4"))).rejects.toThrowError("NotFound");
+      const failCase = await engine.getUserNameProof(utf8ToBytes("test4"));
+      expect(failCase.isErr()).toBeTruthy();
+      expect(failCase._unsafeUnwrapErr().errCode).toEqual("not_found");
       expect((await hub.getHubState())._unsafeUnwrap().lastFnameProof).toEqual(transferEvents[3]?.id);
     });
 
@@ -96,7 +98,9 @@ describe("fnameRegistryEventsProvider", () => {
   describe("mergeTransfers", () => {
     it("deletes a proof from the db when a username is unregistered", async () => {
       await provider.start();
-      await expect(engine.getUserNameProof(utf8ToBytes("test3"))).rejects.toThrowError("NotFound");
+      const failCase = await engine.getUserNameProof(utf8ToBytes("test3"));
+      expect(failCase.isErr()).toBeTruthy();
+      expect(failCase._unsafeUnwrapErr().errCode).toEqual("not_found");
     });
 
     it("does not fail if there are errors merging events", async () => {
@@ -119,7 +123,9 @@ describe("fnameRegistryEventsProvider", () => {
       invalidEvent.server_signature = "0x8773442740c17c9d0f0b87022c722f9a136206ed";
       mockFnameRegistryClient.setTransfersToReturn([[invalidEvent]]);
       await provider.start();
-      await expect(engine.getUserNameProof(utf8ToBytes("test1"))).rejects.toThrowError("NotFound");
+      const failCase = await engine.getUserNameProof(utf8ToBytes("test1"));
+      expect(failCase.isErr()).toBeTruthy();
+      expect(failCase._unsafeUnwrapErr().errCode).toEqual("not_found");
     });
 
     it("succeeds for a known proof", async () => {
