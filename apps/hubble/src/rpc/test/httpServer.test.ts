@@ -14,6 +14,7 @@ import {
   ReactionAddMessage,
   ReactionType,
   reactionTypeToJSON,
+  SyncStatusResponse,
   toFarcasterTime,
   UserDataAddMessage,
   UserDataType,
@@ -835,6 +836,25 @@ describe("httpServer", () => {
       expect(response5.status).toBe(200);
       expect(response5.data).toEqual(protoToJSON(idRegistryEvent, OnChainEvent));
     });
+  });
+});
+
+describe("sync APIs", () => {
+  test("stopSync", async () => {
+    const url = getFullUrl("/v1/stopSync");
+    const response = await axios.post(url, {});
+
+    expect(response.status).toBe(200);
+    expect(response.data).toEqual(
+      protoToJSON(
+        SyncStatusResponse.create({
+          isSyncing: false,
+          engineStarted: true,
+          syncStatus: [],
+        }),
+        SyncStatusResponse,
+      ),
+    );
   });
 });
 

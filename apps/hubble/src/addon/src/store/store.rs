@@ -51,6 +51,13 @@ impl HubError {
             message: error_message.to_string(),
         }
     }
+
+    pub fn not_found(error_message: &str) -> HubError {
+        HubError {
+            code: "not_found".to_string(),
+            message: error_message.to_string(),
+        }
+    }
 }
 
 impl Display for HubError {
@@ -159,6 +166,7 @@ pub trait StoreDef: Send + Sync {
     fn make_add_key(&self, message: &Message) -> Result<Vec<u8>, HubError>;
     fn make_remove_key(&self, message: &Message) -> Result<Vec<u8>, HubError>;
     fn make_compact_state_add_key(&self, message: &Message) -> Result<Vec<u8>, HubError>;
+    fn make_compact_state_prefix(&self, fid: u32) -> Result<Vec<u8>, HubError>;
 
     fn get_prune_size_limit(&self) -> u32;
 
@@ -225,7 +233,7 @@ pub trait StoreDef: Send + Sync {
                 if maybe_existing_remove.is_some() {
                     conflicts.push(maybe_existing_remove.unwrap());
                 } else {
-                    warn!(LOGGER, "Message's ts_hash exists but message not found in store"; 
+                    warn!(LOGGER, "Message's ts_hash exists but message not found in store";
                         o!("remove_ts_hash" => format!("{:x?}", remove_ts_hash.unwrap())));
                 }
             }
@@ -266,7 +274,7 @@ pub trait StoreDef: Send + Sync {
             )?;
 
             if maybe_existing_add.is_none() {
-                warn!(LOGGER, "Message's ts_hash exists but message not found in store"; 
+                warn!(LOGGER, "Message's ts_hash exists but message not found in store";
                     o!("add_ts_hash" => format!("{:x?}", add_ts_hash.unwrap())));
             } else {
                 conflicts.push(maybe_existing_add.unwrap());
@@ -317,7 +325,18 @@ pub trait StoreDef: Send + Sync {
             r#type: HubEventType::MergeMessage as i32,
             body: Some(hub_event::Body::MergeMessageBody(MergeMessageBody {
                 message: Some(message.clone()),
-                deleted_messages: merge_conflicts,
+                deleted_messages: match &message.data {
+                    Some(data) => {
+                        if data.r#type == self.compact_state_message_type() as i32 {
+                            // In the case of merging compact state, we omit the deleted messages as this would
+                            // result in an unbounded message size:
+                            Vec::<Message>::new()
+                        } else {
+                            merge_conflicts
+                        }
+                    }
+                    None => Vec::<Message>::new(),
+                },
             })),
             id: 0,
         }
@@ -853,7 +872,7 @@ impl Store {
         // Delete all the merge conflicts
         self.delete_many_transaction(&mut txn, &merge_conflicts)?;
 
-        // Add ops to store the message by messageKey and index the the messageKey by set and by target
+        // Add ops to store the message by messageKey and index the messageKey by set and by target
         self.put_add_transaction(&mut txn, &ts_hash, message)?;
 
         // Event handler
@@ -912,7 +931,7 @@ impl Store {
         // Delete all the merge conflicts
         self.delete_many_transaction(&mut txn, &merge_conflicts)?;
 
-        // Add ops to store the message by messageKey and index the the messageKey by set and by target
+        // Add ops to store the message by messageKey and index the messageKey by set and by target
         self.put_remove_transaction(&mut txn, ts_hash, message)?;
 
         // Event handler
@@ -1002,6 +1021,33 @@ impl Store {
             })?;
 
         Ok(messages)
+    }
+
+    pub fn get_compact_state_messages_by_fid(
+        &self,
+        fid: u32,
+        page_options: &PageOptions,
+    ) -> Result<MessagesPage, HubError> {
+        if !self.store_def.compact_state_type_supported() {
+            return Err(HubError::invalid_parameter("compact state not supported"));
+        }
+
+        match self.store_def.make_compact_state_prefix(fid) {
+            Ok(prefix) => {
+                let messages = message::get_messages_page_by_prefix(
+                    &self.db,
+                    &prefix,
+                    &page_options,
+                    |message| {
+                        self.store_def.compact_state_type_supported()
+                            && self.store_def.is_compact_state_type(&message)
+                    },
+                )?;
+
+                Ok(messages)
+            }
+            Err(e) => Err(e),
+        }
     }
 }
 

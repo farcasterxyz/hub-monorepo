@@ -19,7 +19,7 @@ Get UserData for a FID.
 | Parameter | Description | Example |
 | --------- | ----------- | ------- |
 | fid       | The FID that's being requested | `fid=6833` |
-| user_data_type | The type of user data, either as a numerical value or type string. If this is ommited, all user data for the FID is returned| `user_data_type=1` OR `user_data_type=USER_DATA_TYPE_DISPLAY` |
+| user_data_type | The type of user data, either as a numerical value or type string. If this is omitted, all user data for the FID is returned| `user_data_type=1` OR `user_data_type=USER_DATA_TYPE_DISPLAY` |
 
 
 **Example**

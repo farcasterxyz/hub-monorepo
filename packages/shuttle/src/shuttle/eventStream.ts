@@ -7,6 +7,7 @@ import { log } from "../log";
 import { pino } from "pino";
 import { ProcessResult } from "./index";
 import { Result } from "neverthrow";
+import { TypedEmitter } from "tiny-typed-emitter";
 
 // Dummy name since we don't need unique names to get desired semantics
 const DUMMY_CONSUMER_GROUP = "x";
@@ -42,11 +43,21 @@ export class EventStreamConnection {
    * Creates a consumer group for the given stream.
    */
   async createGroup(key: string, consumerGroup: string) {
+    // Check if the group already exists
     try {
-      // Check if the group already exists
       const groups = (await this.client.xinfo("GROUPS", key)) as [string, string][];
       if (groups.some(([_fieldName, groupName]) => groupName === consumerGroup)) return;
+    } catch (e: unknown) {
+      if (typeof e === "object" && e !== null && e instanceof ReplyError) {
+        if ("message" in e && (e.message as string).startsWith("ERR no such key")) {
+          // Ignore if the group hasn't been created yet
+        } else {
+          throw e;
+        }
+      }
+    }
 
+    try {
       // Otherwise create the group
       return await this.client.xgroup("CREATE", key, consumerGroup, "0", "MKSTREAM");
     } catch (e: unknown) {
@@ -193,15 +204,25 @@ const MESSAGE_PROCESSING_CONCURRENCY = 10;
 const EVENT_PROCESSING_TIMEOUT = 10_000; // How long before retrying processing (millis)
 const EVENT_DELETION_THRESHOLD = 1000 * 60 * 60 * 24; // 1 day
 
+type PreProcessHandler = (events: HubEvent[], eventsBytes: Uint8Array[]) => Promise<ProcessResult[]>;
+type PostProcessHandler = (events: HubEvent[], eventsBytes: Uint8Array[]) => Promise<void>;
+
 export type EventStreamConsumerOptions = {
   maxEventsPerFetch?: number;
   messageProcessingConcurrency?: number;
   groupName?: string;
   eventProcessingTimeout?: number;
   eventDeletionThreshold?: number;
+  beforeProcess?: PreProcessHandler;
+  afterProcess?: PostProcessHandler;
 };
 
-export class HubEventStreamConsumer {
+// Provides a way for custom tracking to be implemented
+interface HubEventStreamConsumerEventsEmitter {
+  onError: (hubEvent: HubEvent, error: Error) => void;
+}
+
+export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerEventsEmitter> {
   public hub: HubClient;
   private stream: EventStreamConnection;
   public readonly streamKey: string;
@@ -213,6 +234,9 @@ export class HubEventStreamConsumer {
   public stopped = true;
   public readonly groupName: string;
   private log: pino.Logger;
+  private beforeProcess?: PreProcessHandler;
+  private afterProcess?: PostProcessHandler;
+  private interval?: NodeJS.Timeout;
 
   constructor(
     hub: HubClient,
@@ -221,6 +245,7 @@ export class HubEventStreamConsumer {
     options: EventStreamConsumerOptions = {},
     logger: pino.Logger = log,
   ) {
+    super();
     this.hub = hub;
     this.stream = eventStream;
     this.streamKey = `hub:${this.hub.host}:evt:msg:${shardKey}`;
@@ -231,31 +256,37 @@ export class HubEventStreamConsumer {
     this.eventDeletionThreshold = options.eventDeletionThreshold || EVENT_DELETION_THRESHOLD;
     this.shardKey = shardKey;
     this.log = logger;
+    this.beforeProcess = options.beforeProcess;
+    this.afterProcess = options.afterProcess;
   }
 
   async start(onEvent: (event: HubEvent) => Promise<Result<ProcessResult, Error>>) {
     this.stopped = false;
     await this.stream.waitUntilReady();
     await this.stream.createGroup(this.streamKey, this.groupName);
+
+    this.interval = setInterval(() => {
+      // Run separately from the run loop since it consumes wall clock time and
+      // doesn't need to happen often, as long as it happens at some frequency
+      this.clearOldEvents();
+
+      // While we do process stale events regularly, it's possible that a stream
+      // will be so busy that we won't have had an opportunity, so make sure we
+      // guarantee at least one invocation on some cadence.
+      this.processStale(onEvent);
+    }, 1000 * 60 /* 1 min */);
+
     void this._runLoop(onEvent);
   }
 
   stop() {
+    clearInterval(this.interval);
     this.stopped = true;
   }
 
   private async _runLoop(onEvent: (event: HubEvent) => Promise<Result<ProcessResult, Error>>) {
     while (!this.stopped) {
       try {
-        const sizeStartTime = Date.now();
-        const size = await this.stream.streamSize(this.streamKey);
-        statsd.gauge("hub.event.stream.size", size, { hub: this.hub.host, source: this.shardKey });
-        const sizeTime = Date.now() - sizeStartTime;
-
-        statsd.timing("hub.event.stream.size_time", sizeTime, {
-          hub: this.hub.host,
-          source: this.shardKey,
-        });
         let eventsRead = 0;
 
         const startTime = Date.now();
@@ -270,20 +301,32 @@ export class HubEventStreamConsumer {
 
         eventsRead += events.length;
 
-        await inBatchesOf(events, this.messageProcessingConcurrency, async (batchedEvents) => {
+        let eventChunk: [string, HubEvent, Buffer][] = events.map(({ id, data: eventBytes }) => [
+          id,
+          HubEvent.decode(eventBytes),
+          eventBytes,
+        ]);
+        if (this.beforeProcess) {
+          const allEventsInChunk = eventChunk.map(([_id, evt, _evtBytes]) => evt);
+          const allEventsBytesInChunk = eventChunk.map(([_id, _evt, evtBytes]) => evtBytes);
+          const preprocessResult = await this.beforeProcess.call(this, allEventsInChunk, allEventsBytesInChunk);
+          eventChunk = eventChunk.filter((_evt, idx) => !preprocessResult[idx]?.skipped);
+        }
+
+        await inBatchesOf(eventChunk, this.messageProcessingConcurrency, async (batchedEvents) => {
           const eventIdsProcessed: string[] = [];
+          const eventIdsSkipped: string[] = [];
           await Promise.allSettled(
-            batchedEvents.map((event) =>
-              (async (streamEvent) => {
+            batchedEvents.map(([id, hubEvt, evtBytes]) =>
+              (async (streamId, hubEvent, eventBytes) => {
                 try {
-                  const dequeueDelay = Date.now() - Number(streamEvent.id.split("-")[0]);
+                  const dequeueDelay = Date.now() - Number(streamId.split("-")[0]);
                   statsd.timing("hub.event.stream.dequeue_delay", dequeueDelay, {
                     hub: this.hub.host,
                     source: this.shardKey,
                   });
 
                   const startTime = Date.now();
-                  const hubEvent = HubEvent.decode(streamEvent.data);
                   const result = await onEvent(hubEvent);
                   const processingTime = Date.now() - startTime;
                   statsd.timing("hub.event.stream.time", processingTime, {
@@ -292,15 +335,19 @@ export class HubEventStreamConsumer {
                     hubEventType: hubEvent.type.toString(),
                   });
 
-                  if (result.isErr()) throw result.error;
+                  if (result.isErr()) {
+                    this.emit("onError", hubEvent, result.error);
+                    eventIdsSkipped.push(streamId);
+                    throw result.error;
+                  }
 
+                  eventIdsProcessed.push(streamId);
                   if (result.value.skipped) {
                     statsd.increment("hub.event.stream.skipped", 1, {
                       hub: this.hub.host,
                       source: this.shardKey,
                     });
                   }
-                  eventIdsProcessed.push(streamEvent.id);
 
                   if (!result.value.skipped) {
                     const e2eTime = Date.now() - extractEventTimestamp(hubEvent.id);
@@ -314,7 +361,7 @@ export class HubEventStreamConsumer {
                   statsd.increment("hub.event.stream.errors", { hub: this.hub.host, source: this.shardKey });
                   this.log.error(e); // Report and move on to next event
                 }
-              })(event),
+              })(id, hubEvt, evtBytes),
             ),
           );
 
@@ -330,14 +377,19 @@ export class HubEventStreamConsumer {
               hub: this.hub.host,
               source: this.shardKey,
             });
+
+            if (this.afterProcess) {
+              const eventsProcessed = eventChunk.filter(([id, ,]) => !eventIdsSkipped.includes(id));
+              const hubEventsProcessed = eventChunk.map(([_id, evt, _evtBytes]) => evt);
+              const eventsBytesProcessed = eventChunk.map(([_id, _evt, evtBytes]) => evtBytes);
+              await this.afterProcess.call(this, hubEventsProcessed, eventsBytesProcessed);
+            }
           }
         });
 
         if (eventsRead === 0) {
           if (this.stopped) break;
-          const numProcessed = await this.processStale(onEvent);
-          const numCleared = await this.clearOldEvents();
-          if (numProcessed + numCleared === 0) await sleep(10); // No events, so wait a bit to prevent CPU thrash
+          await this.processStale(onEvent);
         }
       } catch (e: unknown) {
         this.log.error(e, "Error processing event, skipping");

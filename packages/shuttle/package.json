@@ -1,6 +1,6 @@
 {
   "name": "@farcaster/shuttle",
-  "version": "0.2.8",
+  "version": "0.5.7",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -17,11 +17,13 @@
   "license": "MIT",
   "dependencies": {
     "@farcaster/hot-shots": "^10.0.0",
-    "@farcaster/hub-nodejs": "^0.11.11",
-    "commander": "^11.0.0",
+    "@farcaster/hub-nodejs": "^0.11.21",
+    "commander": "11.0.0",
+    "dotenv": "16.4.5",
     "ioredis": "^5.3.2",
+    "kysely": "^0.26.1",
     "neverthrow": "^6.0.0",
-    "pg": "^8.11.3",
+    "pg": "^8.12.0",
     "pg-cursor": "^2.10.3",
     "pino": "^8.12.1",
     "pino-pretty": "^10.0.0",
@@ -39,12 +41,13 @@
     "prepublishOnly": "yarn run build"
   },
   "devDependencies": {
+    "@commander-js/extra-typings": "11.0.0",
     "@types/humanize-duration": "^3.27.1",
     "@types/pg": "^8.10.3",
     "@types/pg-cursor": "^2.7.0",
     "@types/node": "^20.11.30",
-    "bullmq": "^5.7.1",
     "biome-config-custom": "*",
+    "bullmq": "^5.7.1",
     "prettier-config-custom": "*"
   }
 }

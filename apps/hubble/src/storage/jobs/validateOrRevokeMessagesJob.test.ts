@@ -1,7 +1,14 @@
 import { jestRocksDB } from "../db/jestUtils.js";
 import Engine from "../engine/index.js";
 import { ValidateOrRevokeMessagesJobScheduler } from "./validateOrRevokeMessagesJob.js";
-import { FarcasterNetwork, Factories, Message, toFarcasterTime, OnChainEvent } from "@farcaster/hub-nodejs";
+import {
+  FarcasterNetwork,
+  Factories,
+  Message,
+  toFarcasterTime,
+  OnChainEvent,
+  MessageType,
+} from "@farcaster/hub-nodejs";
 import {
   HubState,
   IdRegisterOnChainEvent,
@@ -12,6 +19,8 @@ import {
 import { jest } from "@jest/globals";
 import { publicClient } from "../../test/utils.js";
 import { getHubState, putHubState } from "../../storage/db/hubState.js";
+import { makeTsHash, makeUserKey } from "../db/message.js";
+import { TRUE_VALUE, UserPostfix } from "../db/types.js";
 
 const db = jestRocksDB("jobs.ValidateOrRevokeMessagesJob.test");
 
@@ -24,6 +33,7 @@ let custodyEvent: IdRegisterOnChainEvent;
 let signerEvent: OnChainEvent;
 let storageEvent: OnChainEvent;
 let castAdd: Message;
+let castAddSignerKey: Buffer;
 
 let ensNameProof: UsernameProofMessage;
 
@@ -39,6 +49,14 @@ beforeAll(async () => {
   );
   storageEvent = Factories.StorageRentOnChainEvent.build({ fid });
   castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
+
+  castAddSignerKey = Buffer.concat([
+    makeUserKey(fid),
+    Buffer.from([UserPostfix.BySigner]),
+    Buffer.from(signerKey),
+    Buffer.from([MessageType.CAST_ADD]),
+    makeTsHash(castAdd.data?.timestamp || 0, castAdd.hash)._unsafeUnwrap(),
+  ]);
 
   const custodySignerAddress = bytesToHexString(custodySignerKey)._unsafeUnwrap();
 
@@ -89,10 +107,13 @@ describe("ValidateOrRevokeMessagesJob", () => {
     await engine.mergeOnChainEvent(storageEvent);
 
     await engine.mergeMessage(castAdd);
+    await db.put(castAddSignerKey, TRUE_VALUE);
 
+    expect(await db.get(castAddSignerKey)).toBeDefined();
     const result = await job.doJobForFid(0, fid);
     expect(result.isOk()).toBe(true);
     expect(result._unsafeUnwrap()).toBe(1);
+    await expect(db.get(castAddSignerKey)).rejects.toThrow("NotFound");
 
     // If we run it again, it checks it again
     const result2 = await job.doJobForFid(0, fid);

@@ -1,6 +1,7 @@
 import pg from "pg";
 import {
   CamelCasePlugin,
+  WithSchemaPlugin,
   DeleteQueryBuilder,
   Generated,
   InsertQueryBuilder,
@@ -16,6 +17,7 @@ import {
   UpdateQueryBuilder,
 } from "kysely";
 import {
+  CastType,
   HashScheme,
   MessageType,
   ReactionType,
@@ -53,6 +55,7 @@ export type CastAddBodyJson = {
   mentions?: number[];
   mentionsPositions?: number[];
   parent?: CastIdJson | string;
+  type: CastType;
 };
 
 export type CastRemoveBodyJson = {
@@ -142,7 +145,7 @@ export interface HubTables {
   messages: MessagesTable;
 }
 
-export const getDbClient = (connectionString?: string) => {
+export const getDbClient = (connectionString?: string, schema = "public") => {
   return new Kysely<HubTables>({
     dialect: new PostgresDialect({
       pool: new Pool({
@@ -151,7 +154,7 @@ export const getDbClient = (connectionString?: string) => {
       }),
       cursor: Cursor,
     }),
-    plugins: [new CamelCasePlugin()],
+    plugins: [new CamelCasePlugin(), new WithSchemaPlugin(schema)],
   });
 };
 
@@ -228,11 +231,16 @@ export async function stream<DB, UT extends keyof DB, TB extends keyof DB, O>(
   }
 }
 
-export function getEstimateOfTablesRowCount(db: DB, tablesToMonitor: Array<keyof HubTables>) {
+export function getEstimateOfTablesRowCount(db: DB, tablesToMonitor: Array<keyof HubTables>, schema = "public") {
   try {
     return sql<{ tableName: string; estimate: number }>`SELECT relname AS table_name, reltuples AS estimate
-               FROM pg_class
-               WHERE relname IN (${sql.join(tablesToMonitor)})`.execute(db);
+                FROM pg_class
+                WHERE oid IN (
+                  to_regclass('${sql.join(
+                    tablesToMonitor.map((t) => sql.id(schema, t)),
+                    sql`'), to_regclass('`,
+                  )}')
+                )`.execute(db);
   } catch (e) {
     throw extendStackTrace(e, new Error());
   }
@@ -240,3 +248,4 @@ export function getEstimateOfTablesRowCount(db: DB, tablesToMonitor: Array<keyof
 
 export type DBTransaction = Transaction<HubTables>;
 export type DB = Kysely<HubTables>;
+export { sql } from "kysely";

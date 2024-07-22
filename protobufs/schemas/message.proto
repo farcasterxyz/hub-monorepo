@@ -106,6 +106,13 @@ message Embed {
   }
 }
 
+/** Type of cast */
+enum CastType {
+  CAST = 0;
+  LONG_CAST = 1;
+}
+
+
 /** Adds a new Cast */
 message CastAddBody {
   repeated string embeds_deprecated = 1; // URLs to be embedded in the cast
@@ -117,6 +124,7 @@ message CastAddBody {
   string text = 4; // Text of the cast
   repeated uint32 mentions_positions = 5; // Positions of the mentions in the text
   repeated Embed embeds = 6; // URLs or cast ids to be embedded in the cast
+  CastType type = 8; // Type of cast
 }
 
 /** Removes an existing Cast */

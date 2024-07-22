@@ -288,6 +288,36 @@ export function userDataTypeToJSON(object: UserDataType): string {
   }
 }
 
+/** Type of cast */
+export enum CastType {
+  CAST = 0,
+  LONG_CAST = 1,
+}
+
+export function castTypeFromJSON(object: any): CastType {
+  switch (object) {
+    case 0:
+    case "CAST":
+      return CastType.CAST;
+    case 1:
+    case "LONG_CAST":
+      return CastType.LONG_CAST;
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum CastType");
+  }
+}
+
+export function castTypeToJSON(object: CastType): string {
+  switch (object) {
+    case CastType.CAST:
+      return "CAST";
+    case CastType.LONG_CAST:
+      return "LONG_CAST";
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum CastType");
+  }
+}
+
 /** Type of Reaction */
 export enum ReactionType {
   NONE = 0,
@@ -446,6 +476,8 @@ export interface CastAddBody {
   mentionsPositions: number[];
   /** URLs or cast ids to be embedded in the cast */
   embeds: Embed[];
+  /** Type of cast */
+  type: CastType;
 }
 
 /** Removes an existing Cast */
@@ -1123,6 +1155,7 @@ function createBaseCastAddBody(): CastAddBody {
     text: "",
     mentionsPositions: [],
     embeds: [],
+    type: 0,
   };
 }
 
@@ -1152,6 +1185,9 @@ export const CastAddBody = {
     writer.ldelim();
     for (const v of message.embeds) {
       Embed.encode(v!, writer.uint32(50).fork()).ldelim();
+    }
+    if (message.type !== 0) {
+      writer.uint32(64).int32(message.type);
     }
     return writer;
   },
@@ -1230,6 +1266,13 @@ export const CastAddBody = {
 
           message.embeds.push(Embed.decode(reader, reader.uint32()));
           continue;
+        case 8:
+          if (tag != 64) {
+            break;
+          }
+
+          message.type = reader.int32() as any;
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -1252,6 +1295,7 @@ export const CastAddBody = {
         ? object.mentionsPositions.map((e: any) => Number(e))
         : [],
       embeds: Array.isArray(object?.embeds) ? object.embeds.map((e: any) => Embed.fromJSON(e)) : [],
+      type: isSet(object.type) ? castTypeFromJSON(object.type) : 0,
     };
   },
 
@@ -1281,6 +1325,7 @@ export const CastAddBody = {
     } else {
       obj.embeds = [];
     }
+    message.type !== undefined && (obj.type = castTypeToJSON(message.type));
     return obj;
   },
 
@@ -1299,6 +1344,7 @@ export const CastAddBody = {
     message.text = object.text ?? "";
     message.mentionsPositions = object.mentionsPositions?.map((e) => e) || [];
     message.embeds = object.embeds?.map((e) => Embed.fromPartial(e)) || [];
+    message.type = object.type ?? 0;
     return message;
   },
 };

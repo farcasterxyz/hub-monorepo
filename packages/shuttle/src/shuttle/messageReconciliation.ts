@@ -1,8 +1,18 @@
 import { HubRpcClient, Message, MessageType } from "@farcaster/hub-nodejs";
-import { DB, MessageRow } from "./db";
+import { DB, MessageRow, sql } from "./db";
 import { pino } from "pino";
 
 const MAX_PAGE_SIZE = 3_000;
+
+type DBMessage = {
+  hash: Uint8Array;
+  prunedAt: Date | null;
+  revokedAt: Date | null;
+  fid: number;
+  type: MessageType;
+  raw: Uint8Array;
+  signer: Uint8Array;
+};
 
 // Ensures that all messages for a given FID are present in the database. Can be used for both backfilling and reconciliation.
 export class MessageReconciliation {
@@ -19,6 +29,7 @@ export class MessageReconciliation {
   async reconcileMessagesForFid(
     fid: number,
     onHubMessage: (message: Message, missingInDb: boolean, prunedInDb: boolean, revokedInDb: boolean) => Promise<void>,
+    onDbMessage: (message: DBMessage, missingInHub: boolean) => Promise<void>,
   ) {
     for (const type of [
       MessageType.CAST_ADD,
@@ -27,8 +38,8 @@ export class MessageReconciliation {
       MessageType.VERIFICATION_ADD_ETH_ADDRESS,
       MessageType.USER_DATA_ADD,
     ]) {
-      this.log.info(`Reconciling messages for FID ${fid} of type ${type}`);
-      await this.reconcileMessagesOfTypeForFid(fid, type, onHubMessage);
+      this.log.debug(`Reconciling messages for FID ${fid} of type ${type}`);
+      await this.reconcileMessagesOfTypeForFid(fid, type, onHubMessage, onDbMessage);
     }
   }
 
@@ -36,22 +47,24 @@ export class MessageReconciliation {
     fid: number,
     type: MessageType,
     onHubMessage: (message: Message, missingInDb: boolean, prunedInDb: boolean, revokedInDb: boolean) => Promise<void>,
+    onDbMessage: (message: DBMessage, missingInHub: boolean) => Promise<void>,
   ) {
     // todo: Username proofs, and on chain events
 
     const hubMessagesByHash: Record<string, Message> = {};
+    // First, reconcile messages that are in the hub but not in the database
     for await (const messages of this.allHubMessagesOfTypeForFid(fid, type)) {
       const messageHashes = messages.map((msg) => msg.hash);
 
       if (messageHashes.length === 0) {
-        this.log.info(`No messages of type ${type} for FID ${fid}`);
+        this.log.debug(`No messages of type ${type} for FID ${fid}`);
         continue;
       }
 
       const dbMessages = await this.db
         .selectFrom("messages")
         .select(["prunedAt", "revokedAt", "hash", "fid", "type", "raw"])
-        .where("hash", "in", messageHashes)
+        .where("hash", "=", sql`any(${messageHashes})`)
         .execute();
 
       const dbMessageHashes = dbMessages.reduce((acc, msg) => {
@@ -79,6 +92,13 @@ export class MessageReconciliation {
           await onHubMessage(message, false, wasPruned, wasRevoked);
         }
       }
+    }
+
+    // Next, reconcile messages that are in the database but not in the hub
+    const dbMessages = await this.allActiveDbMessagesOfTypeForFid(fid, type);
+    for (const dbMessage of dbMessages) {
+      const key = Buffer.from(dbMessage.hash).toString("hex");
+      await onDbMessage(dbMessage, !hubMessagesByHash[key]);
     }
   }
 
@@ -154,6 +174,20 @@ export class MessageReconciliation {
       if (!pageToken?.length) break;
       result = await this.client.getAllLinkMessagesByFid({ pageSize, pageToken, fid });
     }
+
+    let deltaResult = await this.client.getLinkCompactStateMessageByFid({ fid, pageSize });
+    for (;;) {
+      if (deltaResult.isErr()) {
+        throw new Error(`Unable to get all link compact results for FID ${fid}: ${deltaResult.error?.message}`);
+      }
+
+      const { messages, nextPageToken: pageToken } = deltaResult.value;
+
+      yield messages;
+
+      if (!pageToken?.length) break;
+      deltaResult = await this.client.getLinkCompactStateMessageByFid({ pageSize, pageToken, fid });
+    }
   }
 
   private async *getAllVerificationMessagesByFidInBatchesOf(fid: number, pageSize: number) {
@@ -186,5 +220,41 @@ export class MessageReconciliation {
       if (!pageToken?.length) break;
       result = await this.client.getAllUserDataMessagesByFid({ pageSize, pageToken, fid });
     }
+  }
+
+  private allActiveDbMessagesOfTypeForFid(fid: number, type: MessageType) {
+    let typeSet: MessageType[] = [type];
+    // Add remove types for messages which support them
+    switch (type) {
+      case MessageType.CAST_ADD:
+        typeSet = [...typeSet, MessageType.CAST_REMOVE];
+        break;
+      case MessageType.REACTION_ADD:
+        typeSet = [...typeSet, MessageType.REACTION_REMOVE];
+        break;
+      case MessageType.LINK_ADD:
+        typeSet = [...typeSet, MessageType.LINK_REMOVE, MessageType.LINK_COMPACT_STATE];
+        break;
+      case MessageType.VERIFICATION_ADD_ETH_ADDRESS:
+        typeSet = [...typeSet, MessageType.VERIFICATION_REMOVE];
+        break;
+    }
+    return this.db
+      .selectFrom("messages")
+      .select([
+        "messages.prunedAt",
+        "messages.revokedAt",
+        "messages.hash",
+        "messages.type",
+        "messages.fid",
+        "messages.raw",
+        "messages.signer",
+      ])
+      .where("messages.fid", "=", fid)
+      .where("messages.type", "in", typeSet)
+      .where("messages.prunedAt", "is", null)
+      .where("messages.revokedAt", "is", null)
+      .where("messages.deletedAt", "is", null)
+      .execute();
   }
 }

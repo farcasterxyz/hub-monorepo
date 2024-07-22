@@ -21,7 +21,7 @@ RUN /home/node/.yarn/bin/turbo prune --scope=@farcaster/hubble --docker
 ############## Stage 2: Build the code using a full node image ################
 ###############################################################################
 
-FROM node:21.6-slim AS build
+FROM node:22.4.1-slim AS build
 
 # Needed for compilation step
 RUN apt-get update && apt-get install -y python3 make g++ linux-headers-generic curl protobuf-compiler libclang-dev cmake
@@ -31,7 +31,8 @@ RUN mkdir /home/node/app
 WORKDIR /home/node/app
 
 # Install Rust
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.70.0
+# Make sure this matches what we do locally and in CI
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.77.0
 ENV PATH="/home/node/.cargo/bin:${PATH}"
 
 # Rust flags to allow building with musl, which is needed for alpine
@@ -41,7 +42,9 @@ ENV RUSTFLAGS="-C target-feature=-crt-static"
 COPY --chown=node:node --from=prune /home/node/app/out/json/ .
 COPY --chown=node:node --from=prune /home/node/app/out/yarn.lock ./yarn.lock
 
+COPY --chown=node:node patches patches
 RUN yarn install --frozen-lockfile --network-timeout 1800000
+RUN yarn postinstall
 
 # Copy source code (and all other relevant files)
 COPY --chown=node:node --from=prune /home/node/app/out/full/ .
@@ -53,15 +56,15 @@ COPY --chown=node:node protobufs protobufs
 RUN yarn build
 
 # Purge dev dependencies and only install production dependencies
-RUN rm -rf node_modules && yarn install --production --ignore-scripts --prefer-offline --force --frozen-lockfile
+RUN rm -rf node_modules && yarn install --production --ignore-scripts --prefer-offline --force --frozen-lockfile && yarn postinstall
 
 ###############################################################################
 ########## Stage 3: Copy over the built code to a leaner alpine image #########
 ###############################################################################
 
-FROM node:21.6-slim as app
+FROM node:22.4.1-slim as app
 
-RUN apt-get update && apt-get install -y procps
+RUN apt-get update && apt-get install -y curl procps
 
 # Set non-root user and expose ports
 USER node

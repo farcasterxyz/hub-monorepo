@@ -8,7 +8,7 @@ Hubble can be installed in 30 minutes, and a full sync can take 1-2 hours to com
 
 - 16 GB of RAM
 - 4 CPU cores or vCPUs
-- 40 GB of free storage
+- 200 GB of free storage
 - A public IP address with ports 2282 - 2285 exposed
 
 See [tutorials](./tutorials.html) for instructions on how to set up cloud providers to run Hubble.
@@ -112,7 +112,7 @@ First, ensure that the following are installed globally on your machine:
 - `cd hub-monorepo` to enter the directory
 - `yarn install` to install dependencies
 - `yarn build` to build Hubble and its dependencies
-- `yarn test` to ensure that the test suite runs correctly
+- `yarn test` to ensure that the test suite runs correctly. If integration tests fail, run `docker compose up redis postgres` and retry. 
 
 #### Running Hubble
 To run the Hubble commands, go to the Hubble app (`cd apps/hubble`) and run the `yarn` commands.

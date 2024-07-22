@@ -91,6 +91,13 @@ impl StoreDef for UsernameProofStoreDef {
         })
     }
 
+    fn make_compact_state_prefix(&self, _fid: u32) -> Result<Vec<u8>, HubError> {
+        Err(HubError {
+            code: "bad_request.invalid_param".to_string(),
+            message: "Username Proof Store doesn't support compact state".to_string(),
+        })
+    }
+
     fn is_add_type(&self, message: &Message) -> bool {
         message.signature_scheme == protos::SignatureScheme::Ed25519 as i32
             && message.data.is_some()
@@ -513,7 +520,7 @@ impl UsernameProofStore {
             Ok(None) => cx.throw_error(format!(
                 "{}/{} for {}",
                 "not_found",
-                "NotFound: usernameproof not found for {}",
+                "NotFound: username proof not found for {}",
                 String::from_utf8_lossy(&name)
             ))?,
             Err(e) => return hub_error_to_js_throw(&mut cx, e),

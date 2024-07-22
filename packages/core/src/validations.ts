@@ -1,5 +1,5 @@
 import * as protobufs from "./protobufs";
-import { Protocol, UserNameType } from "./protobufs";
+import { CastType, Protocol, UserNameType } from "./protobufs";
 import { blake3 } from "@noble/hashes/blake3";
 import { err, ok, Result } from "neverthrow";
 import { bytesCompare, bytesToUtf8String, utf8StringToBytes } from "./bytes";
@@ -224,8 +224,8 @@ export const validateMessage = async (
 
   // 2. If the data_bytes are set, we'll validate signature against that
   if (message.dataBytes && message.dataBytes.length > 0) {
-    if (message.dataBytes.length > 1024) {
-      return err(new HubError("bad_request.validation_failure", "dataBytes > 1024 bytes"));
+    if (message.dataBytes.length > 2048) {
+      return err(new HubError("bad_request.validation_failure", "dataBytes > 2048 bytes"));
     }
     // 2a. Use the databytes as the hash to check the signature against
     computedHash = validationMethods.blake3_20(message.dataBytes);
@@ -403,8 +403,8 @@ export const validateVerificationAddEthAddressSignature = async (
   network: protobufs.FarcasterNetwork,
   publicClients: PublicClients = defaultPublicClients,
 ): HubAsyncResult<Uint8Array> => {
-  if (body.claimSignature.length > 512) {
-    return err(new HubError("bad_request.validation_failure", "claimSignature > 512 bytes"));
+  if (body.claimSignature.length > 2048) {
+    return err(new HubError("bad_request.validation_failure", "claimSignature > 2048 bytes"));
   }
 
   const reconstructedClaim = makeVerificationAddressClaim(
@@ -497,8 +497,20 @@ export const validateCastAddBody = (
   }
   const textBytes = textUtf8BytesResult.value;
 
-  if (textBytes.length > 320) {
+  if (body.type === CastType.CAST && textBytes.length > 320) {
     return err(new HubError("bad_request.validation_failure", "text > 320 bytes"));
+  }
+
+  if (body.type === CastType.LONG_CAST && textBytes.length > 1024) {
+    return err(new HubError("bad_request.validation_failure", "text > 1024 bytes for long cast"));
+  }
+
+  if (body.type === CastType.LONG_CAST && textBytes.length <= 320) {
+    return err(new HubError("bad_request.validation_failure", "text too short for long cast"));
+  }
+
+  if (body.type !== CastType.CAST && body.type !== CastType.LONG_CAST) {
+    return err(new HubError("bad_request.validation_failure", "invalid cast type"));
   }
 
   if (body.embeds.length > 2) {
@@ -825,7 +837,7 @@ export const validateFrameActionBody = (body: protobufs.FrameActionBody): HubRes
     return err(new HubError("bad_request.validation_failure", "invalid button index"));
   }
 
-  if (validateBytesAsString(body.url, 256, true).isErr()) {
+  if (validateBytesAsString(body.url, 1024, true).isErr()) {
     return err(new HubError("bad_request.validation_failure", "invalid url"));
   }
   if (validateBytesAsString(body.inputText, 256).isErr()) {

@@ -584,7 +584,8 @@ describe("SyncEngine", () => {
       const peerId = await createEd25519PeerId();
       expect(syncEngine.getContactInfoForPeerId(peerId.toString())).toBeUndefined();
 
-      expect(syncEngine.addContactInfoForPeerId(peerId, contactInfo)).toBeInstanceOf(Ok);
+      const updateThresholdMilliseconds = 0;
+      expect(syncEngine.addContactInfoForPeerId(peerId, contactInfo, updateThresholdMilliseconds)).toBeInstanceOf(Ok);
       expect(syncEngine.getContactInfoForPeerId(peerId.toString())?.contactInfo).toEqual(contactInfo);
       expect(syncEngine.getContactInfoForPeerId(peerId.toString())?.peerId).toEqual(peerId);
     });
@@ -596,15 +597,22 @@ describe("SyncEngine", () => {
       const newerContactInfo = NetworkFactories.GossipContactInfoContent.build({ timestamp: now + 10 });
       const peerId = await createEd25519PeerId();
 
-      expect(syncEngine.addContactInfoForPeerId(peerId, contactInfo)).toBeInstanceOf(Ok);
+      // NB: We set update value to 0, but there may non-determinism if test runs too quickly. If the tests start getting
+      // too flaky, we can sleep for a millisecond between function calls to make sure the time elapsed is greater than 0.
+      const updateThresholdMilliseconds = 0;
+      expect(syncEngine.addContactInfoForPeerId(peerId, contactInfo, updateThresholdMilliseconds)).toBeInstanceOf(Ok);
       expect(syncEngine.getContactInfoForPeerId(peerId.toString())?.contactInfo).toEqual(contactInfo);
 
       // Adding an older contact info should not replace the existing one
-      expect(syncEngine.addContactInfoForPeerId(peerId, olderContactInfo)).toBeInstanceOf(Err);
+      expect(syncEngine.addContactInfoForPeerId(peerId, olderContactInfo, updateThresholdMilliseconds)).toBeInstanceOf(
+        Err,
+      );
       expect(syncEngine.getContactInfoForPeerId(peerId.toString())?.contactInfo).toEqual(contactInfo);
 
       // Adding a newer contact info should replace the existing one
-      expect(syncEngine.addContactInfoForPeerId(peerId, newerContactInfo)).toBeInstanceOf(Err);
+      expect(syncEngine.addContactInfoForPeerId(peerId, newerContactInfo, updateThresholdMilliseconds)).toBeInstanceOf(
+        Ok,
+      );
       expect(syncEngine.getContactInfoForPeerId(peerId.toString())?.contactInfo).toEqual(newerContactInfo);
     });
   });

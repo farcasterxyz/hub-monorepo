@@ -41,7 +41,7 @@ type Parent = protos::cast_add_body::Parent;
  * 2. Highest timestamp wins
  * 3. Highest lexicographic hash wins
  *
- * CastMessages are stored ordinally in RocksDB indexed by a unique key `fid:tsHash` which makes
+ * CastMessages are stored ordinarily in RocksDB indexed by a unique key `fid:tsHash` which makes
  * truncating a user's earliest messages easy. Indices are built to lookup cast adds in the adds
  * set, cast removes in the removes set, cast adds that are the children of a cast add, and cast
  * adds that mention a specific user. The key-value entries created are:
@@ -221,6 +221,13 @@ impl StoreDef for CastStoreDef {
     }
 
     fn make_compact_state_add_key(&self, _message: &Message) -> Result<Vec<u8>, HubError> {
+        Err(HubError {
+            code: "bad_request.invalid_param".to_string(),
+            message: "Cast Store doesn't support compact state".to_string(),
+        })
+    }
+
+    fn make_compact_state_prefix(&self, _fid: u32) -> Result<Vec<u8>, HubError> {
         Err(HubError {
             code: "bad_request.invalid_param".to_string(),
             message: "Cast Store doesn't support compact state".to_string(),
@@ -567,11 +574,8 @@ impl CastStore {
                 let ts_hash = key[ts_hash_offset..ts_hash_offset + TS_HASH_LENGTH]
                     .try_into()
                     .unwrap();
-                let message_primary_key = crate::store::message::make_message_primary_key(
-                    fid,
-                    store.postfix(),
-                    Some(&ts_hash),
-                );
+                let message_primary_key =
+                    message::make_message_primary_key(fid, store.postfix(), Some(&ts_hash));
 
                 message_keys.push(message_primary_key.to_vec());
                 if message_keys.len() >= page_options.page_size.unwrap_or(PAGE_SIZE_MAX) {

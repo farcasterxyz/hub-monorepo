@@ -131,7 +131,7 @@ curl -X POST "http://127.0.0.1:2281/v1/validateMessage" \
 }
 ```
 
-## Using with Rust, Go or other programing languages
+## Using with Rust, Go or other programming languages
 Messages need to be signed with a ED25519 signer belonging to the FID. If you are using a different programming language than Typescript, you can manually construct the `MessageData` object and serialize it to the `data_bytes` field of the message. Then, use the `data_bytes` to compute the `hash` and `signature`. Please see the [`rust-submitmessage` example](https://github.com/farcasterxyz/hub-monorepo/tree/main/packages/hub-web/examples) for more details
 
 
@@ -193,7 +193,7 @@ async fn main() {
 
     // Finally, submit the message to the network
 
-    // Create a reqwest Client
+    // Create a request Client
     let client = Client::new();
 
     // Define your endpoint URL

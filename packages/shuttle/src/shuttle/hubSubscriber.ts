@@ -6,9 +6,9 @@ import { EventStreamConnection } from "./eventStream";
 import { sleep } from "../utils";
 import { RedisClient } from "./redis";
 import { HubClient } from "./hub";
+import { ProcessResult } from "./index";
 
 interface HubEventsEmitter {
-  event: (hubEvent: HubEvent) => void;
   onError: (error: Error, stopped: boolean) => void;
 }
 
@@ -170,13 +170,27 @@ export class BaseHubSubscriber extends HubSubscriber {
   }
 }
 
+type PreProcessHandler = (events: HubEvent[], eventBytes: Uint8Array[]) => Promise<ProcessResult[]>;
+type PostProcessHandler = (events: HubEvent[], eventBytes: Uint8Array[]) => Promise<void>;
+
+type EventStreamHubSubscriberOptions = {
+  beforeProcess?: PreProcessHandler;
+  afterProcess?: PostProcessHandler;
+};
+
 export class EventStreamHubSubscriber extends BaseHubSubscriber {
   private eventStream: EventStreamConnection;
   private redis: RedisClient;
   public readonly streamKey: string;
   public readonly redisKey: string;
-  private eventsToAdd: HubEvent[];
-  private eventBatchSize = 100;
+  private eventsToAdd: [HubEvent, Buffer][];
+  public eventBatchSize = 100;
+  private eventBatchLastFlushedAt = 0;
+  public maxTimeBetweenBatchFlushes = 200; // Millis
+  public maxBatchBytesBeforeForceFlush = 2 ** 20; // 2 MiB
+  private eventBatchBytes = 0;
+  private beforeProcess?: PreProcessHandler;
+  private afterProcess?: PostProcessHandler;
 
   constructor(
     label: string,
@@ -188,6 +202,7 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
     eventTypes?: HubEventType[],
     totalShards?: number,
     shardIndex?: number,
+    options?: EventStreamHubSubscriberOptions,
   ) {
     super(label, hubClient.client, log, eventTypes, totalShards, shardIndex);
     this.eventStream = eventStream;
@@ -195,6 +210,8 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
     this.streamKey = `hub:${hubClient.host}:evt:msg:${shardKey}`;
     this.redisKey = `${hubClient.host}:${shardKey}`;
     this.eventsToAdd = [];
+    this.beforeProcess = options?.beforeProcess;
+    this.afterProcess = options?.afterProcess;
   }
 
   public override async getLastEventId(): Promise<number | undefined> {
@@ -208,17 +225,42 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
   }
 
   public override async processHubEvent(event: HubEvent): Promise<boolean> {
-    this.eventsToAdd.push(event);
-    if (this.eventsToAdd.length >= this.eventBatchSize) {
-      let lastEventId: number | undefined;
-      for (const evt of this.eventsToAdd) {
-        await this.eventStream.add(this.streamKey, Buffer.from(HubEvent.encode(evt).finish()));
-        lastEventId = evt.id;
+    const eventBytes = Buffer.from(HubEvent.encode(event).finish());
+
+    this.eventBatchBytes += eventBytes.length;
+    this.eventsToAdd.push([event, eventBytes]);
+    if (
+      this.eventsToAdd.length >= this.eventBatchSize ||
+      this.eventBatchBytes >= this.maxBatchBytesBeforeForceFlush ||
+      Date.now() - this.eventBatchLastFlushedAt > this.maxTimeBetweenBatchFlushes
+    ) {
+      // Empties the current batch
+      const eventBatch = this.eventsToAdd.splice(0, this.eventsToAdd.length);
+      const events = eventBatch.map(([evt, _evtBytes]) => evt);
+      this.eventBatchBytes = 0;
+
+      let eventsToWriteBatch = eventBatch;
+      if (this.beforeProcess) {
+        const eventBytesBatch = eventBatch.map(([_evt, evtBytes]) => evtBytes);
+        const preprocessResult = await this.beforeProcess.call(this, events, eventBytesBatch);
+        eventsToWriteBatch = eventBatch.filter((evt, idx) => !preprocessResult[idx]?.skipped);
       }
-      if (lastEventId) {
-        await this.redis.setLastProcessedEvent(this.redisKey, lastEventId);
+
+      const eventToWriteBatch = eventsToWriteBatch.map(([evt, _evtBytes]) => evt);
+      const eventBytesToWriteBatch = eventsToWriteBatch.map(([_evt, evtBytes]) => evtBytes);
+      // Copies the removed events to the stream
+      await this.eventStream.add(this.streamKey, eventBytesToWriteBatch);
+
+      this.eventBatchLastFlushedAt = Date.now();
+
+      // biome-ignore lint/style/noNonNullAssertion: batch always has at least one event
+      const [evt, eventBytes] = eventBatch[eventBatch.length - 1]!;
+      const lastEventId = evt.id;
+      await this.redis.setLastProcessedEvent(this.redisKey, lastEventId);
+
+      if (this.afterProcess) {
+        await this.afterProcess.call(this, eventToWriteBatch, eventBytesToWriteBatch);
       }
-      this.eventsToAdd = [];
     }
 
     return true;

@@ -4,12 +4,17 @@ import fastify, { FastifyInstance } from "fastify";
 export class TestFNameRegistryServer {
   private server?: FastifyInstance;
   private port = 0;
+  private transfers;
+
+  constructor(transfers = []) {
+    this.transfers = transfers;
+  }
 
   public async start(): Promise<string> {
     this.server = fastify();
 
     this.server.get("/transfers", async (request, reply) => {
-      reply.send({ transfers: [] });
+      reply.send({ transfers: this.transfers });
     });
 
     this.server.get("/signer", async (request, reply) => {

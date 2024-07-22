@@ -404,6 +404,16 @@ export const HubServiceService = {
     responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
+  /** @http-api: none */
+  getLinkCompactStateMessageByFid: {
+    path: "/HubService/GetLinkCompactStateMessageByFid",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: FidRequest) => Buffer.from(FidRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => FidRequest.decode(value),
+    responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
+  },
   /** Sync Methods */
   getInfo: {
     path: "/HubService/GetInfo",
@@ -422,6 +432,29 @@ export const HubServiceService = {
     requestDeserialize: (value: Buffer) => Empty.decode(value),
     responseSerialize: (value: ContactInfoResponse) => Buffer.from(ContactInfoResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer) => ContactInfoResponse.decode(value),
+  },
+  /** @http-api: none */
+  stopSync: {
+    path: "/HubService/StopSync",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: Empty) => Buffer.from(Empty.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => Empty.decode(value),
+    responseSerialize: (value: SyncStatusResponse) => Buffer.from(SyncStatusResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => SyncStatusResponse.decode(value),
+  },
+  /**
+   * This is experimental, do not rely on this endpoint existing in the future
+   * @http-api: none
+   */
+  forceSync: {
+    path: "/HubService/ForceSync",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: SyncStatusRequest) => Buffer.from(SyncStatusRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => SyncStatusRequest.decode(value),
+    responseSerialize: (value: SyncStatusResponse) => Buffer.from(SyncStatusResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => SyncStatusResponse.decode(value),
   },
   /** @http-api: none */
   getSyncStatus: {
@@ -562,9 +595,18 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   getAllUserDataMessagesByFid: handleUnaryCall<FidRequest, MessagesResponse>;
   /** @http-api: none */
   getAllLinkMessagesByFid: handleUnaryCall<FidRequest, MessagesResponse>;
+  /** @http-api: none */
+  getLinkCompactStateMessageByFid: handleUnaryCall<FidRequest, MessagesResponse>;
   /** Sync Methods */
   getInfo: handleUnaryCall<HubInfoRequest, HubInfoResponse>;
   getCurrentPeers: handleUnaryCall<Empty, ContactInfoResponse>;
+  /** @http-api: none */
+  stopSync: handleUnaryCall<Empty, SyncStatusResponse>;
+  /**
+   * This is experimental, do not rely on this endpoint existing in the future
+   * @http-api: none
+   */
+  forceSync: handleUnaryCall<SyncStatusRequest, SyncStatusResponse>;
   /** @http-api: none */
   getSyncStatus: handleUnaryCall<SyncStatusRequest, SyncStatusResponse>;
   /** @http-api: none */
@@ -1103,6 +1145,22 @@ export interface HubServiceClient extends Client {
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: MessagesResponse) => void,
   ): ClientUnaryCall;
+  /** @http-api: none */
+  getLinkCompactStateMessageByFid(
+    request: FidRequest,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getLinkCompactStateMessageByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getLinkCompactStateMessageByFid(
+    request: FidRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
   /** Sync Methods */
   getInfo(
     request: HubInfoRequest,
@@ -1133,6 +1191,41 @@ export interface HubServiceClient extends Client {
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: ContactInfoResponse) => void,
+  ): ClientUnaryCall;
+  /** @http-api: none */
+  stopSync(
+    request: Empty,
+    callback: (error: ServiceError | null, response: SyncStatusResponse) => void,
+  ): ClientUnaryCall;
+  stopSync(
+    request: Empty,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: SyncStatusResponse) => void,
+  ): ClientUnaryCall;
+  stopSync(
+    request: Empty,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: SyncStatusResponse) => void,
+  ): ClientUnaryCall;
+  /**
+   * This is experimental, do not rely on this endpoint existing in the future
+   * @http-api: none
+   */
+  forceSync(
+    request: SyncStatusRequest,
+    callback: (error: ServiceError | null, response: SyncStatusResponse) => void,
+  ): ClientUnaryCall;
+  forceSync(
+    request: SyncStatusRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: SyncStatusResponse) => void,
+  ): ClientUnaryCall;
+  forceSync(
+    request: SyncStatusRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: SyncStatusResponse) => void,
   ): ClientUnaryCall;
   /** @http-api: none */
   getSyncStatus(

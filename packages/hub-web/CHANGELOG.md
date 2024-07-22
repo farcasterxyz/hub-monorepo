@@ -1,5 +1,27 @@
 # @farcaster/hub-web
 
+## 0.8.12
+
+### Patch Changes
+
+- c723f655: feat: Add endpoints to control sync
+
+## 0.8.11
+
+### Patch Changes
+
+- dab95118: Add rpc to expose LinkCompactStateMessage + explicit handling of type
+- Updated dependencies [dab95118]
+  - @farcaster/core@0.14.16
+
+## 0.8.10
+
+### Patch Changes
+
+- c424e111: feat: Add support for long casts
+- Updated dependencies [c424e111]
+  - @farcaster/core@0.14.15
+
 ## 0.8.9
 
 ### Patch Changes

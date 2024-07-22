@@ -3,6 +3,7 @@ import {
   isCastAddMessage,
   isCastRemoveMessage,
   isLinkAddMessage,
+  isLinkCompactStateMessage,
   isLinkRemoveMessage,
   isMergeMessageHubEvent,
   isPruneMessageHubEvent,
@@ -12,11 +13,13 @@ import {
   isVerificationAddAddressMessage,
   isVerificationRemoveMessage,
   Message,
+  MessageType,
 } from "@farcaster/hub-nodejs";
 import { DB } from "./db";
 import { MessageProcessor } from "./messageProcessor";
 import { MessageHandler, MessageState, StoreMessageOperation } from "./";
 import { log } from "../log";
+import { bytesToHex } from "../utils";
 
 export class HubEventProcessor {
   static async processHubEvent(db: DB, event: HubEvent, handler: MessageHandler) {
@@ -48,7 +51,12 @@ export class HubEventProcessor {
     wasMissed = false,
   ) {
     await db.transaction().execute(async (trx) => {
-      if (deletedMessages.length > 0) {
+      if (
+        deletedMessages.length > 0 &&
+        (process.env["SHUTTLE_PROCESS_EACH_DELETE"] ||
+          operation !== "merge" ||
+          !MessageProcessor.isCompactStateMessage(message))
+      ) {
         await Promise.all(
           deletedMessages.map(async (deletedMessage) => {
             const isNew = await MessageProcessor.storeMessage(deletedMessage, trx, "delete", log);
@@ -56,6 +64,19 @@ export class HubEventProcessor {
             await handler.handleMessageMerge(deletedMessage, trx, "delete", state, isNew, wasMissed);
           }),
         );
+      } else if (operation === "merge" && MessageProcessor.isCompactStateMessage(message)) {
+        const affectedMessages = await MessageProcessor.deleteDifferenceMessages(message, trx, log);
+        await Promise.all(
+          affectedMessages.map(async (deletedMessage) => {
+            const state = this.getMessageState(deletedMessage, "delete");
+            await handler.handleMessageMerge(deletedMessage, trx, "delete", state, true, wasMissed);
+          }),
+        );
+
+        const eventSet = new Set(affectedMessages.map((m) => bytesToHex(m.hash)));
+        for (const hash of deletedMessages.filter((m) => !eventSet.has(bytesToHex(m.hash)))) {
+          log.warn(`Message ${hash} was updated, but was not in deleted messages from merge event.`);
+        }
       }
       const isNew = await MessageProcessor.storeMessage(message, trx, operation, log);
       const state = this.getMessageState(message, operation);
@@ -72,7 +93,7 @@ export class HubEventProcessor {
       return "deleted";
     }
     // Links
-    if (isAdd && isLinkAddMessage(message)) {
+    if ((isAdd && isLinkAddMessage(message)) || (isAdd && isLinkCompactStateMessage(message))) {
       return "created";
     } else if ((isAdd && isLinkRemoveMessage(message)) || (!isAdd && isLinkAddMessage(message))) {
       return "deleted";

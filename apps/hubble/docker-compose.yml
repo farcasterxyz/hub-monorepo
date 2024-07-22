@@ -8,8 +8,6 @@
 #
 #   git fetch --tags --force && git checkout @latest && docker compose up
 
-version: '3.9'
-
 services:
   hubble:
     image: farcasterxyz/hubble:latest
@@ -17,6 +15,12 @@ services:
     restart: always
     command: ["npx", "pm2-runtime", "start", "pm2.config.cjs"]
     mem_reservation: 16G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:2281/v1/info"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 1m
     environment:
       CATCHUP_SYNC_WITH_SNAPSHOT: "${CATCHUP_SYNC_WITH_SNAPSHOT:-true}"
       NODE_OPTIONS: "--no-warnings --max-old-space-size=8192"
@@ -28,11 +32,12 @@ services:
         --eth-mainnet-rpc-url $ETH_MAINNET_RPC_URL
         --l2-rpc-url $OPTIMISM_L2_RPC_URL
         --network ${FC_NETWORK_ID:-1}
+        --hub-operator-fid ${HUB_OPERATOR_FID:-0}
         --rpc-subscribe-per-ip-limit ${RPC_SUBSCRIBE_PER_IP_LIMIT:-4}
         -b ${BOOTSTRAP_NODE:-/dns/nemes.farcaster.xyz/tcp/2282}
         --statsd-metrics-server $STATSD_METRICS_SERVER
-        --hub-operator-fid ${HUB_OPERATOR_FID:-0}
         --opt-out-diagnostics ${HUB_OPT_OUT_DIAGNOSTICS:-false}
+        ${HUB_OPTIONS:-}
     ports:
       - '${HTTPAPI_PORT:-2281}:${HTTPAPI_PORT:-2281}' # HTTP API. You can set HTTP_PORT in .env
       - '${GOSSIP_PORT:-2282}:${GOSSIP_PORT:-2282}' # Gossip. You can set GOSSIP_PORT in .env
@@ -52,6 +57,12 @@ services:
   statsd:
     image: graphiteapp/graphite-statsd:1.1.10-5
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-zv", "localhost", "8126"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 1m
     ports:
       # - '80:80' # Graphite web
       # - '2003:2003' # Carbon line receiver
@@ -66,6 +77,12 @@ services:
   grafana:
     image: grafana/grafana:10.0.3
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 1m
     # Mount the grafana config file
     volumes:
       - ./grafana/grafana.ini:/etc/grafana/grafana.ini

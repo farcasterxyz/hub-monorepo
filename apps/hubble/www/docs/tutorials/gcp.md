@@ -15,18 +15,22 @@ It usually takes less than 30 minutes to complete the whole process.
 
 ## Create GCP VM
 
-Open **Google Cloud Shell** and execute following commands:
+Open **Google Cloud Shell** and execute the following commands:
 
 <figure><img src="../assets/images/google_cloud_shell.png" alt=""><figcaption><p>Click on Google Cloud Shell Icon</p></figcaption></figure>
 
-Execute below commands in the cloud shell:
+Execute the below commands in the cloud shell:
 
 <pre><code><strong>mkdir farcaster-hub
 </strong>cd farcaster-hub
 nano main.tf
 </code></pre>
 
-Now paste the content of below into your main.tf \
+Now paste the content of below into your main.tf \ 
+Replace "$YOUR_PROJECT_ID" with your personal ID.
+
+<figure><img src="../assets/images/gcp_project_id.png" /></figure>
+
 This is the configuration of your GCP virtual machine that will be created.
 
 ```
@@ -44,7 +48,7 @@ resource "google_compute_instance" "farcaster-hub-vm" {
   boot_disk {
     initialize_params {
       image = "ubuntu-2004-focal-v20231213"  # Ubuntu 20.04 LTS image URL
-      size = 60  # 60 GB disk size
+      size = 200  # 200 GB disk size
     }
   }
 
@@ -79,7 +83,7 @@ resource "google_compute_firewall" "farcaster-p2p-ports" {
 Execute this command:
 
 ```
-terraform init # to intialize terraform in your farcaster-hub folder
+terraform init # to initialize terraform in your farcaster-hub folder
 ```
 
 Execute this command:
@@ -91,6 +95,10 @@ terraform plan # this will simulate your terraform configuration & check if it i
 Example output:
 
 <figure><img src="../assets/images/gcp_terraform_plan.png" alt=""><figcaption><p>Example output of terraform plan</p></figcaption></figure>
+
+Enable Compute Engine API
+
+<figure><img src="../assets/images/gcp_compute_engine_api.png" /></figure>
 
 Now execute this command:
 
@@ -110,7 +118,7 @@ Now you should be able to connect to your VM by clicking on the **SSH** button.
 Now Install Docker as described here [https://docs.docker.com/engine/install/ubuntu/](https://docs.docker.com/engine/install/ubuntu/)
 
 
-Now follow the steps as described on [Install page](../intro/install.md) page \
+Now follow the steps as described on [Install page](../intro/install.md) \
 \
 Your Hubble is up and running when you see below :white\_check\_mark:
 

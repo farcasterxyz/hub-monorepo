@@ -3,7 +3,7 @@
 
 
 ## userNameProofByName
-Get an proof for a username by the Farcaster username
+Get proof for a username by the Farcaster username
 
 **Query Parameters**
 | Parameter | Description | Example |

@@ -1,5 +1,6 @@
 import { PublishResult } from "@libp2p/interface-pubsub";
 import { Worker } from "worker_threads";
+import { PeerInfo } from "@libp2p/interface-peer-info";
 import {
   ContactInfoContent,
   FarcasterNetwork,
@@ -34,7 +35,7 @@ import { sleep } from "../../utils/crypto.js";
 /** The maximum number of pending merge messages before we drop new incoming gossip or sync messages. */
 export const MAX_SYNCTRIE_QUEUE_SIZE = 100_000;
 /** The TTL for messages in the seen cache */
-export const GOSSIP_SEEN_TTL = 1000 * 60 * 5;
+export const GOSSIP_SEEN_TTL = 1000 * 60 * 5; // 5 minutes
 
 /** The maximum amount of time to dial a peer in libp2p network in milliseconds */
 export const LIBP2P_CONNECT_TIMEOUT_MS = 2000;
@@ -50,6 +51,8 @@ interface NodeEvents {
   peerConnect: (connection: Connection) => void;
   /** Triggers when a peer disconnects and includes the libp2p Connection object */
   peerDisconnect: (connection: Connection) => void;
+  /** Triggers when a peer is discovered and includes the libp2p PeerInfo object */
+  peerDiscovery: (peerInfo: PeerInfo) => void;
 }
 
 /** Optional arguments provided when creating a Farcaster Gossip Node */
@@ -310,7 +313,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     return this._multiaddrs ?? [];
   }
 
-  /** Returs the node's network */
+  /** Returns the node's network */
   get network() {
     return this._network;
   }
@@ -465,7 +468,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     }
   }
 
-  /** Connects to a peer GossipNode */
+  /** Connects to a peer GossipNode through at least one multiaddr */
   async connect(peerNode: GossipNode): Promise<HubResult<void>> {
     const multiaddrs = peerNode.multiaddrs();
     if (!multiaddrs || multiaddr.length === 0) {

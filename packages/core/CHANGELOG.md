@@ -1,5 +1,47 @@
 # @farcaster/core
 
+## 0.14.19
+
+### Patch Changes
+
+- 76ad1ac2: feat: Expost event id functions
+
+## 0.14.18
+
+### Patch Changes
+
+- fb0a083a: feat: extend frame message URL max length
+
+## 0.14.17
+
+### Patch Changes
+
+- eacf29c9: fix: http endoint return not found instead of internal database error
+
+## 0.14.16
+
+### Patch Changes
+
+- dab95118: Add rpc to expose LinkCompactStateMessage + explicit handling of type
+
+## 0.14.15
+
+### Patch Changes
+
+- c424e111: feat: Add support for long casts
+
+## 0.14.14
+
+### Patch Changes
+
+- de52fbce: feat: extend verifications signature max length
+
+## 0.14.13
+
+### Patch Changes
+
+- 911f8b23: Adds missing builder for LinkCompactState
+
 ## 0.14.12
 
 ### Patch Changes

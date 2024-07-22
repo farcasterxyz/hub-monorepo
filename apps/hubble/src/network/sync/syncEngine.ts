@@ -52,12 +52,20 @@ import { PeerScore, PeerScorer } from "./peerScore.js";
 import { getOnChainEvent } from "../../storage/db/onChainEvent.js";
 import { getUserNameProof } from "../../storage/db/nameRegistryEvent.js";
 import { MaxPriorityQueue } from "@datastructures-js/priority-queue";
+import { TTLMap } from "../../utils/ttl_map.js";
+import * as buffer from "node:buffer";
+import { peerIdFromString } from "@libp2p/peer-id";
+
+// Time to live for peer contact info in the Peer TTLMap
+const PEER_TTL_MAP_EXPIRATION_TIME_MILLISECONDS = 1000 * 60 * 60 * 24; // 24 hours
+// Time interval to run cleanup on the Peer TTLMap
+const PEER_TTL_MAP_CLEANUP_INTERVAL_MILLISECONDS = 1000 * 60 * 60 * 25; // 25 hours
 
 // Number of seconds to wait for the network to "settle" before syncing. We will only
 // attempt to sync messages that are older than this time.
 const SYNC_THRESHOLD_IN_SECONDS = 10;
 
-// The maximum number of nodes to enque in the work queue
+// The maximum number of nodes to enqueue in the work queue
 const MAX_WORK_QUEUE_SIZE = 100_000;
 
 export const FIRST_SYNC_DELAY = 30 * 1000; // How long to wait after startup to start syncing
@@ -76,6 +84,8 @@ const BAD_PEER_BLOCK_TIMEOUT = 5 * 60 * 60 * 1000; // 5 hours, arbitrary, may ne
 const log = logger.child({
   component: "SyncEngine",
 });
+
+type NonNegativeInteger<T extends number> = `${T}` extends `-${string}` | `${string}.${string}` ? never : T;
 
 interface SyncEvents {
   /** Emit an event when diff starts */
@@ -244,6 +254,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   private _syncProfiler?: SyncEngineProfiler;
 
   private currentHubPeerContacts: Map<string, PeerContact> = new Map();
+  private uniquePeerMap: TTLMap<string, ContactInfoContentBody>;
 
   // Number of messages waiting to get into the SyncTrie.
   private _syncTrieQ = 0;
@@ -280,6 +291,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   ) {
     super();
 
+    this.uniquePeerMap = new TTLMap<string, ContactInfoContentBody>(
+      PEER_TTL_MAP_EXPIRATION_TIME_MILLISECONDS,
+      PEER_TTL_MAP_CLEANUP_INTERVAL_MILLISECONDS,
+    );
     this._db = rocksDb;
     this._trie = new MerkleTrie(rocksDb);
     this._l2EventsProvider = l2EventsProvider;
@@ -493,6 +508,18 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   }
 
   public async stop() {
+    await this.stopSync();
+    await this._trie.stop();
+
+    this._started = false;
+    this.curSync.interruptSync = false;
+    log.info("Sync engine stopped");
+  }
+
+  public async stopSync() {
+    if (!this.isSyncing()) {
+      return true;
+    }
     // Interrupt any ongoing sync
     this.curSync.interruptSync = true;
 
@@ -502,13 +529,9 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       await sleepWhile(() => this.syncTrieQSize > 0, SYNC_INTERRUPT_TIMEOUT);
     } catch (e) {
       log.error({ err: e }, "Interrupting sync timed out");
+      return false;
     }
-
-    await this._trie.stop();
-
-    this._started = false;
-    this.curSync.interruptSync = false;
-    log.info("Sync engine stopped");
+    return true;
   }
 
   public getBadPeerIds(): string[] {
@@ -531,22 +554,33 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     return this.currentHubPeerContacts.size;
   }
 
+  public getActivePeerCount(): number {
+    return this.uniquePeerMap.size();
+  }
+
   public getContactInfoForPeerId(peerId: string): PeerContact | undefined {
     return this.currentHubPeerContacts.get(peerId);
   }
 
   public getCurrentHubPeerContacts() {
-    return this.currentHubPeerContacts.values();
+    // return non-expired active peers
+    return this.uniquePeerMap.getAll();
   }
 
-  public addContactInfoForPeerId(peerId: PeerId, contactInfo: ContactInfoContentBody) {
+  public addContactInfoForPeerId(
+    peerId: PeerId,
+    contactInfo: ContactInfoContentBody,
+    updateThresholdMilliseconds: NonNegativeInteger<number>,
+  ) {
     const existingPeerInfo = this.getContactInfoForPeerId(peerId.toString());
-    if (existingPeerInfo) {
-      if (contactInfo.timestamp > existingPeerInfo.contactInfo.timestamp) {
-        this.currentHubPeerContacts.set(peerId.toString(), { peerId, contactInfo });
-      }
+    if (existingPeerInfo && contactInfo.timestamp <= existingPeerInfo.contactInfo.timestamp) {
       return err(new HubError("bad_request.duplicate", "peer already exists"));
-    } else {
+    }
+    const previousTimestamp = existingPeerInfo ? existingPeerInfo.contactInfo.timestamp : -Infinity;
+    const elapsed = Date.now() - previousTimestamp;
+
+    // only update if contact info was updated more than ${updateThresholdMilliseconds} ago
+    if (elapsed > updateThresholdMilliseconds) {
       log.info(
         {
           peerInfo: contactInfo,
@@ -561,14 +595,21 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         },
         "Updated Peer ContactInfo",
       );
-
-      this.currentHubPeerContacts.set(peerId.toString(), { peerId, contactInfo });
+      const id = peerId.toString();
+      this.uniquePeerMap.set(id, contactInfo);
+      this.currentHubPeerContacts.set(id, { peerId, contactInfo });
+      return ok(undefined);
+    } else {
+      return err(new HubError("bad_request.duplicate", "recent contact update found for peer"));
     }
-
-    return ok(undefined);
   }
 
   public removeContactInfoForPeerId(peerId: string) {
+    // NB: We don't remove the peer from the uniquePeerMap here - there can be many (valid) reasons to remove a
+    // peer from current hub peer contacts that are due to peer behavior but not indicative of whether that peer is active.
+    // For example, the peer may have a bad peer score or be disallowed for this hub, but it may still be an active peer.
+    // Since the unique peer map is meant to return the set of all active non-expired peers, we only remove
+    // peers from it when their TTL expires (i.e, if we don't get updates to their contact info for 24 hours)
     this.currentHubPeerContacts.delete(peerId);
   }
 
@@ -620,7 +661,16 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         // Use a buffer of 5% of our messages so the peer with the highest message count does not get picked
         // disproportionately
         const messageThreshold = snapshotResult.value.numMessages * 0.95;
-        peers = Array.from(this.currentHubPeerContacts.values()).filter((p) => p.contactInfo.count > messageThreshold);
+        peers = this.uniquePeerMap
+          .getAll()
+          .filter((p) => this.currentHubPeerContacts.has(p[0]) && p[1].count > messageThreshold)
+          .map(
+            (p) =>
+              ({
+                peerId: peerIdFromString(p[0]),
+                contactInfo: p[1],
+              }) as PeerContact,
+          );
       }
 
       if (peers.length === 0) {
@@ -799,6 +849,46 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         }
       }
     }
+  }
+
+  public async forceSyncWithPeer(peerId: string) {
+    if (this.isSyncing()) {
+      return err(new HubError("bad_request", "Already syncing"));
+    }
+
+    const contactInfo = this.getContactInfoForPeerId(peerId);
+    if (!contactInfo) {
+      return err(new HubError("bad_request", "Peer not found"));
+    }
+
+    const rpcClient = await this._hub.getRPCClientForPeer(contactInfo.peerId, contactInfo.contactInfo);
+    if (!rpcClient) {
+      return err(new HubError("bad_request", "Unreachable peer"));
+    }
+
+    log.info({ peerId }, "Force sync: Starting sync");
+
+    const peerStateResult = await rpcClient.getSyncSnapshotByPrefix(
+      TrieNodePrefix.create({ prefix: new Uint8Array() }),
+      new Metadata(),
+      rpcDeadline(),
+    );
+
+    if (peerStateResult.isErr()) {
+      return err(peerStateResult.error);
+    }
+
+    const syncStatus = await this.syncStatus(peerId, peerStateResult.value);
+    if (syncStatus.isErr()) {
+      return err(syncStatus.error);
+    }
+
+    // Ignore sync status because we always want to sync, we return it to the clients can get visibility into the peer's state
+    // Intentionally not available here, so the grpc call can succeed immediately
+    this.performSync(peerId, rpcClient, false).then((result) => {
+      log.info({ result }, "Force sync: complete");
+    });
+    return ok(syncStatus.value);
   }
 
   public async syncStatus(peerId: string, theirSnapshot: TrieSnapshot): HubAsyncResult<SyncStatus> {
@@ -1130,8 +1220,8 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     this._syncMergeQ += messages.length;
     statsd().gauge("syncengine.merge_q", this._syncMergeQ);
 
-    const startTime = Date.now();
-    const results = await this._hub.submitMessageBundle(MessageBundle.create({ messages }), "sync");
+    const startTime = getFarcasterTime().unwrapOr(0);
+    const results = await this._hub.submitMessageBundle(startTime, MessageBundle.create({ messages }), "sync");
 
     for (let i = 0; i < results.length; i++) {
       const result = results[i] as HubResult<number>;
@@ -1477,16 +1567,25 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     const result = await this.validateAndMergeOnChainEvents(
       missingSyncIds.filter((id) => id.type() === SyncIdType.OnChainEvent),
     );
+    statsd().increment("syncengine.sync_messages.onchain.success", result.successCount);
+    statsd().increment("syncengine.sync_messages.onchain.error", result.errCount);
+    statsd().increment("syncengine.sync_messages.onchain.deferred", result.deferredCount);
 
     // Then Fnames
     const fnameResult = await this.validateAndMergeFnames(
       missingSyncIds.filter((id) => id.type() === SyncIdType.FName),
     );
     result.addResult(fnameResult);
+    statsd().increment("syncengine.sync_messages.fname.success", fnameResult.successCount);
+    statsd().increment("syncengine.sync_messages.fname.error", fnameResult.errCount);
+    statsd().increment("syncengine.sync_messages.fname.deferred", fnameResult.deferredCount);
 
     // And finally messages
     const messagesResult = await this.fetchAndMergeMessages(missingMessageIds, rpcClient);
     result.addResult(messagesResult);
+    statsd().increment("syncengine.sync_messages.message.success", messagesResult.successCount);
+    statsd().increment("syncengine.sync_messages.message.error", messagesResult.errCount);
+    statsd().increment("syncengine.sync_messages.message.deferred", messagesResult.deferredCount);
 
     this.curSync.fullResult.addResult(result);
 

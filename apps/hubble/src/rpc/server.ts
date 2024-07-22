@@ -13,6 +13,7 @@ import {
   HubServiceServer,
   HubServiceService,
   LinkAddMessage,
+  LinkCompactStateMessage,
   LinkRemoveMessage,
   Message,
   MessagesResponse,
@@ -57,6 +58,7 @@ import {
   SLOW_CLIENT_GRACE_PERIOD_MS,
 } from "./bufferedStreamWriter.js";
 import { sleep } from "../utils/crypto.js";
+import { jumpConsistentHash } from "../utils/jumpConsistentHash.js";
 import { SUBMIT_MESSAGE_RATE_LIMIT, rateLimitByIp } from "../utils/rateLimits.js";
 import { statsd } from "../utils/statsd.js";
 import { SyncId } from "../network/sync/syncId.js";
@@ -64,6 +66,7 @@ import { AddressInfo } from "net";
 import * as net from "node:net";
 import axios from "axios";
 import { fidFromEvent } from "../storage/stores/storeEventHandler.js";
+import { rustErrorToHubError } from "../rustfunctions.js";
 
 const HUBEVENTS_READER_TIMEOUT = 1 * 60 * 60 * 1000; // 1 hour
 
@@ -203,6 +206,10 @@ export const checkPortAndPublicAddress = async (
 };
 
 export const toServiceError = (err: HubError): ServiceError => {
+  // hack: After rust migration, requests that propagate to RocksDB may yield string errors that don't have an errCode.
+  //      Since the rustErrorToHubError function is not called in these cases, we attempt conversion here.
+  const hubErr: HubError = err.errCode ? err : rustErrorToHubError(err);
+
   let grpcCode: number;
   if (err.errCode === "unauthenticated") {
     grpcCode = status.UNAUTHENTICATED;
@@ -230,10 +237,10 @@ export const toServiceError = (err: HubError): ServiceError => {
     grpcCode = status.UNKNOWN;
   }
   const metadata = new Metadata();
-  metadata.set("errCode", err.errCode);
-  return Object.assign(err, {
+  metadata.set("errCode", hubErr.errCode);
+  return Object.assign(hubErr, {
     code: grpcCode,
-    details: err.message,
+    details: hubErr.message,
     metadata,
   });
 };
@@ -482,20 +489,71 @@ export default class Server {
           const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
           log.debug({ method: "getCurrentPeers", req: call.request }, `RPC call from ${peer}`);
 
-          (async () => {
-            const currentHubPeerContacts = this.syncEngine?.getCurrentHubPeerContacts();
+          const currentHubPeerContacts = this.syncEngine?.getCurrentHubPeerContacts();
 
-            if (!currentHubPeerContacts) {
-              callback(null, ContactInfoResponse.create({ contacts: [] }));
-              return;
-            }
+          if (!currentHubPeerContacts) {
+            callback(null, ContactInfoResponse.create({ contacts: [] }));
+            return;
+          }
 
-            const contactInfoArray = Array.from(currentHubPeerContacts).map((peerContact) => peerContact.contactInfo);
-            callback(null, ContactInfoResponse.create({ contacts: contactInfoArray }));
-          })();
+          const contactInfoArray = Array.from(currentHubPeerContacts).map((peerContact) => peerContact[1]);
+          callback(null, ContactInfoResponse.create({ contacts: contactInfoArray }));
         })();
       },
+      stopSync: (call, callback) => {
+        (async () => {
+          const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
+          log.debug({ method: "stopSync", req: call.request }, `RPC call from ${peer}`);
 
+          const result = await this.syncEngine?.stopSync();
+          if (!result) {
+            callback(toServiceError(new HubError("bad_request", "Stop sync timed out")));
+          } else {
+            callback(
+              null,
+              SyncStatusResponse.create({
+                isSyncing: this.syncEngine?.isSyncing() || false,
+                engineStarted: this.syncEngine?.isStarted() || false,
+                syncStatus: [],
+              }),
+            );
+          }
+        })();
+      },
+      forceSync: (call, callback) => {
+        (async () => {
+          const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
+          log.debug({ method: "forceSync", req: call.request }, `RPC call from ${peer}`);
+
+          const peerId = call.request.peerId;
+          if (!peerId || peerId.length === 0) {
+            callback(toServiceError(new HubError("bad_request", "peerId is required")));
+            return;
+          }
+          const result = await this.syncEngine?.forceSyncWithPeer(peerId);
+          if (!result || result.isErr()) {
+            callback(toServiceError(result?.error || new HubError("bad_request", "sync engine not available")));
+          } else {
+            const status = result.value;
+            const response = SyncStatusResponse.create({
+              isSyncing: this.syncEngine?.isSyncing() || false,
+              engineStarted: this.syncEngine?.isStarted() || false,
+              syncStatus: [
+                SyncStatus.create({
+                  peerId,
+                  inSync: status.inSync,
+                  shouldSync: status.shouldSync,
+                  lastBadSync: status.lastBadSync,
+                  ourMessages: status.ourSnapshot.numMessages,
+                  theirMessages: status.theirSnapshot.numMessages,
+                  score: status.score,
+                }),
+              ],
+            });
+            callback(null, response);
+          }
+        })();
+      },
       getSyncStatus: (call, callback) => {
         (async () => {
           const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
@@ -750,6 +808,13 @@ export default class Server {
         log.debug({ method: "getCastsByParent", req: call.request }, `RPC call from ${peer}`);
 
         const { parentCastId, parentUrl, pageSize, pageToken, reverse } = call.request;
+
+        if (!parentCastId && !parentUrl) {
+          callback(
+            toServiceError(new HubError("bad_request.invalid_param", "Parent cast identifier must be provided")),
+          );
+          return;
+        }
 
         const castsResult = await this.engine?.getCastsByParent(parentCastId ?? parentUrl ?? "", {
           pageSize,
@@ -1220,6 +1285,25 @@ export default class Server {
           },
         );
       },
+      getLinkCompactStateMessageByFid: async (call, callback) => {
+        const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
+        log.debug({ method: "getLinkCompactStateMessageByFid", req: call.request }, `RPC call from ${peer}`);
+
+        const { fid, pageSize, pageToken, reverse } = call.request;
+        const result = await this.engine?.getLinkCompactStateMessageByFid(fid, {
+          pageSize,
+          pageToken,
+          reverse,
+        });
+        result?.match(
+          (page: MessagesPage<LinkCompactStateMessage>) => {
+            callback(null, messagesPageToResponse(page));
+          },
+          (err: HubError) => {
+            callback(toServiceError(err));
+          },
+        );
+      },
       getEvent: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getEvent", req: call.request }, `RPC call from ${peer}`);
@@ -1281,7 +1365,7 @@ export default class Server {
             bufferedStreamWriter.writeToStream(event);
           } else {
             const fid = fidFromEvent(event);
-            if (fid % totalShards === shardIndex) {
+            if (jumpConsistentHash(fid, totalShards) === shardIndex) {
               bufferedStreamWriter.writeToStream(event);
             }
           }

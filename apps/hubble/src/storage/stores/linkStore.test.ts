@@ -18,7 +18,6 @@ import { jestRocksDB } from "../db/jestUtils.js";
 import {
   getMessage,
   makeFidKey,
-  makeMessageBySignerKey,
   makeMessagePrimaryKeyFromMessage,
   makeTsHash,
   makeUserKey,
@@ -705,9 +704,7 @@ describe("merge", () => {
     const assertIncorrectPaddingExists = async (message: LinkAddMessage | LinkRemoveMessage, exists: boolean) => {
       const badAddKey = makeIncorrectKey(message);
       const primaryKey = makeMessagePrimaryKeyFromMessage(message);
-      const tsHash = makeTsHash(message.data.timestamp, message.hash)._unsafeUnwrap();
-      const bySignerKey = makeMessageBySignerKey(message.data.fid, message.signer, message.data.type, tsHash);
-      await expect(db.keysExist([badAddKey, primaryKey, bySignerKey])).resolves.toEqual(ok([exists, exists, exists]));
+      await expect(db.keysExist([badAddKey, primaryKey])).resolves.toEqual(ok([exists, exists]));
     };
 
     test("duplicate link add with incorrect padding", async () => {
