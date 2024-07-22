@@ -263,7 +263,13 @@ impl UserDataStore {
         let name = name_buffer.as_slice(&mut cx);
 
         let result = match Self::get_username_proof(&store, &name) {
-            Ok(Some(proof)) => proof.encode_to_vec(),
+            Ok(Some(proof)) => match proof.fid {
+                0 => cx.throw_error(format!(
+                    "{}/{}",
+                    "not_found", "NotFound: UserDataAdd message not found"
+                ))?,
+                _ => proof.encode_to_vec(),
+            },
             Ok(None) => cx.throw_error(format!(
                 "{}/{}",
                 "not_found", "NotFound: UserDataAdd message not found"
@@ -318,6 +324,7 @@ impl UserDataStore {
         username_proof: &protos::UserNameProof,
     ) -> Result<Vec<u8>, HubError> {
         let existing_proof = get_username_proof(&store.db(), &username_proof.name)?;
+        let mut existing_fid: Option<u32> = None;
 
         if existing_proof.is_some() {
             let cmp =
@@ -335,6 +342,7 @@ impl UserDataStore {
                     message: "event conflicts with a more recent UserNameProof".to_string(),
                 });
             }
+            existing_fid = Some(existing_proof.as_ref().unwrap().fid as u32);
         }
 
         if existing_proof.is_none() && username_proof.fid == 0 {
@@ -346,7 +354,7 @@ impl UserDataStore {
 
         let mut txn = RocksDbTransactionBatch::new();
         if username_proof.fid == 0 {
-            delete_username_proof_transaction(&mut txn, username_proof);
+            delete_username_proof_transaction(&mut txn, username_proof, existing_fid);
         } else {
             put_username_proof_transaction(&mut txn, username_proof);
         }

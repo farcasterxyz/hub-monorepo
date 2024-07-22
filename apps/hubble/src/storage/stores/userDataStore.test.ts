@@ -144,6 +144,24 @@ describe("mergeUserNameProof", () => {
     expect(proofEvents).toEqual([[newProof, existingProof]]);
   });
 
+  test("does not merge if deleted existing proof and timestamp is lesser", async () => {
+    const existingProof = await Factories.UserNameProof.build();
+    await set.mergeUserNameProof(existingProof);
+    const newProof = await Factories.UserNameProof.build({
+      timestamp: existingProof.timestamp + 10,
+      name: existingProof.name,
+      fid: 0,
+    });
+    proofEvents = [];
+    await set.mergeUserNameProof(newProof);
+    await expect(set.getUserNameProof(existingProof.name)).rejects.toThrowError("NotFound");
+    await expect(set.getUserNameProofByFid(existingProof.fid)).rejects.toThrowError("NotFound");
+    expect(proofEvents).toEqual([[newProof, existingProof]]);
+    await expect(set.mergeUserNameProof(existingProof)).rejects.toThrowError(
+      "event conflicts with a more recent UserNameProof",
+    );
+  });
+
   test("does not emit an event if there is no existing proof and new proof is to fid 0", async () => {
     const proof = await Factories.UserNameProof.build({
       fid: 0,

@@ -107,19 +107,6 @@ describe("usernameProofStore", () => {
       expect(proof).toEqual(ensProof);
     });
 
-    test("does not replace existing proof for name if timestamp is older and existing proof was deleted", async () => {
-      await set.merge(ensProof);
-
-      const deleteProof = await buildProof(0, fname, currentFarcasterTime + 1, UserNameType.USERNAME_TYPE_ENS_L1);
-      expect(deleteProof).not.toEqual(ensProof);
-      await set.merge(deleteProof);
-
-      await expect(set.merge(ensProof)).rejects.toThrowError("message conflicts with a more recent add");
-
-      const proof = await set.getUsernameProof(fname, UserNameType.USERNAME_TYPE_ENS_L1);
-      expect(proof).toEqual(deleteProof);
-    });
-
     test("does not merge duplicates", async () => {
       await set.merge(ensProof);
       await expect(set.merge(ensProof)).rejects.toThrowError("message has already been merged");
