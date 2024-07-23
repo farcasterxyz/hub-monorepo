@@ -21,6 +21,7 @@ import { forEachOnChainEvent } from "../db/onChainEvent.js";
 import { addProgressBar } from "../../utils/progressBars.js";
 import {
   rsClearEarliestTsHash,
+  rsClearEarliestTsHashCache,
   rsCreateStorageCache,
   rsGetEarliestTsHash,
   RustStorageCache,
@@ -55,10 +56,15 @@ export class StorageCache {
     this._rustStorageCache = rsCreateStorageCache(db.rustDb);
   }
 
+  get rustStorageCache(): RustStorageCache {
+    return this._rustStorageCache;
+  }
+
   async syncFromDb(): Promise<void> {
     log.info("starting storage cache sync");
 
     const start = Date.now();
+    rsClearEarliestTsHashCache(this._rustStorageCache);
 
     const totalFids = await this._db.countKeysAtPrefix(
       Buffer.concat([Buffer.from([RootPrefix.OnChainEvent, OnChainEventPostfix.IdRegisterByFid])]),
@@ -223,19 +229,6 @@ export class StorageCache {
       }
 
       this._counts.set(key, count + 1);
-
-      const tsHashResult = makeTsHash(message.data.timestamp, message.hash);
-      if (!tsHashResult.isOk()) {
-        log.error(`error: could not make ts hash for message ${message.hash}`);
-        return;
-      }
-      const currentEarliest = await this.getEarliestTsHash(fid, set);
-      if (currentEarliest.isOk()) {
-        if (currentEarliest.value === undefined || bytesCompare(currentEarliest.value, tsHashResult.value) > 0) {
-          // TODO: We should be setting here instead, but we'll do that when we migrate the processEvent logic to rust
-          rsClearEarliestTsHash(this._rustStorageCache, fid, set);
-        }
-      }
     }
   }
 
@@ -256,18 +249,6 @@ export class StorageCache {
       }
 
       this._counts.set(key, count - 1);
-
-      const tsHashResult = makeTsHash(message.data.timestamp, message.hash);
-      if (!tsHashResult.isOk()) {
-        log.error(`error: could not make ts hash for message ${message.hash}`);
-        return;
-      }
-      const currentEarliest = await this.getEarliestTsHash(fid, set);
-      if (currentEarliest.isOk()) {
-        if (currentEarliest.value === undefined || bytesCompare(currentEarliest.value, tsHashResult.value) === 0) {
-          rsClearEarliestTsHash(this._rustStorageCache, fid, set);
-        }
-      }
     }
   }
 

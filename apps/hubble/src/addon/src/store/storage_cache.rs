@@ -6,14 +6,16 @@ use neon::{
     types::{buffer::TypedArray, JsBox, JsNumber, JsPromise},
 };
 
+use crate::protos::{hub_event, HubEvent, Message, MessageType};
 use crate::store::{
-    get_storage_cache, hub_error_to_js_throw, make_message_primary_key, HubError, PageOptions,
-    FID_BYTES, PRIMARY_KEY_LENGTH,
+    bytes_compare, get_storage_cache, hub_error_to_js_throw, make_message_primary_key,
+    make_ts_hash, type_to_set_postfix, HubError, PageOptions, FID_BYTES, PRIMARY_KEY_LENGTH,
 };
 use neon::prelude::Finalize;
 use neon::types::JsBoolean;
 use std::clone::Clone;
 use std::collections::HashMap;
+use std::ops::Deref;
 use std::sync::{Arc, Mutex, RwLock};
 
 pub const PENDING_SCANS_LOCKS_COUNT: usize = 5;
@@ -61,10 +63,7 @@ impl StorageCache {
             let ts_hash_result = self.get_earliest_ts_hash_from_db(&prefix);
             if ts_hash_result.is_ok() {
                 let earliest_ts_hash = ts_hash_result.unwrap();
-                self.earliest_ts_hashes
-                    .write()
-                    .unwrap()
-                    .insert(prefix, earliest_ts_hash.clone());
+                self.set_earliest_ts_hash(fid, set, &earliest_ts_hash);
                 Ok(earliest_ts_hash)
             } else {
                 Err(ts_hash_result.unwrap_err())
@@ -72,9 +71,110 @@ impl StorageCache {
         };
     }
 
+    pub fn process_event(&self, event: &mut HubEvent) {
+        // Based on the contents of event body, add or remove messages
+        match &event.body {
+            Some(body) => match body {
+                hub_event::Body::MergeMessageBody(merge_message_body) => {
+                    if merge_message_body.message.is_some() {
+                        self.add_message(merge_message_body.message.as_ref().unwrap());
+                    }
+                    for deleted_message in merge_message_body.deleted_messages.iter() {
+                        self.remove_message(deleted_message);
+                    }
+                }
+                hub_event::Body::RevokeMessageBody(delete_message_body) => {
+                    if delete_message_body.message.is_some() {
+                        self.remove_message(delete_message_body.message.as_ref().unwrap());
+                    }
+                }
+                hub_event::Body::PruneMessageBody(prune_message_body) => {
+                    if prune_message_body.message.is_some() {
+                        self.remove_message(prune_message_body.message.as_ref().unwrap());
+                    }
+                }
+                _ => {}
+            },
+            None => {}
+        }
+    }
+
+    fn add_message(&self, message: &Message) {
+        let fid = message.data.as_ref().unwrap().fid as u32;
+        let set = type_to_set_postfix(
+            MessageType::try_from(message.data.as_ref().unwrap().r#type).unwrap(),
+        ) as u8;
+
+        let current_earliest_result = self.get_earliest_ts_hash(fid, set);
+        match current_earliest_result {
+            Ok(result) => match result {
+                Some(earliest_ts_hash) => {
+                    let message_ts_hash =
+                        make_ts_hash(message.data.as_ref().unwrap().timestamp, &message.hash);
+                    match message_ts_hash {
+                        Ok(ts_hash) => {
+                            if bytes_compare(earliest_ts_hash.deref(), &ts_hash) > 0 {
+                                self.set_earliest_ts_hash(fid, set, &Some(ts_hash.to_vec()));
+                            }
+                        }
+                        Err(_) => {}
+                    }
+                }
+                None => {
+                    let message_ts_hash =
+                        make_ts_hash(message.data.as_ref().unwrap().timestamp, &message.hash);
+                    if message_ts_hash.is_ok() {
+                        let ts_hash = message_ts_hash.unwrap();
+                        self.set_earliest_ts_hash(fid, set, &Some(ts_hash.to_vec()));
+                    }
+                }
+            },
+            _ => {}
+        }
+    }
+
+    fn remove_message(&self, message: &Message) {
+        let fid = message.data.as_ref().unwrap().fid as u32;
+        let set = type_to_set_postfix(
+            MessageType::try_from(message.data.as_ref().unwrap().r#type).unwrap(),
+        ) as u8;
+
+        let current_earliest_result = self.get_earliest_ts_hash(fid, set);
+        match current_earliest_result {
+            Ok(result) => match result {
+                Some(earliest_ts_hash) => {
+                    let message_ts_hash =
+                        make_ts_hash(message.data.as_ref().unwrap().timestamp, &message.hash);
+                    match message_ts_hash {
+                        Ok(ts_hash) => {
+                            if bytes_compare(earliest_ts_hash.deref(), &ts_hash) < 1 {
+                                self.clear_earliest_ts_hash(fid, set);
+                            }
+                        }
+                        Err(_) => {}
+                    }
+                }
+                None => {}
+            },
+            _ => {}
+        }
+    }
+
     fn clear_earliest_ts_hash(&self, fid: u32, set: u8) {
         let prefix = make_message_primary_key(fid, set as u8, None);
         self.earliest_ts_hashes.write().unwrap().remove(&prefix);
+    }
+
+    fn set_earliest_ts_hash(&self, fid: u32, set: u8, value: &Option<Vec<u8>>) {
+        let prefix = make_message_primary_key(fid, set as u8, None);
+        self.earliest_ts_hashes
+            .write()
+            .unwrap()
+            .insert(prefix, value.clone());
+    }
+
+    fn clear_cache(&self) {
+        self.earliest_ts_hashes.write().unwrap().clear();
     }
 
     fn get_earliest_ts_hash_from_db(&self, prefix: &[u8]) -> Result<Option<Vec<u8>>, HubError> {
@@ -141,6 +241,14 @@ impl StorageCache {
         let set = cx.argument::<JsNumber>(1).unwrap().value(&mut cx) as u8;
 
         storage_cache.clear_earliest_ts_hash(fid, set);
+
+        Ok(cx.boolean(true))
+    }
+
+    pub fn js_clear_cache(mut cx: FunctionContext) -> JsResult<JsBoolean> {
+        let storage_cache = get_storage_cache(&mut cx)?;
+
+        storage_cache.clear_cache();
 
         Ok(cx.boolean(true))
     }

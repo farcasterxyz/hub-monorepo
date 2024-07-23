@@ -106,6 +106,7 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
         "clearEarliestTsHash",
         StorageCache::js_clear_earliest_ts_hash,
     )?;
+    cx.export_function("clearEarliestTsHashCache", StorageCache::js_clear_cache)?;
 
     cx.export_function("createDb", RocksDB::js_create_db)?;
     cx.export_function("dbOpen", RocksDB::js_open)?;

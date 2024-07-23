@@ -182,6 +182,10 @@ pub fn type_to_set_postfix(message_type: MessageType) -> UserPostfix {
         return UserPostfix::LinkMessage;
     }
 
+    if message_type == MessageType::LinkCompactState {
+        return UserPostfix::LinkCompactStateMessage;
+    }
+
     if message_type == MessageType::UsernameProof {
         return UserPostfix::UsernameProofMessage;
     }
