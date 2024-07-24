@@ -142,6 +142,50 @@ describe("Merge LinkCompactState messages", () => {
     );
   });
 
+  test("allows merging link add messages older than the compact state messages if target fid is in the list", async () => {
+    const timestamp = getFarcasterTime()._unsafeUnwrap();
+    const linkAdd1 = await Factories.LinkAddMessage.create({
+      data: { fid, linkBody: Factories.LinkBody.build({ type: "follow", targetFid }), timestamp },
+    });
+    await set.merge(linkAdd1);
+    expect(await set.getLinkAdd(fid, linkAdd1.data.linkBody.type, linkAdd1.data.linkBody.targetFid as number)).toEqual(
+      linkAdd1,
+    );
+
+    const linkCompactState = await Factories.LinkCompactStateMessage.create({
+      data: {
+        fid,
+        linkCompactStateBody: { targetFids: [linkAdd1.data.linkBody.targetFid as number] },
+        timestamp: timestamp + 10,
+      },
+    });
+    // expect it to merge successfully
+    const result = await set.merge(linkCompactState);
+    expect(result).toBeGreaterThan(0);
+
+    // link add 1 still in the set
+    expect(await set.getLinkAdd(fid, linkAdd1.data.linkBody.type, linkAdd1.data.linkBody.targetFid as number)).toEqual(
+      linkAdd1,
+    );
+
+    // create a link add 2, that's newer than the link add1, but older than compact state, and it should be merged
+    // because the compact state is has the target fid
+    const linkAdd2 = await Factories.LinkAddMessage.create({
+      data: { fid, linkBody: Factories.LinkBody.build({ type: "follow", targetFid }), timestamp: timestamp + 5 },
+    });
+    await set.merge(linkAdd2);
+
+    // Link add 1 replaced by link add 2
+    expect(await set.getLinkAdd(fid, linkAdd1.data.linkBody.type, linkAdd1.data.linkBody.targetFid as number)).toEqual(
+      linkAdd2,
+    );
+
+    // Link add 1 is rejected
+    const expectError = await ResultAsync.fromPromise(set.merge(linkAdd1), (e) => e as HubError);
+    expect(expectError.isErr()).toBe(true);
+    expect(expectError._unsafeUnwrapErr().errCode).toBe("bad_request.conflict");
+  });
+
   test("merge link compaction messages can remove all messages", async () => {
     // First, create 2 link Adds
     const linkAdd1 = await Factories.LinkAddMessage.create({
