@@ -1,4 +1,4 @@
-use super::{HubError, MessagesPage, PageOptions, Store, FARCASTER_EPOCH};
+use super::{HubError, MessagesPage, PageOptions, StorageCache, Store, FARCASTER_EPOCH};
 use crate::{
     db::{JsIteratorOptions, RocksDB},
     trie::merkle_trie::{MerkleTrie, NodeMetadata},
@@ -233,6 +233,12 @@ pub fn get_store(cx: &mut FunctionContext) -> Result<Arc<Store>, Throw> {
 pub fn get_db(cx: &mut FunctionContext) -> Result<Arc<RocksDB>, Throw> {
     let db_js_box = cx.this::<JsBox<Arc<RocksDB>>>()?;
     Ok((**db_js_box.borrow()).clone())
+}
+
+/** Get the storage cache */
+pub fn get_storage_cache(cx: &mut FunctionContext) -> Result<Arc<StorageCache>, Throw> {
+    let storage_cache = cx.this::<JsBox<Arc<StorageCache>>>()?;
+    Ok((**storage_cache.borrow()).clone())
 }
 
 /** Get the merkle trie object */

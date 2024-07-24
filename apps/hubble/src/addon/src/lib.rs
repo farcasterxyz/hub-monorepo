@@ -1,5 +1,5 @@
 use crate::{
-    store::{CastStore, StoreEventHandler, UsernameProofStore, VerificationStore},
+    store::{CastStore, StorageCache, StoreEventHandler, UsernameProofStore, VerificationStore},
     trie::merkle_trie::MerkleTrie,
 };
 use db::RocksDB;
@@ -99,6 +99,14 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
         StoreEventHandler::js_create_store_event_handler,
     )?;
     cx.export_function("getNextEventId", StoreEventHandler::js_get_next_event_id)?;
+
+    cx.export_function("createStorageCache", StorageCache::js_create_storage_cache)?;
+    cx.export_function("getEarliestTsHash", StorageCache::js_get_earliest_ts_hash)?;
+    cx.export_function(
+        "clearEarliestTsHash",
+        StorageCache::js_clear_earliest_ts_hash,
+    )?;
+    cx.export_function("clearEarliestTsHashCache", StorageCache::js_clear_cache)?;
 
     cx.export_function("createDb", RocksDB::js_create_db)?;
     cx.export_function("dbOpen", RocksDB::js_open)?;
