@@ -31,6 +31,8 @@ Hubble Options:
   -i, --id <filepath>                   Path to the PeerId file.
   --hub-operator-fid <fid>              The FID of the hub operator. Optional.
   -c, --config <filepath>               Path to the config file.
+  --peer-identity-claim <filepath>      Path to claim file, used to established secure, verifiable association between
+                                        FID and Peer ID.
   --db-name <name>                      The name of the RocksDB instance. (default: rocks.hub._default)
   --process-file-prefix <prefix>        Prefix for file to which hub process number is written. (default: "")
   --log-individual-messages             Log individual submitMessage status. If disabled, log one line per second (default: disabled)"

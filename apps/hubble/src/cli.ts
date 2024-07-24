@@ -1,13 +1,13 @@
-import { FarcasterNetwork, farcasterNetworkFromJSON } from "@farcaster/hub-nodejs";
+import { FarcasterNetwork, farcasterNetworkFromJSON, HubResult } from "@farcaster/hub-nodejs";
 import { peerIdFromString } from "@libp2p/peer-id";
 import { PeerId } from "@libp2p/interface-peer-id";
 import { createEd25519PeerId, createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
 import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
 import { Command } from "commander";
-import fs, { existsSync } from "fs";
+import fs, { existsSync, writeFileSync } from "fs";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { Result, ResultAsync } from "neverthrow";
-import { dirname, resolve } from "path";
+import { dirname, join, resolve } from "path";
 import {
   APP_VERSION,
   FARCASTER_VERSION,
@@ -22,7 +22,11 @@ import { addressInfoFromParts, hostPortFromString, ipMultiAddrStrFromAddressInfo
 import { DEFAULT_RPC_CONSOLE, startConsole } from "./console/console.js";
 import RocksDB, { DB_DIRECTORY } from "./storage/db/rocksdb.js";
 import { parseNetwork } from "./utils/command.js";
-import { Config as DefaultConfig, DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT } from "./defaultConfig.js";
+import {
+  Config as DefaultConfig,
+  DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT,
+  DEFAULT_PEER_IDENTITY_FILENAME,
+} from "./defaultConfig.js";
 import { profileStorageUsed } from "./profile/profile.js";
 import { profileRPCServer } from "./profile/rpcProfile.js";
 import { profileGossipServer } from "./profile/gossipProfile.js";
@@ -37,6 +41,12 @@ import axios from "axios";
 import { r2Endpoint, snapshotURLAndMetadata } from "./utils/snapshot.js";
 import { DEFAULT_DIAGNOSTIC_REPORT_URL, initDiagnosticReporter } from "./utils/diagnosticReport.js";
 import { ListObjectsV2Command, S3Client } from "@aws-sdk/client-s3";
+import {
+  generateClaimForPeerID,
+  isPeerClaimValid,
+  PeerIdentityClaimWithAccountSignature,
+  verifyPeerIdentityClaimWithAccountSignature,
+} from "./peerclaim/index.js";
 
 /** A CLI to accept options from the user and start the Hub */
 
@@ -84,6 +94,10 @@ app
   .option("-i, --id <filepath>", "Path to the PeerId file.")
   .option("--hub-operator-fid <fid>", "The FID of the hub operator")
   .option("-c, --config <filepath>", "Path to the config file.")
+  .option(
+    "--peer-identity-claim <filepath>",
+    "Path to claim file, used to established secure, verifiable association between FID and Peer ID.",
+  )
   .option("--db-name <name>", "The name of the RocksDB instance. (default: rocks.hub._default)")
   .option("--process-file-prefix <prefix>", 'Prefix for file to which hub process number is written. (default: "")')
   .option(
@@ -373,6 +387,61 @@ app
 
     startupCheck.printStartupCheckStatus(StartupCheckStatus.OK, `Found PeerId ${peerId.toString()}`);
 
+    // Startup check for Hub Operator FID
+    const hubOperatorFid = parseInt(cliOptions.hubOperatorFid ?? hubConfig.hubOperatorFid);
+    if (!hubOperatorFid || isNaN(hubOperatorFid)) {
+      startupCheck.printStartupCheckStatus(
+        StartupCheckStatus.ERROR,
+        "Hub Operator FID is not set",
+        "https://www.thehubble.xyz/intro/install.html#troubleshooting",
+      );
+      return flushAndExit(1);
+    }
+
+    try {
+      const fid = hubOperatorFid;
+      const response = await axios.get(`https://fnames.farcaster.xyz/transfers/current?fid=${fid}`);
+      const transfer = response.data.transfer;
+      if (transfer?.username) {
+        startupCheck.printStartupCheckStatus(StartupCheckStatus.OK, `Hub Operator FID is ${fid}(${transfer.username})`);
+      } else {
+        startupCheck.printStartupCheckStatus(
+          StartupCheckStatus.WARNING,
+          `Hub Operator FID is ${fid}, but no username was found`,
+        );
+      }
+    } catch (e) {
+      logger.error(e, `Error fetching username for Hub Operator FID ${hubOperatorFid}`);
+      startupCheck.printStartupCheckStatus(
+        StartupCheckStatus.WARNING,
+        `Hub Operator FID is ${hubOperatorFid}, but no username was found`,
+      );
+    }
+
+    // Read peer identity claim file and verify:
+    // 1. Peer signature is valid
+    // 2. Account signature is valid
+    // 3. Peer ID & FID in claim match hub's values
+    // NOTE: An additional check is needed to verify the account key is associated with a given FID.
+    // Since that check requires on chain events to match FID with KeyRegistry, it is performed later in the Hub.
+    const peerClaimFileData = await readFile(
+      resolve(cliOptions.peerIdentityClaim ?? hubConfig.peerIdentityClaim),
+      "utf8",
+    );
+    const peerIdentityClaim: PeerIdentityClaimWithAccountSignature = JSON.parse(peerClaimFileData);
+    const peerClaimVerificationResult = await isPeerClaimValid(hubOperatorFid, peerId, peerIdentityClaim);
+    if (peerClaimVerificationResult.isErr() || !peerClaimVerificationResult.value) {
+      startupCheck.printStartupCheckStatus(
+        StartupCheckStatus.ERROR,
+        `Peer Identity Claim is invalid ${
+          peerClaimVerificationResult.isErr() ? `: ${peerClaimVerificationResult.error}` : ""
+        }`,
+        "https://www.thehubble.xyz/intro/install.html#troubleshooting",
+      );
+      return flushAndExit(1);
+    }
+    startupCheck.printStartupCheckStatus(StartupCheckStatus.OK, "Peer Identity Claim is valid");
+
     // Read RPC Auth from 1. CLI option, 2. Environment variable, 3. Config file
     let rpcAuth;
     if (cliOptions.rpcAuth) {
@@ -529,6 +598,7 @@ app
 
     const options: HubOptions = {
       peerId,
+      peerIdentityClaim,
       logIndividualMessages: cliOptions.logIndividualMessages ?? hubConfig.logIndividualMessages ?? false,
       ipMultiAddr: ipMultiAddrResult.value,
       rpcServerHost: hubAddressInfo.value.address,
@@ -578,41 +648,9 @@ app
       disableSnapshotSync: cliOptions.disableSnapshotSync ?? hubConfig.disableSnapshotSync ?? false,
       enableSnapshotToS3,
       s3SnapshotBucket: cliOptions.s3SnapshotBucket ?? hubConfig.s3SnapshotBucket,
-      hubOperatorFid: parseInt(cliOptions.hubOperatorFid ?? hubConfig.hubOperatorFid),
+      hubOperatorFid,
       connectToDbPeers: hubConfig.connectToDbPeers ?? true,
     };
-
-    // Startup check for Hub Operator FID
-    if (options.hubOperatorFid && !isNaN(options.hubOperatorFid)) {
-      try {
-        const fid = options.hubOperatorFid;
-        const response = await axios.get(`https://fnames.farcaster.xyz/transfers?fid=${fid}`);
-        const transfers = response.data.transfers;
-        if (transfers && transfers.length > 0) {
-          const usernameField = transfers[transfers.length - 1].username;
-          if (usernameField !== null && usernameField !== undefined) {
-            startupCheck.printStartupCheckStatus(StartupCheckStatus.OK, `Hub Operator FID is ${fid}(${usernameField})`);
-          } else {
-            startupCheck.printStartupCheckStatus(
-              StartupCheckStatus.WARNING,
-              `Hub Operator FID is ${fid}, but no username was found`,
-            );
-          }
-        }
-      } catch (e) {
-        logger.error(e, `Error fetching username for Hub Operator FID ${options.hubOperatorFid}`);
-        startupCheck.printStartupCheckStatus(
-          StartupCheckStatus.WARNING,
-          `Hub Operator FID is ${options.hubOperatorFid}, but no username was found`,
-        );
-      }
-    } else {
-      startupCheck.printStartupCheckStatus(
-        StartupCheckStatus.WARNING,
-        "Hub Operator FID is not set",
-        "https://www.thehubble.xyz/intro/install.html#troubleshooting",
-      );
-    }
 
     await startupCheck.rpcCheck(options.ethMainnetRpcUrl, mainnet, "L1");
     await startupCheck.rpcCheck(options.l2RpcUrl, optimism, "L2", options.l2ChainId);
@@ -800,6 +838,52 @@ app
   .description("Create or verify a peerID")
   .addCommand(createIdCommand)
   .addCommand(verifyIdCommand);
+
+/*//////////////////////////////////////////////////////////////
+                        PEER ID CLAIM COMMAND
+//////////////////////////////////////////////////////////////*/
+const claimPeerIdCommand = new Command("claim-peer-id")
+  .description("Create a signed message to claim a Peer ID for a given FID with a verified address.")
+  .option("-I, --id <filepath>", "Path to the PeerId file", DEFAULT_PEER_ID_LOCATION)
+  .option("-F, --fid <number>", "FID of the user claiming the Peer ID")
+  .option("-O, --output <directory>", "Directory where the generated claim should be stored", DEFAULT_PEER_ID_DIR)
+  .option(
+    "-K, --account-key <filepath>",
+    "Path to the account key file, where account key is a signer registered for a given FID",
+  )
+  .action(async (options) => {
+    const peerId = await readPeerId(options.id);
+    if (!options.fid || isNaN(options.fid)) {
+      logger.error("FID is required");
+      return flushAndExit(1);
+    }
+    const fid = parseInt(options.fid);
+    if (!options.accountKey) {
+      logger.error("Account key path is required");
+      return flushAndExit(1);
+    }
+    const privateKeyBuffer = await readFile(options.accountKey);
+    const accountPrivateKey = new Uint8Array(privateKeyBuffer);
+
+    const message: HubResult<PeerIdentityClaimWithAccountSignature> = await generateClaimForPeerID(
+      fid,
+      peerId,
+      accountPrivateKey,
+    );
+    if (message.isErr()) {
+      logger.error("Failed to generate claim message", message.error);
+      return flushAndExit(1);
+    }
+
+    const directory = options.output && existsSync(options.output) ? options.output : process.cwd();
+    const filepath = resolve(join(directory, DEFAULT_PEER_IDENTITY_FILENAME));
+    writeFileSync(filepath, JSON.stringify(message.value, null, 2), "utf8");
+
+    logger.info(`Wrote claim message to ${filepath}`);
+    logger.flush();
+    console.log(message.value);
+  });
+app.addCommand(claimPeerIdCommand);
 
 /*//////////////////////////////////////////////////////////////
                           STATUS COMMAND

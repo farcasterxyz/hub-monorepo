@@ -127,8 +127,8 @@ class Stats {
 const RPC_TIMEOUT_SECONDS = 2;
 
 const getTimePrefix = (date: Date) => {
-  const unixTime = date.getTime();
-  return toFarcasterTime(unixTime).map((farcasterTime) => {
+  const unixTime: number = date.getTime();
+  return toFarcasterTime(unixTime).map((farcasterTime: number) => {
     return Buffer.from(timestampToPaddedTimestampPrefix(farcasterTime));
   });
 };

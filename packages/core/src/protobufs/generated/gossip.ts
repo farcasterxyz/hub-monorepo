@@ -39,6 +39,27 @@ export interface GossipAddressInfo {
   dnsName: string;
 }
 
+/**
+ * Gossip representation of PeerIdentityClaimWithAccountSignature
+ * Peer Identity Claim attempts to associate a given FID with a given Peer ID
+ * A valid claim is signed by the peer and the account key (aka delegate signer) associated with
+ * custody address of a given FID
+ */
+export interface PeerIdentityClaim {
+  /** Note: peer id is excluded because all gossip messages are signed by the peer id */
+  fid: number;
+  /** Unix timestamp in milliseconds */
+  deadline: number;
+  /** Unix timestamp in milliesconds */
+  createdAt: number;
+  /** Hex encoded signature from private key of the peer */
+  peerSignature: Uint8Array;
+  /** Hex encoded signature from private key of the account */
+  accountSignature: Uint8Array;
+  /** Hex encoded public key of the account */
+  accountPublicKey: Uint8Array;
+}
+
 export interface ContactInfoContentBody {
   gossipAddress: GossipAddressInfo | undefined;
   rpcAddress: GossipAddressInfo | undefined;
@@ -48,6 +69,7 @@ export interface ContactInfoContentBody {
   network: FarcasterNetwork;
   appVersion: string;
   timestamp: number;
+  peerIdentityClaim: PeerIdentityClaim | undefined;
 }
 
 export interface ContactInfoContent {
@@ -207,6 +229,145 @@ export const GossipAddressInfo = {
   },
 };
 
+function createBasePeerIdentityClaim(): PeerIdentityClaim {
+  return {
+    fid: 0,
+    deadline: 0,
+    createdAt: 0,
+    peerSignature: new Uint8Array(),
+    accountSignature: new Uint8Array(),
+    accountPublicKey: new Uint8Array(),
+  };
+}
+
+export const PeerIdentityClaim = {
+  encode(message: PeerIdentityClaim, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.fid !== 0) {
+      writer.uint32(8).uint64(message.fid);
+    }
+    if (message.deadline !== 0) {
+      writer.uint32(16).uint64(message.deadline);
+    }
+    if (message.createdAt !== 0) {
+      writer.uint32(24).uint64(message.createdAt);
+    }
+    if (message.peerSignature.length !== 0) {
+      writer.uint32(34).bytes(message.peerSignature);
+    }
+    if (message.accountSignature.length !== 0) {
+      writer.uint32(42).bytes(message.accountSignature);
+    }
+    if (message.accountPublicKey.length !== 0) {
+      writer.uint32(50).bytes(message.accountPublicKey);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): PeerIdentityClaim {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBasePeerIdentityClaim();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.fid = longToNumber(reader.uint64() as Long);
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.deadline = longToNumber(reader.uint64() as Long);
+          continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.createdAt = longToNumber(reader.uint64() as Long);
+          continue;
+        case 4:
+          if (tag != 34) {
+            break;
+          }
+
+          message.peerSignature = reader.bytes();
+          continue;
+        case 5:
+          if (tag != 42) {
+            break;
+          }
+
+          message.accountSignature = reader.bytes();
+          continue;
+        case 6:
+          if (tag != 50) {
+            break;
+          }
+
+          message.accountPublicKey = reader.bytes();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): PeerIdentityClaim {
+    return {
+      fid: isSet(object.fid) ? Number(object.fid) : 0,
+      deadline: isSet(object.deadline) ? Number(object.deadline) : 0,
+      createdAt: isSet(object.createdAt) ? Number(object.createdAt) : 0,
+      peerSignature: isSet(object.peerSignature) ? bytesFromBase64(object.peerSignature) : new Uint8Array(),
+      accountSignature: isSet(object.accountSignature) ? bytesFromBase64(object.accountSignature) : new Uint8Array(),
+      accountPublicKey: isSet(object.accountPublicKey) ? bytesFromBase64(object.accountPublicKey) : new Uint8Array(),
+    };
+  },
+
+  toJSON(message: PeerIdentityClaim): unknown {
+    const obj: any = {};
+    message.fid !== undefined && (obj.fid = Math.round(message.fid));
+    message.deadline !== undefined && (obj.deadline = Math.round(message.deadline));
+    message.createdAt !== undefined && (obj.createdAt = Math.round(message.createdAt));
+    message.peerSignature !== undefined &&
+      (obj.peerSignature = base64FromBytes(
+        message.peerSignature !== undefined ? message.peerSignature : new Uint8Array(),
+      ));
+    message.accountSignature !== undefined &&
+      (obj.accountSignature = base64FromBytes(
+        message.accountSignature !== undefined ? message.accountSignature : new Uint8Array(),
+      ));
+    message.accountPublicKey !== undefined &&
+      (obj.accountPublicKey = base64FromBytes(
+        message.accountPublicKey !== undefined ? message.accountPublicKey : new Uint8Array(),
+      ));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<PeerIdentityClaim>, I>>(base?: I): PeerIdentityClaim {
+    return PeerIdentityClaim.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<PeerIdentityClaim>, I>>(object: I): PeerIdentityClaim {
+    const message = createBasePeerIdentityClaim();
+    message.fid = object.fid ?? 0;
+    message.deadline = object.deadline ?? 0;
+    message.createdAt = object.createdAt ?? 0;
+    message.peerSignature = object.peerSignature ?? new Uint8Array();
+    message.accountSignature = object.accountSignature ?? new Uint8Array();
+    message.accountPublicKey = object.accountPublicKey ?? new Uint8Array();
+    return message;
+  },
+};
+
 function createBaseContactInfoContentBody(): ContactInfoContentBody {
   return {
     gossipAddress: undefined,
@@ -217,6 +378,7 @@ function createBaseContactInfoContentBody(): ContactInfoContentBody {
     network: 0,
     appVersion: "",
     timestamp: 0,
+    peerIdentityClaim: undefined,
   };
 }
 
@@ -245,6 +407,9 @@ export const ContactInfoContentBody = {
     }
     if (message.timestamp !== 0) {
       writer.uint32(64).uint64(message.timestamp);
+    }
+    if (message.peerIdentityClaim !== undefined) {
+      PeerIdentityClaim.encode(message.peerIdentityClaim, writer.uint32(74).fork()).ldelim();
     }
     return writer;
   },
@@ -312,6 +477,13 @@ export const ContactInfoContentBody = {
 
           message.timestamp = longToNumber(reader.uint64() as Long);
           continue;
+        case 9:
+          if (tag != 74) {
+            break;
+          }
+
+          message.peerIdentityClaim = PeerIdentityClaim.decode(reader, reader.uint32());
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -331,6 +503,9 @@ export const ContactInfoContentBody = {
       network: isSet(object.network) ? farcasterNetworkFromJSON(object.network) : 0,
       appVersion: isSet(object.appVersion) ? String(object.appVersion) : "",
       timestamp: isSet(object.timestamp) ? Number(object.timestamp) : 0,
+      peerIdentityClaim: isSet(object.peerIdentityClaim)
+        ? PeerIdentityClaim.fromJSON(object.peerIdentityClaim)
+        : undefined,
     };
   },
 
@@ -350,6 +525,9 @@ export const ContactInfoContentBody = {
     message.network !== undefined && (obj.network = farcasterNetworkToJSON(message.network));
     message.appVersion !== undefined && (obj.appVersion = message.appVersion);
     message.timestamp !== undefined && (obj.timestamp = Math.round(message.timestamp));
+    message.peerIdentityClaim !== undefined && (obj.peerIdentityClaim = message.peerIdentityClaim
+      ? PeerIdentityClaim.toJSON(message.peerIdentityClaim)
+      : undefined);
     return obj;
   },
 
@@ -371,6 +549,9 @@ export const ContactInfoContentBody = {
     message.network = object.network ?? 0;
     message.appVersion = object.appVersion ?? "";
     message.timestamp = object.timestamp ?? 0;
+    message.peerIdentityClaim = (object.peerIdentityClaim !== undefined && object.peerIdentityClaim !== null)
+      ? PeerIdentityClaim.fromPartial(object.peerIdentityClaim)
+      : undefined;
     return message;
   },
 };

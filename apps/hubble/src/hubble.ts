@@ -11,13 +11,16 @@ import {
   GossipAddressInfo,
   GossipMessage,
   HashScheme,
+  hexStringToBytes,
   HubAsyncResult,
   HubError,
   HubRpcClient,
   HubState,
   Message,
   OnChainEvent,
+  OnChainEventResponse,
   onChainEventTypeToJSON,
+  PeerIdentityClaim,
   UserNameProof,
   validations,
 } from "@farcaster/hub-nodejs";
@@ -96,6 +99,10 @@ import { MerkleTrie } from "./network/sync/merkleTrie.js";
 import { DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT } from "./defaultConfig.js";
 import { diagnosticReporter } from "./utils/diagnosticReport.js";
 import { startupCheck, StartupCheckStatus } from "./utils/startupCheck.js";
+import {
+  PeerIdentityClaimWithAccountSignature,
+  verifyPeerIdentityClaimWithAccountSignature,
+} from "./peerclaim/index.js";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
@@ -162,6 +169,9 @@ export interface HubOptions {
 
   /** The PeerId of this Hub */
   peerId?: PeerId;
+
+  /** The Peer Identity claim, used to establish secure, verifiable association between FID and Peer ID */
+  peerIdentityClaim?: PeerIdentityClaimWithAccountSignature;
 
   /** Addresses to bootstrap the gossip network */
   bootstrapAddrs?: Multiaddr[];
@@ -351,11 +361,12 @@ const log = logger.child({
 });
 
 export class Hub implements HubInterface {
-  private options: HubOptions;
+  private readonly options: HubOptions;
   private gossipNode: GossipNode;
   private rpcServer: Server;
   private adminServer: AdminServer;
   private httpApiServer: HttpAPIServer;
+  private peerIdentityClaimMessage: PeerIdentityClaim | undefined;
 
   private rocksDB: RocksDB;
   private syncEngine: SyncEngine;
@@ -768,6 +779,12 @@ export class Hub implements HubInterface {
 
     await this.l2RegistryProvider.start();
     await this.fNameRegistryEventsProvider.start();
+    // NB: Peer Identity claim is used to establish secure, verifiable association between FID and Peer ID.
+    // Verification happens after on-chain events are synced to check the account key (signer) is valid for the given FID.
+    const peerIdentityClaimResult = await this.initPeerIdentityClaim();
+    if (peerIdentityClaimResult.isErr()) {
+      throw new HubError("unavailable", `Error initializing peer identity claim: ${peerIdentityClaimResult.error}`);
+    }
 
     const bootstrapAddrs = this.options.bootstrapAddrs ?? [];
 
@@ -1109,6 +1126,57 @@ export class Hub implements HubInterface {
     });
   }
 
+  async initPeerIdentityClaim(): HubAsyncResult<void> {
+    // After hub syncs on-chain key registry events, validate peer identity claim to ensure account key is associated with FID
+    // NOTE: At this point, the claim's internal consistency has been verified on startup, the remaining step is on-chain identity verification
+    if (this.options.hubOperatorFid && this.options.peerIdentityClaim) {
+      const claim: PeerIdentityClaimWithAccountSignature = this.options.peerIdentityClaim;
+      const accountPublicKey = claim.accountPublicKey;
+      const accountKeyBytesResult = hexStringToBytes(accountPublicKey);
+      if (accountKeyBytesResult.isErr()) {
+        return err(accountKeyBytesResult.error);
+      }
+      const accountPublicKeyBytes = accountKeyBytesResult.value;
+      const signerResult = await this.engine.getActiveSigner(this.options.hubOperatorFid, accountPublicKeyBytes);
+      if (signerResult.isErr()) {
+        return err(signerResult.error);
+      }
+      const peerSignatureResult = hexStringToBytes(claim.claim.peerSignature);
+      if (peerSignatureResult.isErr()) {
+        return err(peerSignatureResult.error);
+      }
+      const peerSignature = peerSignatureResult.value;
+      const accountSignatureResult = hexStringToBytes(claim.accountSignature);
+      if (accountSignatureResult.isErr()) {
+        return err(accountSignatureResult.error);
+      }
+      const accountSignature = accountSignatureResult.value;
+      this.peerIdentityClaimMessage = {
+        fid: claim.claim.message.fid,
+        peerSignature,
+        accountSignature,
+        accountPublicKey: accountPublicKeyBytes,
+        deadline: claim.claim.deadline,
+        createdAt: claim.claim.createdAt,
+      };
+    }
+    return ok(undefined);
+  }
+
+  async getPeerIdentityClaim(): HubAsyncResult<PeerIdentityClaim> {
+    if (!this.peerIdentityClaimMessage) {
+      return err(new HubError("unavailable", "Peer identity claim not available"));
+    }
+    const signerResult = await this.engine.getActiveSigner(
+      this.peerIdentityClaimMessage.fid,
+      this.peerIdentityClaimMessage.accountPublicKey,
+    );
+    if (signerResult.isErr()) {
+      return err(signerResult.error);
+    }
+    return ok(this.peerIdentityClaimMessage);
+  }
+
   async getContactInfoContent(): HubAsyncResult<ContactInfoContent> {
     const nodeMultiAddr = this.gossipAddresses[0] as Multiaddr;
     const family = nodeMultiAddr?.nodeAddress().family;
@@ -1133,7 +1201,16 @@ export class Hub implements HubInterface {
       return err(snapshot.error);
     }
 
-    const body = ContactInfoContentBody.create({
+    let peerIdentityClaim: PeerIdentityClaim | undefined;
+    if (this.options.peerIdentityClaim) {
+      const claimResult = await this.getPeerIdentityClaim();
+      if (claimResult.isErr()) {
+        return err(claimResult.error);
+      }
+      peerIdentityClaim = claimResult.value;
+    }
+
+    const body: ContactInfoContentBody = ContactInfoContentBody.create({
       gossipAddress: gossipAddressContactInfo,
       rpcAddress: rpcAddressContactInfo,
       excludedHashes: [], // Hubs don't rely on this anymore,
@@ -1142,6 +1219,7 @@ export class Hub implements HubInterface {
       network: this.options.network,
       appVersion: APP_VERSION,
       timestamp: Date.now(),
+      ...(peerIdentityClaim && { peerIdentityClaim }),
     });
     const content = ContactInfoContent.create({
       gossipAddress: gossipAddressContactInfo,
@@ -1489,6 +1567,41 @@ export class Hub implements HubInterface {
       return false;
     }
 
+    // if peer identity claim is present, validate it
+    if (message.peerIdentityClaim) {
+      const fid = message.peerIdentityClaim.fid;
+      const accountPublicKey = message.peerIdentityClaim.accountPublicKey;
+
+      // check if account key (signer) used for claim is active - otherwise claim is invalid
+      const signerResult = await this.engine.getActiveSigner(fid, accountPublicKey);
+      if (signerResult.isErr()) {
+        log.warn({ message: content, error: signerResult.error }, "failed to get active signer for claim");
+        return false;
+      }
+
+      const claim: PeerIdentityClaimWithAccountSignature = {
+        claim: {
+          message: {
+            fid,
+            peerId: `0x${peerId.toString()}`,
+          },
+          deadline: message.peerIdentityClaim.deadline,
+          createdAt: message.peerIdentityClaim.createdAt,
+          peerSignature: `0x${Buffer.from(message.peerIdentityClaim.peerSignature).toString("hex")}`,
+        },
+        accountPublicKey: `0x${Buffer.from(accountPublicKey).toString("hex")}`,
+        accountSignature: `0x${Buffer.from(message.peerIdentityClaim.accountSignature).toString("hex")}`,
+      };
+      const result: HubResult<boolean> = await verifyPeerIdentityClaimWithAccountSignature(claim);
+      if (result.isErr() || !result.value) {
+        log.warn(
+          { message: content, ...(result.isErr() ? { error: result.error } : {}) },
+          "peer identity claim validation failed",
+        );
+        return false;
+      }
+    }
+
     // Updates the address book for this peer
     const gossipAddress = message.gossipAddress;
     if (gossipAddress) {
@@ -1569,7 +1682,7 @@ export class Hub implements HubInterface {
       try {
         const sslClientResult = getSSLHubRpcClient(address, options);
 
-        sslClientResult.$.waitForReady(Date.now() + 2000, (err) => {
+        sslClientResult.$.waitForReady(Date.now() + 2000, (err: Error | undefined) => {
           if (!err) {
             resolve(sslClientResult);
           } else {
@@ -1625,7 +1738,7 @@ export class Hub implements HubInterface {
     }
 
     // sorts addresses by Public IPs first
-    const addr = peerAddresses.sort((a, b) =>
+    const addr = peerAddresses.sort((a: Multiaddr, b: Multiaddr) =>
       publicAddressesFirst({ multiaddr: a, isCertified: false }, { multiaddr: b, isCertified: false }),
     )[0];
     if (addr === undefined) {
@@ -1657,16 +1770,19 @@ export class Hub implements HubInterface {
     await this.gossipNode.subscribe(this.gossipNode.primaryTopic());
     await this.gossipNode.subscribe(this.gossipNode.contactInfoTopic());
 
-    this.gossipNode.on("message", async (_topic, message, source, msgId) => {
-      await message.match(
-        async (gossipMessage: GossipMessage) => {
-          await this.handleGossipMessage(gossipMessage, source, msgId);
-        },
-        async (error: HubError) => {
-          log.error(error, "failed to decode message");
-        },
-      );
-    });
+    this.gossipNode.on(
+      "message",
+      async (_topic: string, message: HubResult<GossipMessage>, source: PeerId, msgId: string) => {
+        await message.match(
+          async (gossipMessage: GossipMessage) => {
+            await this.handleGossipMessage(gossipMessage, source, msgId);
+          },
+          async (error: HubError) => {
+            log.error(error, "failed to decode message");
+          },
+        );
+      },
+    );
 
     this.gossipNode.on("peerConnect", async () => {
       // NB: Gossiping our own contact info is commented out, since at the time of
