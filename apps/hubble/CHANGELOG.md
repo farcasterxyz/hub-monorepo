@@ -1,5 +1,17 @@
 # @farcaster/hubble
 
+## 1.14.0
+
+### Minor Changes
+
+- be54d203: fix: full state events should not include deleted messages
+
+### Patch Changes
+
+- a5f867fb: fix: Fix incorrect target fid check for link messages older than the compact state
+- d1dce89f: fix: do not let deleted fname events allow old fname events to be re-added
+- 554d82a4: fix: Migrate storage cache to rust and fix race condition
+
 ## 1.13.8
 
 ### Patch Changes
