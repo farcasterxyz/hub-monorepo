@@ -78,7 +78,7 @@
     "@farcaster/hub-nodejs": "^0.11.21",
     "@fastify/cors": "^8.4.0",
     "@figma/hot-shots": "^9.0.0-figma.1",
-    "@grpc/grpc-js": "~1.8.22",
+    "@grpc/grpc-js": "~1.11.1",
     "@libp2p/interface-connection": "^4.0.0",
     "@libp2p/interface-connection-gater": "^2.0.1",
     "@libp2p/interface-peer-id": "^2.0.1",
