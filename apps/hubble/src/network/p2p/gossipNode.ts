@@ -31,6 +31,7 @@ import EventEmitter from "events";
 import RocksDB from "../../storage/db/rocksdb.js";
 import { RootPrefix } from "../../storage/db/types.js";
 import { sleep } from "../../utils/crypto.js";
+import { GossipsubMessage } from "@chainsafe/libp2p-gossipsub";
 
 /** The maximum number of pending merge messages before we drop new incoming gossip or sync messages. */
 export const MAX_SYNCTRIE_QUEUE_SIZE = 100_000;
@@ -548,7 +549,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     this._nodeEvents?.addListener("peer:discovery", (detail) => {
       log.info({ peer: detail }, "Discovered peer");
     });
-    this._nodeEvents?.addListener("gossipsub:message", (detail) => {
+    this._nodeEvents?.addListener("gossipsub:message", (detail: GossipsubMessage) => {
       log.debug({
         identity: this.identity,
         gossipMessageId: detail.msgId,
@@ -561,12 +562,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       // ignore messages not in our topic lists (e.g. GossipSub peer discovery messages)
       if (this.gossipTopics().includes(detail.msg.topic)) {
         try {
-          let data: Buffer;
-          if (detail.msg.data.type === "Buffer") {
-            data = Buffer.from(detail.msg.data.data);
-          } else {
-            data = Buffer.from(Object.values(detail.msg.data as unknown as Record<string, number>));
-          }
+          const data = detail.msg.data;
 
           statsd().gauge("gossip.message_size_bytes", data.length, { topic: detail.msg.topic });
 
