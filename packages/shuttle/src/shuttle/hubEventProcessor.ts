@@ -50,16 +50,12 @@ export class HubEventProcessor {
     deletedMessages: Message[] = [],
     wasMissed = false,
   ) {
+    const shouldValidate = process.env["SHUTTLE_VALIDATE_MESSAGES"] === "true";
     await db.transaction().execute(async (trx) => {
-      if (
-        deletedMessages.length > 0 &&
-        (process.env["SHUTTLE_PROCESS_EACH_DELETE"] ||
-          operation !== "merge" ||
-          !MessageProcessor.isCompactStateMessage(message))
-      ) {
+      if (deletedMessages.length > 0) {
         await Promise.all(
           deletedMessages.map(async (deletedMessage) => {
-            const isNew = await MessageProcessor.storeMessage(deletedMessage, trx, "delete", log);
+            const isNew = await MessageProcessor.storeMessage(deletedMessage, trx, "delete", log, shouldValidate);
             const state = this.getMessageState(deletedMessage, "delete");
             await handler.handleMessageMerge(deletedMessage, trx, "delete", state, isNew, wasMissed);
           }),
@@ -78,7 +74,7 @@ export class HubEventProcessor {
           log.warn(`Message ${hash} was updated, but was not in deleted messages from merge event.`);
         }
       }
-      const isNew = await MessageProcessor.storeMessage(message, trx, operation, log);
+      const isNew = await MessageProcessor.storeMessage(message, trx, operation, log, shouldValidate);
       const state = this.getMessageState(message, operation);
       await handler.handleMessageMerge(message, trx, operation, state, isNew, wasMissed);
     });
