@@ -2323,17 +2323,6 @@
     "@libp2p/interface-peer-id" "^2.0.0"
     "@multiformats/multiaddr" "^12.0.0"
 
-"@libp2p/interface-connection-manager@^2.0.0":
-  version "2.1.1"
-  resolved "https://registry.npmjs.org/@libp2p/interface-connection-manager/-/interface-connection-manager-2.1.1.tgz#b795a0a0eb7bd3ebdaa1a93c4e7148893d6ee8c2"
-  integrity sha512-cIhSRSQs2iHBI8G3vc7Y7cQY2CMYIQYul05qT+or+wZnHdW6CbR44j9s/pPgKLl5cKJPzdLvaEuIY1fTwqnNag==
-  dependencies:
-    "@libp2p/interface-connection" "^5.0.0"
-    "@libp2p/interface-peer-id" "^2.0.0"
-    "@libp2p/interfaces" "^3.0.0"
-    "@libp2p/peer-collections" "^3.0.1"
-    "@multiformats/multiaddr" "^12.0.0"
-
 "@libp2p/interface-connection-manager@^3.0.0", "@libp2p/interface-connection-manager@^3.0.1":
   version "3.0.1"
   resolved "https://registry.npmjs.org/@libp2p/interface-connection-manager/-/interface-connection-manager-3.0.1.tgz#2181e28e62f15e33323a293147f3da85b537939d"
@@ -2411,7 +2400,7 @@
   resolved "https://registry.npmjs.org/@libp2p/interface-keys/-/interface-keys-1.0.8.tgz#2c6b55136113ae7cf78133d3c459cdf0455b29ae"
   integrity sha512-CJ1SlrwuoHMquhEEWS77E+4vv7hwB7XORkqzGQrPQmA9MRdIEZRS64bA4JqCLUDa4ltH0l+U1vp0oZHLT67NEA==
 
-"@libp2p/interface-libp2p@^3.1.0":
+"@libp2p/interface-libp2p@^3.0.0", "@libp2p/interface-libp2p@^3.1.0":
   version "3.2.0"
   resolved "https://registry.npmjs.org/@libp2p/interface-libp2p/-/interface-libp2p-3.2.0.tgz#875df729edcb43aee7f8b91191b7fc16d83cb912"
   integrity sha512-Vow6xNdjpQ0M/Kt3EDz1qE/Os5OZUyhFt0YTPU5Fp3/kXw/6ocsxYq/Bzird/96gjUjU5/i+Vukn4WgctJf55Q==
@@ -2443,23 +2432,24 @@
   dependencies:
     "@libp2p/interface-connection" "^5.0.0"
 
-"@libp2p/interface-mocks@^10.0.0":
-  version "10.0.3"
-  resolved "https://registry.npmjs.org/@libp2p/interface-mocks/-/interface-mocks-10.0.3.tgz#1088b9d2bbd824b9ed53dfee759b8c9a05c31330"
-  integrity sha512-b21Pr56lvpmKw6iJwW5D/kD+xNYDjXCPccW36dzwdKRR8Abv94+YldI//LcLWKbZ1Z8dazQIwjSdLSYDqiIaFA==
+"@libp2p/interface-mocks@^12.0.0":
+  version "12.0.1"
+  resolved "https://registry.npmjs.org/@libp2p/interface-mocks/-/interface-mocks-12.0.1.tgz#29f433d7c3bce4dfef6a7ff479a0ac1b79264feb"
+  integrity sha512-GO8EXT70oOt4oBXaeNLdLxmvrIR0CFOH5kBNCkVo9rolE3diCX6j3HCU5UQ7+aXeZp3pGF/E6B/CcJa2iswN/g==
   dependencies:
     "@libp2p/interface-connection" "^5.0.0"
     "@libp2p/interface-connection-encrypter" "^4.0.0"
     "@libp2p/interface-connection-gater" "^3.0.0"
-    "@libp2p/interface-connection-manager" "^2.0.0"
+    "@libp2p/interface-connection-manager" "^3.0.0"
+    "@libp2p/interface-libp2p" "^3.0.0"
     "@libp2p/interface-metrics" "^4.0.0"
-    "@libp2p/interface-peer-discovery" "^1.0.0"
+    "@libp2p/interface-peer-discovery" "^2.0.0"
     "@libp2p/interface-peer-id" "^2.0.0"
     "@libp2p/interface-peer-info" "^1.0.0"
     "@libp2p/interface-pubsub" "^4.0.0"
     "@libp2p/interface-registrar" "^2.0.0"
     "@libp2p/interface-stream-muxer" "^4.0.0"
-    "@libp2p/interface-transport" "^3.0.0"
+    "@libp2p/interface-transport" "^4.0.0"
     "@libp2p/interfaces" "^3.0.0"
     "@libp2p/logger" "^2.0.0"
     "@libp2p/multistream-select" "^3.1.7"
@@ -2477,16 +2467,8 @@
     it-pushable "^3.1.3"
     it-stream-types "^2.0.1"
     merge-options "^3.0.4"
-    uint8arraylist "^2.1.2"
+    uint8arraylist "^2.4.3"
     uint8arrays "^4.0.2"
-
-"@libp2p/interface-peer-discovery@^1.0.0":
-  version "1.0.5"
-  resolved "https://registry.npmjs.org/@libp2p/interface-peer-discovery/-/interface-peer-discovery-1.0.5.tgz#0fb935d55221e0ff58b4dad93646111a4fc7dcdf"
-  integrity sha512-R0TN/vDaCJLvRhop0y4qoPqapHxX4AEQDEtqmpayAA1BuPgbBq4fS4mepR3FAMcNva/szeqVCDuI4gDejtCaVg==
-  dependencies:
-    "@libp2p/interface-peer-info" "^1.0.0"
-    "@libp2p/interfaces" "^3.0.0"
 
 "@libp2p/interface-peer-discovery@^2.0.0":
   version "2.0.0"
@@ -2598,15 +2580,6 @@
     "@libp2p/interface-connection" "^5.0.0"
     "@libp2p/interface-peer-id" "^2.0.0"
 
-"@libp2p/interface-stream-muxer@^3.0.0":
-  version "3.0.5"
-  resolved "https://registry.npmjs.org/@libp2p/interface-stream-muxer/-/interface-stream-muxer-3.0.5.tgz#7cc6e3887e133e1ef54a515c9e21d7b889974c59"
-  integrity sha512-815aJ+qVswNcTEOuOUTcB+7OLzAfROyjjqoWpK0bD0P/xqTHqOQcqdaDuK02zPuAZqYq9uR3+SoBasrCg6k3zw==
-  dependencies:
-    "@libp2p/interface-connection" "^3.0.0"
-    "@libp2p/interfaces" "^3.0.0"
-    it-stream-types "^1.0.4"
-
 "@libp2p/interface-stream-muxer@^4.0.0", "@libp2p/interface-stream-muxer@^4.1.2":
   version "4.1.2"
   resolved "https://registry.npmjs.org/@libp2p/interface-stream-muxer/-/interface-stream-muxer-4.1.2.tgz#f0a5edb906ec784d991b9421a024f0f21ebdaab4"
@@ -2620,28 +2593,6 @@
     it-pushable "^3.1.3"
     it-stream-types "^2.0.1"
     uint8arraylist "^2.4.3"
-
-"@libp2p/interface-transport@^2.0.0":
-  version "2.1.1"
-  resolved "https://registry.npmjs.org/@libp2p/interface-transport/-/interface-transport-2.1.1.tgz#e463f30b272494c177d3a0bd494545616fd7b624"
-  integrity sha512-xDM/s8iPN/XfNqD9qNelibRMPKkhOLinXwQeNtoTZjarq+Cg6rtO6/5WBG/49hyI3+r+5jd2eykjPGQbb86NFQ==
-  dependencies:
-    "@libp2p/interface-connection" "^3.0.0"
-    "@libp2p/interface-stream-muxer" "^3.0.0"
-    "@libp2p/interfaces" "^3.0.0"
-    "@multiformats/multiaddr" "^11.0.0"
-    it-stream-types "^1.0.4"
-
-"@libp2p/interface-transport@^3.0.0":
-  version "3.0.0"
-  resolved "https://registry.npmjs.org/@libp2p/interface-transport/-/interface-transport-3.0.0.tgz#404a599215af1538e6fc82e25768fa65f45d4b5d"
-  integrity sha512-XDyk/GJX9+z3WcB+2FaFSluj6w3Qcn9LElNt4jXsgnUkzvN229CvF6LmYlYKkWa7m4+GLfmKozBdhWVTANhs/g==
-  dependencies:
-    "@libp2p/interface-connection" "^5.0.0"
-    "@libp2p/interface-stream-muxer" "^4.0.0"
-    "@libp2p/interfaces" "^3.0.0"
-    "@multiformats/multiaddr" "^12.0.0"
-    it-stream-types "^2.0.1"
 
 "@libp2p/interface-transport@^4.0.0":
   version "4.0.3"
@@ -2904,19 +2855,20 @@
     uint8arraylist "^2.0.0"
     uint8arrays "^4.0.2"
 
-"@libp2p/tcp@^6.0.0":
-  version "6.1.2"
-  resolved "https://registry.npmjs.org/@libp2p/tcp/-/tcp-6.1.2.tgz#53038947dea6dfd81078e092f3f7d43f8251d7f4"
-  integrity sha512-IKxcAO4qHRgGLT2aqsy2ayUmkra38efJ5mla4lDECjxcUqHnbok+QEPIgDodPbTaEgfbd6ivmwP1YxHLxt9dJA==
+"@libp2p/tcp@^7.0.1":
+  version "7.0.3"
+  resolved "https://registry.npmjs.org/@libp2p/tcp/-/tcp-7.0.3.tgz#b657b0738f4703add5b75ca180af5f1c5e01d0c6"
+  integrity sha512-w1g5/BYDNpZKXrJZd1PW8kUS0GxHwFO6oql3rIizh5WaxmWtMa21LtKWIoHJyC8Wp4vshEUPeZthAIKECqUafg==
   dependencies:
-    "@libp2p/interface-connection" "^3.0.2"
+    "@libp2p/interface-connection" "^5.0.0"
     "@libp2p/interface-metrics" "^4.0.0"
-    "@libp2p/interface-transport" "^2.0.0"
+    "@libp2p/interface-transport" "^4.0.0"
     "@libp2p/interfaces" "^3.2.0"
     "@libp2p/logger" "^2.0.0"
     "@libp2p/utils" "^3.0.2"
-    "@multiformats/mafmt" "^11.0.3"
-    "@multiformats/multiaddr" "^11.0.0"
+    "@multiformats/mafmt" "^12.0.0"
+    "@multiformats/multiaddr" "^12.0.0"
+    "@types/sinon" "^10.0.15"
     stream-to-it "^0.2.2"
 
 "@libp2p/topology@^4.0.0":
@@ -3043,13 +2995,6 @@
   version "3.0.2"
   resolved "https://registry.npmjs.org/@msgpackr-extract/msgpackr-extract-win32-x64/-/msgpackr-extract-win32-x64-3.0.2.tgz#0f164b726869f71da3c594171df5ebc1c4b0a407"
   integrity sha512-O+6Gs8UeDbyFpbSh2CPEz/UOrrdWPTBYNblZK5CxxLisYt4kGX3Sc+czffFonyjiGSq3jWLwJS/CCJc7tBr4sQ==
-
-"@multiformats/mafmt@^11.0.3":
-  version "11.0.3"
-  resolved "https://registry.npmjs.org/@multiformats/mafmt/-/mafmt-11.0.3.tgz#278bcf23ca7c954a9a04500527c011a6ce14f0cb"
-  integrity sha512-DvCQeZJgaC4kE3BLqMuW3gQkNAW14Z7I+yMt30Ze+wkfHkWSp+bICcHGihhtgfzYCumHA/vHlJ9n54mrCcmnvQ==
-  dependencies:
-    "@multiformats/multiaddr" "^11.0.0"
 
 "@multiformats/mafmt@^12.0.0":
   version "12.1.6"
@@ -4358,6 +4303,18 @@
   version "7.5.3"
   resolved "https://registry.npmjs.org/@types/semver/-/semver-7.5.3.tgz#9a726e116beb26c24f1ccd6850201e1246122e04"
   integrity sha512-OxepLK9EuNEIPxWNME+C6WwbRAOOI2o2BaQEGzz5Lu2e4Z5eDnEo+/aVEDMIXywoJitJ7xWd641wrGLZdtwRyw==
+
+"@types/sinon@^10.0.15":
+  version "10.0.20"
+  resolved "https://registry.npmjs.org/@types/sinon/-/sinon-10.0.20.tgz#f1585debf4c0d99f9938f4111e5479fb74865146"
+  integrity sha512-2APKKruFNCAZgx3daAyACGzWuJ028VVCUDk6o2rw/Z4PXT0ogwdV4KUegW0MwVs0Zu59auPXbbuBJHF12Sx1Eg==
+  dependencies:
+    "@types/sinonjs__fake-timers" "*"
+
+"@types/sinonjs__fake-timers@*":
+  version "8.1.5"
+  resolved "https://registry.npmjs.org/@types/sinonjs__fake-timers/-/sinonjs__fake-timers-8.1.5.tgz#5fd3592ff10c1e9695d377020c033116cc2889f2"
+  integrity sha512-mQkU2jY8jJEF7YHjHvsQO8+3ughTL1mcnn96igfhONmR+fUPSKIkefQYpSe8bsly2Ep7oQbn/6VG5/9/0qcArQ==
 
 "@types/stack-utils@^2.0.0":
   version "2.0.1"
