@@ -40,6 +40,7 @@ import { initializeStatsd, statsd } from "../../utils/statsd.js";
 import v8 from "v8";
 import { MessageBundle } from "@farcaster/hub-nodejs";
 import { BundleCreator } from "./bundleCreator.js";
+import { Peer } from "@libp2p/interface-peer-store";
 
 const MultiaddrLocalHost = "/ip4/127.0.0.1";
 const APPLICATION_SCORE_CAP_DEFAULT = 10;
@@ -407,17 +408,29 @@ export class LibP2PNode {
   }
 
   async getPeerAddresses(peerId: PeerId): Promise<MultiAddr.Multiaddr[]> {
-    const existingConnections = this._node?.getConnections(peerId);
-    for (const conn of existingConnections ?? []) {
-      const peer = await this._node?.peerStore.get(peerId);
-      if (peer && !peer.addresses.find((addr) => addr.multiaddr.equals(conn.remoteAddr))) {
-        await this._node?.peerStore.merge(peerId, {
-          multiaddrs: [conn.remoteAddr],
-        });
-      }
+    if (!this._node) {
+      return [];
     }
 
-    const addresses = (await this._node?.peerStore.get(peerId))?.addresses.map((addr) => addr.multiaddr);
+    const existingConnections = this._node.getConnections(peerId);
+    const peer = await ResultAsync.fromPromise(this._node.peerStore.get(peerId), () => undefined);
+
+    if (peer.isOk()) {
+      const missing = existingConnections
+        .map((conn) => conn.remoteAddr)
+        .filter((addr) => !peer.value.addresses.find((a) => a.multiaddr.equals(addr)));
+      if (peer.value && missing.length !== 0) {
+        await this._node.peerStore.merge(peerId, {
+          multiaddrs: missing,
+        });
+      }
+    } else {
+      await this._node.peerStore.save(peerId, {
+        multiaddrs: existingConnections.map((conn) => conn.remoteAddr),
+      });
+    }
+
+    const addresses = (await this._node.peerStore.get(peerId)).addresses.map((addr) => addr.multiaddr);
     return addresses ?? [];
   }
 
