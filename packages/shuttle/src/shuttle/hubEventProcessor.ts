@@ -68,11 +68,6 @@ export class HubEventProcessor {
             await handler.handleMessageMerge(deletedMessage, trx, "delete", state, true, wasMissed);
           }),
         );
-
-        const eventSet = new Set(affectedMessages.map((m) => bytesToHex(m.hash)));
-        for (const hash of deletedMessages.filter((m) => !eventSet.has(bytesToHex(m.hash)))) {
-          log.warn(`Message ${hash} was updated, but was not in deleted messages from merge event.`);
-        }
       }
       const isNew = await MessageProcessor.storeMessage(message, trx, operation, log, shouldValidate);
       const state = this.getMessageState(message, operation);
