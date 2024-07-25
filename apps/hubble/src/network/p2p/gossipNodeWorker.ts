@@ -292,7 +292,7 @@ export class LibP2PNode {
    * @param message - The message to generate an ID for
    * @returns The message ID as an Uint8Array
    */
-  getMessageId(message: GossipSubMessage): Uint8Array {
+  getMessageId(message: GossipSubMessage): Uint8Array | Promise<Uint8Array> {
     if (message.topic.includes(GossipNode.primaryTopicForNetwork(this._network))) {
       // check if message is a Farcaster Protocol Message
       const protocolMessage = LibP2PNode.decodeMessage(message.data);
