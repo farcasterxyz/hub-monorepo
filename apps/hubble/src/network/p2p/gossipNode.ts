@@ -523,7 +523,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   }
 
   async registerListeners() {
-    this._nodeEvents?.addListener("peer:connect", (detail) => {
+    this._nodeEvents?.addListener("connection:open", (detail: Connection) => {
       // console.log("Peer Connected", JSON.stringify(detail, null, 2));
       log.info(
         {
@@ -540,7 +540,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       // if we restart
       this.putPeerAddrToDB(detail.remotePeer.toString(), detail.remoteAddr.toString());
     });
-    this._nodeEvents?.addListener("peer:disconnect", (detail) => {
+    this._nodeEvents?.addListener("connection:close", (detail: Connection) => {
       log.info({ peer: detail.remotePeer }, "P2P Connection disconnected");
       this.emit("peerDisconnect", detail);
       this.updateStatsdPeerGauges();
@@ -594,10 +594,10 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     this._nodeEvents?.addListener("peer:discovery", (detail) => {
       log.info({ identity: this.identity }, `Found peer: ${detail.multiaddrs}  }`);
     });
-    this._nodeEvents?.addListener("peer:connect", (detail) => {
+    this._nodeEvents?.addListener("connection:open", (detail: Connection) => {
       log.info({ identity: this.identity }, `Connection established to: ${detail.remotePeer.toString()}`);
     });
-    this._nodeEvents?.addListener("peer:disconnect", (detail) => {
+    this._nodeEvents?.addListener("connection:close", (detail: Connection) => {
       log.info({ identity: this.identity }, `Disconnected from: ${detail.remotePeer.toString()} `);
     });
     this._nodeEvents?.addListener("message", (detail) => {

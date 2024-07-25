@@ -351,12 +351,14 @@ export class LibP2PNode {
   }
 
   async addPeerToAddressBook(peerId: PeerId, multiaddr: MultiAddr.Multiaddr) {
-    const addressBook = this._node?.peerStore.addressBook;
-    if (!addressBook) {
-      log.error({}, "address book missing for gossipNode");
+    const store = this._node?.peerStore;
+    if (!store) {
+      log.error({}, "peer store missing for gossipNode");
     } else {
       const addResult = await ResultAsync.fromPromise(
-        addressBook.add(peerId, [multiaddr]),
+        store.merge(peerId, {
+          multiaddrs: [multiaddr],
+        }),
         (error) => new HubError("unavailable", error as Error),
       );
       if (addResult.isErr()) {
@@ -383,11 +385,11 @@ export class LibP2PNode {
       }
     }
 
-    const addressBook = this._node?.peerStore.addressBook;
-    if (!addressBook) {
-      log.error({}, "address book missing for gossipNode");
+    const store = this._node?.peerStore;
+    if (!store) {
+      log.error({}, "peer store missing for gossipNode");
     } else {
-      await addressBook.delete(peerId);
+      await store.delete(peerId);
     }
   }
 
@@ -405,9 +407,11 @@ export class LibP2PNode {
   async getPeerAddresses(peerId: PeerId): Promise<MultiAddr.Multiaddr[]> {
     const existingConnections = this._node?.getConnections(peerId);
     for (const conn of existingConnections ?? []) {
-      const knownAddrs = await this._node?.peerStore.addressBook.get(peerId);
-      if (knownAddrs && !knownAddrs.find((addr) => addr.multiaddr.equals(conn.remoteAddr))) {
-        await this._node?.peerStore.addressBook.add(peerId, [conn.remoteAddr]);
+      const peer = await this._node?.peerStore.get(peerId);
+      if (peer && !peer.addresses.find((addr) => addr.multiaddr.equals(conn.remoteAddr))) {
+        await this._node?.peerStore.merge(peerId, {
+          multiaddrs: [conn.remoteAddr],
+        });
       }
     }
 
@@ -526,7 +530,7 @@ export class LibP2PNode {
     const eventHandler = (eventName: string) => {
       // biome-ignore lint/suspicious/noExplicitAny: <explanation>
       return (event: any) => {
-        // console.log("Worker: Reboardcasting ", eventName, event.detail);
+        // console.log("Worker: Rebroadcasting ", eventName, event.detail);
         // console.log(" with ", JSON.stringify(event.detail, bigIntSerializer, 2));
         parentPort?.postMessage({
           event: {
@@ -537,8 +541,8 @@ export class LibP2PNode {
       };
     };
 
-    this._node?.addEventListener("peer:connect", eventHandler("peer:connect"));
-    this._node?.addEventListener("peer:disconnect", eventHandler("peer:disconnect"));
+    this._node?.addEventListener("connection:open", eventHandler("connection:open"));
+    this._node?.addEventListener("connection:close", eventHandler("connection:close"));
     this._node?.addEventListener("peer:discovery", eventHandler("peer:discovery"));
 
     this.gossip?.addEventListener("gossipsub:message", eventHandler("gossipsub:message"));
