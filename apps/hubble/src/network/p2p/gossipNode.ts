@@ -1,4 +1,4 @@
-import { PublishResult } from "@libp2p/interface-pubsub";
+import { Message as GossipSubMessage, PublishResult } from "@libp2p/interface-pubsub";
 import { Worker } from "worker_threads";
 import { PeerInfo } from "@libp2p/interface-peer-info";
 import {
@@ -562,7 +562,15 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       // ignore messages not in our topic lists (e.g. GossipSub peer discovery messages)
       if (this.gossipTopics().includes(detail.msg.topic)) {
         try {
-          const data = detail.msg.data;
+          let data: Buffer;
+          // some kind of serialization quirk?
+          // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+          if ((detail.msg.data as any).type === "Buffer") {
+            // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+            data = Buffer.from((detail.msg.data as any).data);
+          } else {
+            data = Buffer.from(Object.values(detail.msg.data as unknown as Record<string, number>));
+          }
 
           statsd().gauge("gossip.message_size_bytes", data.length, { topic: detail.msg.topic });
 
@@ -596,7 +604,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     this._nodeEvents?.addListener("connection:close", (detail: Connection) => {
       log.info({ identity: this.identity }, `Disconnected from: ${detail.remotePeer.toString()} `);
     });
-    this._nodeEvents?.addListener("message", (detail) => {
+    this._nodeEvents?.addListener("message", (detail: GossipSubMessage) => {
       log.info(
         // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
         { identity: this.identity, from: (detail as any)["from"] },
