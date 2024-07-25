@@ -2564,15 +2564,15 @@
     "@libp2p/interface-peer-id" "^2.0.0"
     uint8arraylist "^2.4.3"
 
-"@libp2p/interface-registrar@^2.0.0", "@libp2p/interface-registrar@^2.0.3":
-  version "2.0.8"
-  resolved "https://registry.npmjs.org/@libp2p/interface-registrar/-/interface-registrar-2.0.8.tgz#81038a9a814a20dba1d75ba66a45a33b98bd0a98"
-  integrity sha512-WbnXB09QF41zZzNgDUAZrRMilqgB7wBMTsSvql8xdDcws+jbaX4wE0iEpRXg1hyd0pz4mooIcMRaH1NiEQ5D8w==
+"@libp2p/interface-registrar@2.0.11":
+  version "2.0.11"
+  resolved "https://registry.npmjs.org/@libp2p/interface-registrar/-/interface-registrar-2.0.11.tgz#4ffa0a7113716c32df63b7a52eddb59129ec99c5"
+  integrity sha512-DLAM2+33MYVsBdu//swl6jqiDiTNk0LZKuySDMDiAK3rLpk2bBdVCnsOEegWCmKtGX7I3LC5gflKsfL87sk9Gg==
   dependencies:
-    "@libp2p/interface-connection" "^3.0.0"
+    "@libp2p/interface-connection" "^5.0.0"
     "@libp2p/interface-peer-id" "^2.0.0"
 
-"@libp2p/interface-registrar@^2.0.11":
+"@libp2p/interface-registrar@^2.0.0", "@libp2p/interface-registrar@^2.0.11", "@libp2p/interface-registrar@^2.0.3":
   version "2.0.12"
   resolved "https://registry.npmjs.org/@libp2p/interface-registrar/-/interface-registrar-2.0.12.tgz#a74b59df7b6c345d8bb45d310469b2d5f923e9bf"
   integrity sha512-EyCi2bycC2rn3oPB4Swr7EqBsvcaWd6RcqR6zsImNIG9BKc4/R1gl6iaF861JaELYgYmzBMS31x1rQpVz5UekQ==
