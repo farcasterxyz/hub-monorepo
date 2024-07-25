@@ -23,7 +23,7 @@ import { logger, messageTypeToName } from "../../utils/logger.js";
 import { PeriodicPeerCheckScheduler } from "./periodicPeerCheck.js";
 import { GOSSIP_PROTOCOL_VERSION } from "./protocol.js";
 import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
-import { PeerScoreThresholds } from "@chainsafe/libp2p-gossipsub/score";
+import { PeerScoreParams, PeerScoreThresholds } from "@chainsafe/libp2p-gossipsub/score";
 import { statsd } from "../../utils/statsd.js";
 import { ClientOptions } from "@figma/hot-shots";
 import { createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
@@ -86,6 +86,8 @@ export interface NodeOptions {
   p2pConnectTimeoutMs?: number | undefined;
   /** StatsD parameters */
   statsdParams?: ClientOptions | undefined;
+  /** Override score params. Useful for tests */
+  scoreParams?: Partial<PeerScoreParams> | undefined;
 }
 
 export type GossipMessageResult = {

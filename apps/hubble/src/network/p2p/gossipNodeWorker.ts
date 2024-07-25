@@ -166,6 +166,7 @@ export class LibP2PNode {
       seenTTL: GOSSIP_SEEN_TTL, // Bump up the default to handle large flood of messages. 2 mins was not sufficient to prevent a loop
       scoreThresholds: { ...options.scoreThresholds },
       scoreParams: {
+        ...options.scoreParams,
         appSpecificScore: (peerId) => {
           const score = this._peerScores?.get(peerId) ?? 0;
           if (options.allowlistedImmunePeers?.includes(peerId)) {
@@ -227,6 +228,7 @@ export class LibP2PNode {
           autoNAT: autoNATService({}),
           pubsub: gossip,
         },
+        start: false,
       }),
       (e) => {
         log.error({ identity: this.identity, error: e }, "failed to create libp2p node");
