@@ -358,7 +358,7 @@ pub trait StoreDef: Send + Sync {
 pub struct Store {
     store_def: Box<dyn StoreDef>,
     store_event_handler: Arc<StoreEventHandler>,
-    fid_locks: Arc<[Mutex<()>; 4]>,
+    fid_locks: Arc<[Mutex<()>; FID_LOCKS_COUNT]>,
     db: Arc<RocksDB>,
     logger: slog::Logger,
 }
@@ -847,7 +847,7 @@ impl Store {
                     if let Some(Target::TargetFid(target_fid)) = link_body.target {
                         // If the message is older than the compact state message, and the target fid is not in the target_fids list
                         if message.data.as_ref().unwrap().timestamp < compact_state_timestamp
-                            && !target_fids.contains(&message.data.as_ref().unwrap().fid)
+                            && !target_fids.contains(&target_fid)
                         {
                             return Err(HubError {
                                 code: "bad_request.conflict".to_string(),

@@ -1,7 +1,7 @@
 import { parentPort, workerData } from "worker_threads";
 import { peerIdFromBytes } from "@libp2p/peer-id";
 import * as MultiAddr from "@multiformats/multiaddr";
-import { Message as GossipSubMessage, PublishResult, TopicValidatorResult } from "@libp2p/interface-pubsub";
+import { Message as GossipSubMessage, PublishResult, TopicValidatorResult, PubSub } from "@libp2p/interface-pubsub";
 import {
   GossipNode,
   LibP2PNodeInterface,
@@ -27,7 +27,7 @@ import {
 import { addressInfoFromParts, checkNodeAddrs, ipMultiAddrStrFromAddressInfo } from "../../utils/p2p.js";
 import { createLibp2p, Libp2p } from "libp2p";
 import { err, ok, Result, ResultAsync } from "neverthrow";
-import { GossipSub, gossipsub } from "@chainsafe/libp2p-gossipsub";
+import { GossipSub, gossipsub, GossipsubEvents } from "@chainsafe/libp2p-gossipsub";
 import { ConnectionFilter } from "./connectionFilter.js";
 import { tcp } from "@libp2p/tcp";
 import { mplex } from "@libp2p/mplex";
@@ -84,7 +84,7 @@ export class LibP2PNode {
 
   /** Returns the GossipSub instance used by the Node */
   get gossip() {
-    const pubsub = this._node?.pubsub;
+    const pubsub = this._node?.services["pubsub"];
     return pubsub ? (pubsub as GossipSub) : undefined;
   }
 
@@ -215,7 +215,9 @@ export class LibP2PNode {
         ],
         streamMuxers: [mplex()],
         connectionEncryption: [noise()],
-        pubsub: gossip,
+        services: {
+          pubsub: gossip,
+        },
       }),
       (e) => {
         log.error({ identity: this.identity, error: e }, "failed to create libp2p node");
@@ -228,10 +230,10 @@ export class LibP2PNode {
 
     if (result.isErr()) {
       return err(result.error);
-    } else {
-      this._node = result.value;
-      return ok(true);
     }
+
+    this._node = result.value;
+    return ok(true);
   }
 
   async start() {
