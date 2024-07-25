@@ -1,5 +1,9 @@
 import { parentPort, workerData } from "worker_threads";
 import { peerIdFromBytes } from "@libp2p/peer-id";
+import { autoNATService } from "libp2p/autonat";
+import { identifyService } from "libp2p/identify";
+import { pingService } from "libp2p/ping";
+import { fetchService } from "libp2p/fetch";
 import * as MultiAddr from "@multiformats/multiaddr";
 import { Message as GossipSubMessage, PublishResult, TopicValidatorResult, PubSub } from "@libp2p/interface-pubsub";
 import {
@@ -217,6 +221,10 @@ export class LibP2PNode {
         streamMuxers: [mplex()],
         connectionEncryption: [noise()],
         services: {
+          identify: identifyService({}),
+          ping: pingService({}),
+          fetch: fetchService({}),
+          autoNAT: autoNATService({}),
           pubsub: gossip,
         },
       }),
