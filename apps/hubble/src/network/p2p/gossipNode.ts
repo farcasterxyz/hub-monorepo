@@ -1,4 +1,4 @@
-import { PublishResult } from "@libp2p/interface-pubsub";
+import { Message as GossipSubMessage, PublishResult } from "@libp2p/interface-pubsub";
 import { Worker } from "worker_threads";
 import { PeerInfo } from "@libp2p/interface-peer-info";
 import {
@@ -23,7 +23,7 @@ import { logger, messageTypeToName } from "../../utils/logger.js";
 import { PeriodicPeerCheckScheduler } from "./periodicPeerCheck.js";
 import { GOSSIP_PROTOCOL_VERSION } from "./protocol.js";
 import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
-import { PeerScoreThresholds } from "@chainsafe/libp2p-gossipsub/score";
+import { PeerScoreParams, PeerScoreThresholds } from "@chainsafe/libp2p-gossipsub/score";
 import { statsd } from "../../utils/statsd.js";
 import { ClientOptions } from "@figma/hot-shots";
 import { createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
@@ -31,6 +31,7 @@ import EventEmitter from "events";
 import RocksDB from "../../storage/db/rocksdb.js";
 import { RootPrefix } from "../../storage/db/types.js";
 import { sleep } from "../../utils/crypto.js";
+import { GossipsubMessage } from "@chainsafe/libp2p-gossipsub";
 
 /** The maximum number of pending merge messages before we drop new incoming gossip or sync messages. */
 export const MAX_SYNCTRIE_QUEUE_SIZE = 100_000;
@@ -85,6 +86,8 @@ export interface NodeOptions {
   p2pConnectTimeoutMs?: number | undefined;
   /** StatsD parameters */
   statsdParams?: ClientOptions | undefined;
+  /** Override score params. Useful for tests */
+  scoreParams?: Partial<PeerScoreParams> | undefined;
 }
 
 export type GossipMessageResult = {
@@ -523,7 +526,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   }
 
   async registerListeners() {
-    this._nodeEvents?.addListener("peer:connect", (detail) => {
+    this._nodeEvents?.addListener("connection:open", (detail: Connection) => {
       // console.log("Peer Connected", JSON.stringify(detail, null, 2));
       log.info(
         {
@@ -540,7 +543,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       // if we restart
       this.putPeerAddrToDB(detail.remotePeer.toString(), detail.remoteAddr.toString());
     });
-    this._nodeEvents?.addListener("peer:disconnect", (detail) => {
+    this._nodeEvents?.addListener("connection:close", (detail: Connection) => {
       log.info({ peer: detail.remotePeer }, "P2P Connection disconnected");
       this.emit("peerDisconnect", detail);
       this.updateStatsdPeerGauges();
@@ -548,7 +551,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     this._nodeEvents?.addListener("peer:discovery", (detail) => {
       log.info({ peer: detail }, "Discovered peer");
     });
-    this._nodeEvents?.addListener("gossipsub:message", (detail) => {
+    this._nodeEvents?.addListener("gossipsub:message", (detail: GossipsubMessage) => {
       log.debug({
         identity: this.identity,
         gossipMessageId: detail.msgId,
@@ -562,8 +565,11 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       if (this.gossipTopics().includes(detail.msg.topic)) {
         try {
           let data: Buffer;
-          if (detail.msg.data.type === "Buffer") {
-            data = Buffer.from(detail.msg.data.data);
+          // some kind of serialization quirk?
+          // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+          if ((detail.msg.data as any).type === "Buffer") {
+            // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
+            data = Buffer.from((detail.msg.data as any).data);
           } else {
             data = Buffer.from(Object.values(detail.msg.data as unknown as Record<string, number>));
           }
@@ -594,13 +600,13 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     this._nodeEvents?.addListener("peer:discovery", (detail) => {
       log.info({ identity: this.identity }, `Found peer: ${detail.multiaddrs}  }`);
     });
-    this._nodeEvents?.addListener("peer:connect", (detail) => {
+    this._nodeEvents?.addListener("connection:open", (detail: Connection) => {
       log.info({ identity: this.identity }, `Connection established to: ${detail.remotePeer.toString()}`);
     });
-    this._nodeEvents?.addListener("peer:disconnect", (detail) => {
+    this._nodeEvents?.addListener("connection:close", (detail: Connection) => {
       log.info({ identity: this.identity }, `Disconnected from: ${detail.remotePeer.toString()} `);
     });
-    this._nodeEvents?.addListener("message", (detail) => {
+    this._nodeEvents?.addListener("message", (detail: GossipSubMessage) => {
       log.info(
         // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
         { identity: this.identity, from: (detail as any)["from"] },

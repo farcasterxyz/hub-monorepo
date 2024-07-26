@@ -17,7 +17,7 @@ export const msgIdFnStrictSign = (message: GossipSubMessage): Uint8Array => {
 };
 
 /* This has been imported from the libp2p-gossipsub implementation as it's not public there */
-export function msgIdFnStrictNoSign(msg: GossipSubMessage): Uint8Array {
+export function msgIdFnStrictNoSign(msg: GossipSubMessage): Uint8Array | Promise<Uint8Array> {
   // Hashes the raw message data
   return noSignMsgId(msg.data);
 }

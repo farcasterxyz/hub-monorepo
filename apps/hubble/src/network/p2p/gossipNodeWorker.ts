@@ -1,7 +1,11 @@
 import { parentPort, workerData } from "worker_threads";
 import { peerIdFromBytes } from "@libp2p/peer-id";
+import { autoNATService } from "libp2p/autonat";
+import { identifyService } from "libp2p/identify";
+import { pingService } from "libp2p/ping";
+import { fetchService } from "libp2p/fetch";
 import * as MultiAddr from "@multiformats/multiaddr";
-import { Message as GossipSubMessage, PublishResult, TopicValidatorResult } from "@libp2p/interface-pubsub";
+import { Message as GossipSubMessage, PublishResult, TopicValidatorResult, PubSub } from "@libp2p/interface-pubsub";
 import {
   GossipNode,
   LibP2PNodeInterface,
@@ -27,7 +31,7 @@ import {
 import { addressInfoFromParts, checkNodeAddrs, ipMultiAddrStrFromAddressInfo } from "../../utils/p2p.js";
 import { createLibp2p, Libp2p } from "libp2p";
 import { err, ok, Result, ResultAsync } from "neverthrow";
-import { GossipSub, gossipsub } from "@chainsafe/libp2p-gossipsub";
+import { GossipSub, gossipsub, GossipsubEvents } from "@chainsafe/libp2p-gossipsub";
 import { ConnectionFilter } from "./connectionFilter.js";
 import { tcp } from "@libp2p/tcp";
 import { mplex } from "@libp2p/mplex";
@@ -40,6 +44,7 @@ import { initializeStatsd, statsd } from "../../utils/statsd.js";
 import v8 from "v8";
 import { MessageBundle } from "@farcaster/hub-nodejs";
 import { BundleCreator } from "./bundleCreator.js";
+import { Peer } from "@libp2p/interface-peer-store";
 
 const MultiaddrLocalHost = "/ip4/127.0.0.1";
 const APPLICATION_SCORE_CAP_DEFAULT = 10;
@@ -84,7 +89,7 @@ export class LibP2PNode {
 
   /** Returns the GossipSub instance used by the Node */
   get gossip() {
-    const pubsub = this._node?.pubsub;
+    const pubsub = this._node?.services["pubsub"];
     return pubsub ? (pubsub as GossipSub) : undefined;
   }
 
@@ -161,6 +166,7 @@ export class LibP2PNode {
       seenTTL: GOSSIP_SEEN_TTL, // Bump up the default to handle large flood of messages. 2 mins was not sufficient to prevent a loop
       scoreThresholds: { ...options.scoreThresholds },
       scoreParams: {
+        ...options.scoreParams,
         appSpecificScore: (peerId) => {
           const score = this._peerScores?.get(peerId) ?? 0;
           if (options.allowlistedImmunePeers?.includes(peerId)) {
@@ -215,7 +221,14 @@ export class LibP2PNode {
         ],
         streamMuxers: [mplex()],
         connectionEncryption: [noise()],
-        pubsub: gossip,
+        services: {
+          identify: identifyService({}),
+          ping: pingService({}),
+          fetch: fetchService({}),
+          autoNAT: autoNATService({}),
+          pubsub: gossip,
+        },
+        start: false,
       }),
       (e) => {
         log.error({ identity: this.identity, error: e }, "failed to create libp2p node");
@@ -228,10 +241,10 @@ export class LibP2PNode {
 
     if (result.isErr()) {
       return err(result.error);
-    } else {
-      this._node = result.value;
-      return ok(true);
     }
+
+    this._node = result.value;
+    return ok(true);
   }
 
   async start() {
@@ -290,7 +303,7 @@ export class LibP2PNode {
    * @param message - The message to generate an ID for
    * @returns The message ID as an Uint8Array
    */
-  getMessageId(message: GossipSubMessage): Uint8Array {
+  getMessageId(message: GossipSubMessage): Uint8Array | Promise<Uint8Array> {
     if (message.topic.includes(GossipNode.primaryTopicForNetwork(this._network))) {
       // check if message is a Farcaster Protocol Message
       const protocolMessage = LibP2PNode.decodeMessage(message.data);
@@ -351,12 +364,14 @@ export class LibP2PNode {
   }
 
   async addPeerToAddressBook(peerId: PeerId, multiaddr: MultiAddr.Multiaddr) {
-    const addressBook = this._node?.peerStore.addressBook;
-    if (!addressBook) {
-      log.error({}, "address book missing for gossipNode");
+    const store = this._node?.peerStore;
+    if (!store) {
+      log.error({}, "peer store missing for gossipNode");
     } else {
       const addResult = await ResultAsync.fromPromise(
-        addressBook.add(peerId, [multiaddr]),
+        store.merge(peerId, {
+          multiaddrs: [multiaddr],
+        }),
         (error) => new HubError("unavailable", error as Error),
       );
       if (addResult.isErr()) {
@@ -383,11 +398,11 @@ export class LibP2PNode {
       }
     }
 
-    const addressBook = this._node?.peerStore.addressBook;
-    if (!addressBook) {
-      log.error({}, "address book missing for gossipNode");
+    const store = this._node?.peerStore;
+    if (!store) {
+      log.error({}, "peer store missing for gossipNode");
     } else {
-      await addressBook.delete(peerId);
+      await store.delete(peerId);
     }
   }
 
@@ -403,15 +418,29 @@ export class LibP2PNode {
   }
 
   async getPeerAddresses(peerId: PeerId): Promise<MultiAddr.Multiaddr[]> {
-    const existingConnections = this._node?.getConnections(peerId);
-    for (const conn of existingConnections ?? []) {
-      const knownAddrs = await this._node?.peerStore.addressBook.get(peerId);
-      if (knownAddrs && !knownAddrs.find((addr) => addr.multiaddr.equals(conn.remoteAddr))) {
-        await this._node?.peerStore.addressBook.add(peerId, [conn.remoteAddr]);
-      }
+    if (!this._node) {
+      return [];
     }
 
-    const addresses = (await this._node?.peerStore.get(peerId))?.addresses.map((addr) => addr.multiaddr);
+    const existingConnections = this._node.getConnections(peerId);
+    const peer = await ResultAsync.fromPromise(this._node.peerStore.get(peerId), () => undefined);
+
+    if (peer.isOk()) {
+      const missing = existingConnections
+        .map((conn) => conn.remoteAddr)
+        .filter((addr) => !peer.value.addresses.find((a) => a.multiaddr.equals(addr)));
+      if (peer.value && missing.length !== 0) {
+        await this._node.peerStore.merge(peerId, {
+          multiaddrs: missing,
+        });
+      }
+    } else {
+      await this._node.peerStore.save(peerId, {
+        multiaddrs: existingConnections.map((conn) => conn.remoteAddr),
+      });
+    }
+
+    const addresses = (await this._node.peerStore.get(peerId)).addresses.map((addr) => addr.multiaddr);
     return addresses ?? [];
   }
 
@@ -526,7 +555,7 @@ export class LibP2PNode {
     const eventHandler = (eventName: string) => {
       // biome-ignore lint/suspicious/noExplicitAny: <explanation>
       return (event: any) => {
-        // console.log("Worker: Reboardcasting ", eventName, event.detail);
+        // console.log("Worker: Rebroadcasting ", eventName, event.detail);
         // console.log(" with ", JSON.stringify(event.detail, bigIntSerializer, 2));
         parentPort?.postMessage({
           event: {
@@ -537,8 +566,8 @@ export class LibP2PNode {
       };
     };
 
-    this._node?.addEventListener("peer:connect", eventHandler("peer:connect"));
-    this._node?.addEventListener("peer:disconnect", eventHandler("peer:disconnect"));
+    this._node?.addEventListener("connection:open", eventHandler("connection:open"));
+    this._node?.addEventListener("connection:close", eventHandler("connection:close"));
     this._node?.addEventListener("peer:discovery", eventHandler("peer:discovery"));
 
     this.gossip?.addEventListener("gossipsub:message", eventHandler("gossipsub:message"));

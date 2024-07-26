@@ -24,7 +24,16 @@ describe("gossip network tests", () => {
 
   beforeEach(async () => {
     messageStore.clear();
-    await Promise.all(nodes.map((node) => node.start([])));
+    await Promise.all(
+      nodes.map((node) =>
+        node.start([], {
+          scoreParams: {
+            IPColocationFactorWeight: 0,
+            behaviourPenaltyWeight: 0,
+          },
+        }),
+      ),
+    );
   }, TEST_TIMEOUT_LONG);
 
   afterEach(async () => {
