@@ -1,5 +1,14 @@
 # @farcaster/hubble
 
+## 1.14.1
+
+### Patch Changes
+
+- 2fa29ad4: fix: Upgrade grpc-js to 1.11
+- 095cca97: upgrade libp2p to 0.45.0
+- 7bee8436: perf: Add message merge timing at the store level
+- a9dd1621: revert: storage cache migration to rust
+
 ## 1.14.0
 
 ### Minor Changes
