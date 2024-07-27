@@ -1,5 +1,11 @@
 # @farcaster/hub-nodejs
 
+## 0.11.22
+
+### Patch Changes
+
+- 2fa29ad4: fix: Upgrade grpc-js to 1.11
+
 ## 0.11.21
 
 ### Patch Changes
