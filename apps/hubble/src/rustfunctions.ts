@@ -7,7 +7,7 @@ import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const lib = require("./addon/index.node");
 
-import { HubError, HubErrorCode, HubEvent, HubResult, validations } from "@farcaster/hub-nodejs";
+import { HubError, HubErrorCode, HubResult, validations } from "@farcaster/hub-nodejs";
 import { PAGE_SIZE_MAX, PageOptions } from "./storage/stores/types.js";
 import { UserMessagePostfix } from "./storage/db/types.js";
 import { DbKeyValue, RocksDbIteratorOptions } from "./storage/db/rocksdb.js";
@@ -42,12 +42,6 @@ const RustStoreEventHandlerBrand = Symbol("RustStoreEventHandler");
 export class RustStoreEventHandler {
   // @ts-ignore
   private [RustStoreEventHandlerBrand]: never;
-}
-
-const RustStorageCacheBrand = Symbol("RustStorageCache");
-export class RustStorageCache {
-  // @ts-ignore
-  private [RustStorageCacheBrand]: never;
 }
 
 // Type returned from Rust which is equivalent to the TypeScript type `MessagesPage`
@@ -94,10 +88,6 @@ export const rustErrorToHubError = (e: unknown) => {
 
 export const rsCreateStatsdClient = (host: string, port: number, prefix: string): void => {
   lib.createStatsdClient(host, port, prefix);
-};
-
-export const rsFlushLogBuffer = () => {
-  lib.flushLogBuffer();
 };
 
 /** Create or Open a DB at a give path
@@ -288,12 +278,11 @@ export const rsDbDeleteAllKeysInRange = async (db: RustDb, iteratorOpts: RocksDb
 };
 
 export const rsCreateStoreEventHandler = (
-  storageCache: RustStorageCache,
   epoch?: number,
   last_timestamp?: number,
   last_seq?: number,
 ): RustStoreEventHandler => {
-  return lib.createStoreEventHandler(storageCache, epoch, last_timestamp, last_seq) as RustStoreEventHandler;
+  return lib.createStoreEventHandler(epoch, last_timestamp, last_seq) as RustStoreEventHandler;
 };
 
 export const rsGetNextEventId = (
@@ -301,30 +290,6 @@ export const rsGetNextEventId = (
   currentTimestamp?: number,
 ): Result<number, HubError> => {
   return Result.fromThrowable(() => lib.getNextEventId.call(eventHandler, currentTimestamp), rustErrorToHubError)();
-};
-
-export const rsCreateStorageCache = (db: RustDb): RustStorageCache => {
-  return lib.createStorageCache(db) as RustStorageCache;
-};
-
-export const rsGetEarliestTsHash = async (
-  storageCache: RustStorageCache,
-  fid: number,
-  set: number,
-): Promise<Result<Buffer, HubError>> => {
-  return ResultAsync.fromPromise(lib.getEarliestTsHash.call(storageCache, fid, set), rustErrorToHubError);
-};
-
-export const rsClearEarliestTsHash = (
-  storageCache: RustStorageCache,
-  fid: number,
-  set: number,
-): Result<number, HubError> => {
-  return Result.fromThrowable(() => lib.clearEarliestTsHash.call(storageCache, fid, set), rustErrorToHubError)();
-};
-
-export const rsClearEarliestTsHashCache = (storageCache: RustStorageCache): Result<number, HubError> => {
-  return Result.fromThrowable(() => lib.clearEarliestTsHashCache.call(storageCache), rustErrorToHubError)();
 };
 
 /** Create a reaction Store */

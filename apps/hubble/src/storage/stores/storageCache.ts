@@ -19,13 +19,6 @@ import { makeFidKey, makeMessagePrimaryKey, makeTsHash, typeToSetPostfix } from 
 import { bytesCompare, getFarcasterTime, HubAsyncResult } from "@farcaster/core";
 import { forEachOnChainEvent } from "../db/onChainEvent.js";
 import { addProgressBar } from "../../utils/progressBars.js";
-import {
-  rsClearEarliestTsHash,
-  rsClearEarliestTsHashCache,
-  rsCreateStorageCache,
-  rsGetEarliestTsHash,
-  RustStorageCache,
-} from "../../rustfunctions.js";
 
 const MAX_PENDING_MESSAGE_COUNT_SCANS = 100;
 
@@ -45,26 +38,20 @@ export class StorageCache {
   private _counts: Map<string, number>;
   private _pendingMessageCountScans = new Map<string, Promise<number>>();
 
+  private _earliestTsHashes: Map<string, Uint8Array>;
   private _activeStorageSlots: Map<number, StorageSlot>;
-
-  private _rustStorageCache: RustStorageCache;
 
   constructor(db: RocksDB, usage?: Map<string, number>) {
     this._counts = usage ?? new Map();
+    this._earliestTsHashes = new Map();
     this._activeStorageSlots = new Map();
     this._db = db;
-    this._rustStorageCache = rsCreateStorageCache(db.rustDb);
-  }
-
-  get rustStorageCache(): RustStorageCache {
-    return this._rustStorageCache;
   }
 
   async syncFromDb(): Promise<void> {
     log.info("starting storage cache sync");
 
     const start = Date.now();
-    rsClearEarliestTsHashCache(this._rustStorageCache);
 
     const totalFids = await this._db.countKeysAtPrefix(
       Buffer.concat([Buffer.from([RootPrefix.OnChainEvent, OnChainEventPostfix.IdRegisterByFid])]),
@@ -96,6 +83,7 @@ export class StorageCache {
     progressBar?.stop();
 
     this._counts = new Map();
+    this._earliestTsHashes = new Map();
 
     // Start prepopulating the cache in the background
     if (this._db.status !== "open") {
@@ -178,14 +166,41 @@ export class StorageCache {
   }
 
   async getEarliestTsHash(fid: number, set: UserMessagePostfix): HubAsyncResult<Uint8Array | undefined> {
-    const result = await rsGetEarliestTsHash(this._rustStorageCache, fid, set);
-    if (result.isErr()) {
-      return err(result.error);
+    const key = makeKey(fid, set);
+    const messageCount = await this.getMessageCount(fid, set);
+    if (messageCount.isErr()) {
+      return err(messageCount.error);
     }
-    if (result.value.length === 0) {
+    if (messageCount.value === 0) {
       return ok(undefined);
+    }
+    const value = this._earliestTsHashes.get(key);
+    if (value === undefined) {
+      const prefix = makeMessagePrimaryKey(fid, set);
+
+      let firstKey: Buffer | undefined;
+      await this._db.forEachIteratorByPrefix(
+        prefix,
+        (key) => {
+          firstKey = key as Buffer;
+          return true; // Finish the iteration after the first key-value pair
+        },
+        { pageSize: 1 },
+      );
+
+      if (firstKey === undefined) {
+        return ok(undefined);
+      }
+
+      if (firstKey && firstKey.length === 0) {
+        return err(new HubError("unavailable.storage_failure", "could not read earliest message from db"));
+      }
+
+      const tsHash = Uint8Array.from(firstKey.subarray(1 + FID_BYTES + 1));
+      this._earliestTsHashes.set(key, tsHash);
+      return ok(tsHash);
     } else {
-      return ok(new Uint8Array(result.value));
+      return ok(value);
     }
   }
 
@@ -229,6 +244,16 @@ export class StorageCache {
       }
 
       this._counts.set(key, count + 1);
+
+      const tsHashResult = makeTsHash(message.data.timestamp, message.hash);
+      if (!tsHashResult.isOk()) {
+        log.error(`error: could not make ts hash for message ${message.hash}`);
+        return;
+      }
+      const currentEarliest = this._earliestTsHashes.get(key);
+      if (currentEarliest === undefined || bytesCompare(currentEarliest, tsHashResult.value) > 0) {
+        this._earliestTsHashes.set(key, tsHashResult.value);
+      }
     }
   }
 
@@ -249,6 +274,16 @@ export class StorageCache {
       }
 
       this._counts.set(key, count - 1);
+
+      const tsHashResult = makeTsHash(message.data.timestamp, message.hash);
+      if (!tsHashResult.isOk()) {
+        log.error(`error: could not make ts hash for message ${message.hash}`);
+        return;
+      }
+      const currentEarliest = this._earliestTsHashes.get(key);
+      if (currentEarliest === undefined || bytesCompare(currentEarliest, tsHashResult.value) === 0) {
+        this._earliestTsHashes.delete(key);
+      }
     }
   }
 
