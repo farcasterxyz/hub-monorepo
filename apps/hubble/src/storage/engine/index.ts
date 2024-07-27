@@ -73,6 +73,7 @@ import { rsValidationMethods } from "../../rustfunctions.js";
 import { RateLimiterAbstract, RateLimiterMemory } from "rate-limiter-flexible";
 import { TypedEmitter } from "tiny-typed-emitter";
 import { FNameRegistryEventsProvider } from "../../eth/fnameRegistryEventsProvider.js";
+import { statsd } from "../../utils/statsd.js";
 
 export const NUM_VALIDATION_WORKERS = 2;
 
@@ -411,9 +412,12 @@ class Engine extends TypedEmitter<EngineEvents> {
       stores.map(async (store, storeIndex) => {
         const storeMessages = messagesByStore[storeIndex] as IndexedMessage[];
 
+        const start = Date.now();
         const storeResults: Map<number, HubResult<number>> = await store.mergeMessages(
           storeMessages.map((m) => m.message),
         );
+        const duration = Date.now() - start;
+        statsd().timing("storage.merge_messages", duration, { store: store.postfix.toString() });
 
         for (const [j, v] of storeResults.entries()) {
           results.set(storeMessages[j]?.i as number, v);
