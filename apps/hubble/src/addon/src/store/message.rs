@@ -11,7 +11,6 @@ pub const FID_BYTES: usize = 4;
 
 pub const TS_HASH_LENGTH: usize = 24;
 pub const HASH_LENGTH: usize = 20;
-pub const PRIMARY_KEY_LENGTH: usize = 1 + FID_BYTES + 1 + TS_HASH_LENGTH; // Root prefix + fid + set + ts_hash
 
 pub const TRUE_VALUE: u8 = 1;
 
@@ -182,10 +181,6 @@ pub fn type_to_set_postfix(message_type: MessageType) -> UserPostfix {
         return UserPostfix::LinkMessage;
     }
 
-    if message_type == MessageType::LinkCompactState {
-        return UserPostfix::LinkCompactStateMessage;
-    }
-
     if message_type == MessageType::UsernameProof {
         return UserPostfix::UsernameProofMessage;
     }
@@ -248,7 +243,7 @@ pub fn make_message_primary_key(
     set: u8,
     ts_hash: Option<&[u8; TS_HASH_LENGTH]>,
 ) -> Vec<u8> {
-    let mut key = Vec::with_capacity(1 + FID_BYTES + 1 + TS_HASH_LENGTH);
+    let mut key = Vec::with_capacity(1 + 4 + 1 + TS_HASH_LENGTH);
     key.extend_from_slice(&make_user_key(fid));
     key.push(set);
     if ts_hash.is_some() {

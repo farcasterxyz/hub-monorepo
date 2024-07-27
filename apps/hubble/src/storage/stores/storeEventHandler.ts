@@ -153,24 +153,20 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
   private _lock: AsyncLock;
   private _storageCache: StorageCache;
 
-  constructor(
-    db: RocksDB,
-    options: StoreEventHandlerOptions = {},
-    rustEventHandler?: RustStoreEventHandler,
-    storageCache?: StorageCache,
-  ) {
+  constructor(db: RocksDB, options: StoreEventHandlerOptions = {}, rustEventHandler?: RustStoreEventHandler) {
     super();
 
     this._db = db;
 
-    this._storageCache = storageCache ?? new StorageCache(this._db);
     // Create default store if no options are passed
-    this._rustStoreEventHandler = rustEventHandler ?? rsCreateStoreEventHandler(this._storageCache.rustStorageCache);
+    this._rustStoreEventHandler = rustEventHandler ?? rsCreateStoreEventHandler();
 
     this._lock = new AsyncLock({
       maxPending: options.lockMaxPending ?? DEFAULT_LOCK_MAX_PENDING,
       maxExecutionTime: options.lockExecutionTimeout ?? DEFAULT_EXECUTION_TIMEOUT,
     });
+
+    this._storageCache = new StorageCache(this._db);
   }
 
   getRustStoreEventHandler(): RustStoreEventHandler {

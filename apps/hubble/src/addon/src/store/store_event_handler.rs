@@ -1,4 +1,4 @@
-use super::{hub_error_to_js_throw, HubError, RootPrefix, StorageCache};
+use super::{hub_error_to_js_throw, HubError, RootPrefix};
 use crate::{db::RocksDbTransactionBatch, protos::HubEvent};
 use neon::context::{Context, FunctionContext};
 use neon::result::JsResult;
@@ -67,7 +67,6 @@ impl HubEventIdGenerator {
 
 pub struct StoreEventHandler {
     generator: Arc<Mutex<HubEventIdGenerator>>,
-    storage_cache: Arc<StorageCache>,
 }
 
 // Needed to let the StoreEventHandler be owned by the JS runtime
@@ -75,13 +74,11 @@ impl Finalize for StoreEventHandler {}
 
 impl StoreEventHandler {
     pub fn new(
-        storage_cache: Arc<StorageCache>,
         epoch: Option<u64>,
         last_timestamp: Option<u64>,
         last_seq: Option<u64>,
     ) -> Arc<Self> {
         Arc::new(StoreEventHandler {
-            storage_cache,
             generator: Arc::new(Mutex::new(HubEventIdGenerator::new(
                 Some(epoch.unwrap_or(FARCASTER_EPOCH)),
                 last_timestamp,
@@ -103,8 +100,6 @@ impl StoreEventHandler {
         raw_event.id = event_id;
 
         self.put_event_transaction(txn, &raw_event)?;
-
-        self.storage_cache.process_event(raw_event);
 
         // These two calls are made in the JS code
         // this._storageCache.processEvent(event);
@@ -140,11 +135,8 @@ impl StoreEventHandler {
     pub fn js_create_store_event_handler(
         mut cx: FunctionContext,
     ) -> JsResult<JsBox<Arc<StoreEventHandler>>> {
-        let storage_cache_boxed = cx.argument::<JsBox<Arc<StorageCache>>>(0)?;
-        let storage_cache = (**storage_cache_boxed).clone();
-
         // Read 3 optional arguments (u64)
-        let epoch = match cx.argument_opt(1) {
+        let epoch = match cx.argument_opt(0) {
             Some(arg) => match arg.downcast::<JsNumber, _>(&mut cx) {
                 Ok(v) => Some(v.value(&mut cx) as u64),
                 _ => None,
@@ -152,7 +144,7 @@ impl StoreEventHandler {
             None => None,
         };
 
-        let last_timestamp = match cx.argument_opt(2) {
+        let last_timestamp = match cx.argument_opt(1) {
             Some(arg) => match arg.downcast::<JsNumber, _>(&mut cx) {
                 Ok(v) => Some(v.value(&mut cx) as u64),
                 _ => None,
@@ -160,7 +152,7 @@ impl StoreEventHandler {
             None => None,
         };
 
-        let last_seq = match cx.argument_opt(3) {
+        let last_seq = match cx.argument_opt(2) {
             Some(arg) => match arg.downcast::<JsNumber, _>(&mut cx) {
                 Ok(v) => Some(v.value(&mut cx) as u64),
                 _ => None,
@@ -168,12 +160,7 @@ impl StoreEventHandler {
             None => None,
         };
 
-        Ok(cx.boxed(StoreEventHandler::new(
-            storage_cache,
-            epoch,
-            last_timestamp,
-            last_seq,
-        )))
+        Ok(cx.boxed(StoreEventHandler::new(epoch, last_timestamp, last_seq)))
     }
 
     pub fn js_get_next_event_id(mut cx: FunctionContext) -> JsResult<JsNumber> {

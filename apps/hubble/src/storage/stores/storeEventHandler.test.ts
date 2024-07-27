@@ -8,11 +8,10 @@ import { sleep } from "../../utils/crypto.js";
 import { extractEventTimestamp, getFarcasterTime } from "@farcaster/core";
 import OnChainEventStore from "./onChainEventStore.js";
 import CastStore from "./castStore.js";
-import { rsCreateStorageCache, rsCreateStoreEventHandler, rsGetNextEventId } from "../../rustfunctions.js";
+import { rsCreateStoreEventHandler, rsGetNextEventId } from "../../rustfunctions.js";
 
 const db = jestRocksDB("stores.storeEventHandler.test");
 const eventHandler = new StoreEventHandler(db);
-const storageCache = rsCreateStorageCache(db.rustDb);
 
 let events: HubEvent[] = [];
 let currentTime = 0;
@@ -42,7 +41,7 @@ beforeAll(async () => {
 });
 
 describe("HubEventIdGenerator", () => {
-  const generator = rsCreateStoreEventHandler(storageCache);
+  const generator = rsCreateStoreEventHandler();
 
   test("succeeds", () => {
     let lastId = 0;
@@ -56,14 +55,14 @@ describe("HubEventIdGenerator", () => {
 
   test("fails if sequence ID exceeds max allowed", () => {
     const currentTimestamp = Date.now();
-    const generator = rsCreateStoreEventHandler(storageCache, 0, currentTimestamp, 4094);
+    const generator = rsCreateStoreEventHandler(0, currentTimestamp, 4094);
     expect(rsGetNextEventId(generator, currentTimestamp).isOk()).toEqual(true);
     expect(rsGetNextEventId(generator, currentTimestamp).isErr()).toEqual(true);
   });
 
   test("can parse timestamps from event id", async () => {
     const currentTimestamp = Date.now();
-    const generator = rsCreateStoreEventHandler(storageCache, FARCASTER_EPOCH, currentTimestamp, 0);
+    const generator = rsCreateStoreEventHandler(FARCASTER_EPOCH, currentTimestamp, 0);
     const id = rsGetNextEventId(generator, currentTimestamp)._unsafeUnwrap();
     expect(extractEventTimestamp(id)).toEqual(currentTimestamp);
   });
