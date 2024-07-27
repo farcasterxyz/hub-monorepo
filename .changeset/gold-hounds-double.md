@@ -1,5 +1,4 @@
 ---
-"@farcaster/hub-nodejs": patch
 "@farcaster/hubble": patch
 ---
 
