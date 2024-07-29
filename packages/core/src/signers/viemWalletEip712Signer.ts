@@ -24,7 +24,8 @@ import {
   SIGNED_KEY_REQUEST_VALIDATOR_EIP_712_TYPES,
   SignedKeyRequestMessage,
 } from "../eth/contracts/signedKeyRequestValidator";
-import { SignTypedDataParameters, WalletClient } from "viem";
+import type { SignTypedDataParameters, WalletClient } from "viem";
+import { signTypedData } from "viem/actions";
 
 export class ViemWalletEip712Signer extends Eip712Signer {
   private readonly _viemWalletClient: WalletClient;
@@ -196,7 +197,7 @@ export class ViemWalletEip712Signer extends Eip712Signer {
       return err(new HubError("unavailable", "wallet not connected"));
     }
     const hexSignature = await ResultAsync.fromPromise(
-      this._viemWalletClient.signTypedData({ ...params, account }),
+      signTypedData(this._viemWalletClient, { ...params, account }),
       (e) => new HubError("bad_request.invalid_param", e as Error),
     );
     return hexSignature.andThen((hex) => hexStringToBytes(hex));

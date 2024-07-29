@@ -18,6 +18,14 @@ import { err, ok, Result, ResultAsync } from "neverthrow";
 import { IdRegistry, KeyRegistry, StorageRegistry } from "./abis.js";
 import { HubInterface } from "../hubble.js";
 import { logger } from "../utils/logger.js";
+import {
+  createContractEventFilter,
+  createEventFilter,
+  getBlock,
+  getBlockNumber,
+  getContractEvents,
+  getFilterLogs,
+} from "viem/actions";
 import { optimismGoerli } from "viem/chains";
 import {
   createPublicClient,
@@ -29,6 +37,15 @@ import {
   Hex,
   FallbackTransport,
   HttpRequestError,
+  HttpTransport,
+  ContractEventName,
+  Chain,
+  BlockNumber,
+  BlockTag,
+  GetContractEventsParameters,
+  MaybeExtractEventArgsFromAbi,
+  CreateContractEventFilterParameters,
+  Transport,
 } from "viem";
 import { WatchContractEvent } from "./watchContractEvent.js";
 import { WatchBlockNumber } from "./watchBlockNumber.js";
@@ -57,9 +74,9 @@ const RENT_EXPIRY_IN_SECONDS = 365 * 24 * 60 * 60; // One year
 /**
  * Class that follows the Optimism chain to handle on-chain events from the Storage Registry contract.
  */
-export class L2EventsProvider {
+export class L2EventsProvider<chain extends Chain = Chain, transport extends Transport = Transport> {
   private _hub: HubInterface;
-  private _publicClient: PublicClient<FallbackTransport>;
+  private _publicClient: PublicClient<transport, chain>;
 
   private _firstBlock: number;
   private _chunkSize: number;
@@ -78,10 +95,28 @@ export class L2EventsProvider {
   private keyRegistryV2Address: `0x${string}` | undefined;
   private idRegistryV2Address: `0x${string}` | undefined;
 
-  private _watchStorageContractEvents?: WatchContractEvent<typeof StorageRegistry.abi, string, true>;
-  private _watchKeyRegistryV2ContractEvents?: WatchContractEvent<typeof KeyRegistry.abi, string, true>;
-  private _watchIdRegistryV2ContractEvents?: WatchContractEvent<typeof IdRegistry.abi, string, true>;
-  private _watchBlockNumber?: WatchBlockNumber;
+  private _watchStorageContractEvents?: WatchContractEvent<
+    chain,
+    typeof StorageRegistry.abi,
+    ContractEventName<typeof StorageRegistry.abi>,
+    true,
+    transport
+  >;
+  private _watchKeyRegistryV2ContractEvents?: WatchContractEvent<
+    chain,
+    typeof KeyRegistry.abi,
+    ContractEventName<typeof KeyRegistry.abi>,
+    true,
+    transport
+  >;
+  private _watchIdRegistryV2ContractEvents?: WatchContractEvent<
+    chain,
+    typeof IdRegistry.abi,
+    ContractEventName<typeof IdRegistry.abi>,
+    true,
+    transport
+  >;
+  private _watchBlockNumber?: WatchBlockNumber<transport, chain>;
 
   // Whether the historical events have been synced. This is used to avoid syncing the events multiple times.
   private _isHistoricalSyncDone = false;
@@ -100,7 +135,7 @@ export class L2EventsProvider {
 
   constructor(
     hub: HubInterface,
-    publicClient: PublicClient<FallbackTransport>,
+    publicClient: PublicClient<transport, chain>,
     storageRegistryAddress: `0x${string}`,
     keyRegistryV2Address: `0x${string}`,
     idRegistryV2Address: `0x${string}`,
@@ -138,7 +173,7 @@ export class L2EventsProvider {
    *
    * Build an L2 Events Provider for the ID Registry and Name Registry contracts.
    */
-  public static build(
+  public static build<chain extends Chain = typeof optimismGoerli>(
     hub: HubInterface,
     l2RpcUrl: string,
     rankRpcs: boolean,
@@ -150,7 +185,7 @@ export class L2EventsProvider {
     chainId: number,
     resyncEvents: boolean,
     expiryOverride?: number,
-  ): L2EventsProvider {
+  ): L2EventsProvider<chain> {
     const l2RpcUrls = l2RpcUrl.split(",");
     const transports = l2RpcUrls.map((url) =>
       http(url, {
@@ -166,7 +201,8 @@ export class L2EventsProvider {
     );
 
     const publicClient = createPublicClient({
-      chain: optimismGoerli,
+      // Fallback; provided RPC URLs override this
+      chain: optimismGoerli as unknown as chain,
       transport: fallback(transports, {
         rank: rankRpcs,
       }),
@@ -239,7 +275,14 @@ export class L2EventsProvider {
   /*                               Private Methods                              */
   /* -------------------------------------------------------------------------- */
 
-  private async processStorageEvents(logs: WatchContractEventOnLogsParameter<Abi, string, true>, version = 0) {
+  private async processStorageEvents(
+    logs: WatchContractEventOnLogsParameter<
+      typeof StorageRegistry.abi,
+      ContractEventName<typeof StorageRegistry.abi>,
+      true
+    >,
+    version = 0,
+  ) {
     for (const event of logs) {
       const { blockNumber, blockHash, transactionHash, transactionIndex, logIndex } = event;
 
@@ -301,11 +344,11 @@ export class L2EventsProvider {
     }
   }
 
-  private async processKeyRegistryEventsV2(logs: WatchContractEventOnLogsParameter<Abi, string, true>) {
+  private async processKeyRegistryEventsV2(logs: WatchContractEventOnLogsParameter<typeof KeyRegistry.abi>) {
     await this.processKeyRegistryEvents(logs, 2);
   }
 
-  private async processKeyRegistryEvents(logs: WatchContractEventOnLogsParameter<Abi, string, true>, version = 0) {
+  private async processKeyRegistryEvents(logs: WatchContractEventOnLogsParameter<typeof KeyRegistry.abi>, version = 0) {
     for (const event of logs) {
       const { blockNumber, blockHash, transactionHash, transactionIndex, logIndex } = event;
 
@@ -428,11 +471,11 @@ export class L2EventsProvider {
     }
   }
 
-  private async processIdRegistryV2Events(logs: WatchContractEventOnLogsParameter<Abi, string, true>) {
+  private async processIdRegistryV2Events(logs: WatchContractEventOnLogsParameter<typeof IdRegistry.abi>) {
     await this.processIdRegistryEvents(logs, 2);
   }
 
-  private async processIdRegistryEvents(logs: WatchContractEventOnLogsParameter<Abi, string, true>, version = 0) {
+  private async processIdRegistryEvents(logs: WatchContractEventOnLogsParameter<typeof IdRegistry.abi>, version = 0) {
     for (const event of logs) {
       const { blockNumber, blockHash, transactionHash, transactionIndex, logIndex } = event;
 
@@ -539,7 +582,7 @@ export class L2EventsProvider {
 
   /** Connect to OP RPC and sync events. Returns the highest block that was synced */
   private async connectAndSyncHistoricalEvents(): HubAsyncResult<number> {
-    const latestBlockResult = await ResultAsync.fromPromise(this._publicClient.getBlockNumber(), (err) => err);
+    const latestBlockResult = await ResultAsync.fromPromise(getBlockNumber(this._publicClient), (err) => err);
     if (latestBlockResult.isErr()) {
       diagnosticReporter().reportError(latestBlockResult.error as Error);
       const msg = "failed to connect to optimism node. Check your eth RPC URL (e.g. --l2-rpc-url)";
@@ -627,7 +670,13 @@ export class L2EventsProvider {
     this.idRegistryV2Address = idRegistryV2Address;
     this.keyRegistryV2Address = keyRegistryV2Address;
 
-    this._watchStorageContractEvents = new WatchContractEvent(
+    this._watchStorageContractEvents = new WatchContractEvent<
+      chain,
+      typeof StorageRegistry.abi,
+      ContractEventName<typeof StorageRegistry.abi>,
+      true,
+      transport
+    >(
       this._publicClient,
       {
         address: storageRegistryAddress,
@@ -639,7 +688,13 @@ export class L2EventsProvider {
       "StorageRegistry",
     );
 
-    this._watchKeyRegistryV2ContractEvents = new WatchContractEvent(
+    this._watchKeyRegistryV2ContractEvents = new WatchContractEvent<
+      chain,
+      typeof KeyRegistry.abi,
+      ContractEventName<typeof KeyRegistry.abi>,
+      true,
+      transport
+    >(
       this._publicClient,
       {
         address: keyRegistryV2Address,
@@ -651,7 +706,13 @@ export class L2EventsProvider {
       "KeyRegistryV2",
     );
 
-    this._watchIdRegistryV2ContractEvents = new WatchContractEvent(
+    this._watchIdRegistryV2ContractEvents = new WatchContractEvent<
+      chain,
+      typeof IdRegistry.abi,
+      ContractEventName<typeof IdRegistry.abi>,
+      true,
+      transport
+    >(
       this._publicClient,
       {
         address: idRegistryV2Address,
@@ -754,9 +815,15 @@ export class L2EventsProvider {
         strict: true,
       });
 
-      await this.processStorageEvents(await storageLogsPromise);
-      await this.processIdRegistryV2Events(await idV2LogsPromise);
-      await this.processKeyRegistryEventsV2(await keyV2LogsPromise);
+      await this.processStorageEvents(
+        (await storageLogsPromise) as WatchContractEventOnLogsParameter<typeof StorageRegistry.abi>,
+      );
+      await this.processIdRegistryV2Events(
+        (await idV2LogsPromise) as WatchContractEventOnLogsParameter<typeof IdRegistry.abi>,
+      );
+      await this.processKeyRegistryEventsV2(
+        (await keyV2LogsPromise) as WatchContractEventOnLogsParameter<typeof KeyRegistry.abi>,
+      );
 
       // Write out all the cached blocks first
       await this.writeCachedBlocks(toBlock);
@@ -778,20 +845,14 @@ export class L2EventsProvider {
   /** Wrapper around Viem client getFilterLogs/getContractEvents. Uses filters
    *  when supported, otherwise falls back to getContractEvents.
    */
-  private async getContractEvents(params: {
-    address: Hex;
-    abi: Abi;
-    fromBlock: bigint;
-    toBlock: bigint;
-    strict: boolean;
-  }) {
+  private async getContractEvents(params: GetContractEventsParameters | CreateContractEventFilterParameters) {
     return this.withRetry(
       async () => {
         if (this._useFilters) {
-          const filter = await this._publicClient.createContractEventFilter(params);
-          return this._publicClient.getFilterLogs({ filter });
+          const filter = await createContractEventFilter(this._publicClient, params);
+          return getFilterLogs(this._publicClient, { filter });
         } else {
-          return this._publicClient.getContractEvents(params);
+          return getContractEvents(this._publicClient, params);
         }
       },
       3, // attempts
@@ -807,11 +868,15 @@ export class L2EventsProvider {
   private async detectFilterSupport() {
     // Set up a client with fewer retries and shorter timeout
     const urls: string[] = [];
-    this._publicClient.transport["transports"].forEach((transport) => {
-      if (transport?.value) {
-        urls.push(transport.value["url"]);
-      }
-    });
+
+    (this._publicClient as PublicClient<FallbackTransport<HttpTransport[]>, chain>).transport["transports"].forEach(
+      (transport) => {
+        if (transport?.value?.["url"]) {
+          urls.push(transport.value["url"]);
+        }
+      },
+    );
+
     const transports = urls.map((url) => http(url, { retryCount: 1, timeout: 1000 }));
     const testClient = createPublicClient({
       chain: optimismGoerli,
@@ -820,7 +885,7 @@ export class L2EventsProvider {
 
     // Handling: intentionally catch to test for filter support
     try {
-      await testClient.createEventFilter({
+      await createEventFilter(testClient, {
         fromBlock: BigInt(1),
         toBlock: BigInt(1),
       });
@@ -954,7 +1019,7 @@ export class L2EventsProvider {
     if (cachedTimestamp) {
       return cachedTimestamp;
     }
-    const block = await this._publicClient.getBlock({
+    const block = await getBlock(this._publicClient, {
       blockHash: blockHash as `0x${string}`,
     });
     const timestamp = Number(block.timestamp);

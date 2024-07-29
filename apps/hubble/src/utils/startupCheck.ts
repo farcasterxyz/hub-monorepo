@@ -2,6 +2,7 @@ import fs, { existsSync } from "fs";
 import { ResultAsync } from "neverthrow";
 import { dirname, resolve } from "path";
 import { Chain, createPublicClient, fallback, http } from "viem";
+import { getChainId } from "viem/actions";
 import { diagnosticReporter } from "./diagnosticReport.js";
 
 export enum StartupCheckStatus {
@@ -87,7 +88,7 @@ class StartupCheck {
     });
 
     // Check that the publicClient is reachable and returns the goerli chainId
-    const chainIdResult = await ResultAsync.fromPromise(publicClient.getChainId(), (err) => err);
+    const chainIdResult = await ResultAsync.fromPromise(getChainId(publicClient), (err) => err);
 
     if (chainIdResult.isErr() || chainIdResult.value !== (chainId ?? chain.id)) {
       console.log(chainIdResult);

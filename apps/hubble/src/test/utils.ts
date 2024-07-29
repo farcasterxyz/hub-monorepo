@@ -12,12 +12,11 @@ import {
 } from "viem";
 import { Chain, localhost } from "viem/chains";
 import { createPublicClient, http, fallback } from "viem";
+import { deployContract, getTransactionReceipt, mine } from "viem/actions";
 import { Abi } from "abitype";
 import { accounts, localHttpUrl } from "./constants.js";
 import { StorageRegistry } from "../eth/abis.js";
 import { DeepPartial } from "fishery";
-import { rpc, RpcRequest, RpcResponse } from "viem/utils";
-import { schedule } from "node-cron";
 
 export const anvilChain = {
   ...localhost,
@@ -122,10 +121,10 @@ export const deploy = async <TAbi extends Abi | readonly unknown[]>(
     typeof walletClientWithAccount["account"]
   >,
 ) => {
-  const hash = await walletClientWithAccount.deployContract(args);
+  const hash = await deployContract(walletClientWithAccount, args);
 
-  await testClient.mine({ blocks: 1 });
-  const obj = await publicClient.getTransactionReceipt({
+  await mine(testClient, { blocks: 1 });
+  const obj = await getTransactionReceipt(publicClient, {
     hash,
   });
 
