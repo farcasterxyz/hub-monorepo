@@ -335,6 +335,35 @@ export function destroyStream(stream: ServerWritableStream<SubscribeRequest, Hub
   stream.end();
 }
 
+export const toTrieNodeMetadataResponse = (metadata?: NodeMetadata): TrieNodeMetadataResponse => {
+  const childrenTrie = [];
+
+  if (!metadata) {
+    return TrieNodeMetadataResponse.create({});
+  }
+
+  if (metadata.children) {
+    for (const [, child] of metadata.children) {
+      childrenTrie.push(
+        TrieNodeMetadataResponse.create({
+          prefix: child.prefix,
+          numMessages: child.numMessages,
+          hash: child.hash,
+          children: [],
+        }),
+      );
+    }
+  }
+
+  const metadataResponse = TrieNodeMetadataResponse.create({
+    prefix: metadata.prefix,
+    numMessages: metadata.numMessages,
+    hash: metadata.hash,
+    children: childrenTrie,
+  });
+
+  return metadataResponse;
+};
 export default class Server {
   private hub: HubInterface | undefined;
   private engine: Engine | undefined;
@@ -658,36 +687,6 @@ export default class Server {
       getSyncMetadataByPrefix: (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getSyncMetadataByPrefix", req: call.request }, `RPC call from ${peer}`);
-
-        const toTrieNodeMetadataResponse = (metadata?: NodeMetadata): TrieNodeMetadataResponse => {
-          const childrenTrie = [];
-
-          if (!metadata) {
-            return TrieNodeMetadataResponse.create({});
-          }
-
-          if (metadata.children) {
-            for (const [, child] of metadata.children) {
-              childrenTrie.push(
-                TrieNodeMetadataResponse.create({
-                  prefix: child.prefix,
-                  numMessages: child.numMessages,
-                  hash: child.hash,
-                  children: [],
-                }),
-              );
-            }
-          }
-
-          const metadataResponse = TrieNodeMetadataResponse.create({
-            prefix: metadata.prefix,
-            numMessages: metadata.numMessages,
-            hash: metadata.hash,
-            children: childrenTrie,
-          });
-
-          return metadataResponse;
-        };
 
         const request = call.request;
 
