@@ -869,15 +869,14 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
     // Set up a client with fewer retries and shorter timeout
     const urls: string[] = [];
 
-    if (this._publicClient.transport["transports"]?.[0]?.value?.["url"]) {
-      (this._publicClient as PublicClient<FallbackTransport<HttpTransport[]>, chain>).transport["transports"].forEach(
-        (transport) => {
-          if (transport?.value?.["url"]) {
-            urls.push(transport.value["url"]);
-          }
-        },
-      );
-    }
+    (this._publicClient as PublicClient<FallbackTransport<HttpTransport[]>, chain>).transport["transports"].forEach(
+      (transport) => {
+        if (transport?.value?.["url"]) {
+          urls.push(transport.value["url"]);
+        }
+      },
+    );
+
     const transports = urls.map((url) => http(url, { retryCount: 1, timeout: 1000 }));
     const testClient = createPublicClient({
       chain: optimismGoerli,
