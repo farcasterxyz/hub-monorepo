@@ -324,7 +324,7 @@ describe("shuttle", () => {
         type: HubEventType.MERGE_MESSAGE,
         mergeMessageBody: {
           message: compactMessage,
-          deletedMessages: [removeMessage, addMessage3],
+          deletedMessages: [],
         },
       }),
     );

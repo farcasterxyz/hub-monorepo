@@ -67,6 +67,10 @@ export abstract class RustStoreBase<TAdd extends Message, TRemove extends Messag
     return this._pruneSizeLimit;
   }
 
+  get postfix(): UserMessagePostfix {
+    return this._postfix;
+  }
+
   async mergeMessages(messages: Message[]): Promise<Map<number, HubResult<number>>> {
     const mergeResults: Map<number, HubResult<number>> = new Map();
 

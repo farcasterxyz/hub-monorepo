@@ -2,6 +2,7 @@ import { UserNameProof } from "@farcaster/hub-nodejs";
 import RocksDB, { RocksDbTransaction } from "../db/rocksdb.js";
 import { RootPrefix } from "../db/types.js";
 import { makeFidKey } from "./message.js";
+import { rsGetUserNameProof } from "rustfunctions.js";
 
 export const makeFNameUserNameProofKey = (name: Uint8Array): Buffer => {
   return Buffer.concat([Buffer.from([RootPrefix.FNameUserNameProof]), Buffer.from(name)]);
@@ -9,12 +10,6 @@ export const makeFNameUserNameProofKey = (name: Uint8Array): Buffer => {
 
 export const makeFNameUserNameProofByFidKey = (fid: number): Buffer => {
   return Buffer.concat([Buffer.from([RootPrefix.FNameUserNameProofByFid]), makeFidKey(fid)]);
-};
-
-export const getUserNameProof = async (db: RocksDB, name: Uint8Array): Promise<UserNameProof> => {
-  const primaryKey = makeFNameUserNameProofKey(name);
-  const buffer = await db.get(primaryKey);
-  return UserNameProof.decode(new Uint8Array(buffer));
 };
 
 export const getFNameProofByFid = async (db: RocksDB, fid: number): Promise<UserNameProof> => {

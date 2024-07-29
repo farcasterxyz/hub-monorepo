@@ -325,7 +325,18 @@ pub trait StoreDef: Send + Sync {
             r#type: HubEventType::MergeMessage as i32,
             body: Some(hub_event::Body::MergeMessageBody(MergeMessageBody {
                 message: Some(message.clone()),
-                deleted_messages: merge_conflicts,
+                deleted_messages: match &message.data {
+                    Some(data) => {
+                        if data.r#type == self.compact_state_message_type() as i32 {
+                            // In the case of merging compact state, we omit the deleted messages as this would
+                            // result in an unbounded message size:
+                            Vec::<Message>::new()
+                        } else {
+                            merge_conflicts
+                        }
+                    }
+                    None => Vec::<Message>::new(),
+                },
             })),
             id: 0,
         }
@@ -836,7 +847,7 @@ impl Store {
                     if let Some(Target::TargetFid(target_fid)) = link_body.target {
                         // If the message is older than the compact state message, and the target fid is not in the target_fids list
                         if message.data.as_ref().unwrap().timestamp < compact_state_timestamp
-                            && !target_fids.contains(&message.data.as_ref().unwrap().fid)
+                            && !target_fids.contains(&target_fid)
                         {
                             return Err(HubError {
                                 code: "bad_request.conflict".to_string(),

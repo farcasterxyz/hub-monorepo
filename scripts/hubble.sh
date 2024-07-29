@@ -122,75 +122,81 @@ fetch_latest_docker_compose_and_dashboard() {
 
 # Prompt for hub operator agreement
 prompt_for_hub_operator_agreement() {
-    (
-        env_file=".env"
+    env_file=".env"
 
-        update_env_file() {
-            key="AGREE_NO_REWARDS_FOR_ME"
-            value="true"
-            temp_file="${env_file}.tmp"
+    update_env_file() {
+        key="AGREE_NO_REWARDS_FOR_ME"
+        value="true"
+        temp_file="${env_file}.tmp"
 
-            if [ -f "$env_file" ]; then
-                # File exists, update or append
-                updated=0
-                while IFS= read -r line || [ -n "$line" ]; do
-                    if [ "${line%%=*}" = "$key" ]; then
-                        echo "$key=$value" >>"$temp_file"
-                        updated=1
-                    else
-                        echo "$line" >>"$temp_file"
-                    fi
-                done <"$env_file"
-
-                if [ $updated -eq 0 ]; then
+        if [ -f "$env_file" ]; then
+            # File exists, update or append
+            updated=0
+            while IFS= read -r line || [ -n "$line" ]; do
+                if [ "${line%%=*}" = "$key" ]; then
                     echo "$key=$value" >>"$temp_file"
+                    updated=1
+                else
+                    echo "$line" >>"$temp_file"
                 fi
+            done <"$env_file"
 
-                mv "$temp_file" "$env_file"
-            else
-                # File doesn't exist, create it
-                echo "$key=$value" >"$env_file"
+            if [ $updated -eq 0 ]; then
+                echo "$key=$value" >>"$temp_file"
             fi
-        }
 
-        prompt_agreement() {
-            tried=0
-            while true; do
-                printf "⚠️  IMPORTANT: You will NOT get any rewards for running this hub\n"
-                printf "> Please type \"Yes\" to continue: "
-                read -r response
-                case $(printf "%s" "$response" | tr '[:upper:]' '[:lower:]') in
-                yes | y)
-                    printf "✅ You have agreed to the terms of service. Proceeding...\n"
-                    update_env_file
-                    return 0
-                    ;;
-                *)
-                    tried=$((tried + 1))
-                    if [ $tried -gt 10 ]; then
-                        printf "❌ You have not agreed to the terms of service. Please run script again manually to agree and continue.\n"
-                        exit 1
-                    fi
-                    printf "[i] Incorrect input. Please try again.\n"
-                    ;;
-                esac
-            done
-        }
-
-        if grep -q "AGREE_NO_REWARDS_FOR_ME=true" "$env_file"; then
-            printf "✅ You have agreed to the terms of service. Proceeding...\n"
-            return 0
+            mv "$temp_file" "$env_file"
         else
-            # Check if stdin is a terminal
-            if [ -t 0 ]; then
-                prompt_agreement
-                return $?
-            fi
-
-            printf "❌ You have not agreed to the terms of service. Please run script again manually to agree and continue.\n"
-            return 1
+            # File doesn't exist, create it
+            echo "$key=$value" >"$env_file"
         fi
-    )
+    }
+
+    prompt_agreement() {
+        tried=0
+        while true; do
+            printf "⚠️  IMPORTANT: You will NOT get any rewards for running this hub\n"
+            printf "> Please type \"Yes\" to continue: "
+            read -r response
+            case $(printf "%s" "$response" | tr '[:upper:]' '[:lower:]') in
+            yes | y)
+                printf "✅ You have agreed to the terms of service. Proceeding...\n"
+                update_env_file
+                return 0
+                ;;
+            *)
+                tried=$((tried + 1))
+                if [ $tried -gt 10 ]; then
+                    printf "❌ You have not agreed to the terms of service. Please run script again manually to agree and continue.\n"
+                    return 1
+                fi
+                printf "[i] Incorrect input. Please try again.\n"
+                ;;
+            esac
+        done
+    }
+
+    if grep -q "AGREE_NO_REWARDS_FOR_ME=true" "$env_file"; then
+        printf "✅ You have agreed to the terms of service. Proceeding...\n"
+        return 0
+    else
+        # Check if stdin is a terminal
+        if [ -t 0 ]; then
+            prompt_agreement
+            return $?
+        fi
+
+        # If we've reached this point, shut down existing services since agreement is required
+
+        # Setup the docker-compose command
+        set_compose_command
+
+        # Run docker compose down
+        $COMPOSE_CMD down
+        printf "❌ You have not agreed to the terms of service. Please run script again manually to agree and continue.\n"
+
+        return 1
+    fi
 }
 
 validate_and_store() {

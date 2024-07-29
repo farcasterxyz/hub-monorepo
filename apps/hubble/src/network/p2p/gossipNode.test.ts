@@ -45,8 +45,8 @@ describe("GossipNode", () => {
   });
 
   test("start fails if multiaddr format is invalid", async () => {
-    // an IPv6 being supplied as an IPv4
-    const options = { ipMultiAddr: "/ip4/2600:1700:6cf0:990:2052:a166:fb35:830a" };
+    // an IPv6 being supplied as an onion3
+    const options = { ipMultiAddr: "/onion3/2600:1700:6cf0:990:2052:a166:fb35:830a" };
     expect((await node.start([], options))._unsafeUnwrapErr().errCode).toEqual("unavailable");
     const error = (await node.start([], options))._unsafeUnwrapErr();
 

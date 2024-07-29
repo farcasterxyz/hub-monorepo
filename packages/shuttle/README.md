@@ -16,7 +16,7 @@ There are 3 main components:
 - a reconciler that can backfill messages and ensures the messages are in sync with the hub
 
 The event processor has a hook for your code to plug into the message processing loop. You must implement the `MessageHandler` interface
-and provide it to the system. The system will call your `handleMessageMerge` method for each message it processes, within the same transaction 
+and provide it to the system. The system will call your `handleMessageMerge` method for each message it processes, within the same transaction
 where the message is written to the db. The function is always expected to succeed, it is not possible to instruct it to "skip"  a message.
 If your function fails, the message will not be written to the db and will be retried at a later time.
 
@@ -42,13 +42,13 @@ yarn install && yarn build
 
 # Start the db dependencies
 docker compose up postgres redis
- 
+
 # To perform reconciliation/backfill, start the worker (can run multiple processes to speed this up)
 POSTGRES_URL=postgres://shuttle:password@0.0.0.0:6541 REDIS_URL=0.0.0.0:16379 HUB_HOST=<host>:<port> HUB_SSL=false yarn start worker
 
 # Kick off the backfill process (configure with MAX_FID=100 or BACKFILL_FIDS=1,2,3)
-POSTGRES_URL=postgres://shuttle:password@0.0.0.0:6541 REDIS_URL=0.0.0.0:16379 HUB_HOST=<host>:<port> HUB_SSL=false yarn start backfill 
- 
+POSTGRES_URL=postgres://shuttle:password@0.0.0.0:6541 REDIS_URL=0.0.0.0:16379 HUB_HOST=<host>:<port> HUB_SSL=false yarn start backfill
+
 # Start the app and sync messages from the event stream
 POSTGRES_URL=postgres://shuttle:password@0.0.0.0:6541 REDIS_URL=0.0.0.0:16379 HUB_HOST=<host>:<port> HUB_SSL=false yarn start start
 ```
