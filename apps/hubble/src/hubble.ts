@@ -22,7 +22,7 @@ import {
   validations,
 } from "@farcaster/hub-nodejs";
 import { ClientOptions as StatsDClientOptions } from "@figma/hot-shots";
-import { PeerId } from "@libp2p/interface-peer-id";
+import { Ed25519PeerId, PeerId, RSAPeerId, Secp256k1PeerId } from "@libp2p/interface";
 import { peerIdFromBytes, peerIdFromString } from "@libp2p/peer-id";
 import { publicAddressesFirst } from "@libp2p/utils/address-sort";
 import { unmarshalPrivateKey, unmarshalPublicKey } from "@libp2p/crypto/keys";
@@ -96,6 +96,7 @@ import { MerkleTrie } from "./network/sync/merkleTrie.js";
 import { DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT } from "./defaultConfig.js";
 import { diagnosticReporter } from "./utils/diagnosticReport.js";
 import { startupCheck, StartupCheckStatus } from "./utils/startupCheck.js";
+import { AddressInfo } from "node:net";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
@@ -772,7 +773,9 @@ export class Hub implements HubInterface {
 
     const bootstrapAddrs = this.options.bootstrapAddrs ?? [];
 
-    const peerId = this.options.peerId ? exportToProtobuf(this.options.peerId) : undefined;
+    const peerId = this.options.peerId
+      ? exportToProtobuf(this.options.peerId as RSAPeerId | Ed25519PeerId | Secp256k1PeerId)
+      : undefined;
 
     // Start the Gossip node
     await this.gossipNode.start(bootstrapAddrs, {
@@ -1115,7 +1118,7 @@ export class Hub implements HubInterface {
     const family = nodeMultiAddr?.nodeAddress().family;
     const announceIp = this.options.announceIp ?? nodeMultiAddr?.nodeAddress().address;
     const gossipPort = nodeMultiAddr?.nodeAddress().port;
-    const rpcPort = this.rpcServer.address?.map((addr) => addr.port).unwrapOr(0);
+    const rpcPort = this.rpcServer.address?.map((addr: AddressInfo) => addr.port).unwrapOr(0);
 
     const gossipAddressContactInfo = GossipAddressInfo.create({
       address: announceIp,
@@ -1570,7 +1573,7 @@ export class Hub implements HubInterface {
       try {
         const sslClientResult = getSSLHubRpcClient(address, options);
 
-        sslClientResult.$.waitForReady(Date.now() + 2000, (err) => {
+        sslClientResult.$.waitForReady(Date.now() + 2000, (err: Error | undefined) => {
           if (!err) {
             resolve(sslClientResult);
           } else {
@@ -1697,7 +1700,7 @@ export class Hub implements HubInterface {
       const peerAddresses = peerInfo.multiaddrs;
 
       // sorts addresses by Public IPs first
-      const addr = peerAddresses.sort((a, b) =>
+      const addr = peerAddresses.sort((a: Multiaddr, b: Multiaddr) =>
         publicAddressesFirst({ multiaddr: a, isCertified: false }, { multiaddr: b, isCertified: false }),
       )[0];
       if (addr === undefined) {

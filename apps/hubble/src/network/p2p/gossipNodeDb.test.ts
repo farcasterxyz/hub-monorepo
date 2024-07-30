@@ -1,6 +1,6 @@
 import { GossipNode } from "./gossipNode.js";
 import { jestRocksDB } from "../../storage/db/jestUtils.js";
-import { PeerId } from "@libp2p/interface-peer-id";
+import { PeerId } from "@libp2p/interface";
 import { sleepWhile } from "../../utils/crypto.js";
 import { ResultAsync } from "neverthrow";
 

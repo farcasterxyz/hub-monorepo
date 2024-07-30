@@ -1,5 +1,5 @@
 import { GossipVersion } from "@farcaster/hub-nodejs";
-import { Message as GossipSubMessage } from "@libp2p/interface-pubsub";
+import { Message as GossipSubMessage } from "@libp2p/interface";
 import { msgId, noSignMsgId } from "@libp2p/pubsub/utils";
 
 // Current gossip protocol version

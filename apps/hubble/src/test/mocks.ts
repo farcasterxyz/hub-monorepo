@@ -13,7 +13,7 @@ import { HubInterface, HubSubmitSource } from "../hubble.js";
 import { GossipNode } from "../network/p2p/gossipNode.js";
 import RocksDB from "../storage/db/rocksdb.js";
 import Engine from "../storage/engine/index.js";
-import { PeerId } from "@libp2p/interface-peer-id";
+import { PeerId } from "@libp2p/interface";
 import {
   ContactInfoContent,
   HubResult,
