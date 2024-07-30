@@ -11,7 +11,7 @@ Hubble can be installed in 30 minutes, and a full sync can take 1-2 hours to com
 - 200 GB of free storage
 - A public IP address with ports 2282 - 2285 exposed
 
-See [tutorials](./tutorials.html) for instructions on how to set up cloud providers to run Hubble.
+See [tutorials](./tutorials.md) for instructions on how to set up cloud providers to run Hubble.
 
 You will need RPC endpoints for Ethereum nodes on L2 OP Mainnet, L1 Mainnet and L1 Goerli. We recommend using a service like [Alchemy](https://www.alchemy.com/) or [Infura](https://www.infura.io/).
 
