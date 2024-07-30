@@ -1,6 +1,6 @@
 import { FarcasterNetwork, farcasterNetworkFromJSON } from "@farcaster/hub-nodejs";
 import { peerIdFromString } from "@libp2p/peer-id";
-import { PeerId } from "@libp2p/interface-peer-id";
+import { Ed25519PeerId, PeerId, RSAPeerId, Secp256k1PeerId } from "@libp2p/interface";
 import { createEd25519PeerId, createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
 import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
 import { Command } from "commander";
@@ -748,7 +748,7 @@ app.addCommand(s3SnapshotURL);
 /** Write a given PeerId to a file */
 const writePeerId = async (peerId: PeerId, filepath: string) => {
   const directory = dirname(filepath);
-  const proto = exportToProtobuf(peerId);
+  const proto = exportToProtobuf(peerId as RSAPeerId | Ed25519PeerId | Secp256k1PeerId);
   // Handling: using try-catch is more ergonomic than capturing and handling throwable, since we
   // want a fast failure back to the CLI
   try {

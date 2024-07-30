@@ -15,7 +15,7 @@ import Server from "../../rpc/server.js";
 import { jestRocksDB } from "../../storage/db/jestUtils.js";
 import { MockHub } from "../../test/mocks.js";
 import SyncEngine from "../sync/syncEngine.js";
-import { PeerId } from "@libp2p/interface-peer-id";
+import { PeerId } from "@libp2p/interface";
 import { sleepWhile } from "../../utils/crypto.js";
 import { createEd25519PeerId } from "@libp2p/peer-id-factory";
 import { LibP2PNode } from "./gossipNodeWorker.js";

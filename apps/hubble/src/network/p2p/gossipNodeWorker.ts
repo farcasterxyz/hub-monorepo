@@ -1,11 +1,18 @@
 import { parentPort, workerData } from "worker_threads";
 import { peerIdFromBytes } from "@libp2p/peer-id";
-import { autoNATService } from "libp2p/autonat";
-import { identifyService } from "libp2p/identify";
-import { pingService } from "libp2p/ping";
-import { fetchService } from "libp2p/fetch";
+import { autoNAT } from "@libp2p/autonat";
+import { identify } from "@libp2p/identify";
+import { ping } from "@libp2p/ping";
+import { fetch } from "@libp2p/fetch";
 import * as MultiAddr from "@multiformats/multiaddr";
-import { Message as GossipSubMessage, PublishResult, TopicValidatorResult, PubSub } from "@libp2p/interface-pubsub";
+import {
+  Ed25519PeerId,
+  Message as GossipSubMessage,
+  PublishResult,
+  RSAPeerId,
+  Secp256k1PeerId,
+  TopicValidatorResult,
+} from "@libp2p/interface";
 import {
   GossipNode,
   LibP2PNodeInterface,
@@ -37,14 +44,14 @@ import { tcp } from "@libp2p/tcp";
 import { mplex } from "@libp2p/mplex";
 import { noise } from "@chainsafe/libp2p-noise";
 import { GOSSIP_PROTOCOL_VERSION, msgIdFnStrictNoSign } from "./protocol.js";
-import { PeerId } from "@libp2p/interface-peer-id";
+import { PeerId } from "@libp2p/interface";
 import { createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
 import { logger } from "../../utils/logger.js";
 import { initializeStatsd, statsd } from "../../utils/statsd.js";
 import v8 from "v8";
 import { MessageBundle } from "@farcaster/hub-nodejs";
 import { BundleCreator } from "./bundleCreator.js";
-import { Peer } from "@libp2p/interface-peer-store";
+import { AddressInfo } from "net";
 
 const MultiaddrLocalHost = "/ip4/127.0.0.1";
 const APPLICATION_SCORE_CAP_DEFAULT = 10;
@@ -111,8 +118,8 @@ export class LibP2PNode {
 
     let announceMultiAddrStrList: string[] = [];
     if (options.announceIp && options.gossipPort) {
-      const announceMultiAddr = addressInfoFromParts(options.announceIp, options.gossipPort).map((addressInfo) =>
-        ipMultiAddrStrFromAddressInfo(addressInfo),
+      const announceMultiAddr = addressInfoFromParts(options.announceIp, options.gossipPort).map(
+        (addressInfo: AddressInfo) => ipMultiAddrStrFromAddressInfo(addressInfo),
       );
       if (announceMultiAddr.isOk() && announceMultiAddr.value.isOk()) {
         // If we have a valid announce IP, use it
@@ -153,7 +160,7 @@ export class LibP2PNode {
       : 30000;
 
     const gossip = gossipsub({
-      allowPublishToZeroPeers: true,
+      allowPublishToZeroTopicPeers: true,
       asyncValidation: true, // Do not forward messages until we've merged it (prevents forwarding known bad messages)
       canRelayMessage: true,
       directPeers: options.directPeers || [],
@@ -222,10 +229,10 @@ export class LibP2PNode {
         streamMuxers: [mplex()],
         connectionEncryption: [noise()],
         services: {
-          identify: identifyService({}),
-          ping: pingService({}),
-          fetch: fetchService({}),
-          autoNAT: autoNATService({}),
+          identify: identify({}),
+          ping: ping({}),
+          fetch: fetch({}),
+          autoNAT: autoNAT({}),
           pubsub: gossip,
         },
         start: false,
@@ -272,7 +279,7 @@ export class LibP2PNode {
   }
 
   async isStarted(): Promise<boolean> {
-    return this._node?.isStarted() ?? false;
+    return this._node?.status === "started" ?? false;
   }
 
   async stop() {
@@ -281,7 +288,7 @@ export class LibP2PNode {
 
   /** Return if we have any inbound P2P connections */
   hasInboundConnections(): boolean {
-    return this._node?.getConnections().some((conn) => conn.stat.direction === "inbound") ?? false;
+    return this._node?.getConnections().some((conn) => conn.direction === "inbound") ?? false;
   }
 
   allPeerIds(): string[] {
@@ -409,7 +416,7 @@ export class LibP2PNode {
   async connectionStats(): Promise<{ inbound: number; outbound: number }> {
     const [inbound, outbound] = this._node?.getConnections()?.reduce(
       (acc, conn) => {
-        acc[conn.stat.direction === "inbound" ? 0 : 1]++;
+        acc[conn.direction === "inbound" ? 0 : 1]++;
         return acc;
       },
       [0, 0],
@@ -533,7 +540,7 @@ export class LibP2PNode {
 
     this.gossip?.reportMessageValidationResult(
       messageId,
-      propagationSource,
+      propagationSource.toString(),
       isValid ? TopicValidatorResult.Accept : TopicValidatorResult.Ignore,
     );
   }
@@ -612,7 +619,9 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
     case "start": {
       await libp2pNode.start();
 
-      const peerId = libp2pNode.peerId ? exportToProtobuf(libp2pNode.peerId) : new Uint8Array();
+      const peerId = libp2pNode.peerId
+        ? exportToProtobuf(libp2pNode.peerId as RSAPeerId | Ed25519PeerId | Secp256k1PeerId)
+        : new Uint8Array();
       const multiaddrs = libp2pNode._node?.getMultiaddrs().map((m) => m.bytes) ?? [];
 
       parentPort?.postMessage({
@@ -771,7 +780,9 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
           errorMessage: combinedResult.isErr() ? combinedResult.error.message : undefined,
           errorType: combinedResult.isErr() ? combinedResult.error.errCode : undefined,
           peerIds: combinedResult?.isOk()
-            ? combinedResult.value.flatMap((r) => r.recipients).map((p) => exportToProtobuf(p))
+            ? combinedResult.value
+                .flatMap((r) => r.recipients)
+                .map((p) => exportToProtobuf(p as RSAPeerId | Ed25519PeerId | Secp256k1PeerId))
             : [],
         }),
       });
@@ -794,7 +805,9 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
           errorType: combinedResult.isErr() ? combinedResult.error.errCode : undefined,
           bundled: publishResult.bundled,
           peerIds: combinedResult?.isOk()
-            ? combinedResult.value.flatMap((r) => r.recipients).map((p) => exportToProtobuf(p))
+            ? combinedResult.value
+                .flatMap((r) => r.recipients)
+                .map((p) => exportToProtobuf(p as RSAPeerId | Ed25519PeerId | Secp256k1PeerId))
             : [],
         }),
       });
@@ -813,7 +826,9 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
           errorMessage: combinedResult.isErr() ? combinedResult.error.message : undefined,
           errorType: combinedResult.isErr() ? combinedResult.error.errCode : undefined,
           peerIds: combinedResult?.isOk()
-            ? combinedResult.value.flatMap((r) => r.recipients).map((p) => exportToProtobuf(p))
+            ? combinedResult.value
+                .flatMap((r) => r.recipients)
+                .map((p) => exportToProtobuf(p as RSAPeerId | Ed25519PeerId | Secp256k1PeerId))
             : [],
         }),
       });
@@ -836,7 +851,9 @@ parentPort?.on("message", async (msg: LibP2PNodeMethodGenericMessage) => {
           success: publishResult.isOk(),
           errorMessage: publishResult.isErr() ? publishResult.error.message : undefined,
           errorType: publishResult.isErr() ? publishResult.error.errCode : undefined,
-          peerIds: publishResult.isOk() ? flattenedPeerIds.map((p) => exportToProtobuf(p)) : [],
+          peerIds: publishResult.isOk()
+            ? flattenedPeerIds.map((p) => exportToProtobuf(p as RSAPeerId | Ed25519PeerId | Secp256k1PeerId))
+            : [],
         }),
       });
       break;

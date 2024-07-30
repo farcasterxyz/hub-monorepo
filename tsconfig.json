@@ -2,25 +2,19 @@
   "compilerOptions": {
     /* Needed to import CJS modules like Jest */
     "allowSyntheticDefaultImports": true,
-
     /* Emit additional JS to ease support for importing CJS modules. This enables `allowSyntheticDefaultImports` for type compatibility. */
     "esModuleInterop": true,
-
     /* Use ESM by default instead of CJS*/
     "module": "ES2022",
-
     /* Set the JavaScript language version for emitted JavaScript and include compatible library declarations. */
     "target": "es2022",
-
     "moduleResolution": "Node",
     "sourceMap": true,
-
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
-
     "strict": true,
     "allowUnreachableCode": false,
-    "exactOptionalPropertyTypes": true,
+    "exactOptionalPropertyTypes": false,
     "noFallthroughCasesInSwitch": true,
     "noImplicitOverride": true,
     "noImplicitReturns": true,
@@ -29,10 +23,10 @@
     "noUnusedLocals": false, // causes hard failures when iterating in dev, enforce with instead
     "noUnusedParameters": false
   },
-
   "ts-node": {
     "swc": true
   },
-
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules"
+  ]
 }

@@ -1,6 +1,4 @@
-import { Message as GossipSubMessage, PublishResult } from "@libp2p/interface-pubsub";
 import { Worker } from "worker_threads";
-import { PeerInfo } from "@libp2p/interface-peer-info";
 import {
   ContactInfoContent,
   FarcasterNetwork,
@@ -13,8 +11,16 @@ import {
   Message,
   MessageBundle,
 } from "@farcaster/hub-nodejs";
-import { Connection } from "@libp2p/interface-connection";
-import { PeerId } from "@libp2p/interface-peer-id";
+import {
+  Connection,
+  PeerId,
+  PeerInfo,
+  Message as GossipSubMessage,
+  PublishResult,
+  RSAPeerId,
+  Ed25519PeerId,
+  Secp256k1PeerId,
+} from "@libp2p/interface";
 import { peerIdFromBytes, peerIdFromString } from "@libp2p/peer-id";
 import { multiaddr, Multiaddr } from "@multiformats/multiaddr";
 import { err, ok, Result } from "neverthrow";
@@ -322,7 +328,11 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   }
 
   async addPeerToAddressBook(peerId: PeerId, multiaddr: Multiaddr) {
-    await this.callMethod("addToAddressBook", exportToProtobuf(peerId), multiaddr.bytes);
+    await this.callMethod(
+      "addToAddressBook",
+      exportToProtobuf(peerId as RSAPeerId | Ed25519PeerId | Secp256k1PeerId),
+      multiaddr.bytes,
+    );
   }
 
   async peerStoreCount(): Promise<number> {
@@ -331,18 +341,24 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
 
   /** Removes the peer from the address book and hangs up on them */
   async removePeerFromAddressBook(peerId: PeerId) {
-    await this.callMethod("removeFromAddressBook", exportToProtobuf(peerId));
+    await this.callMethod(
+      "removeFromAddressBook",
+      exportToProtobuf(peerId as RSAPeerId | Ed25519PeerId | Secp256k1PeerId),
+    );
   }
 
   /** Returns the libp2p Peer instance after updating the connections in the AddressBook */
   async getPeerAddresses(peerId: PeerId): Promise<Multiaddr[]> {
-    return (await this.callMethod("getPeerAddresses", exportToProtobuf(peerId))).map((addr: Uint8Array) =>
-      multiaddr(addr),
-    );
+    return (
+      await this.callMethod("getPeerAddresses", exportToProtobuf(peerId as RSAPeerId | Ed25519PeerId | Secp256k1PeerId))
+    ).map((addr: Uint8Array) => multiaddr(addr));
   }
 
   async isPeerAllowed(peerId: PeerId) {
-    return await this.callMethod("isPeerAllowed", exportToProtobuf(peerId));
+    return await this.callMethod(
+      "isPeerAllowed",
+      exportToProtobuf(peerId as RSAPeerId | Ed25519PeerId | Secp256k1PeerId),
+    );
   }
 
   /**
@@ -532,7 +548,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
         {
           peer: detail.remotePeer,
           addrs: detail.remoteAddr,
-          type: detail.stat.direction,
+          type: detail.direction,
         },
         "P2P Connection established",
       );

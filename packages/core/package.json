@@ -40,6 +40,7 @@
     "@ethersproject/abstract-signer": "^5.7.0",
     "@faker-js/faker": "^7.6.0",
     "@farcaster/fishery": "2.2.3",
+    "@noble/ed25519": "^1.7.3",
     "biome-config-custom": "*",
     "ethers": "^6.6.1",
     "ethers5": "npm:ethers@^5.7.0",

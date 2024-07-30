@@ -30,7 +30,7 @@ import {
   MessageBundle,
   toFarcasterTime,
 } from "@farcaster/core";
-import { PeerId } from "@libp2p/interface-peer-id";
+import { PeerId } from "@libp2p/interface";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import { TypedEmitter } from "tiny-typed-emitter";
 import os from "os";
