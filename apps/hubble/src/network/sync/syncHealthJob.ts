@@ -8,6 +8,8 @@ import {
 } from "../../utils/syncHealth.js";
 import { HubInterface } from "hubble.js";
 import { peerIdFromString } from "@libp2p/peer-id";
+import { parseAddress } from "../../utils/p2p.js";
+import { Multiaddr } from "@multiformats/multiaddr";
 
 const log = logger.child({
   component: "SyncHealth",
@@ -18,18 +20,20 @@ type SchedulerStatus = "started" | "stopped";
 export class MeasureSyncHealthJobScheduler {
   private _cronTask?: cron.ScheduledTask;
   private _metadataRetriever: SyncEngineMetadataRetriever;
-  private _maxNumPeers = 10;
+  // Start at 15 minutes ago and take a 10 minute span
   private _startSecondsAgo = 60 * 15;
   private _spanSeconds = 60 * 10;
   private _hub: HubInterface;
+  private _peersInScope: Multiaddr[];
 
   constructor(syncEngine: SyncEngine, hub: HubInterface) {
     this._metadataRetriever = new SyncEngineMetadataRetriever(syncEngine);
     this._hub = hub;
+    this._peersInScope = this.peersInScope();
   }
 
   start(cronSchedule?: string) {
-    // Run every 10 minutes at a random minute
+    // Run every 10 minutes
     const defaultSchedule = "*/10 * * * *";
     this._cronTask = cron.schedule(cronSchedule ?? defaultSchedule, () => this.doJobs(), {
       timezone: "Etc/UTC",
@@ -46,26 +50,51 @@ export class MeasureSyncHealthJobScheduler {
     return this._cronTask ? "started" : "stopped";
   }
 
+  peersInScope() {
+    const extraPeers =
+      process.env["SYNC_HEALTH_PEERS"]
+        ?.split(",")
+        .map((a) => {
+          const multiaddr = parseAddress(a);
+          if (multiaddr.isErr()) {
+            logger.warn(
+              { errorCode: multiaddr.error.errCode, message: multiaddr.error.message },
+              "Couldn't parse extra sync health peer address address, ignoring",
+            );
+          }
+          return multiaddr;
+        })
+        .filter((a) => a.isOk())
+        .map((a) => a._unsafeUnwrap()) ?? [];
+
+    return [...extraPeers, ...this._hub.bootstrapAddrs()];
+  }
+
   async doJobs() {
-    log.info({}, "Starting compute sync health job");
-
-    const peerIds = Array.from(this._metadataRetriever._syncEngine.getCurrentHubPeerContacts());
-
-    // Shuffle and pick peers
-    const peersToContact = peerIds
-      .map((value) => ({ value, sort: Math.random() }))
-      .sort((a, b) => a.sort - b.sort)
-      .map(({ value }) => value)
-      .slice(0, this._maxNumPeers);
+    log.info({}, "Starting compute SyncHealth job");
 
     const startTime = Date.now() - this._startSecondsAgo * 1000;
     const stopTime = startTime + this._spanSeconds * 1000;
 
-    for (const [peerId, contactInfo] of peersToContact) {
-      const rpcClient = await this._hub.getRPCClientForPeer(peerIdFromString(peerId), contactInfo);
+    for (const multiaddr of this._peersInScope) {
+      const peerId = multiaddr.getPeerId();
+
+      if (!peerId) {
+        log.info({ multiaddr }, "Couldn't get peerid for multiaddr");
+        continue;
+      }
+
+      const contactInfo = this._metadataRetriever._syncEngine.getContactInfoForPeerId(peerId);
+
+      if (!contactInfo) {
+        log.info({ peerId }, "Couldn't get contact info, skipping peer");
+        continue;
+      }
+
+      const rpcClient = await this._hub.getRPCClientForPeer(peerIdFromString(peerId), contactInfo.contactInfo);
 
       if (rpcClient === undefined) {
-        log.info("Couldn't get rpc client, skipping peer", peerId, contactInfo);
+        log.info({ peerId, contactInfo }, "Couldn't get rpc client, skipping peer");
         continue;
       }
 
@@ -80,20 +109,22 @@ export class MeasureSyncHealthJobScheduler {
       );
 
       if (syncHealthMessageStats.isErr()) {
-        log.info(syncHealthMessageStats.error, "Error computing sync stats");
+        log.info({ error: syncHealthMessageStats.error }, "Error computing SyncHealth");
         continue;
       }
 
       log.info(
         {
-          hubNumMessages: syncHealthMessageStats.value.primaryNumMessages,
-          peerNumMessages: syncHealthMessageStats.value.peerNumMessages,
+          ourNumMessages: syncHealthMessageStats.value.primaryNumMessages,
+          theirNumMessages: syncHealthMessageStats.value.peerNumMessages,
           syncHealth: syncHealthMessageStats.value.computeDiff(),
           syncHealthPercentage: syncHealthMessageStats.value.computeDiffPercentage(),
-          contactInfo,
+          peerId,
         },
-        "Computed sync health stats for peer",
+        "Computed SyncHealth stats for peer",
       );
     }
+
+    log.info("Finished SyncHealth job");
   }
 }
