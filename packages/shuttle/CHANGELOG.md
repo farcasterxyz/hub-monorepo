@@ -1,5 +1,13 @@
 # @farcaster/hub-shuttle
 
+## 0.5.9
+
+### Patch Changes
+
+- 5d5b3273: Fix CPU throttling regression introduced in 0.5.6 by trim optimization
+- Updated dependencies [939dde84]
+  - @farcaster/hub-nodejs@0.11.23
+
 ## 0.5.8
 
 ### Patch Changes
