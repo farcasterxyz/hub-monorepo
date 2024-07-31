@@ -1367,9 +1367,11 @@ export default class Server {
             statsd().increment("rpc.subscribe.out_of_order");
           }
           lastEventId = event.id;
-          if (totalShards === 0) {
+          const isOrderedEvent =
+            event.type === HubEventType.MERGE_ON_CHAIN_EVENT || event.type === HubEventType.MERGE_USERNAME_PROOF;
+          if (totalShards === 0 || (isOrderedEvent && shardIndex === 0)) {
             bufferedStreamWriter.writeToStream(event);
-          } else {
+          } else if (!isOrderedEvent) {
             const fid = fidFromEvent(event);
             if (jumpConsistentHash(fid, totalShards) === shardIndex) {
               bufferedStreamWriter.writeToStream(event);
@@ -1420,9 +1422,14 @@ export default class Server {
 
           await this.engine.getDb().forEachIteratorByOpts(eventsIteratorOpts.value, async (_key, value) => {
             const event = HubEvent.decode(Uint8Array.from(value as Buffer));
+            const isOrderedEvent =
+              event.type === HubEventType.MERGE_ON_CHAIN_EVENT || event.type === HubEventType.MERGE_USERNAME_PROOF;
             const isRequestedType = request.eventTypes.length === 0 || request.eventTypes.includes(event.type);
-            const isRequestedFid = totalShards === 0 || fidFromEvent(event) % totalShards === shardIndex;
-            const shouldWriteEvent = isRequestedType && isRequestedFid;
+            const shouldWriteEvent =
+              isRequestedType &&
+              (totalShards === 0 ||
+                (isOrderedEvent && shardIndex === 0) ||
+                (!isOrderedEvent && jumpConsistentHash(fidFromEvent(event), totalShards) === shardIndex));
             if (shouldWriteEvent) {
               const writeResult = bufferedStreamWriter.writeToStream(event);
 
