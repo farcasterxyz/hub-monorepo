@@ -1,5 +1,14 @@
 # @farcaster/hub-nodejs
 
+## 0.11.23
+
+### Patch Changes
+
+- 939dde84: chore: upgrade viem to v2
+- Updated dependencies [61959467]
+- Updated dependencies [939dde84]
+  - @farcaster/core@0.14.20
+
 ## 0.11.22
 
 ### Patch Changes
