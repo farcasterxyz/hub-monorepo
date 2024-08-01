@@ -1,5 +1,16 @@
 # @farcaster/hubble
 
+## 1.14.2
+
+### Patch Changes
+
+- fb2645ee: fix: Include peerid in bootstrap multiaddr
+- 501ceff2: fix: Ensure onchain + username proofs are always assigned to the same shard for linear ordering
+- 61959467: upgrade libp2p/gossipsub and dependencies
+- 939dde84: chore: upgrade viem to v2
+- Updated dependencies [939dde84]
+  - @farcaster/hub-nodejs@0.11.23
+
 ## 1.14.1
 
 ### Patch Changes
