@@ -1,5 +1,13 @@
 # @farcaster/hub-shuttle
 
+## 0.5.10
+
+### Patch Changes
+
+- 165a0aac: fix(shuttle): Add missing `await` to per-iteration `sleep()` call
+- Updated dependencies [939dde84]
+  - @farcaster/hub-nodejs@0.11.23
+
 ## 0.5.9
 
 ### Patch Changes
