@@ -759,6 +759,7 @@ describe("Multi peer sync engine", () => {
     const farcasterTime = getFarcasterTime()._unsafeUnwrap() - 1000;
 
     await addMessagesWithTimeDelta(engine1, [150, 170, 180, 200]);
+    await sleepWhile(() => syncEngine1.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
     const start = new Date(fromFarcasterTime(farcasterTime + 150)._unsafeUnwrap());
     const stop = new Date(fromFarcasterTime(farcasterTime + 200)._unsafeUnwrap());
@@ -769,6 +770,7 @@ describe("Multi peer sync engine", () => {
     expect(messageStats1.isErr());
 
     await addMessagesWithTimeDelta(engine2, [150, 170]);
+    await sleepWhile(() => syncEngine2.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
     const messageStats2 = (
       await computeSyncHealthMessageStats(start, stop, metadataRetriever1, metadataRetriever2)
@@ -779,6 +781,7 @@ describe("Multi peer sync engine", () => {
     expect(messageStats2.peerNumMessages).toEqual(2);
 
     await addMessagesWithTimeDelta(engine2, [180, 185, 200]);
+    await sleepWhile(() => syncEngine2.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
     const messageStats3 = (
       await computeSyncHealthMessageStats(start, stop, metadataRetriever1, metadataRetriever2)
