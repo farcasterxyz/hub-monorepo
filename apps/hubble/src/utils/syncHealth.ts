@@ -8,6 +8,7 @@ import {
   HubRpcClient,
   TrieNodeMetadataResponse,
   Message,
+  HubError,
 } from "@farcaster/hub-nodejs";
 
 import { appendFile } from "fs/promises";
@@ -16,6 +17,8 @@ import { addressInfoFromGossip, addressInfoToString } from "./p2p.js";
 
 import { SyncId, timestampToPaddedTimestampPrefix } from "../network/sync/syncId.js";
 import { err, ok } from "neverthrow";
+import { toTrieNodeMetadataResponse } from "../rpc/server.js";
+import SyncEngine from "../network/sync/syncEngine.js";
 
 class SyncHealthMessageStats {
   primaryNumMessages: number;
@@ -65,9 +68,8 @@ class Stats {
   results = (who: "Primary" | "Peer") => {
     if (who === "Primary") {
       return this.resultsUploadingToPrimary;
-    } else {
-      return this.resultsUploadingToPeer;
     }
+    return this.resultsUploadingToPeer;
   };
 
   errorResults = (who: "Primary" | "Peer") => {
@@ -124,18 +126,48 @@ class Stats {
   };
 }
 
+interface MetadataRetriever {
+  getMetadata: (prefix: Buffer) => Promise<HubResult<TrieNodeMetadataResponse>>;
+}
+
+export class RpcMetadataRetriever implements MetadataRetriever {
+  _rpcClient: HubRpcClient;
+
+  constructor(rpcClient: HubRpcClient) {
+    this._rpcClient = rpcClient;
+  }
+
+  getMetadata = async (prefix: Buffer): Promise<HubResult<TrieNodeMetadataResponse>> => {
+    return this._rpcClient.getSyncMetadataByPrefix(TrieNodePrefix.create({ prefix }), new Metadata(), {
+      deadline: Date.now() + RPC_TIMEOUT_SECONDS * 1000,
+    });
+  };
+}
+
+export class SyncEngineMetadataRetriever implements MetadataRetriever {
+  _syncEngine: SyncEngine;
+
+  constructor(syncEngine: SyncEngine) {
+    this._syncEngine = syncEngine;
+  }
+
+  getMetadata = async (prefix: Buffer): Promise<HubResult<TrieNodeMetadataResponse>> => {
+    const result = await this._syncEngine.getTrieNodeMetadata(prefix);
+    if (result) {
+      return ok(toTrieNodeMetadataResponse(result));
+    }
+
+    // This can happen if there are no messages under the prefix for this node. We may want to return an empty result rather than an error.
+    return err(new HubError("unavailable", "Missing metadata for node"));
+  };
+}
+
 const RPC_TIMEOUT_SECONDS = 2;
 
 const getTimePrefix = (date: Date) => {
   const unixTime = date.getTime();
   return toFarcasterTime(unixTime).map((farcasterTime) => {
     return Buffer.from(timestampToPaddedTimestampPrefix(farcasterTime));
-  });
-};
-
-const getMetadata = (timePrefix: Buffer, rpcClient: HubRpcClient): Promise<HubResult<TrieNodeMetadataResponse>> => {
-  return rpcClient.getSyncMetadataByPrefix(TrieNodePrefix.create({ prefix: timePrefix }), new Metadata(), {
-    deadline: Date.now() + RPC_TIMEOUT_SECONDS * 1000,
   });
 };
 
@@ -161,10 +193,10 @@ const traverseRange = async (
   node: TrieNodeMetadataResponse,
   startTimePrefix: Buffer,
   stopTimePrefix: Buffer,
-  rpcClient: HubRpcClient,
+  metadataRetriever: MetadataRetriever,
   onTrieNode: (node: TrieNodeMetadataResponse) => undefined,
 ) => {
-  const metadata = await getMetadata(Buffer.from(node.prefix), rpcClient);
+  const metadata = await metadataRetriever.getMetadata(Buffer.from(node.prefix));
 
   if (metadata.isErr()) {
     return err(metadata.error);
@@ -177,7 +209,7 @@ const traverseRange = async (
       onTrieNode(child);
     } else if (isPrefix(startTimePrefix, childValue) || isPrefix(stopTimePrefix, childValue)) {
       // If the child is along the start time prefix or along the stop time prefix, we need to continue recursing down the path. Some nodes under this one will be included in the query, but not all.
-      await traverseRange(child, startTimePrefix, stopTimePrefix, rpcClient, onTrieNode);
+      await traverseRange(child, startTimePrefix, stopTimePrefix, metadataRetriever, onTrieNode);
     } else if (Buffer.compare(childValue, startTimePrefix) === 1 && Buffer.compare(childValue, stopTimePrefix) === -1) {
       // If the child's prefix is greater than the start prefix or less than the stop prefix, all nodes under it will definitely be included. Present this node to the caller and don't continue recursing
       onTrieNode(child);
@@ -187,7 +219,7 @@ const traverseRange = async (
   return ok(undefined);
 };
 
-const getPrefixInfo = async (rpcClient: HubRpcClient, startTime: Date, stopTime: Date) => {
+const getPrefixInfo = async (metadataRetriever: MetadataRetriever, startTime: Date, stopTime: Date) => {
   const startTimePrefix = getTimePrefix(startTime);
   if (startTimePrefix.isErr()) {
     return err(startTimePrefix.error);
@@ -201,7 +233,7 @@ const getPrefixInfo = async (rpcClient: HubRpcClient, startTime: Date, stopTime:
 
   const commonPrefix = getCommonPrefix(startTimePrefix.value, stopTimePrefix.value);
 
-  const commonPrefixMetadata = await getMetadata(Buffer.from(commonPrefix), rpcClient);
+  const commonPrefixMetadata = await metadataRetriever.getMetadata(Buffer.from(commonPrefix));
 
   if (commonPrefixMetadata.isErr()) {
     return err(commonPrefixMetadata.error);
@@ -216,8 +248,8 @@ const getPrefixInfo = async (rpcClient: HubRpcClient, startTime: Date, stopTime:
 
 // Queries for the number of messages between the start time and stop time and is efficient with respect to the number of rpcs to the peer. It only queries down along the start prefix and stop prefix starting at the common prefix.
 
-const getNumMessagesInSpan = async (rpcClient: HubRpcClient, startTime: Date, stopTime: Date) => {
-  const prefixInfo = await getPrefixInfo(rpcClient, startTime, stopTime);
+const getNumMessagesInSpan = async (metadataRetriever: MetadataRetriever, startTime: Date, stopTime: Date) => {
+  const prefixInfo = await getPrefixInfo(metadataRetriever, startTime, stopTime);
 
   if (prefixInfo.isErr()) {
     return err(prefixInfo.error);
@@ -228,7 +260,7 @@ const getNumMessagesInSpan = async (rpcClient: HubRpcClient, startTime: Date, st
     prefixInfo.value.commonPrefixMetadata,
     prefixInfo.value.startTimePrefix,
     prefixInfo.value.stopTimePrefix,
-    rpcClient,
+    metadataRetriever,
     (node: TrieNodeMetadataResponse) => {
       numMessages += node.numMessages;
     },
@@ -241,40 +273,14 @@ const getNumMessagesInSpan = async (rpcClient: HubRpcClient, startTime: Date, st
   return ok(numMessages);
 };
 
-// Queries for the number of messages between the start time and stop time and is very simple. It queries once per second and works if the time span is short.
-const getNumMessagesInSpanUnoptimized = async (rpcClient: HubRpcClient, startTime: Date, stopTime: Date) => {
-  let numMessages = 0;
-
-  const startTimeMs = startTime.getTime();
-  const stopTimeMs = stopTime.getTime();
-  for (let i = startTimeMs; i < stopTimeMs; i += 1000) {
-    const timePrefix = getTimePrefix(new Date(i));
-
-    if (timePrefix.isErr()) {
-      return err(timePrefix.error);
-    }
-
-    const metadata = await getMetadata(timePrefix.value, rpcClient);
-
-    if (metadata.isErr()) {
-      return err(metadata.error);
-    }
-
-    numMessages += metadata.value.numMessages;
-  }
-
-  return ok(numMessages);
-};
-
-const computeSyncHealthMessageStats = async (
+export const computeSyncHealthMessageStats = async (
   startTime: Date,
   stopTime: Date,
-  primaryRpcClient: HubRpcClient,
-  peer2RpcClient: HubRpcClient,
-  getNumMessagesInSpan: (rpcClient: HubRpcClient, startTime: Date, stopTime: Date) => Promise<HubResult<number>>,
+  primaryMetadataRetriever: MetadataRetriever,
+  peerMetadataRetriever: MetadataRetriever,
 ) => {
-  const numMessagesPrimary = await getNumMessagesInSpan(primaryRpcClient, startTime, stopTime);
-  const numMessagesPeer = await getNumMessagesInSpan(peer2RpcClient, startTime, stopTime);
+  const numMessagesPrimary = await getNumMessagesInSpan(primaryMetadataRetriever, startTime, stopTime);
+  const numMessagesPeer = await getNumMessagesInSpan(peerMetadataRetriever, startTime, stopTime);
 
   if (numMessagesPrimary.isErr()) {
     return err(numMessagesPrimary.error);
@@ -308,8 +314,8 @@ const pickPeers = async (rpcClient: HubRpcClient, count: number): Promise<HubRes
   });
 };
 
-const computeSyncIdsInSpan = async (rpcClient: HubRpcClient, startTime: Date, stopTime: Date) => {
-  const prefixInfo = await getPrefixInfo(rpcClient, startTime, stopTime);
+const computeSyncIdsInSpan = async (rpcMetadataRetriever: RpcMetadataRetriever, startTime: Date, stopTime: Date) => {
+  const prefixInfo = await getPrefixInfo(rpcMetadataRetriever, startTime, stopTime);
 
   if (prefixInfo.isErr()) {
     return err(prefixInfo.error);
@@ -320,7 +326,7 @@ const computeSyncIdsInSpan = async (rpcClient: HubRpcClient, startTime: Date, st
     prefixInfo.value.commonPrefixMetadata,
     prefixInfo.value.startTimePrefix,
     prefixInfo.value.stopTimePrefix,
-    rpcClient,
+    rpcMetadataRetriever,
     (node: TrieNodeMetadataResponse) => {
       prefixes.push(node.prefix);
     },
@@ -332,7 +338,9 @@ const computeSyncIdsInSpan = async (rpcClient: HubRpcClient, startTime: Date, st
 
   const syncIds = [];
   for (const prefix of prefixes) {
-    const prefixSyncIds = await rpcClient.getAllSyncIdsByPrefix(TrieNodePrefix.create({ prefix }));
+    const prefixSyncIds = await rpcMetadataRetriever._rpcClient.getAllSyncIdsByPrefix(
+      TrieNodePrefix.create({ prefix }),
+    );
     if (prefixSyncIds.isOk()) {
       syncIds.push(...prefixSyncIds.value.syncIds);
     }
@@ -342,15 +350,15 @@ const computeSyncIdsInSpan = async (rpcClient: HubRpcClient, startTime: Date, st
 };
 
 const tryPushingMissingMessages = async (
-  rpcClientWithMessages: HubRpcClient,
-  rpcClientMissingMessages: HubRpcClient,
+  rpcMetadataRetrieverWithMessages: RpcMetadataRetriever,
+  rpcMetadataRetrieverMissingMessages: RpcMetadataRetriever,
   missingSyncIds: Buffer[],
 ) => {
   if (missingSyncIds.length === 0) {
     return ok([]);
   }
 
-  const messages = await rpcClientWithMessages.getAllMessagesBySyncIds({
+  const messages = await rpcMetadataRetrieverWithMessages._rpcClient.getAllMessagesBySyncIds({
     syncIds: missingSyncIds,
   });
 
@@ -360,7 +368,7 @@ const tryPushingMissingMessages = async (
 
   const results = [];
   for (const message of messages.value.messages) {
-    const result = await rpcClientMissingMessages.submitMessage(message);
+    const result = await rpcMetadataRetrieverMissingMessages._rpcClient.submitMessage(message);
     results.push(result);
   }
 
@@ -388,18 +396,18 @@ const uniqueSyncIds = (mySyncIds: Uint8Array[], otherSyncIds: Uint8Array[]) => {
 };
 
 const investigateDiff = async (
-  primaryRpcClient: HubRpcClient,
-  peerRpcClient: HubRpcClient,
+  primaryRpcMetadataRetriever: RpcMetadataRetriever,
+  peerRpcMetadataRetriever: RpcMetadataRetriever,
   startTime: Date,
   stopTime: Date,
 ) => {
-  const primarySyncIds = await computeSyncIdsInSpan(primaryRpcClient, startTime, stopTime);
+  const primarySyncIds = await computeSyncIdsInSpan(primaryRpcMetadataRetriever, startTime, stopTime);
 
   if (primarySyncIds.isErr()) {
     return err(primarySyncIds.error);
   }
 
-  const peerSyncIds = await computeSyncIdsInSpan(peerRpcClient, startTime, stopTime);
+  const peerSyncIds = await computeSyncIdsInSpan(peerRpcMetadataRetriever, startTime, stopTime);
 
   if (peerSyncIds.isErr()) {
     return err(peerSyncIds.error);
@@ -408,13 +416,21 @@ const investigateDiff = async (
   const idsOnlyInPrimary = uniqueSyncIds(primarySyncIds.value, peerSyncIds.value);
   const idsOnlyInPeer = uniqueSyncIds(peerSyncIds.value, primarySyncIds.value);
 
-  const resultsPushingToPeer = await tryPushingMissingMessages(primaryRpcClient, peerRpcClient, idsOnlyInPrimary);
+  const resultsPushingToPeer = await tryPushingMissingMessages(
+    primaryRpcMetadataRetriever,
+    peerRpcMetadataRetriever,
+    idsOnlyInPrimary,
+  );
 
   if (resultsPushingToPeer.isErr()) {
     return err(resultsPushingToPeer.error);
   }
 
-  const resultsPushingToPrimary = await tryPushingMissingMessages(peerRpcClient, primaryRpcClient, idsOnlyInPeer);
+  const resultsPushingToPrimary = await tryPushingMissingMessages(
+    peerRpcMetadataRetriever,
+    primaryRpcMetadataRetriever,
+    idsOnlyInPeer,
+  );
 
   if (resultsPushingToPrimary.isErr()) {
     return err(resultsPushingToPrimary.error);
@@ -460,85 +476,91 @@ export const printSyncHealth = async (
     if (err) {
       console.log("Primary rpc client not ready", err);
       throw Error();
-    } else {
-      const peers = await pickPeers(primaryRpcClient, maxNumPeers);
-      if (peers.isErr()) {
-        console.log("Error querying peers");
-        return;
+    }
+    const peers = await pickPeers(primaryRpcClient, maxNumPeers);
+    if (peers.isErr()) {
+      console.log("Error querying peers");
+      return;
+    }
+
+    const primaryRpcMetadataRetriever = new RpcMetadataRetriever(primaryRpcClient);
+
+    for (const peer of peers.value) {
+      if (peer === undefined) {
+        continue;
+      }
+      let peerRpcClient;
+
+      try {
+        // Most hubs seem to work with the insecure one
+        peerRpcClient = getInsecureHubRpcClient(peer);
+
+        peerRpcClient.$.waitForReady(Date.now() + RPC_TIMEOUT_SECONDS * 1000, (err) => {
+          if (err) {
+            peerRpcClient = getSSLHubRpcClient(peer);
+          }
+        });
+      } catch (e) {
+        peerRpcClient = getSSLHubRpcClient(peer);
       }
 
-      for (const peer of peers.value) {
-        if (peer === undefined) {
-          continue;
-        }
-        let peerRpcClient;
+      const peerRpcMetadataRetriever = new RpcMetadataRetriever(peerRpcClient);
 
-        try {
-          // Most hubs seem to work with the insecure one
-          peerRpcClient = getInsecureHubRpcClient(peer);
+      try {
+        console.log("Connecting to peer", peer);
+        const syncHealthStats = await computeSyncHealthMessageStats(
+          startTime,
+          stopTime,
+          primaryRpcMetadataRetriever,
+          peerRpcMetadataRetriever,
+        );
+        if (syncHealthStats.isOk()) {
+          // Sync health is us relative to peer. If the sync health is high, means we have more messages. If it's low, we have less.
+          const score = syncHealthStats.value.computeDiff();
 
-          peerRpcClient.$.waitForReady(Date.now() + RPC_TIMEOUT_SECONDS * 1000, (err) => {
-            if (err) {
-              peerRpcClient = getSSLHubRpcClient(peer);
-            }
-          });
-        } catch (e) {
-          peerRpcClient = getSSLHubRpcClient(peer);
-        }
+          // Useful to see progress
+          console.log("Computed sync health score", score);
 
-        try {
-          console.log("Connecting to peer", peer);
-          const syncHealthStats = await computeSyncHealthMessageStats(
-            startTime,
-            stopTime,
-            primaryRpcClient,
-            peerRpcClient,
-            // getNumMessagesInSpan, keeping this in here so it's easy to flip which computation we use. This one is simpler.
-            getNumMessagesInSpan,
-          );
-          if (syncHealthStats.isOk()) {
-            // Sync health is us relative to peer. If the sync health is high, means we have more messages. If it's low, we have less.
-            const score = syncHealthStats.value.computeDiff();
+          if (outfile) {
+            let aggregateStats;
+            if (score !== 0) {
+              console.log("Investigating diff");
+              const result = await investigateDiff(
+                primaryRpcMetadataRetriever,
+                peerRpcMetadataRetriever,
+                startTime,
+                stopTime,
+              );
 
-            // Useful to see progress
-            console.log("Computed sync health score", score);
-
-            if (outfile) {
-              let aggregateStats;
-              if (score !== 0) {
-                console.log("Investigating diff");
-                const result = await investigateDiff(primaryRpcClient, peerRpcClient, startTime, stopTime);
-
-                if (result.isErr()) {
-                  console.log("Error investigating diff", result.error);
-                  // Report the stats anyway, but with no investigation results
-                  aggregateStats = new Stats(startTime, stopTime, primaryNode, peer, syncHealthStats.value, [], []);
-                } else {
-                  aggregateStats = new Stats(
-                    startTime,
-                    stopTime,
-                    primaryNode,
-                    peer,
-                    syncHealthStats.value,
-                    result.value.resultsPushingToPeer,
-                    result.value.resultsPushingToPrimary,
-                  );
-                }
-              } else {
+              if (result.isErr()) {
+                console.log("Error investigating diff", result.error);
                 // Report the stats anyway, but with no investigation results
                 aggregateStats = new Stats(startTime, stopTime, primaryNode, peer, syncHealthStats.value, [], []);
+              } else {
+                aggregateStats = new Stats(
+                  startTime,
+                  stopTime,
+                  primaryNode,
+                  peer,
+                  syncHealthStats.value,
+                  result.value.resultsPushingToPeer,
+                  result.value.resultsPushingToPrimary,
+                );
               }
-
-              // The data is valuable, let's just wait to write it. Note, data is appended to any existing file.
-              await appendFile(outfile, aggregateStats.serializedSummary());
+            } else {
+              // Report the stats anyway, but with no investigation results
+              aggregateStats = new Stats(startTime, stopTime, primaryNode, peer, syncHealthStats.value, [], []);
             }
-          } else {
-            console.log("Error computing sync health stats", syncHealthStats.error);
+
+            // The data is valuable, let's just wait to write it. Note, data is appended to any existing file.
+            await appendFile(outfile, aggregateStats.serializedSummary());
           }
-          peerRpcClient.close();
-        } catch (err) {
-          console.log("Rasied while computing sync health", err);
+        } else {
+          console.log("Error computing sync health stats", syncHealthStats.error);
         }
+        peerRpcClient.close();
+      } catch (err) {
+        console.log("Rasied while computing sync health", err);
       }
     }
 

@@ -11,6 +11,7 @@ import {
   OnChainEvent,
   UserNameProof,
   MessageData,
+  fromFarcasterTime,
 } from "@farcaster/hub-nodejs";
 import { APP_NICKNAME, APP_VERSION, HubInterface } from "../../hubble.js";
 import SyncEngine from "./syncEngine.js";
@@ -22,6 +23,7 @@ import { MockHub } from "../../test/mocks.js";
 import { sleep, sleepWhile } from "../../utils/crypto.js";
 import { ensureMessageData } from "../../storage/db/message.js";
 import { EMPTY_HASH } from "./merkleTrie.js";
+import { SyncEngineMetadataRetriever, computeSyncHealthMessageStats } from "../../utils/syncHealth.js";
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;
 const TEST_TIMEOUT_LONG = 60 * 1000;
@@ -737,6 +739,57 @@ describe("Multi peer sync engine", () => {
       clientForServer2.$.close();
       await server2.stop();
     }
+  });
+
+  test("perform sync health computation", async () => {
+    const metadataRetriever1 = new SyncEngineMetadataRetriever(syncEngine1);
+    const metadataRetriever2 = new SyncEngineMetadataRetriever(syncEngine2);
+
+    const setupEngine = async (engine: Engine) => {
+      await engine.mergeOnChainEvent(custodyEvent);
+      await engine.mergeOnChainEvent(signerEvent);
+      await engine.mergeOnChainEvent(storageEvent);
+    };
+
+    // Engine1 has no messages
+    await setupEngine(engine1);
+    await setupEngine(engine2);
+
+    // This is the start time from addMessagesWithTimeDelta
+    const farcasterTime = getFarcasterTime()._unsafeUnwrap() - 1000;
+
+    await addMessagesWithTimeDelta(engine1, [150, 170, 180, 200]);
+    await sleepWhile(() => syncEngine1.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
+
+    const start = new Date(fromFarcasterTime(farcasterTime + 150)._unsafeUnwrap());
+    const stop = new Date(fromFarcasterTime(farcasterTime + 200)._unsafeUnwrap());
+
+    const messageStats1 = await computeSyncHealthMessageStats(start, stop, metadataRetriever1, metadataRetriever2);
+
+    // This happens because there are no messages under the common prefix for engine2
+    expect(messageStats1.isErr());
+
+    await addMessagesWithTimeDelta(engine2, [150, 170]);
+    await sleepWhile(() => syncEngine2.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
+
+    const messageStats2 = (
+      await computeSyncHealthMessageStats(start, stop, metadataRetriever1, metadataRetriever2)
+    )._unsafeUnwrap();
+
+    // Query is inclusive of the start time and exclusive of the stop time. We cound 150, 170, 180 on engine1 and  150, 170 on engine 2
+    expect(messageStats2.primaryNumMessages).toEqual(3);
+    expect(messageStats2.peerNumMessages).toEqual(2);
+
+    await addMessagesWithTimeDelta(engine2, [180, 185, 200]);
+    await sleepWhile(() => syncEngine2.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
+
+    const messageStats3 = (
+      await computeSyncHealthMessageStats(start, stop, metadataRetriever1, metadataRetriever2)
+    )._unsafeUnwrap();
+
+    // engine2 has all the messages engine1 has in addition to 185.
+    expect(messageStats3.primaryNumMessages).toEqual(3);
+    expect(messageStats3.peerNumMessages).toEqual(4);
   });
 
   xtest(

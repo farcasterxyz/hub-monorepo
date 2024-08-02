@@ -97,6 +97,7 @@ import { DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT } from "./defaultConfig.js"
 import { diagnosticReporter } from "./utils/diagnosticReport.js";
 import { startupCheck, StartupCheckStatus } from "./utils/startupCheck.js";
 import { AddressInfo } from "node:net";
+import { MeasureSyncHealthJobScheduler } from "./network/sync/syncHealthJob.js";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
@@ -153,6 +154,7 @@ export interface HubInterface {
     options?: Partial<ClientOptions>,
   ): Promise<HubRpcClient | undefined>;
   updateApplicationPeerScore(peerId: String, score: number): HubAsyncResult<void>;
+  bootstrapAddrs(): Multiaddr[];
 }
 
 export interface HubOptions {
@@ -378,6 +380,7 @@ export class Hub implements HubInterface {
   private checkIncomingPortsJobScheduler: CheckIncomingPortsJobScheduler;
   private updateNetworkConfigJobScheduler: UpdateNetworkConfigJobScheduler;
   private dbSnapshotBackupJobScheduler: DbSnapshotBackupJobScheduler;
+  private measureSyncHealthJobScheduler: MeasureSyncHealthJobScheduler;
 
   private submitMessageLogger = new SubmitMessageSuccessLogCache(log);
 
@@ -540,6 +543,7 @@ export class Hub implements HubInterface {
       this.syncEngine,
       this.options,
     );
+    this.measureSyncHealthJobScheduler = new MeasureSyncHealthJobScheduler(this.syncEngine, this);
 
     if (options.testUsers) {
       this.testDataJobScheduler = new PeriodicTestDataJobScheduler(this.rpcServer, options.testUsers as TestUser[]);
@@ -573,6 +577,10 @@ export class Hub implements HubInterface {
 
   async syncWithPeerId(peerId: string): Promise<void> {
     await this.syncEngine.diffSyncIfRequired(this, peerId);
+  }
+
+  bootstrapAddrs(): Multiaddr[] {
+    return this.options.bootstrapAddrs ?? [];
   }
 
   /* Start the GossipNode and RPC server  */
@@ -771,14 +779,12 @@ export class Hub implements HubInterface {
     await this.l2RegistryProvider.start();
     await this.fNameRegistryEventsProvider.start();
 
-    const bootstrapAddrs = this.options.bootstrapAddrs ?? [];
-
     const peerId = this.options.peerId
       ? exportToProtobuf(this.options.peerId as RSAPeerId | Ed25519PeerId | Secp256k1PeerId)
       : undefined;
 
     // Start the Gossip node
-    await this.gossipNode.start(bootstrapAddrs, {
+    await this.gossipNode.start(this.bootstrapAddrs(), {
       peerId,
       ipMultiAddr: this.options.ipMultiAddr,
       announceIp: this.options.announceIp,
@@ -805,6 +811,7 @@ export class Hub implements HubInterface {
     const randomMinute = Math.floor(Math.random() * 30);
     this.gossipContactInfoJobScheduler.start(`${randomMinute} */30 * * * *`); // Random minute every 30 minutes
     this.checkIncomingPortsJobScheduler.start();
+    this.measureSyncHealthJobScheduler.start();
 
     // Mainnet only jobs
     if (this.options.network === FarcasterNetwork.MAINNET) {
@@ -1216,6 +1223,7 @@ export class Hub implements HubInterface {
     this.checkIncomingPortsJobScheduler.stop();
     this.updateNetworkConfigJobScheduler.stop();
     this.dbSnapshotBackupJobScheduler.stop();
+    this.measureSyncHealthJobScheduler.stop();
 
     // Stop the engine
     await this.engine.stop();
