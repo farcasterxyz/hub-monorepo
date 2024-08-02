@@ -9,7 +9,7 @@ import {
 import { HubInterface } from "hubble.js";
 import { peerIdFromString } from "@libp2p/peer-id";
 import { parseAddress } from "../../utils/p2p.js";
-import { Multiaddr } from "@multiformats/multiaddr";
+import { multiaddr, Multiaddr } from "@multiformats/multiaddr";
 
 const log = logger.child({
   component: "SyncHealth",
@@ -24,7 +24,7 @@ export class MeasureSyncHealthJobScheduler {
   private _startSecondsAgo = 60 * 15;
   private _spanSeconds = 60 * 10;
   private _hub: HubInterface;
-  private _peersInScope: Multiaddr[];
+  private _peersInScope: string[];
 
   constructor(syncEngine: SyncEngine, hub: HubInterface) {
     this._metadataRetriever = new SyncEngineMetadataRetriever(syncEngine);
@@ -51,23 +51,18 @@ export class MeasureSyncHealthJobScheduler {
   }
 
   peersInScope() {
-    const extraPeers =
-      process.env["SYNC_HEALTH_PEERS"]
-        ?.split(",")
-        .map((a) => {
-          const multiaddr = parseAddress(a);
-          if (multiaddr.isErr()) {
-            logger.warn(
-              { errorCode: multiaddr.error.errCode, message: multiaddr.error.message },
-              "Couldn't parse extra sync health peer address address, ignoring",
-            );
-          }
-          return multiaddr;
-        })
-        .filter((a) => a.isOk())
-        .map((a) => a._unsafeUnwrap()) ?? [];
+    const peers = process.env["SYNC_HEALTH_PEER_IDS"]?.split(",") ?? [];
 
-    return [...extraPeers, ...this._hub.bootstrapAddrs()];
+    for (const multiaddr of this._hub.bootstrapAddrs()) {
+      const peerId = multiaddr.getPeerId();
+      if (!peerId) {
+        log.info({ multiaddr }, "Couldn't get peerid for multiaddr");
+      } else {
+        peers.push(peerId);
+      }
+    }
+
+    return peers;
   }
 
   async doJobs() {
@@ -76,14 +71,7 @@ export class MeasureSyncHealthJobScheduler {
     const startTime = Date.now() - this._startSecondsAgo * 1000;
     const stopTime = startTime + this._spanSeconds * 1000;
 
-    for (const multiaddr of this._peersInScope) {
-      const peerId = multiaddr.getPeerId();
-
-      if (!peerId) {
-        log.info({ multiaddr }, "Couldn't get peerid for multiaddr");
-        continue;
-      }
-
+    for (const peerId of this._peersInScope) {
       const contactInfo = this._metadataRetriever._syncEngine.getContactInfoForPeerId(peerId);
 
       if (!contactInfo) {
@@ -124,7 +112,5 @@ export class MeasureSyncHealthJobScheduler {
         "Computed SyncHealth stats for peer",
       );
     }
-
-    log.info("Finished SyncHealth job");
   }
 }
