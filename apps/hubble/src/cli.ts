@@ -957,6 +957,7 @@ app
   .option("--max-num-peers <count>", "Maximum number of peers to measure for", "20")
   .option("--primary-node <host:port>", "Node to measure all peers against (required)", "hoyt.farcaster.xyz:2283")
   .option("--outfile <filename>", "File to output measurements to", "health.out")
+  .option("--peers <ip:port,...>", "Peers to compare with (default: pick random connected peers)")
   .action(async (cliOptions) => {
     await printSyncHealth(
       cliOptions.startTimeOfday,
@@ -964,6 +965,7 @@ app
       cliOptions.maxNumPeers,
       cliOptions.primaryNode,
       cliOptions.outfile,
+      cliOptions.peers ? cliOptions.peers.split(",") : undefined,
     );
   });
 

@@ -459,6 +459,7 @@ export const printSyncHealth = async (
   maxNumPeers: number,
   primaryNode: string,
   outfile?: string,
+  userSpecifiedPeers?: string[],
 ) => {
   const startTime = parseTime(startTimeOfDay);
   const stopTime = parseTime(stopTimeOfDay);
@@ -477,7 +478,7 @@ export const printSyncHealth = async (
       console.log("Primary rpc client not ready", err);
       throw Error();
     }
-    const peers = await pickPeers(primaryRpcClient, maxNumPeers);
+    const peers = userSpecifiedPeers ? ok(userSpecifiedPeers) : await pickPeers(primaryRpcClient, maxNumPeers);
     if (peers.isErr()) {
       console.log("Error querying peers");
       return;
