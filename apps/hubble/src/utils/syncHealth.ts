@@ -9,6 +9,8 @@ import {
   TrieNodeMetadataResponse,
   Message,
   HubError,
+  getAuthMetadata,
+  bytesToHexString,
 } from "@farcaster/hub-nodejs";
 
 import { appendFile } from "fs/promises";
@@ -132,15 +134,27 @@ interface MetadataRetriever {
 
 export class RpcMetadataRetriever implements MetadataRetriever {
   _rpcClient: HubRpcClient;
+  _authMetadata?: Metadata;
 
-  constructor(rpcClient: HubRpcClient) {
+  constructor(rpcClient: HubRpcClient, username?: string, password?: string) {
     this._rpcClient = rpcClient;
+    if (username && password) {
+      this._authMetadata = getAuthMetadata(username, password);
+    }
   }
 
   getMetadata = async (prefix: Buffer): Promise<HubResult<TrieNodeMetadataResponse>> => {
     return this._rpcClient.getSyncMetadataByPrefix(TrieNodePrefix.create({ prefix }), new Metadata(), {
       deadline: Date.now() + RPC_TIMEOUT_SECONDS * 1000,
     });
+  };
+
+  submitMessage = async (message: Message): Promise<HubResult<Message>> => {
+    if (this._authMetadata) {
+      return this._rpcClient.submitMessage(message, this._authMetadata);
+    } else {
+      return this._rpcClient.submitMessage(message);
+    }
   };
 }
 
@@ -368,7 +382,7 @@ const tryPushingMissingMessages = async (
 
   const results = [];
   for (const message of messages.value.messages) {
-    const result = await rpcMetadataRetrieverMissingMessages._rpcClient.submitMessage(message);
+    const result = await rpcMetadataRetrieverMissingMessages.submitMessage(message);
     results.push(result);
   }
 
@@ -460,6 +474,8 @@ export const printSyncHealth = async (
   primaryNode: string,
   outfile?: string,
   userSpecifiedPeers?: string[],
+  username?: string,
+  password?: string,
 ) => {
   const startTime = parseTime(startTimeOfDay);
   const stopTime = parseTime(stopTimeOfDay);
@@ -484,7 +500,7 @@ export const printSyncHealth = async (
       return;
     }
 
-    const primaryRpcMetadataRetriever = new RpcMetadataRetriever(primaryRpcClient);
+    const primaryRpcMetadataRetriever = new RpcMetadataRetriever(primaryRpcClient, username, password);
 
     for (const peer of peers.value) {
       if (peer === undefined) {
