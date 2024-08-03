@@ -392,16 +392,19 @@ const tryPushingMissingMessages = async (
 const uniqueSyncIds = (mySyncIds: Uint8Array[], otherSyncIds: Uint8Array[]) => {
   const idsOnlyInPrimary = [];
 
-  // This is really slow. It's n^2 in the number of sync ids. It seems somwhat complicated to figure out how to hash a sync id or get a string representation that can be hashed.
+  const otherSyncIdSet = new Set();
+
+  for (const syncId of otherSyncIds) {
+    const stringSyncId = bytesToHexString(syncId);
+    if (stringSyncId.isOk()) {
+      otherSyncIdSet.add(stringSyncId.value);
+    }
+  }
 
   for (const syncId of mySyncIds) {
-    const syncIdBuffer = Buffer.from(syncId);
-    const otherSyncId = otherSyncIds.find((otherSyncId) => {
-      const otherSyncIdBuffer = Buffer.from(otherSyncId);
-      return Buffer.compare(syncIdBuffer, otherSyncIdBuffer) === 0;
-    });
-
-    if (otherSyncId === undefined) {
+    const stringSyncId = bytesToHexString(syncId);
+    if (stringSyncId.isOk() && !otherSyncIdSet.has(stringSyncId.value)) {
+      const syncIdBuffer = Buffer.from(syncId);
       idsOnlyInPrimary.push(syncIdBuffer);
     }
   }
