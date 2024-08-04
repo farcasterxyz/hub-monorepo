@@ -11,7 +11,8 @@ import { HubInterface } from "hubble.js";
 import { peerIdFromString } from "@libp2p/peer-id";
 import { parseAddress } from "../../utils/p2p.js";
 import { multiaddr, Multiaddr } from "@multiformats/multiaddr";
-import { SyncId, timestampToPaddedTimestampPrefix } from "../../network/sync/syncId.js";
+import { SyncId, SyncIdType, timestampToPaddedTimestampPrefix } from "../../network/sync/syncId.js";
+import { bytesToHexString, OnChainEventType } from "@farcaster/hub-nodejs";
 
 const log = logger.child({
   component: "SyncHealth",
@@ -75,7 +76,44 @@ export class MeasureSyncHealthJobScheduler {
       .map(({ value }) => value)
       .slice(0, this._maxSyncIdsToPrint)
       .map((syncIdBytes) => {
-        return SyncId.fromBytes(syncIdBytes).unpack();
+        const unpackedSyncId = SyncId.fromBytes(syncIdBytes).unpack();
+        const fid = unpackedSyncId.fid;
+        const type = SyncIdType[unpackedSyncId.type];
+
+        if (unpackedSyncId.type === SyncIdType.Message) {
+          const primaryKeyString = bytesToHexString(unpackedSyncId.primaryKey);
+          const primaryKey = primaryKeyString.isOk() ? primaryKeyString.value : "unable to show primary key";
+          const hashString = bytesToHexString(unpackedSyncId.hash);
+          const hash = hashString.isOk() ? hashString.value : "unable to show hash";
+          return {
+            type,
+            fid,
+            primaryKey,
+            hash,
+          };
+        } else if (unpackedSyncId.type === SyncIdType.FName) {
+          const nameString = bytesToHexString(unpackedSyncId.name);
+          const name = nameString.isOk() ? nameString.value : "unable to show name";
+          return {
+            type,
+            fid,
+            name,
+            padded: unpackedSyncId.padded,
+          };
+        } else if (unpackedSyncId.type === SyncIdType.OnChainEvent) {
+          return {
+            type,
+            fid,
+            eventType: OnChainEventType[unpackedSyncId.eventType],
+            blockNumber: unpackedSyncId.blockNumber,
+            logIndex: unpackedSyncId.logIndex,
+          };
+        } else {
+          return {
+            type,
+            fid,
+          };
+        }
       });
   }
 
