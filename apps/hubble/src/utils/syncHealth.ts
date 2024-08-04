@@ -11,6 +11,7 @@ import {
   HubError,
   getAuthMetadata,
   bytesToHexString,
+  SyncIds,
 } from "@farcaster/hub-nodejs";
 
 import { appendFile } from "fs/promises";
@@ -130,6 +131,7 @@ class Stats {
 
 interface MetadataRetriever {
   getMetadata: (prefix: Buffer) => Promise<HubResult<TrieNodeMetadataResponse>>;
+  getAllSyncIdsByPrefix: (prefix: Buffer) => Promise<HubResult<SyncIds>>;
 }
 
 export class RpcMetadataRetriever implements MetadataRetriever {
@@ -156,6 +158,10 @@ export class RpcMetadataRetriever implements MetadataRetriever {
       return this._rpcClient.submitMessage(message);
     }
   };
+
+  getAllSyncIdsByPrefix = async (prefix: Buffer) => {
+    return this._rpcClient.getAllSyncIdsByPrefix(TrieNodePrefix.create({ prefix }));
+  };
 }
 
 export class SyncEngineMetadataRetriever implements MetadataRetriever {
@@ -173,6 +179,14 @@ export class SyncEngineMetadataRetriever implements MetadataRetriever {
 
     // This can happen if there are no messages under the prefix for this node. We may want to return an empty result rather than an error.
     return err(new HubError("unavailable", "Missing metadata for node"));
+  };
+
+  getAllSyncIdsByPrefix = async (prefix: Buffer) => {
+    const result = await this._syncEngine.getAllSyncIdsByPrefix(prefix);
+    if (result) {
+      return ok(SyncIds.create({ syncIds: result ?? [] }));
+    }
+    return err(new HubError("unavailable", "No sync ids for prefix"));
   };
 }
 
@@ -328,8 +342,8 @@ const pickPeers = async (rpcClient: HubRpcClient, count: number): Promise<HubRes
   });
 };
 
-const computeSyncIdsInSpan = async (rpcMetadataRetriever: RpcMetadataRetriever, startTime: Date, stopTime: Date) => {
-  const prefixInfo = await getPrefixInfo(rpcMetadataRetriever, startTime, stopTime);
+const computeSyncIdsInSpan = async (metadataRetriever: MetadataRetriever, startTime: Date, stopTime: Date) => {
+  const prefixInfo = await getPrefixInfo(metadataRetriever, startTime, stopTime);
 
   if (prefixInfo.isErr()) {
     return err(prefixInfo.error);
@@ -340,7 +354,7 @@ const computeSyncIdsInSpan = async (rpcMetadataRetriever: RpcMetadataRetriever, 
     prefixInfo.value.commonPrefixMetadata,
     prefixInfo.value.startTimePrefix,
     prefixInfo.value.stopTimePrefix,
-    rpcMetadataRetriever,
+    metadataRetriever,
     (node: TrieNodeMetadataResponse) => {
       prefixes.push(node.prefix);
     },
@@ -352,9 +366,7 @@ const computeSyncIdsInSpan = async (rpcMetadataRetriever: RpcMetadataRetriever, 
 
   const syncIds = [];
   for (const prefix of prefixes) {
-    const prefixSyncIds = await rpcMetadataRetriever._rpcClient.getAllSyncIdsByPrefix(
-      TrieNodePrefix.create({ prefix }),
-    );
+    const prefixSyncIds = await metadataRetriever.getAllSyncIdsByPrefix(Buffer.from(prefix));
     if (prefixSyncIds.isOk()) {
       syncIds.push(...prefixSyncIds.value.syncIds);
     }
@@ -412,9 +424,9 @@ const uniqueSyncIds = (mySyncIds: Uint8Array[], otherSyncIds: Uint8Array[]) => {
   return idsOnlyInPrimary;
 };
 
-const investigateDiff = async (
-  primaryRpcMetadataRetriever: RpcMetadataRetriever,
-  peerRpcMetadataRetriever: RpcMetadataRetriever,
+export const divergingSyncIds = async (
+  primaryRpcMetadataRetriever: MetadataRetriever,
+  peerRpcMetadataRetriever: MetadataRetriever,
   startTime: Date,
   stopTime: Date,
 ) => {
@@ -432,6 +444,27 @@ const investigateDiff = async (
 
   const idsOnlyInPrimary = uniqueSyncIds(primarySyncIds.value, peerSyncIds.value);
   const idsOnlyInPeer = uniqueSyncIds(peerSyncIds.value, primarySyncIds.value);
+  return ok({ idsOnlyInPrimary, idsOnlyInPeer });
+};
+
+const investigateDiff = async (
+  primaryRpcMetadataRetriever: RpcMetadataRetriever,
+  peerRpcMetadataRetriever: RpcMetadataRetriever,
+  startTime: Date,
+  stopTime: Date,
+) => {
+  const syncIdsToRetry = await divergingSyncIds(
+    primaryRpcMetadataRetriever,
+    peerRpcMetadataRetriever,
+    startTime,
+    stopTime,
+  );
+
+  if (syncIdsToRetry.isErr()) {
+    return err(syncIdsToRetry.error);
+  }
+
+  const { idsOnlyInPrimary, idsOnlyInPeer } = syncIdsToRetry.value;
 
   const resultsPushingToPeer = await tryPushingMissingMessages(
     primaryRpcMetadataRetriever,

@@ -5,6 +5,7 @@ import {
   RpcMetadataRetriever,
   SyncEngineMetadataRetriever,
   computeSyncHealthMessageStats,
+  divergingSyncIds,
 } from "../../utils/syncHealth.js";
 import { HubInterface } from "hubble.js";
 import { peerIdFromString } from "@libp2p/peer-id";
@@ -101,12 +102,26 @@ export class MeasureSyncHealthJobScheduler {
         continue;
       }
 
+      const syncIds = await divergingSyncIds(
+        this._metadataRetriever,
+        peerMetadataRetriever,
+        new Date(startTime),
+        new Date(stopTime),
+      );
+
+      if (syncIds.isErr()) {
+        log.info({ error: syncIds.error }, "Error computing differing sync ids");
+        continue;
+      }
+
       log.info(
         {
           ourNumMessages: syncHealthMessageStats.value.primaryNumMessages,
           theirNumMessages: syncHealthMessageStats.value.peerNumMessages,
           syncHealth: syncHealthMessageStats.value.computeDiff(),
           syncHealthPercentage: syncHealthMessageStats.value.computeDiffPercentage(),
+          numSyncIdsUniqueToUs: syncIds.value.idsOnlyInPrimary.length,
+          numSyncIdsUniqueToThem: syncIds.value.idsOnlyInPeer.length,
           peerId,
         },
         "Computed SyncHealth stats for peer",
