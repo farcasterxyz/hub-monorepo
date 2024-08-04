@@ -43,7 +43,8 @@ out
 dist
 
 # Editor Cache
-.vscode
+.vscode/*
+!.vscode/settings.json
 .idea
 .fleet
 **/.vitepress/cache/
