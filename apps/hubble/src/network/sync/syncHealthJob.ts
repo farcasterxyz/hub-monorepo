@@ -11,6 +11,7 @@ import { HubInterface } from "hubble.js";
 import { peerIdFromString } from "@libp2p/peer-id";
 import { parseAddress } from "../../utils/p2p.js";
 import { multiaddr, Multiaddr } from "@multiformats/multiaddr";
+import { SyncId, timestampToPaddedTimestampPrefix } from "../../network/sync/syncId.js";
 
 const log = logger.child({
   component: "SyncHealth",
@@ -26,6 +27,7 @@ export class MeasureSyncHealthJobScheduler {
   private _spanSeconds = 60 * 10;
   private _hub: HubInterface;
   private _peersInScope: string[];
+  private _maxSyncIdsToPrint = 10;
 
   constructor(syncEngine: SyncEngine, hub: HubInterface) {
     this._metadataRetriever = new SyncEngineMetadataRetriever(syncEngine);
@@ -64,6 +66,17 @@ export class MeasureSyncHealthJobScheduler {
     }
 
     return peers;
+  }
+
+  sampleMissingSyncIds(syncIds: Buffer[]) {
+    return syncIds
+      .map((value) => ({ value, sort: Math.random() }))
+      .sort((a, b) => a.sort - b.sort)
+      .map(({ value }) => value)
+      .slice(0, this._maxSyncIdsToPrint)
+      .map((syncIdBytes) => {
+        return SyncId.fromBytes(syncIdBytes).unpack();
+      });
   }
 
   async doJobs() {
@@ -122,6 +135,8 @@ export class MeasureSyncHealthJobScheduler {
           syncHealthPercentage: syncHealthMessageStats.value.computeDiffPercentage(),
           numSyncIdsUniqueToUs: syncIds.value.idsOnlyInPrimary.length,
           numSyncIdsUniqueToThem: syncIds.value.idsOnlyInPeer.length,
+          sampledSyncIdsUniqueToUs: this.sampleMissingSyncIds(syncIds.value.idsOnlyInPrimary),
+          sampledSyncIdsUniqueToThem: this.sampleMissingSyncIds(syncIds.value.idsOnlyInPeer),
           peerId,
         },
         "Computed SyncHealth stats for peer",
