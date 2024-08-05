@@ -6,13 +6,12 @@ import {
   SyncEngineMetadataRetriever,
   computeSyncHealthMessageStats,
   divergingSyncIds,
+  tryPushingMissingMessages,
 } from "../../utils/syncHealth.js";
 import { HubInterface } from "hubble.js";
 import { peerIdFromString } from "@libp2p/peer-id";
-import { parseAddress } from "../../utils/p2p.js";
-import { multiaddr, Multiaddr } from "@multiformats/multiaddr";
-import { SyncId, SyncIdType, timestampToPaddedTimestampPrefix } from "../../network/sync/syncId.js";
-import { bytesToHexString, OnChainEventType } from "@farcaster/hub-nodejs";
+import { SyncId, SyncIdType } from "../../network/sync/syncId.js";
+import { bytesToHexString, OnChainEventType, HubResult, Message, UserDataType } from "@farcaster/hub-nodejs";
 
 const log = logger.child({
   component: "SyncHealth",
@@ -27,13 +26,15 @@ export class MeasureSyncHealthJobScheduler {
   private _startSecondsAgo = 60 * 15;
   private _spanSeconds = 60 * 10;
   private _hub: HubInterface;
+  private _peersToPushTo: Set<string>;
   private _peersInScope: string[];
   private _maxSyncIdsToPrint = 10;
 
   constructor(syncEngine: SyncEngine, hub: HubInterface) {
-    this._metadataRetriever = new SyncEngineMetadataRetriever(syncEngine);
+    this._metadataRetriever = new SyncEngineMetadataRetriever(hub, syncEngine);
     this._hub = hub;
     this._peersInScope = this.peersInScope();
+    this._peersToPushTo = new Set(this._peersInScope);
   }
 
   start(cronSchedule?: string) {
@@ -69,52 +70,28 @@ export class MeasureSyncHealthJobScheduler {
     return peers;
   }
 
-  sampleMissingSyncIds(syncIds: Buffer[]) {
-    return syncIds
-      .map((value) => ({ value, sort: Math.random() }))
-      .sort((a, b) => a.sort - b.sort)
-      .map(({ value }) => value)
-      .slice(0, this._maxSyncIdsToPrint)
-      .map((syncIdBytes) => {
-        const unpackedSyncId = SyncId.fromBytes(syncIdBytes).unpack();
-        const fid = unpackedSyncId.fid;
-        const type = SyncIdType[unpackedSyncId.type];
+  processSumbitResults(results: HubResult<Message>[]) {
+    const errorReasons = new Set();
+    const successInfo = [];
+    for (const result of results) {
+      if (result.isOk()) {
+        const hashString = bytesToHexString(result.value.hash);
+        const hash = hashString.isOk() ? hashString.value : "unable to show hash";
 
-        if (unpackedSyncId.type === SyncIdType.Message) {
-          const primaryKeyString = bytesToHexString(unpackedSyncId.primaryKey);
-          const primaryKey = primaryKeyString.isOk() ? primaryKeyString.value : "unable to show primary key";
-          const hashString = bytesToHexString(unpackedSyncId.hash);
-          const hash = hashString.isOk() ? hashString.value : "unable to show hash";
-          return {
-            type,
-            fid,
-            primaryKey,
-            hash,
-          };
-        } else if (unpackedSyncId.type === SyncIdType.FName) {
-          const nameString = bytesToHexString(unpackedSyncId.name);
-          const name = nameString.isOk() ? nameString.value : "unable to show name";
-          return {
-            type,
-            fid,
-            name,
-            padded: unpackedSyncId.padded,
-          };
-        } else if (unpackedSyncId.type === SyncIdType.OnChainEvent) {
-          return {
-            type,
-            fid,
-            eventType: OnChainEventType[unpackedSyncId.eventType],
-            blockNumber: unpackedSyncId.blockNumber,
-            logIndex: unpackedSyncId.logIndex,
-          };
-        } else {
-          return {
-            type,
-            fid,
-          };
-        }
-      });
+        const typeValue = result.value.data?.type;
+        const type = typeValue ? UserDataType[typeValue] : "unknown type";
+
+        successInfo.push({
+          type,
+          fid: result.value.data?.fid,
+          timestamp: result.value.data?.timestamp,
+          hash,
+        });
+      } else {
+        errorReasons.add(result.error.message);
+      }
+    }
+    return { errorReasons: [...errorReasons], successInfo };
   }
 
   async doJobs() {
@@ -161,8 +138,46 @@ export class MeasureSyncHealthJobScheduler {
       );
 
       if (syncIds.isErr()) {
-        log.info({ error: syncIds.error }, "Error computing differing sync ids");
+        log.info({ error: syncIds.error }, "Error computing diverging sync ids");
         continue;
+      }
+
+      const resultsPushingToUs = await tryPushingMissingMessages(
+        peerMetadataRetriever,
+        this._metadataRetriever,
+        syncIds.value.idsOnlyInPeer,
+      );
+
+      if (resultsPushingToUs.isErr()) {
+        log.info({ error: resultsPushingToUs.error }, "Error pushing new messages to ourself");
+        continue;
+      }
+
+      let resultsPushingToPeer;
+      if (this._peersToPushTo.has(peerId)) {
+        const unparsedResultsPushingToPeer = await tryPushingMissingMessages(
+          this._metadataRetriever,
+          peerMetadataRetriever,
+          syncIds.value.idsOnlyInPrimary,
+        );
+
+        if (unparsedResultsPushingToPeer.isErr()) {
+          log.info({ error: unparsedResultsPushingToPeer.error }, "Error pushing new messages to peer");
+          continue;
+        }
+
+        // Don't try to submit to peers you're not authorized to
+        const peerRequiresAuth = unparsedResultsPushingToPeer.value.find((value) => {
+          return value.isErr() && (value.error.errCode === "unauthenticated" || value.error.errCode === "unauthorized");
+        });
+
+        if (peerRequiresAuth !== undefined) {
+          this._peersToPushTo.delete(peerId);
+        } else {
+          this._peersToPushTo.add(peerId);
+        }
+
+        resultsPushingToPeer = this.processSumbitResults(unparsedResultsPushingToPeer.value);
       }
 
       log.info(
@@ -171,10 +186,8 @@ export class MeasureSyncHealthJobScheduler {
           theirNumMessages: syncHealthMessageStats.value.peerNumMessages,
           syncHealth: syncHealthMessageStats.value.computeDiff(),
           syncHealthPercentage: syncHealthMessageStats.value.computeDiffPercentage(),
-          numSyncIdsUniqueToUs: syncIds.value.idsOnlyInPrimary.length,
-          numSyncIdsUniqueToThem: syncIds.value.idsOnlyInPeer.length,
-          sampledSyncIdsUniqueToUs: this.sampleMissingSyncIds(syncIds.value.idsOnlyInPrimary),
-          sampledSyncIdsUniqueToThem: this.sampleMissingSyncIds(syncIds.value.idsOnlyInPeer),
+          resultsPushingToUs: this.processSumbitResults(resultsPushingToUs.value),
+          resultsPushingToPeer,
           peerId,
         },
         "Computed SyncHealth stats for peer",

@@ -12,6 +12,7 @@ import {
   getAuthMetadata,
   bytesToHexString,
   SyncIds,
+  MessagesResponse,
 } from "@farcaster/hub-nodejs";
 
 import { appendFile } from "fs/promises";
@@ -22,6 +23,7 @@ import { SyncId, timestampToPaddedTimestampPrefix } from "../network/sync/syncId
 import { err, ok } from "neverthrow";
 import { toTrieNodeMetadataResponse } from "../rpc/server.js";
 import SyncEngine from "../network/sync/syncEngine.js";
+import { HubInterface } from "hubble.js";
 
 class SyncHealthMessageStats {
   primaryNumMessages: number;
@@ -128,10 +130,11 @@ class Stats {
     });
   };
 }
-
 interface MetadataRetriever {
   getMetadata: (prefix: Buffer) => Promise<HubResult<TrieNodeMetadataResponse>>;
   getAllSyncIdsByPrefix: (prefix: Buffer) => Promise<HubResult<SyncIds>>;
+  getAllMessagesBySyncIds: (syncIds: Uint8Array[]) => Promise<HubResult<MessagesResponse>>;
+  submitMessage: (message: Message) => Promise<HubResult<Message>>;
 }
 
 export class RpcMetadataRetriever implements MetadataRetriever {
@@ -162,13 +165,19 @@ export class RpcMetadataRetriever implements MetadataRetriever {
   getAllSyncIdsByPrefix = async (prefix: Buffer) => {
     return this._rpcClient.getAllSyncIdsByPrefix(TrieNodePrefix.create({ prefix }));
   };
+
+  getAllMessagesBySyncIds = async (syncIds: Uint8Array[]) => {
+    return this._rpcClient.getAllMessagesBySyncIds(SyncIds.create({ syncIds }));
+  };
 }
 
 export class SyncEngineMetadataRetriever implements MetadataRetriever {
   _syncEngine: SyncEngine;
+  _hub: HubInterface;
 
-  constructor(syncEngine: SyncEngine) {
+  constructor(hub: HubInterface, syncEngine: SyncEngine) {
     this._syncEngine = syncEngine;
+    this._hub = hub;
   }
 
   getMetadata = async (prefix: Buffer): Promise<HubResult<TrieNodeMetadataResponse>> => {
@@ -187,6 +196,26 @@ export class SyncEngineMetadataRetriever implements MetadataRetriever {
       return ok(SyncIds.create({ syncIds: result ?? [] }));
     }
     return err(new HubError("unavailable", "No sync ids for prefix"));
+  };
+
+  submitMessage = async (message: Message) => {
+    return (await this._hub.submitMessage(message)).map(() => {
+      return message;
+    });
+  };
+
+  getAllMessagesBySyncIds = async (syncIds: Uint8Array[]) => {
+    const syncIdsParsed = syncIds.map((syncId) => SyncId.fromBytes(syncId));
+    const messagesResult = await this._syncEngine.getAllMessagesBySyncIds(syncIdsParsed);
+    if (messagesResult.isErr()) {
+      return err(messagesResult.error);
+    }
+
+    const filteredMessages = messagesResult.value.filter(
+      (message) => message.data !== undefined && message.hash.length > 0,
+    );
+
+    return ok(MessagesResponse.create({ messages: filteredMessages }));
   };
 }
 
@@ -375,18 +404,16 @@ const computeSyncIdsInSpan = async (metadataRetriever: MetadataRetriever, startT
   return ok(syncIds);
 };
 
-const tryPushingMissingMessages = async (
-  rpcMetadataRetrieverWithMessages: RpcMetadataRetriever,
-  rpcMetadataRetrieverMissingMessages: RpcMetadataRetriever,
+export const tryPushingMissingMessages = async (
+  metadataRetrieverWithMessages: MetadataRetriever,
+  metadataRetrieverMissingMessages: MetadataRetriever,
   missingSyncIds: Buffer[],
 ) => {
   if (missingSyncIds.length === 0) {
     return ok([]);
   }
 
-  const messages = await rpcMetadataRetrieverWithMessages._rpcClient.getAllMessagesBySyncIds({
-    syncIds: missingSyncIds,
-  });
+  const messages = await metadataRetrieverWithMessages.getAllMessagesBySyncIds(missingSyncIds);
 
   if (messages.isErr()) {
     return err(messages.error);
@@ -394,7 +421,7 @@ const tryPushingMissingMessages = async (
 
   const results = [];
   for (const message of messages.value.messages) {
-    const result = await rpcMetadataRetrieverMissingMessages.submitMessage(message);
+    const result = await metadataRetrieverMissingMessages.submitMessage(message);
     results.push(result);
   }
 

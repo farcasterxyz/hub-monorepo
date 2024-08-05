@@ -27,6 +27,7 @@ import {
   SyncEngineMetadataRetriever,
   computeSyncHealthMessageStats,
   divergingSyncIds,
+  tryPushingMissingMessages,
 } from "../../utils/syncHealth.js";
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;
@@ -746,8 +747,8 @@ describe("Multi peer sync engine", () => {
   });
 
   test("perform sync health computation", async () => {
-    const metadataRetriever1 = new SyncEngineMetadataRetriever(syncEngine1);
-    const metadataRetriever2 = new SyncEngineMetadataRetriever(syncEngine2);
+    const metadataRetriever1 = new SyncEngineMetadataRetriever(hub1, syncEngine1);
+    const metadataRetriever2 = new SyncEngineMetadataRetriever(hub2, syncEngine2);
 
     const setupEngine = async (engine: Engine) => {
       await engine.mergeOnChainEvent(custodyEvent);
@@ -792,7 +793,13 @@ describe("Multi peer sync engine", () => {
     expect(divergingSyncIds2.idsOnlyInPrimary.length).toEqual(1);
     expect(divergingSyncIds2.idsOnlyInPeer.length).toEqual(0);
 
-    await engine2.mergeMessages(messages.slice(2, 4));
+    // Show that pushing missing messages works
+    const pushResults2 = (
+      await tryPushingMissingMessages(metadataRetriever1, metadataRetriever2, divergingSyncIds2.idsOnlyInPrimary)
+    )._unsafeUnwrap();
+
+    expect(pushResults2.length).toEqual(1);
+
     // New message that's only on engine 2
     await addMessagesWithTimeDelta(engine2, [185]);
     await sleepWhile(() => syncEngine2.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
