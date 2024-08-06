@@ -343,14 +343,20 @@ describe("sharded event stream", () => {
     await engine.mergeUserNameProof(usernameProof);
     await sleep(100); // Wait for server to send events over stream
 
-    expect(shard0Events.length).toEqual(5);
-    expect(shard1Events.length).toEqual(5);
+    expect(shard0Events.length).toEqual(9); // Onchain/username proofs always assigned to shard 0 for linear ordering
+    expect(shard1Events.length).toEqual(1);
 
-    shard0Events.map(([, event]) => {
-      expect(event.fid || event.data.fid).toBe(202);
+    function orderedEvent(eventType: number) {
+      return eventType === HubEventType.MERGE_ON_CHAIN_EVENT || eventType === HubEventType.MERGE_USERNAME_PROOF;
+    }
+
+    shard0Events.map(([eventType, event]) => {
+      const fid = event.fid || event.data.fid;
+      expect(fid === 202 || orderedEvent(eventType)).toEqual(true);
     });
-    shard1Events.map(([, event]) => {
-      expect(event.fid || event.data.fid).toBe(301);
+    shard1Events.map(([eventType, event]) => {
+      const fid = event.fid || event.data.fid;
+      expect(fid === 301 && !orderedEvent(eventType)).toEqual(true);
     });
 
     // Should also work when requesting events from the past
@@ -363,13 +369,15 @@ describe("sharded event stream", () => {
     await setupSubscription(shard1HistoricalEvents, { totalShards: 2, shardIndex: 1, fromId: 0 });
     await sleep(100);
 
-    expect(shard0HistoricalEvents).toHaveLength(5);
-    expect(shard1HistoricalEvents).toHaveLength(5);
-    shard0HistoricalEvents.map(([, event]) => {
-      expect(event.fid || event.data.fid).toBe(202);
+    expect(shard0HistoricalEvents).toHaveLength(9);
+    expect(shard1HistoricalEvents).toHaveLength(1);
+    shard0HistoricalEvents.map(([eventType, event]) => {
+      const fid = event.fid || event.data.fid;
+      expect(fid === 202 || orderedEvent(eventType)).toEqual(true);
     });
-    shard1HistoricalEvents.map(([, event]) => {
-      expect(event.fid || event.data.fid).toBe(301);
+    shard1HistoricalEvents.map(([eventType, event]) => {
+      const fid = event.fid || event.data.fid;
+      expect(fid === 301 && !orderedEvent(eventType)).toEqual(true);
     });
   });
 });

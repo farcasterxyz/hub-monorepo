@@ -1,5 +1,13 @@
-import { Abi } from "abitype";
-import { PublicClient, WatchContractEventParameters, WatchContractEventReturnType } from "viem";
+import type {
+  Abi,
+  Chain,
+  ContractEventName,
+  PublicClient,
+  Transport,
+  WatchContractEventParameters,
+  WatchContractEventReturnType,
+} from "viem";
+import { watchContractEvent } from "viem/actions";
 import { logger, Logger } from "../utils/logger.js";
 import { HubError, HubResult } from "@farcaster/core";
 import { err, ok, Result } from "neverthrow";
@@ -12,18 +20,20 @@ import { diagnosticReporter } from "../utils/diagnosticReport.js";
  * watchContractEvent.
  */
 export class WatchContractEvent<
-  TAbi extends Abi | readonly unknown[] = readonly unknown[],
-  TEventName extends string = string,
-  TStrict extends boolean | undefined = undefined,
+  chain extends Chain | undefined,
+  const abi extends Abi | readonly unknown[],
+  eventName extends ContractEventName<abi> | undefined = undefined,
+  strict extends boolean | undefined = undefined,
+  transport extends Transport = Transport,
 > {
-  private _publicClient: PublicClient;
-  private _params: WatchContractEventParameters<TAbi, TEventName, TStrict>;
+  private _publicClient: PublicClient<transport, chain>;
+  private _params: WatchContractEventParameters<abi, eventName, strict, transport>;
   private _unwatch?: WatchContractEventReturnType;
   private _log: Logger;
 
   constructor(
-    publicClient: PublicClient,
-    params: WatchContractEventParameters<TAbi, TEventName, TStrict>,
+    publicClient: PublicClient<transport, chain>,
+    params: WatchContractEventParameters<abi, eventName, strict, transport>,
     key: string,
   ) {
     this._publicClient = publicClient;
@@ -35,7 +45,7 @@ export class WatchContractEvent<
   }
 
   public start() {
-    this._unwatch = this._publicClient.watchContractEvent({
+    this._unwatch = watchContractEvent<chain, abi, eventName, strict, transport>(this._publicClient, {
       ...this._params,
       onError: (error) => {
         diagnosticReporter().reportError(error);

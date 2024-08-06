@@ -75,10 +75,15 @@ pub fn put_username_proof_transaction(
 pub fn delete_username_proof_transaction(
     txn: &mut RocksDbTransactionBatch,
     username_proof: &UserNameProof,
+    existing_fid: Option<u32>,
 ) {
-    let primary_key = make_fname_username_proof_key(&username_proof.name);
-    txn.delete(primary_key);
+    let buf = username_proof.encode_to_vec();
 
-    let secondary_key = make_fname_username_proof_by_fid_key(username_proof.fid as u32);
-    txn.delete(secondary_key);
+    let primary_key = make_fname_username_proof_key(&username_proof.name);
+    txn.put(primary_key.clone(), buf);
+
+    if existing_fid.is_some() {
+        let secondary_key = make_fname_username_proof_by_fid_key(existing_fid.unwrap());
+        txn.delete(secondary_key);
+    }
 }

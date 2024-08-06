@@ -389,7 +389,10 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
 
         if (eventsRead === 0) {
           if (this.stopped) break;
-          await this.processStale(onEvent);
+          const totalProcessed = await this.processStale(onEvent);
+          if (totalProcessed === 0) {
+            await sleep(10); // Don't thrash CPU if there's no events to process
+          }
         }
       } catch (e: unknown) {
         this.log.error(e, "Error processing event, skipping");

@@ -1,8 +1,6 @@
-import { MultiaddrConnection } from "@libp2p/interface-connection";
-import { PeerId } from "@libp2p/interface-peer-id";
+import { ConnectionGater, MultiaddrConnection, PeerId } from "@libp2p/interface";
 import { Multiaddr } from "@multiformats/multiaddr";
 import { logger } from "../../utils/logger.js";
-import { ConnectionGater } from "@libp2p/interface-connection-gater";
 
 const log = logger.child({
   component: "ConnectionFilter",

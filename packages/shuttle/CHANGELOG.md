@@ -1,5 +1,29 @@
 # @farcaster/hub-shuttle
 
+## 0.5.10
+
+### Patch Changes
+
+- 165a0aac: fix(shuttle): Add missing `await` to per-iteration `sleep()` call
+- Updated dependencies [939dde84]
+  - @farcaster/hub-nodejs@0.11.23
+
+## 0.5.9
+
+### Patch Changes
+
+- 5d5b3273: Fix CPU throttling regression introduced in 0.5.6 by trim optimization
+- Updated dependencies [939dde84]
+  - @farcaster/hub-nodejs@0.11.23
+
+## 0.5.8
+
+### Patch Changes
+
+- 4f40c19b: fix: Do not validate messages in shuttle by default
+- Updated dependencies [2fa29ad4]
+  - @farcaster/hub-nodejs@0.11.22
+
 ## 0.5.7
 
 ### Patch Changes

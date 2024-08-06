@@ -30,7 +30,7 @@ import {
   MessageBundle,
   toFarcasterTime,
 } from "@farcaster/core";
-import { PeerId } from "@libp2p/interface-peer-id";
+import { PeerId } from "@libp2p/interface";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import { TypedEmitter } from "tiny-typed-emitter";
 import os from "os";
@@ -50,7 +50,6 @@ import { finishAllProgressBars } from "../../utils/progressBars.js";
 import { FNameRegistryEventsProvider } from "../../eth/fnameRegistryEventsProvider.js";
 import { PeerScore, PeerScorer } from "./peerScore.js";
 import { getOnChainEvent } from "../../storage/db/onChainEvent.js";
-import { getUserNameProof } from "../../storage/db/nameRegistryEvent.js";
 import { MaxPriorityQueue } from "@datastructures-js/priority-queue";
 import { TTLMap } from "../../utils/ttl_map.js";
 import * as buffer from "node:buffer";
@@ -1851,7 +1850,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           revokedSyncIds += 1;
         }
       } else if (unpacked.type === SyncIdType.FName) {
-        const result = await ResultAsync.fromPromise(getUserNameProof(this._db, unpacked.name), (e) => e as HubError);
+        const result = await this._hub.engine.getUserNameProof(unpacked.name);
         let validSyncId = result.isOk();
         if (result.isOk()) {
           validSyncId = result.value.fid === unpacked.fid;

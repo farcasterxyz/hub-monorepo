@@ -1,5 +1,12 @@
 # @farcaster/core
 
+## 0.14.20
+
+### Patch Changes
+
+- 61959467: upgrade libp2p/gossipsub and dependencies
+- 939dde84: chore: upgrade viem to v2
+
 ## 0.14.19
 
 ### Patch Changes

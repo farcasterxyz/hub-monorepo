@@ -147,7 +147,7 @@ export class App implements MessageHandler {
     log.info("Starting stream consumer");
     // Stream consumer reads from the redis stream and inserts them into postgres
     await this.streamConsumer.start(async (event) => {
-      void this.processHubEvent(event);
+      await this.processHubEvent(event);
       return ok({ skipped: false });
     });
   }

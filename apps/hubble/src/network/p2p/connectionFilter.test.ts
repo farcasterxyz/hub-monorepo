@@ -1,5 +1,5 @@
-import { mockMultiaddrConnPair } from "@libp2p/interface-mocks";
-import { PeerId } from "@libp2p/interface-peer-id";
+import { mockMultiaddrConnPair } from "@libp2p/interface-compliance-tests/mocks";
+import { PeerId } from "@libp2p/interface";
 import { createEd25519PeerId } from "@libp2p/peer-id-factory";
 import { multiaddr } from "@multiformats/multiaddr";
 import { ConnectionFilter } from "./connectionFilter.js";

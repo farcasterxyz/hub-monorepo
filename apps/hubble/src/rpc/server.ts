@@ -41,6 +41,8 @@ import {
   OnChainEvent,
   HubResult,
   HubAsyncResult,
+  ServerWritableStream,
+  SubscribeRequest,
 } from "@farcaster/hub-nodejs";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import { APP_NICKNAME, APP_VERSION, HubInterface } from "../hubble.js";
@@ -328,6 +330,40 @@ class IpConnectionLimiter {
   }
 }
 
+export function destroyStream(stream: ServerWritableStream<SubscribeRequest, HubEvent>, error: Error) {
+  stream.emit("error", error);
+  stream.end();
+}
+
+export const toTrieNodeMetadataResponse = (metadata?: NodeMetadata): TrieNodeMetadataResponse => {
+  const childrenTrie = [];
+
+  if (!metadata) {
+    return TrieNodeMetadataResponse.create({});
+  }
+
+  if (metadata.children) {
+    for (const [, child] of metadata.children) {
+      childrenTrie.push(
+        TrieNodeMetadataResponse.create({
+          prefix: child.prefix,
+          numMessages: child.numMessages,
+          hash: child.hash,
+          children: [],
+        }),
+      );
+    }
+  }
+
+  const metadataResponse = TrieNodeMetadataResponse.create({
+    prefix: metadata.prefix,
+    numMessages: metadata.numMessages,
+    hash: metadata.hash,
+    children: childrenTrie,
+  });
+
+  return metadataResponse;
+};
 export default class Server {
   private hub: HubInterface | undefined;
   private engine: Engine | undefined;
@@ -651,36 +687,6 @@ export default class Server {
       getSyncMetadataByPrefix: (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getSyncMetadataByPrefix", req: call.request }, `RPC call from ${peer}`);
-
-        const toTrieNodeMetadataResponse = (metadata?: NodeMetadata): TrieNodeMetadataResponse => {
-          const childrenTrie = [];
-
-          if (!metadata) {
-            return TrieNodeMetadataResponse.create({});
-          }
-
-          if (metadata.children) {
-            for (const [, child] of metadata.children) {
-              childrenTrie.push(
-                TrieNodeMetadataResponse.create({
-                  prefix: child.prefix,
-                  numMessages: child.numMessages,
-                  hash: child.hash,
-                  children: [],
-                }),
-              );
-            }
-          }
-
-          const metadataResponse = TrieNodeMetadataResponse.create({
-            prefix: metadata.prefix,
-            numMessages: metadata.numMessages,
-            hash: metadata.hash,
-            children: childrenTrie,
-          });
-
-          return metadataResponse;
-        };
 
         const request = call.request;
 
@@ -1335,8 +1341,7 @@ export default class Server {
           log.info({ r: request, peer }, "subscribe: starting stream");
         } else {
           log.info({ r: request, peer, err: allowed.error.message }, "subscribe: rejected stream");
-
-          stream.destroy(new Error(allowed.error.message));
+          destroyStream(stream, allowed.error);
           return;
         }
 
@@ -1348,11 +1353,11 @@ export default class Server {
         const totalShards = request.totalShards || 0;
         if (totalShards > MAX_EVENT_STREAM_SHARDS) {
           log.info({ r: request, peer, err: "invalid totalShards" }, "subscribe: rejected stream");
-          stream.destroy(new Error(`totalShards must be less than ${MAX_EVENT_STREAM_SHARDS}`));
+          destroyStream(stream, new Error(`totalShards must be less than ${MAX_EVENT_STREAM_SHARDS}`));
         }
         if (totalShards > 0 && (request.shardIndex === undefined || request.shardIndex >= totalShards)) {
           log.info({ r: request, peer, err: "invalid shard index" }, "subscribe: rejected stream");
-          stream.destroy(new Error("invalid shard index"));
+          destroyStream(stream, new Error("invalid shard index"));
         }
         const shardIndex = request.shardIndex || 0;
 
@@ -1361,9 +1366,11 @@ export default class Server {
             statsd().increment("rpc.subscribe.out_of_order");
           }
           lastEventId = event.id;
-          if (totalShards === 0) {
+          const isOrderedEvent =
+            event.type === HubEventType.MERGE_ON_CHAIN_EVENT || event.type === HubEventType.MERGE_USERNAME_PROOF;
+          if (totalShards === 0 || (isOrderedEvent && shardIndex === 0)) {
             bufferedStreamWriter.writeToStream(event);
-          } else {
+          } else if (!isOrderedEvent) {
             const fid = fidFromEvent(event);
             if (jumpConsistentHash(fid, totalShards) === shardIndex) {
               bufferedStreamWriter.writeToStream(event);
@@ -1388,7 +1395,7 @@ export default class Server {
         if (this.engine && request.fromId !== undefined && request.fromId >= 0) {
           const eventsIteratorOpts = this.engine.eventHandler.getEventsIteratorOpts({ fromId: request.fromId });
           if (eventsIteratorOpts.isErr()) {
-            stream.destroy(eventsIteratorOpts.error);
+            destroyStream(stream, eventsIteratorOpts.error);
             return;
           }
 
@@ -1402,7 +1409,7 @@ export default class Server {
             );
 
             const error = new HubError("unavailable.network_failure", `stream timeout for peer: ${stream.getPeer()}`);
-            stream.destroy(error);
+            destroyStream(stream, error);
           }, HUBEVENTS_READER_TIMEOUT);
 
           // Track our RSS usage, to detect a situation where we're writing a lot of data to the stream,
@@ -1414,9 +1421,14 @@ export default class Server {
 
           await this.engine.getDb().forEachIteratorByOpts(eventsIteratorOpts.value, async (_key, value) => {
             const event = HubEvent.decode(Uint8Array.from(value as Buffer));
+            const isOrderedEvent =
+              event.type === HubEventType.MERGE_ON_CHAIN_EVENT || event.type === HubEventType.MERGE_USERNAME_PROOF;
             const isRequestedType = request.eventTypes.length === 0 || request.eventTypes.includes(event.type);
-            const isRequestedFid = totalShards === 0 || fidFromEvent(event) % totalShards === shardIndex;
-            const shouldWriteEvent = isRequestedType && isRequestedFid;
+            const shouldWriteEvent =
+              isRequestedType &&
+              (totalShards === 0 ||
+                (isOrderedEvent && shardIndex === 0) ||
+                (!isOrderedEvent && jumpConsistentHash(fidFromEvent(event), totalShards) === shardIndex));
             if (shouldWriteEvent) {
               const writeResult = bufferedStreamWriter.writeToStream(event);
 
@@ -1442,7 +1454,7 @@ export default class Server {
                   // We'll destroy the stream.
                   const error = new HubError("unavailable.network_failure", "stream memory usage too much");
                   logger.error({ errCode: error.errCode }, error.message);
-                  stream.destroy(error);
+                  destroyStream(stream, error);
 
                   return true;
                 }

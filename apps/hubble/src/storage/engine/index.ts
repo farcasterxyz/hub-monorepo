@@ -64,7 +64,7 @@ import VerificationStore from "../stores/verificationStore.js";
 import { logger } from "../../utils/logger.js";
 import { RevokeMessagesBySignerJobQueue, RevokeMessagesBySignerJobWorker } from "../jobs/revokeMessagesBySignerJob.js";
 import { ensureAboveTargetFarcasterVersion } from "../../utils/versions.js";
-import { PublicClient } from "viem";
+import type { PublicClient } from "viem";
 import { normalize } from "viem/ens";
 import UsernameProofStore from "../stores/usernameProofStore.js";
 import OnChainEventStore from "../stores/onChainEventStore.js";
@@ -73,6 +73,7 @@ import { rsValidationMethods } from "../../rustfunctions.js";
 import { RateLimiterAbstract, RateLimiterMemory } from "rate-limiter-flexible";
 import { TypedEmitter } from "tiny-typed-emitter";
 import { FNameRegistryEventsProvider } from "../../eth/fnameRegistryEventsProvider.js";
+import { statsd } from "../../utils/statsd.js";
 
 export const NUM_VALIDATION_WORKERS = 2;
 
@@ -411,9 +412,12 @@ class Engine extends TypedEmitter<EngineEvents> {
       stores.map(async (store, storeIndex) => {
         const storeMessages = messagesByStore[storeIndex] as IndexedMessage[];
 
+        const start = Date.now();
         const storeResults: Map<number, HubResult<number>> = await store.mergeMessages(
           storeMessages.map((m) => m.message),
         );
+        const duration = Date.now() - start;
+        statsd().timing("storage.merge_messages", duration, { store: store.postfix.toString() });
 
         for (const [j, v] of storeResults.entries()) {
           results.set(storeMessages[j]?.i as number, v);
@@ -1349,7 +1353,7 @@ class Engine extends TypedEmitter<EngineEvents> {
       clients[this._publicClient.chain.id] = this._publicClient;
     }
     if (this._l2PublicClient?.chain) {
-      clients[this._l2PublicClient.chain.id] = this._l2PublicClient;
+      clients[this._l2PublicClient.chain.id] = this._l2PublicClient as PublicClient;
     }
     return clients;
   }

@@ -41,7 +41,6 @@ import { getMessage, makeTsHash, typeToSetPostfix } from "../db/message.js";
 import { StoreEvents } from "../stores/storeEventHandler.js";
 import { IdRegisterOnChainEvent, makeVerificationAddressClaim } from "@farcaster/core";
 import { setReferenceDateForTest } from "../../utils/versions.js";
-import { getUserNameProof } from "../db/nameRegistryEvent.js";
 import { publicClient } from "../../test/utils.js";
 import { jest } from "@jest/globals";
 import { FNameRegistryEventsProvider, FNameTransfer } from "../../eth/fnameRegistryEventsProvider.js";
@@ -164,7 +163,7 @@ describe("mergeUserNameProof", () => {
   test("succeeds", async () => {
     const userNameProof = Factories.UserNameProof.build();
     await expect(engine.mergeUserNameProof(userNameProof)).resolves.toBeInstanceOf(Ok);
-    expect(await getUserNameProof(db, userNameProof.name)).toBeTruthy();
+    expect(await engine.getUserNameProof(userNameProof.name)).toBeTruthy();
   });
 });
 

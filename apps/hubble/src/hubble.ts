@@ -22,7 +22,7 @@ import {
   validations,
 } from "@farcaster/hub-nodejs";
 import { ClientOptions as StatsDClientOptions } from "@figma/hot-shots";
-import { PeerId } from "@libp2p/interface-peer-id";
+import { Ed25519PeerId, PeerId, RSAPeerId, Secp256k1PeerId } from "@libp2p/interface";
 import { peerIdFromBytes, peerIdFromString } from "@libp2p/peer-id";
 import { publicAddressesFirst } from "@libp2p/utils/address-sort";
 import { unmarshalPrivateKey, unmarshalPublicKey } from "@libp2p/crypto/keys";
@@ -69,7 +69,7 @@ import StoreEventHandler from "./storage/stores/storeEventHandler.js";
 import { FNameRegistryClient, FNameRegistryEventsProvider } from "./eth/fnameRegistryEventsProvider.js";
 import { L2EventsProvider, OptimismConstants } from "./eth/l2EventsProvider.js";
 import { prettyPrintTable } from "./profile/profile.js";
-import { createPublicClient, fallback, http } from "viem";
+import { createPublicClient, fallback, http, type PublicClient } from "viem";
 import { mainnet, optimism } from "viem/chains";
 import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
 import { CheckIncomingPortsJobScheduler } from "./storage/jobs/checkIncomingPortsJob.js";
@@ -96,6 +96,8 @@ import { MerkleTrie } from "./network/sync/merkleTrie.js";
 import { DEFAULT_CATCHUP_SYNC_SNAPSHOT_MESSAGE_LIMIT } from "./defaultConfig.js";
 import { diagnosticReporter } from "./utils/diagnosticReport.js";
 import { startupCheck, StartupCheckStatus } from "./utils/startupCheck.js";
+import { AddressInfo } from "node:net";
+import { MeasureSyncHealthJobScheduler } from "./network/sync/syncHealthJob.js";
 
 export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
 
@@ -108,7 +110,7 @@ export const SNAPSHOT_S3_UPLOAD_BUCKET = "farcaster-snapshots";
 export const SNAPSHOT_S3_DOWNLOAD_BUCKET = "download.farcaster.xyz";
 export const S3_REGION = "auto";
 
-export const FARCASTER_VERSION = "2024.6.12";
+export const FARCASTER_VERSION = "2024.7.24";
 export const FARCASTER_VERSIONS_SCHEDULE: VersionSchedule[] = [
   { version: "2023.3.1", expiresAt: 1682553600000 }, // expires at 4/27/23 00:00 UTC
   { version: "2023.4.19", expiresAt: 1686700800000 }, // expires at 6/14/23 00:00 UTC
@@ -122,6 +124,7 @@ export const FARCASTER_VERSIONS_SCHEDULE: VersionSchedule[] = [
   { version: "2024.3.20", expiresAt: 1715731200000 }, // expires at 5/15/24 00:00 UTC
   { version: "2024.5.1", expiresAt: 1719360000000 }, // expires at 6/26/24 00:00 UTC
   { version: "2024.6.12", expiresAt: 1722988800000 }, // expires at 8/7/24 00:00 UTC
+  { version: "2024.7.24", expiresAt: 1726617600000 }, // expires at 9/18/24 00:00 UTC
 ];
 
 const MAX_CONTACT_INFO_AGE_MS = 1000 * 60 * 60; // 60 minutes
@@ -151,6 +154,7 @@ export interface HubInterface {
     options?: Partial<ClientOptions>,
   ): Promise<HubRpcClient | undefined>;
   updateApplicationPeerScore(peerId: String, score: number): HubAsyncResult<void>;
+  bootstrapAddrs(): Multiaddr[];
 }
 
 export interface HubOptions {
@@ -376,6 +380,7 @@ export class Hub implements HubInterface {
   private checkIncomingPortsJobScheduler: CheckIncomingPortsJobScheduler;
   private updateNetworkConfigJobScheduler: UpdateNetworkConfigJobScheduler;
   private dbSnapshotBackupJobScheduler: DbSnapshotBackupJobScheduler;
+  private measureSyncHealthJobScheduler: MeasureSyncHealthJobScheduler;
 
   private submitMessageLogger = new SubmitMessageSuccessLogCache(log);
 
@@ -453,7 +458,7 @@ export class Hub implements HubInterface {
       options.network,
       eventHandler,
       mainnetClient,
-      opClient,
+      opClient as PublicClient,
       this.fNameRegistryEventsProvider,
     );
 
@@ -538,6 +543,7 @@ export class Hub implements HubInterface {
       this.syncEngine,
       this.options,
     );
+    this.measureSyncHealthJobScheduler = new MeasureSyncHealthJobScheduler(this.syncEngine, this);
 
     if (options.testUsers) {
       this.testDataJobScheduler = new PeriodicTestDataJobScheduler(this.rpcServer, options.testUsers as TestUser[]);
@@ -571,6 +577,10 @@ export class Hub implements HubInterface {
 
   async syncWithPeerId(peerId: string): Promise<void> {
     await this.syncEngine.diffSyncIfRequired(this, peerId);
+  }
+
+  bootstrapAddrs(): Multiaddr[] {
+    return this.options.bootstrapAddrs ?? [];
   }
 
   /* Start the GossipNode and RPC server  */
@@ -769,12 +779,12 @@ export class Hub implements HubInterface {
     await this.l2RegistryProvider.start();
     await this.fNameRegistryEventsProvider.start();
 
-    const bootstrapAddrs = this.options.bootstrapAddrs ?? [];
-
-    const peerId = this.options.peerId ? exportToProtobuf(this.options.peerId) : undefined;
+    const peerId = this.options.peerId
+      ? exportToProtobuf(this.options.peerId as RSAPeerId | Ed25519PeerId | Secp256k1PeerId)
+      : undefined;
 
     // Start the Gossip node
-    await this.gossipNode.start(bootstrapAddrs, {
+    await this.gossipNode.start(this.bootstrapAddrs(), {
       peerId,
       ipMultiAddr: this.options.ipMultiAddr,
       announceIp: this.options.announceIp,
@@ -801,6 +811,7 @@ export class Hub implements HubInterface {
     const randomMinute = Math.floor(Math.random() * 30);
     this.gossipContactInfoJobScheduler.start(`${randomMinute} */30 * * * *`); // Random minute every 30 minutes
     this.checkIncomingPortsJobScheduler.start();
+    this.measureSyncHealthJobScheduler.start();
 
     // Mainnet only jobs
     if (this.options.network === FarcasterNetwork.MAINNET) {
@@ -968,7 +979,6 @@ export class Hub implements HubInterface {
     return new Promise((resolve) => {
       (async () => {
         let progressBar: SingleBar | undefined;
-
         try {
           const dbLocation = this.rocksDB.location;
           const dbFiles = Result.fromThrowable(
@@ -1022,17 +1032,15 @@ export class Hub implements HubInterface {
               log.info({ latestSnapshotKeyBase }, "found latest S3 snapshot");
             }
 
-            const handleError = (e: Error) => {
-              log.error({ error: e }, "Error extracting snapshot");
-              progressBar?.stop();
-              resolve(err(new HubError("unavailable", "Error extracting snapshot")));
-            };
-
             const parseStream = new tar.Parse();
             const gunzip = zlib.createGunzip();
             gunzip.pipe(parseStream);
 
-            gunzip.on("error", handleError);
+            gunzip.on("error", (e: Error) => {
+              log.error({ error: e }, "Error decompressing snapshot");
+              progressBar?.stop();
+              resolve(err(new HubError("unavailable", "Error decompressing snapshot")));
+            });
 
             // We parse the tar file and extract it into the DB location, which might be different
             // than the location it was originally created in. So, we transform the top-level
@@ -1066,37 +1074,27 @@ export class Hub implements HubInterface {
               resolve(ok(true));
             });
 
-            log.info({ numChunks: latestChunks.length }, "Getting snapshot chunks...");
-            progressBar = addProgressBar("Getting snapshot", latestChunks.length * 100);
+            await this.getSnapshotChunks(dbLocation, s3Bucket, latestSnapshotKeyBase, latestChunks);
 
+            progressBar = addProgressBar("Decompressing chunks", latestChunks.length);
             let chunkCount = 0;
+
             for (const chunk of latestChunks) {
-              let downloadedSize = 0;
-              chunkCount += 1;
-              log.info({ chunkCount, totalChunks: latestChunks.length }, "Downloading snapshot chunks...");
-
-              const chunkUrl = `https://${s3Bucket}/${latestSnapshotKeyBase}/${chunk}`;
-              const chunkResponse = await axios.get(chunkUrl, {
-                responseType: "stream",
-              });
-              const totalSize = parseInt(chunkResponse.headers["content-length"], 10);
-
               await new Promise((resolve) => {
-                chunkResponse.data
-                  .on("error", handleError)
-                  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-                  .on("data", (dataChunk: any) => {
-                    downloadedSize += dataChunk.length;
-                    progressBar?.update(Math.round((chunkCount - 1) * 100 + (downloadedSize * 100) / totalSize));
-                  })
-                  .on("end", () => {
-                    resolve(true);
-                  })
-                  .pipe(gunzip, { end: false });
+                log.info({ chunk: chunk }, "Decompressing chunk");
+                const chunkStream = fs.createReadStream(path.join(dbLocation, "..", "tmp", chunk));
+                chunkStream.on("end", () => {
+                  resolve(true);
+                });
+                chunkStream.pipe(gunzip, { end: false });
+                chunkCount += 1;
+                progressBar?.update(chunkCount);
               });
             }
 
             gunzip.end();
+
+            fs.rmdir(path.join(dbLocation, "..", "tmp"), { recursive: true }, () => {});
           } else {
             resolve(ok(false));
           }
@@ -1109,12 +1107,130 @@ export class Hub implements HubInterface {
     });
   }
 
+  async getSnapshotChunks(
+    dbLocation: string,
+    s3Bucket: string,
+    latestSnapshotKeyBase: string,
+    latestChunks: string[],
+  ): HubAsyncResult<boolean> {
+    let progressBar: SingleBar | undefined;
+    try {
+      const terminatingError = (e: Error) => {
+        log.error({ error: e }, "Error downloading snapshot");
+        progressBar?.stop();
+        return err(new HubError("unavailable", "Error extracting snapshot"));
+      };
+
+      log.info({ numChunks: latestChunks.length }, "Getting snapshot chunks...");
+      progressBar = addProgressBar("Getting snapshot", latestChunks.length * 100);
+      fs.mkdirSync(path.join(dbLocation, "..", "tmp"), { recursive: true });
+
+      let totalDownloaded = 0;
+
+      class ChunkProcessor {
+        chunk: string;
+
+        constructor(chunk: string) {
+          this.chunk = chunk;
+        }
+
+        async run() {
+          let downloadedSize = 0;
+          chunkCount += 1;
+          log.info({ chunkCount, totalChunks: latestChunks.length }, "Downloading snapshot chunks...");
+
+          let done = false;
+
+          while (!done) {
+            try {
+              const chunkUrl = `https://${s3Bucket}/${latestSnapshotKeyBase}/${this.chunk}`;
+              const chunkResponse = await axios.get(chunkUrl, {
+                responseType: "stream",
+              });
+              const totalSize = parseInt(chunkResponse.headers["content-length"], 10);
+
+              done = await new Promise((resolve) => {
+                const outStream = fs.createWriteStream(path.join(dbLocation, "..", "tmp", `${this.chunk}.tmp`));
+                chunkResponse.data
+                  .on("error", (e: Error) => {
+                    log.error({ error: e, chunk: this.chunk }, "Failed to download chunk, reattempting...");
+                    totalDownloaded -= (downloadedSize * 100) / totalSize;
+                    downloadedSize = 0;
+                    resolve(false);
+                  })
+                  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+                  .on("data", (dataChunk: any) => {
+                    downloadedSize += dataChunk.length;
+                    totalDownloaded += (dataChunk.length * 100) / totalSize;
+                    progressBar?.update(Math.round(totalDownloaded));
+                  })
+                  .on("end", () => {
+                    resolve(true);
+                  })
+                  .pipe(outStream);
+              });
+
+              if (done) {
+                fs.rename(
+                  path.join(dbLocation, "..", "tmp", `${this.chunk}.tmp`),
+                  path.join(dbLocation, "..", "tmp", `${this.chunk}`),
+                  () => {},
+                );
+              } else {
+                fs.rm(path.join(dbLocation, "..", "tmp", `${this.chunk}.tmp`), () => {});
+              }
+            } catch (e) {
+              done = false;
+            }
+          }
+        }
+      }
+
+      let chunkCount = 0;
+      const chunkProcessors: ChunkProcessor[] = [];
+
+      for (let i = 0; i < latestChunks.length; i++) {
+        const chunk = latestChunks[i];
+        if (!chunk) {
+          log.error({ error: new Error("missing chunk") }, `Chunk info missing for index ${i}`);
+          return terminatingError(new HubError("unavailable", "An error occurred during snapshot synchronization"));
+        }
+        chunkProcessors.push(new ChunkProcessor(chunk));
+      }
+
+      let runningPromises = 0;
+      const promises = [];
+      while (chunkProcessors.length > 0) {
+        while (runningPromises < 4 && chunkProcessors.length > 0) {
+          const processor = chunkProcessors.shift();
+          if (processor) {
+            runningPromises += 1;
+            promises.push(
+              processor.run().then(() => {
+                runningPromises -= 1;
+              }),
+            );
+          }
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      await Promise.allSettled(promises);
+
+      return ok(true);
+    } catch (error) {
+      log.error({ error }, "An error occurred during snapshot synchronization");
+      progressBar?.stop();
+      return err(new HubError("unavailable", "An error occurred during snapshot synchronization"));
+    }
+  }
+
   async getContactInfoContent(): HubAsyncResult<ContactInfoContent> {
     const nodeMultiAddr = this.gossipAddresses[0] as Multiaddr;
     const family = nodeMultiAddr?.nodeAddress().family;
     const announceIp = this.options.announceIp ?? nodeMultiAddr?.nodeAddress().address;
     const gossipPort = nodeMultiAddr?.nodeAddress().port;
-    const rpcPort = this.rpcServer.address?.map((addr) => addr.port).unwrapOr(0);
+    const rpcPort = this.rpcServer.address?.map((addr: AddressInfo) => addr.port).unwrapOr(0);
 
     const gossipAddressContactInfo = GossipAddressInfo.create({
       address: announceIp,
@@ -1212,6 +1328,7 @@ export class Hub implements HubInterface {
     this.checkIncomingPortsJobScheduler.stop();
     this.updateNetworkConfigJobScheduler.stop();
     this.dbSnapshotBackupJobScheduler.stop();
+    this.measureSyncHealthJobScheduler.stop();
 
     // Stop the engine
     await this.engine.stop();
@@ -1569,7 +1686,7 @@ export class Hub implements HubInterface {
       try {
         const sslClientResult = getSSLHubRpcClient(address, options);
 
-        sslClientResult.$.waitForReady(Date.now() + 2000, (err) => {
+        sslClientResult.$.waitForReady(Date.now() + 2000, (err: Error | undefined) => {
           if (!err) {
             resolve(sslClientResult);
           } else {
@@ -1696,7 +1813,7 @@ export class Hub implements HubInterface {
       const peerAddresses = peerInfo.multiaddrs;
 
       // sorts addresses by Public IPs first
-      const addr = peerAddresses.sort((a, b) =>
+      const addr = peerAddresses.sort((a: Multiaddr, b: Multiaddr) =>
         publicAddressesFirst({ multiaddr: a, isCertified: false }, { multiaddr: b, isCertified: false }),
       )[0];
       if (addr === undefined) {

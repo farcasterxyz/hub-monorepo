@@ -14,6 +14,7 @@ import {
 import { bytesToHex, createPublicClient, createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { foundry } from "viem/chains";
+import { readContract, simulateContract, writeContract } from "viem/actions";
 
 /** NOTE: These are Foundry/Anvil default account keys. Do not use these
  *  outside a local dev environment!
@@ -92,7 +93,7 @@ const BOB_PK = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab36
    *  Get the current price to register. We're not going to register any
    *  extra storage, so we pass 0n as the only argument.
    */
-  const price = await publicClient.readContract({
+  const price = await readContract(publicClient, {
     address: ID_GATEWAY_ADDRESS,
     abi: idGatewayABI,
     functionName: "price",
@@ -102,7 +103,7 @@ const BOB_PK = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab36
   /**
    *  Call `register` to register an FID to the app account.
    */
-  const { request } = await publicClient.simulateContract({
+  const { request } = await simulateContract(publicClient, {
     account: app,
     address: ID_GATEWAY_ADDRESS,
     abi: idGatewayABI,
@@ -110,12 +111,12 @@ const BOB_PK = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab36
     args: [WARPCAST_RECOVERY_PROXY, 0n],
     value: price,
   });
-  await walletClient.writeContract(request);
+  await writeContract(walletClient, request);
 
   /**
    *  Read the app fid from the ID Registry contract.
    */
-  const APP_FID = await publicClient.readContract({
+  const APP_FID = await readContract(publicClient, {
     address: ID_REGISTRY_ADDRESS,
     abi: idRegistryABI,
     functionName: "idOf",
@@ -131,7 +132,7 @@ const BOB_PK = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab36
   /**
    *  Read Alice's current nonce from the ID Gateway.
    */
-  let nonce = await publicClient.readContract({
+  let nonce = await readContract(publicClient, {
     address: ID_GATEWAY_ADDRESS,
     abi: idGatewayABI,
     functionName: "nonces",
@@ -155,7 +156,7 @@ const BOB_PK = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab36
      *  Get the current price to register. We're not going to register any
      *  extra storage, so we pass 0n as the only argument.
      */
-    const price = await publicClient.readContract({
+    const price = await readContract(publicClient, {
       address: ID_GATEWAY_ADDRESS,
       abi: idGatewayABI,
       functionName: "price",
@@ -166,7 +167,7 @@ const BOB_PK = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab36
      *  Call `registerFor` with Alice's signed message. Note that we also need
      *  to send payment by setting the `value` field.
      */
-    const { request } = await publicClient.simulateContract({
+    const { request } = await simulateContract(publicClient, {
       account: app,
       address: ID_GATEWAY_ADDRESS,
       abi: idGatewayABI,
@@ -174,13 +175,13 @@ const BOB_PK = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab36
       args: [alice.address, WARPCAST_RECOVERY_PROXY, deadline, bytesToHex(signature.value), 0n],
       value: price,
     });
-    await walletClient.writeContract(request);
+    await writeContract(walletClient, request);
   }
 
   /**
    *  Read Alice's new fid from the ID Registry contract.
    */
-  const fid = await publicClient.readContract({
+  const fid = await readContract(publicClient, {
     address: ID_REGISTRY_ADDRESS,
     abi: idRegistryABI,
     functionName: "idOf",
@@ -196,7 +197,7 @@ const BOB_PK = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab36
   /**
    *  Read Alice's current nonce from the ID Registry.
    */
-  nonce = await publicClient.readContract({
+  nonce = await readContract(publicClient, {
     address: ID_REGISTRY_ADDRESS,
     abi: idRegistryABI,
     functionName: "nonces",
@@ -220,14 +221,14 @@ const BOB_PK = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab36
     /**
      *  Call `changeRecoveryAddressFor` with Alice's signed message.
      */
-    const { request } = await publicClient.simulateContract({
+    const { request } = await simulateContract(publicClient, {
       account: app,
       address: ID_REGISTRY_ADDRESS,
       abi: idRegistryABI,
       functionName: "changeRecoveryAddressFor",
       args: [alice.address, bob.address, deadline, bytesToHex(signature.value)],
     });
-    await walletClient.writeContract(request);
+    await writeContract(walletClient, request);
   }
 
   /*******************************************************************************
@@ -243,7 +244,7 @@ const BOB_PK = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab36
    *
    *  First, read Alice's nonce from the ID Registry.
    */
-  let aliceNonce = await publicClient.readContract({
+  let aliceNonce = await readContract(publicClient, {
     address: ID_REGISTRY_ADDRESS,
     abi: idRegistryABI,
     functionName: "nonces",
@@ -263,7 +264,7 @@ const BOB_PK = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab36
   /**
    *  Next, read Bob's nonce from the ID Registry.
    */
-  let bobNonce = await publicClient.readContract({
+  let bobNonce = await readContract(publicClient, {
     address: ID_REGISTRY_ADDRESS,
     abi: idRegistryABI,
     functionName: "nonces",
@@ -284,7 +285,7 @@ const BOB_PK = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab36
     /**
      *  Call `transferFor` with both signatures to transfer Alice's fid to Bob.
      */
-    const { request } = await publicClient.simulateContract({
+    const { request } = await simulateContract(publicClient, {
       account: app,
       address: ID_REGISTRY_ADDRESS,
       abi: idRegistryABI,
@@ -298,7 +299,7 @@ const BOB_PK = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab36
         bytesToHex(bobSignature.value),
       ],
     });
-    await walletClient.writeContract(request);
+    await writeContract(walletClient, request);
   }
 
   /*******************************************************************************
@@ -316,7 +317,7 @@ const BOB_PK = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab36
    *
    *  First, read Alice's nonce from the ID Registry.
    */
-  aliceNonce = await publicClient.readContract({
+  aliceNonce = await readContract(publicClient, {
     address: ID_REGISTRY_ADDRESS,
     abi: idRegistryABI,
     functionName: "nonces",
@@ -337,7 +338,7 @@ const BOB_PK = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab36
   /**
    *  Next, read Bob's nonce from the ID Registry.
    */
-  bobNonce = await publicClient.readContract({
+  bobNonce = await readContract(publicClient, {
     address: ID_REGISTRY_ADDRESS,
     abi: idRegistryABI,
     functionName: "nonces",
@@ -360,7 +361,7 @@ const BOB_PK = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab36
      *  Call `transferAndChangeRecoveryFor` with both signatures to transfer the
      *  fid back from Bob to Alice and change the recovery address to Bob.
      */
-    const { request } = await publicClient.simulateContract({
+    const { request } = await simulateContract(publicClient, {
       account: app,
       address: ID_REGISTRY_ADDRESS,
       abi: idRegistryABI,
@@ -375,7 +376,7 @@ const BOB_PK = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab36
         bytesToHex(aliceSignature.value),
       ],
     });
-    await walletClient.writeContract(request);
+    await writeContract(walletClient, request);
   }
 
   /*******************************************************************************
@@ -417,7 +418,7 @@ const BOB_PK = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab36
       /**
        *  3. Read Alice's nonce from the Key Gateway.
        */
-      aliceNonce = await publicClient.readContract({
+      aliceNonce = await readContract(publicClient, {
         address: KEY_GATEWAY_ADDRESS,
         abi: keyGatewayABI,
         functionName: "nonces",
@@ -441,14 +442,14 @@ const BOB_PK = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab36
         /**
          *  Call `addFor` with Alice's signature and the signed key request.
          */
-        const { request } = await publicClient.simulateContract({
+        const { request } = await simulateContract(publicClient, {
           account: app,
           address: KEY_GATEWAY_ADDRESS,
           abi: keyGatewayABI,
           functionName: "addFor",
           args: [alice.address, 1, bytesToHex(signerPubKey), 1, metadata, deadline, bytesToHex(aliceSignature.value)],
         });
-        await walletClient.writeContract(request);
+        await writeContract(walletClient, request);
       }
     }
   }
@@ -466,7 +467,7 @@ const BOB_PK = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab36
   /**
    *  Read Alice's nonce from the Key Registry.
    */
-  aliceNonce = await publicClient.readContract({
+  aliceNonce = await readContract(publicClient, {
     address: KEY_REGISTRY_ADDRESS,
     abi: keyRegistryABI,
     functionName: "nonces",
@@ -487,14 +488,14 @@ const BOB_PK = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab36
     /**
      *  Call `removeFor` with Alice's signature and public key.
      */
-    const { request } = await publicClient.simulateContract({
+    const { request } = await simulateContract(publicClient, {
       account: app,
       address: KEY_REGISTRY_ADDRESS,
       abi: keyRegistryABI,
       functionName: "removeFor",
       args: [alice.address, bytesToHex(signerPubKey), deadline, bytesToHex(aliceSignature.value)],
     });
-    await walletClient.writeContract(request);
+    await writeContract(walletClient, request);
   }
 
   console.log("All transactions completed.");

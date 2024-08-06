@@ -13,7 +13,7 @@ import { HubInterface, HubSubmitSource } from "../hubble.js";
 import { GossipNode } from "../network/p2p/gossipNode.js";
 import RocksDB from "../storage/db/rocksdb.js";
 import Engine from "../storage/engine/index.js";
-import { PeerId } from "@libp2p/interface-peer-id";
+import { PeerId } from "@libp2p/interface";
 import {
   ContactInfoContent,
   HubResult,
@@ -29,6 +29,7 @@ import {
 } from "../eth/fnameRegistryEventsProvider.js";
 import { Address, PrivateKeyAccount, generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { bytesToHex } from "viem/utils";
+import { Multiaddr } from "@multiformats/multiaddr";
 
 export class MockHub implements HubInterface {
   public db: RocksDB;
@@ -40,6 +41,10 @@ export class MockHub implements HubInterface {
     this.db = db;
     this.engine = engine ?? new Engine(db, FarcasterNetwork.TESTNET);
     this.gossipNode = gossipNode;
+  }
+
+  bootstrapAddrs(): Multiaddr[] {
+    return [];
   }
 
   async submitMessageBundle(
