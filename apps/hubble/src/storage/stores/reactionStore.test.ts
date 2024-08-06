@@ -16,6 +16,8 @@ import {
   ReactionType,
   RevokeMessageHubEvent,
   MessageData,
+  getDefaultStoreLimit,
+  StoreType,
 } from "@farcaster/hub-nodejs";
 import { ResultAsync, err, ok } from "neverthrow";
 import { jestRocksDB } from "../db/jestUtils.js";
@@ -899,6 +901,17 @@ describe("pruneMessages", () => {
 
   describe("with size limit", () => {
     const sizePrunedStore = new ReactionStore(db, eventHandler, { pruneSizeLimit: 3 });
+
+    test("size limit changes in the future", () => {
+      expect(getDefaultStoreLimit(StoreType.REACTIONS)).toEqual(2500);
+      const originalDate = Date.now;
+      try {
+        Date.now = () => new Date("2024-08-22").getTime();
+        expect(getDefaultStoreLimit(StoreType.REACTIONS)).toEqual(2000);
+      } finally {
+        Date.now = originalDate;
+      }
+    });
 
     test("no-ops when no messages have been merged", async () => {
       const result = await sizePrunedStore.pruneMessages(fid);
