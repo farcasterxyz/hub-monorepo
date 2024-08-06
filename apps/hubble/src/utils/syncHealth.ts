@@ -9,6 +9,10 @@ import {
   TrieNodeMetadataResponse,
   Message,
   HubError,
+  getAuthMetadata,
+  bytesToHexString,
+  SyncIds,
+  MessagesResponse,
 } from "@farcaster/hub-nodejs";
 
 import { appendFile } from "fs/promises";
@@ -19,6 +23,7 @@ import { SyncId, timestampToPaddedTimestampPrefix } from "../network/sync/syncId
 import { err, ok } from "neverthrow";
 import { toTrieNodeMetadataResponse } from "../rpc/server.js";
 import SyncEngine from "../network/sync/syncEngine.js";
+import { HubInterface } from "hubble.js";
 
 class SyncHealthMessageStats {
   primaryNumMessages: number;
@@ -125,16 +130,22 @@ class Stats {
     });
   };
 }
-
 interface MetadataRetriever {
   getMetadata: (prefix: Buffer) => Promise<HubResult<TrieNodeMetadataResponse>>;
+  getAllSyncIdsByPrefix: (prefix: Buffer) => Promise<HubResult<SyncIds>>;
+  getAllMessagesBySyncIds: (syncIds: Uint8Array[]) => Promise<HubResult<MessagesResponse>>;
+  submitMessage: (message: Message) => Promise<HubResult<Message>>;
 }
 
 export class RpcMetadataRetriever implements MetadataRetriever {
   _rpcClient: HubRpcClient;
+  _authMetadata?: Metadata;
 
-  constructor(rpcClient: HubRpcClient) {
+  constructor(rpcClient: HubRpcClient, username?: string, password?: string) {
     this._rpcClient = rpcClient;
+    if (username && password) {
+      this._authMetadata = getAuthMetadata(username, password);
+    }
   }
 
   getMetadata = async (prefix: Buffer): Promise<HubResult<TrieNodeMetadataResponse>> => {
@@ -142,13 +153,31 @@ export class RpcMetadataRetriever implements MetadataRetriever {
       deadline: Date.now() + RPC_TIMEOUT_SECONDS * 1000,
     });
   };
+
+  submitMessage = async (message: Message): Promise<HubResult<Message>> => {
+    if (this._authMetadata) {
+      return this._rpcClient.submitMessage(message, this._authMetadata);
+    } else {
+      return this._rpcClient.submitMessage(message);
+    }
+  };
+
+  getAllSyncIdsByPrefix = async (prefix: Buffer) => {
+    return this._rpcClient.getAllSyncIdsByPrefix(TrieNodePrefix.create({ prefix }));
+  };
+
+  getAllMessagesBySyncIds = async (syncIds: Uint8Array[]) => {
+    return this._rpcClient.getAllMessagesBySyncIds(SyncIds.create({ syncIds }));
+  };
 }
 
 export class SyncEngineMetadataRetriever implements MetadataRetriever {
   _syncEngine: SyncEngine;
+  _hub: HubInterface;
 
-  constructor(syncEngine: SyncEngine) {
+  constructor(hub: HubInterface, syncEngine: SyncEngine) {
     this._syncEngine = syncEngine;
+    this._hub = hub;
   }
 
   getMetadata = async (prefix: Buffer): Promise<HubResult<TrieNodeMetadataResponse>> => {
@@ -159,6 +188,34 @@ export class SyncEngineMetadataRetriever implements MetadataRetriever {
 
     // This can happen if there are no messages under the prefix for this node. We may want to return an empty result rather than an error.
     return err(new HubError("unavailable", "Missing metadata for node"));
+  };
+
+  getAllSyncIdsByPrefix = async (prefix: Buffer) => {
+    const result = await this._syncEngine.getAllSyncIdsByPrefix(prefix);
+    if (result) {
+      return ok(SyncIds.create({ syncIds: result ?? [] }));
+    }
+    return err(new HubError("unavailable", "No sync ids for prefix"));
+  };
+
+  submitMessage = async (message: Message) => {
+    return (await this._hub.submitMessage(message)).map(() => {
+      return message;
+    });
+  };
+
+  getAllMessagesBySyncIds = async (syncIds: Uint8Array[]) => {
+    const syncIdsParsed = syncIds.map((syncId) => SyncId.fromBytes(syncId));
+    const messagesResult = await this._syncEngine.getAllMessagesBySyncIds(syncIdsParsed);
+    if (messagesResult.isErr()) {
+      return err(messagesResult.error);
+    }
+
+    const filteredMessages = messagesResult.value.filter(
+      (message) => message.data !== undefined && message.hash.length > 0,
+    );
+
+    return ok(MessagesResponse.create({ messages: filteredMessages }));
   };
 }
 
@@ -273,26 +330,6 @@ const getNumMessagesInSpan = async (metadataRetriever: MetadataRetriever, startT
   return ok(numMessages);
 };
 
-export const computeSyncHealthMessageStats = async (
-  startTime: Date,
-  stopTime: Date,
-  primaryMetadataRetriever: MetadataRetriever,
-  peerMetadataRetriever: MetadataRetriever,
-) => {
-  const numMessagesPrimary = await getNumMessagesInSpan(primaryMetadataRetriever, startTime, stopTime);
-  const numMessagesPeer = await getNumMessagesInSpan(peerMetadataRetriever, startTime, stopTime);
-
-  if (numMessagesPrimary.isErr()) {
-    return err(numMessagesPrimary.error);
-  }
-
-  if (numMessagesPeer.isErr()) {
-    return err(numMessagesPeer.error);
-  }
-
-  return ok(new SyncHealthMessageStats(numMessagesPrimary.value, numMessagesPeer.value));
-};
-
 const pickPeers = async (rpcClient: HubRpcClient, count: number): Promise<HubResult<(string | undefined)[]>> => {
   const peers = await rpcClient.getCurrentPeers({});
   return peers.map((peers) => {
@@ -314,8 +351,8 @@ const pickPeers = async (rpcClient: HubRpcClient, count: number): Promise<HubRes
   });
 };
 
-const computeSyncIdsInSpan = async (rpcMetadataRetriever: RpcMetadataRetriever, startTime: Date, stopTime: Date) => {
-  const prefixInfo = await getPrefixInfo(rpcMetadataRetriever, startTime, stopTime);
+const computeSyncIdsInSpan = async (metadataRetriever: MetadataRetriever, startTime: Date, stopTime: Date) => {
+  const prefixInfo = await getPrefixInfo(metadataRetriever, startTime, stopTime);
 
   if (prefixInfo.isErr()) {
     return err(prefixInfo.error);
@@ -326,7 +363,7 @@ const computeSyncIdsInSpan = async (rpcMetadataRetriever: RpcMetadataRetriever, 
     prefixInfo.value.commonPrefixMetadata,
     prefixInfo.value.startTimePrefix,
     prefixInfo.value.stopTimePrefix,
-    rpcMetadataRetriever,
+    metadataRetriever,
     (node: TrieNodeMetadataResponse) => {
       prefixes.push(node.prefix);
     },
@@ -338,9 +375,7 @@ const computeSyncIdsInSpan = async (rpcMetadataRetriever: RpcMetadataRetriever, 
 
   const syncIds = [];
   for (const prefix of prefixes) {
-    const prefixSyncIds = await rpcMetadataRetriever._rpcClient.getAllSyncIdsByPrefix(
-      TrieNodePrefix.create({ prefix }),
-    );
+    const prefixSyncIds = await metadataRetriever.getAllSyncIdsByPrefix(Buffer.from(prefix));
     if (prefixSyncIds.isOk()) {
       syncIds.push(...prefixSyncIds.value.syncIds);
     }
@@ -349,45 +384,22 @@ const computeSyncIdsInSpan = async (rpcMetadataRetriever: RpcMetadataRetriever, 
   return ok(syncIds);
 };
 
-const tryPushingMissingMessages = async (
-  rpcMetadataRetrieverWithMessages: RpcMetadataRetriever,
-  rpcMetadataRetrieverMissingMessages: RpcMetadataRetriever,
-  missingSyncIds: Buffer[],
-) => {
-  if (missingSyncIds.length === 0) {
-    return ok([]);
-  }
-
-  const messages = await rpcMetadataRetrieverWithMessages._rpcClient.getAllMessagesBySyncIds({
-    syncIds: missingSyncIds,
-  });
-
-  if (messages.isErr()) {
-    return err(messages.error);
-  }
-
-  const results = [];
-  for (const message of messages.value.messages) {
-    const result = await rpcMetadataRetrieverMissingMessages._rpcClient.submitMessage(message);
-    results.push(result);
-  }
-
-  return ok(results);
-};
-
 const uniqueSyncIds = (mySyncIds: Uint8Array[], otherSyncIds: Uint8Array[]) => {
   const idsOnlyInPrimary = [];
 
-  // This is really slow. It's n^2 in the number of sync ids. It seems somwhat complicated to figure out how to hash a sync id or get a string representation that can be hashed.
+  const otherSyncIdSet = new Set();
+
+  for (const syncId of otherSyncIds) {
+    const stringSyncId = bytesToHexString(syncId);
+    if (stringSyncId.isOk()) {
+      otherSyncIdSet.add(stringSyncId.value);
+    }
+  }
 
   for (const syncId of mySyncIds) {
-    const syncIdBuffer = Buffer.from(syncId);
-    const otherSyncId = otherSyncIds.find((otherSyncId) => {
-      const otherSyncIdBuffer = Buffer.from(otherSyncId);
-      return Buffer.compare(syncIdBuffer, otherSyncIdBuffer) === 0;
-    });
-
-    if (otherSyncId === undefined) {
+    const stringSyncId = bytesToHexString(syncId);
+    if (stringSyncId.isOk() && !otherSyncIdSet.has(stringSyncId.value)) {
+      const syncIdBuffer = Buffer.from(syncId);
       idsOnlyInPrimary.push(syncIdBuffer);
     }
   }
@@ -395,52 +407,98 @@ const uniqueSyncIds = (mySyncIds: Uint8Array[], otherSyncIds: Uint8Array[]) => {
   return idsOnlyInPrimary;
 };
 
-const investigateDiff = async (
-  primaryRpcMetadataRetriever: RpcMetadataRetriever,
-  peerRpcMetadataRetriever: RpcMetadataRetriever,
-  startTime: Date,
-  stopTime: Date,
-) => {
-  const primarySyncIds = await computeSyncIdsInSpan(primaryRpcMetadataRetriever, startTime, stopTime);
+export class SyncHealthProbe {
+  _primaryMetadataRetriever: MetadataRetriever;
+  _peerMetadataRetriever: MetadataRetriever;
 
-  if (primarySyncIds.isErr()) {
-    return err(primarySyncIds.error);
+  constructor(primaryMetadataRetriever: MetadataRetriever, peerMetadataRetriever: MetadataRetriever) {
+    this._primaryMetadataRetriever = primaryMetadataRetriever;
+    this._peerMetadataRetriever = peerMetadataRetriever;
   }
 
-  const peerSyncIds = await computeSyncIdsInSpan(peerRpcMetadataRetriever, startTime, stopTime);
+  computeSyncHealthMessageStats = async (startTime: Date, stopTime: Date) => {
+    const numMessagesPrimary = await getNumMessagesInSpan(this._primaryMetadataRetriever, startTime, stopTime);
+    const numMessagesPeer = await getNumMessagesInSpan(this._peerMetadataRetriever, startTime, stopTime);
 
-  if (peerSyncIds.isErr()) {
-    return err(peerSyncIds.error);
-  }
+    if (numMessagesPrimary.isErr()) {
+      return err(numMessagesPrimary.error);
+    }
 
-  const idsOnlyInPrimary = uniqueSyncIds(primarySyncIds.value, peerSyncIds.value);
-  const idsOnlyInPeer = uniqueSyncIds(peerSyncIds.value, primarySyncIds.value);
+    if (numMessagesPeer.isErr()) {
+      return err(numMessagesPeer.error);
+    }
 
-  const resultsPushingToPeer = await tryPushingMissingMessages(
-    primaryRpcMetadataRetriever,
-    peerRpcMetadataRetriever,
-    idsOnlyInPrimary,
-  );
+    return ok(new SyncHealthMessageStats(numMessagesPrimary.value, numMessagesPeer.value));
+  };
 
-  if (resultsPushingToPeer.isErr()) {
-    return err(resultsPushingToPeer.error);
-  }
+  tryPushingMissingMessages = async (
+    metadataRetrieverWithMessages: MetadataRetriever,
+    metadataRetrieverMissingMessages: MetadataRetriever,
+    missingSyncIds: Buffer[],
+  ) => {
+    if (missingSyncIds.length === 0) {
+      return ok([]);
+    }
 
-  const resultsPushingToPrimary = await tryPushingMissingMessages(
-    peerRpcMetadataRetriever,
-    primaryRpcMetadataRetriever,
-    idsOnlyInPeer,
-  );
+    const messages = await metadataRetrieverWithMessages.getAllMessagesBySyncIds(missingSyncIds);
 
-  if (resultsPushingToPrimary.isErr()) {
-    return err(resultsPushingToPrimary.error);
-  }
+    if (messages.isErr()) {
+      return err(messages.error);
+    }
 
-  return ok({
-    resultsPushingToPeer: resultsPushingToPeer.value,
-    resultsPushingToPrimary: resultsPushingToPrimary.value,
-  });
-};
+    const results = [];
+    for (const message of messages.value.messages) {
+      const result = await metadataRetrieverMissingMessages.submitMessage(message);
+      results.push(result);
+    }
+
+    return ok(results);
+  };
+
+  divergingSyncIds = async (startTime: Date, stopTime: Date) => {
+    const primarySyncIds = await computeSyncIdsInSpan(this._primaryMetadataRetriever, startTime, stopTime);
+
+    if (primarySyncIds.isErr()) {
+      return err(primarySyncIds.error);
+    }
+
+    const peerSyncIds = await computeSyncIdsInSpan(this._peerMetadataRetriever, startTime, stopTime);
+
+    if (peerSyncIds.isErr()) {
+      return err(peerSyncIds.error);
+    }
+
+    const idsOnlyInPrimary = uniqueSyncIds(primarySyncIds.value, peerSyncIds.value);
+    const idsOnlyInPeer = uniqueSyncIds(peerSyncIds.value, primarySyncIds.value);
+    return ok({ idsOnlyInPrimary, idsOnlyInPeer });
+  };
+
+  tryPushingDivergingSyncIds = async (startTime: Date, stopTime: Date, direction: "FromPeer" | "ToPeer") => {
+    const syncIdsToRetry = await this.divergingSyncIds(startTime, stopTime);
+
+    if (syncIdsToRetry.isErr()) {
+      return err(syncIdsToRetry.error);
+    }
+
+    const { idsOnlyInPrimary, idsOnlyInPeer } = syncIdsToRetry.value;
+
+    if (direction === "ToPeer") {
+      return await this.tryPushingMissingMessages(
+        this._primaryMetadataRetriever,
+        this._peerMetadataRetriever,
+        idsOnlyInPrimary,
+      );
+    } else if (direction === "FromPeer") {
+      return await this.tryPushingMissingMessages(
+        this._peerMetadataRetriever,
+        this._primaryMetadataRetriever,
+        idsOnlyInPeer,
+      );
+    } else {
+      return err(new HubError("unavailable", "invalid codepath"));
+    }
+  };
+}
 
 const parseTime = (timeString: string) => {
   // Use current date with specified times. Time must be in HH:MM:SS format
@@ -459,6 +517,9 @@ export const printSyncHealth = async (
   maxNumPeers: number,
   primaryNode: string,
   outfile?: string,
+  userSpecifiedPeers?: string[],
+  username?: string,
+  password?: string,
 ) => {
   const startTime = parseTime(startTimeOfDay);
   const stopTime = parseTime(stopTimeOfDay);
@@ -477,13 +538,13 @@ export const printSyncHealth = async (
       console.log("Primary rpc client not ready", err);
       throw Error();
     }
-    const peers = await pickPeers(primaryRpcClient, maxNumPeers);
+    const peers = userSpecifiedPeers ? ok(userSpecifiedPeers) : await pickPeers(primaryRpcClient, maxNumPeers);
     if (peers.isErr()) {
       console.log("Error querying peers");
       return;
     }
 
-    const primaryRpcMetadataRetriever = new RpcMetadataRetriever(primaryRpcClient);
+    const primaryRpcMetadataRetriever = new RpcMetadataRetriever(primaryRpcClient, username, password);
 
     for (const peer of peers.value) {
       if (peer === undefined) {
@@ -506,14 +567,11 @@ export const printSyncHealth = async (
 
       const peerRpcMetadataRetriever = new RpcMetadataRetriever(peerRpcClient);
 
+      const syncHealthProbe = new SyncHealthProbe(primaryRpcMetadataRetriever, peerRpcMetadataRetriever);
+
       try {
         console.log("Connecting to peer", peer);
-        const syncHealthStats = await computeSyncHealthMessageStats(
-          startTime,
-          stopTime,
-          primaryRpcMetadataRetriever,
-          peerRpcMetadataRetriever,
-        );
+        const syncHealthStats = await syncHealthProbe.computeSyncHealthMessageStats(startTime, stopTime);
         if (syncHealthStats.isOk()) {
           // Sync health is us relative to peer. If the sync health is high, means we have more messages. If it's low, we have less.
           const score = syncHealthStats.value.computeDiff();
@@ -525,15 +583,15 @@ export const printSyncHealth = async (
             let aggregateStats;
             if (score !== 0) {
               console.log("Investigating diff");
-              const result = await investigateDiff(
-                primaryRpcMetadataRetriever,
-                peerRpcMetadataRetriever,
-                startTime,
-                stopTime,
-              );
+              const resultToPeer = await syncHealthProbe.tryPushingDivergingSyncIds(startTime, stopTime, "ToPeer");
 
-              if (result.isErr()) {
-                console.log("Error investigating diff", result.error);
+              const resultFromPeer = await syncHealthProbe.tryPushingDivergingSyncIds(startTime, stopTime, "FromPeer");
+
+              if (resultToPeer.isErr() || resultFromPeer.isErr()) {
+                const resultToPeerSummary = resultToPeer.isOk() ? "ok" : resultToPeer.error;
+                const resultFromPeerSummary = resultFromPeer.isOk() ? "ok" : resultFromPeer.error;
+
+                console.log("Error investigating diff", resultToPeerSummary, resultFromPeerSummary);
                 // Report the stats anyway, but with no investigation results
                 aggregateStats = new Stats(startTime, stopTime, primaryNode, peer, syncHealthStats.value, [], []);
               } else {
@@ -543,8 +601,8 @@ export const printSyncHealth = async (
                   primaryNode,
                   peer,
                   syncHealthStats.value,
-                  result.value.resultsPushingToPeer,
-                  result.value.resultsPushingToPrimary,
+                  resultToPeer.value,
+                  resultFromPeer.value,
                 );
               }
             } else {

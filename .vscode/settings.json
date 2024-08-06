@@ -11,9 +11,6 @@
   "editor.codeActionsOnSave": {
     "source.organizeImports.biome": "explicit"
   },
-  "cSpell.words": [
-    "farcaster",
-    "gossipsub",
-    "protobufs"
-  ]
+  "cSpell.words": ["farcaster", "gossipsub", "protobufs"],
+  "rust-analyzer.linkedProjects": ["${workspaceFolder}/apps/hubble/src/addon/Cargo.toml"]
 }

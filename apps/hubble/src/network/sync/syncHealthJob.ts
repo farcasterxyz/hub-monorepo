@@ -1,15 +1,10 @@
 import cron from "node-cron";
 import { logger } from "../../utils/logger.js";
 import SyncEngine from "./syncEngine.js";
-import {
-  RpcMetadataRetriever,
-  SyncEngineMetadataRetriever,
-  computeSyncHealthMessageStats,
-} from "../../utils/syncHealth.js";
+import { RpcMetadataRetriever, SyncEngineMetadataRetriever, SyncHealthProbe } from "../../utils/syncHealth.js";
 import { HubInterface } from "hubble.js";
 import { peerIdFromString } from "@libp2p/peer-id";
-import { parseAddress } from "../../utils/p2p.js";
-import { multiaddr, Multiaddr } from "@multiformats/multiaddr";
+import { bytesToHexString, HubResult, Message, UserDataType } from "@farcaster/hub-nodejs";
 
 const log = logger.child({
   component: "SyncHealth",
@@ -27,7 +22,7 @@ export class MeasureSyncHealthJobScheduler {
   private _peersInScope: string[];
 
   constructor(syncEngine: SyncEngine, hub: HubInterface) {
-    this._metadataRetriever = new SyncEngineMetadataRetriever(syncEngine);
+    this._metadataRetriever = new SyncEngineMetadataRetriever(hub, syncEngine);
     this._hub = hub;
     this._peersInScope = this.peersInScope();
   }
@@ -65,6 +60,30 @@ export class MeasureSyncHealthJobScheduler {
     return peers;
   }
 
+  processSumbitResults(results: HubResult<Message>[]) {
+    const errorReasons = new Set();
+    const successInfo = [];
+    for (const result of results) {
+      if (result.isOk()) {
+        const hashString = bytesToHexString(result.value.hash);
+        const hash = hashString.isOk() ? hashString.value : "unable to show hash";
+
+        const typeValue = result.value.data?.type;
+        const type = typeValue ? UserDataType[typeValue] : "unknown type";
+
+        successInfo.push({
+          type,
+          fid: result.value.data?.fid,
+          timestamp: result.value.data?.timestamp,
+          hash,
+        });
+      } else {
+        errorReasons.add(result.error.message);
+      }
+    }
+    return { errorReasons: [...errorReasons], successInfo };
+  }
+
   async doJobs() {
     log.info({}, "Starting compute SyncHealth job");
 
@@ -87,17 +106,27 @@ export class MeasureSyncHealthJobScheduler {
       }
 
       const peerMetadataRetriever = new RpcMetadataRetriever(rpcClient);
-      computeSyncHealthMessageStats;
 
-      const syncHealthMessageStats = await computeSyncHealthMessageStats(
+      const syncHealthProbe = new SyncHealthProbe(this._metadataRetriever, peerMetadataRetriever);
+
+      const syncHealthMessageStats = await syncHealthProbe.computeSyncHealthMessageStats(
         new Date(startTime),
         new Date(stopTime),
-        this._metadataRetriever,
-        peerMetadataRetriever,
       );
 
       if (syncHealthMessageStats.isErr()) {
         log.info({ error: syncHealthMessageStats.error }, "Error computing SyncHealth");
+        continue;
+      }
+
+      const resultsPushingToUs = await syncHealthProbe.tryPushingDivergingSyncIds(
+        new Date(startTime),
+        new Date(stopTime),
+        "FromPeer",
+      );
+
+      if (resultsPushingToUs.isErr()) {
+        log.info({ error: resultsPushingToUs.error }, "Error pushing new messages to ourself");
         continue;
       }
 
@@ -107,6 +136,7 @@ export class MeasureSyncHealthJobScheduler {
           theirNumMessages: syncHealthMessageStats.value.peerNumMessages,
           syncHealth: syncHealthMessageStats.value.computeDiff(),
           syncHealthPercentage: syncHealthMessageStats.value.computeDiffPercentage(),
+          resultsPushingToUs: this.processSumbitResults(resultsPushingToUs.value),
           peerId,
         },
         "Computed SyncHealth stats for peer",
