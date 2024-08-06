@@ -979,7 +979,6 @@ export class Hub implements HubInterface {
     return new Promise((resolve) => {
       (async () => {
         let progressBar: SingleBar | undefined;
-
         try {
           const dbLocation = this.rocksDB.location;
           const dbFiles = Result.fromThrowable(
@@ -1033,17 +1032,15 @@ export class Hub implements HubInterface {
               log.info({ latestSnapshotKeyBase }, "found latest S3 snapshot");
             }
 
-            const handleError = (e: Error) => {
-              log.error({ error: e }, "Error extracting snapshot");
-              progressBar?.stop();
-              resolve(err(new HubError("unavailable", "Error extracting snapshot")));
-            };
-
             const parseStream = new tar.Parse();
             const gunzip = zlib.createGunzip();
             gunzip.pipe(parseStream);
 
-            gunzip.on("error", handleError);
+            gunzip.on("error", (e: Error) => {
+              log.error({ error: e }, "Error decompressing snapshot");
+              progressBar?.stop();
+              resolve(err(new HubError("unavailable", "Error decompressing snapshot")));
+            });
 
             // We parse the tar file and extract it into the DB location, which might be different
             // than the location it was originally created in. So, we transform the top-level
@@ -1077,37 +1074,27 @@ export class Hub implements HubInterface {
               resolve(ok(true));
             });
 
-            log.info({ numChunks: latestChunks.length }, "Getting snapshot chunks...");
-            progressBar = addProgressBar("Getting snapshot", latestChunks.length * 100);
+            await this.getSnapshotChunks(dbLocation, s3Bucket, latestSnapshotKeyBase, latestChunks);
 
+            progressBar = addProgressBar("Decompressing chunks", latestChunks.length);
             let chunkCount = 0;
+
             for (const chunk of latestChunks) {
-              let downloadedSize = 0;
-              chunkCount += 1;
-              log.info({ chunkCount, totalChunks: latestChunks.length }, "Downloading snapshot chunks...");
-
-              const chunkUrl = `https://${s3Bucket}/${latestSnapshotKeyBase}/${chunk}`;
-              const chunkResponse = await axios.get(chunkUrl, {
-                responseType: "stream",
-              });
-              const totalSize = parseInt(chunkResponse.headers["content-length"], 10);
-
               await new Promise((resolve) => {
-                chunkResponse.data
-                  .on("error", handleError)
-                  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-                  .on("data", (dataChunk: any) => {
-                    downloadedSize += dataChunk.length;
-                    progressBar?.update(Math.round((chunkCount - 1) * 100 + (downloadedSize * 100) / totalSize));
-                  })
-                  .on("end", () => {
-                    resolve(true);
-                  })
-                  .pipe(gunzip, { end: false });
+                log.info({ chunk: chunk }, "Decompressing chunk");
+                const chunkStream = fs.createReadStream(path.join(dbLocation, "..", "tmp", chunk));
+                chunkStream.on("end", () => {
+                  resolve(true);
+                });
+                chunkStream.pipe(gunzip, { end: false });
+                chunkCount += 1;
+                progressBar?.update(chunkCount);
               });
             }
 
             gunzip.end();
+
+            fs.rmdir(path.join(dbLocation, "..", "tmp"), { recursive: true }, () => {});
           } else {
             resolve(ok(false));
           }
@@ -1118,6 +1105,124 @@ export class Hub implements HubInterface {
         }
       })();
     });
+  }
+
+  async getSnapshotChunks(
+    dbLocation: string,
+    s3Bucket: string,
+    latestSnapshotKeyBase: string,
+    latestChunks: string[],
+  ): HubAsyncResult<boolean> {
+    let progressBar: SingleBar | undefined;
+    try {
+      const terminatingError = (e: Error) => {
+        log.error({ error: e }, "Error downloading snapshot");
+        progressBar?.stop();
+        return err(new HubError("unavailable", "Error extracting snapshot"));
+      };
+
+      log.info({ numChunks: latestChunks.length }, "Getting snapshot chunks...");
+      progressBar = addProgressBar("Getting snapshot", latestChunks.length * 100);
+      fs.mkdirSync(path.join(dbLocation, "..", "tmp"), { recursive: true });
+
+      let totalDownloaded = 0;
+
+      class ChunkProcessor {
+        chunk: string;
+
+        constructor(chunk: string) {
+          this.chunk = chunk;
+        }
+
+        async run() {
+          let downloadedSize = 0;
+          chunkCount += 1;
+          log.info({ chunkCount, totalChunks: latestChunks.length }, "Downloading snapshot chunks...");
+
+          let done = false;
+
+          while (!done) {
+            try {
+              const chunkUrl = `https://${s3Bucket}/${latestSnapshotKeyBase}/${this.chunk}`;
+              const chunkResponse = await axios.get(chunkUrl, {
+                responseType: "stream",
+              });
+              const totalSize = parseInt(chunkResponse.headers["content-length"], 10);
+
+              done = await new Promise((resolve) => {
+                const outStream = fs.createWriteStream(path.join(dbLocation, "..", "tmp", `${this.chunk}.tmp`));
+                chunkResponse.data
+                  .on("error", (e: Error) => {
+                    log.error({ error: e, chunk: this.chunk }, "Failed to download chunk, reattempting...");
+                    totalDownloaded -= (downloadedSize * 100) / totalSize;
+                    downloadedSize = 0;
+                    resolve(false);
+                  })
+                  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+                  .on("data", (dataChunk: any) => {
+                    downloadedSize += dataChunk.length;
+                    totalDownloaded += (dataChunk.length * 100) / totalSize;
+                    progressBar?.update(Math.round(totalDownloaded));
+                  })
+                  .on("end", () => {
+                    resolve(true);
+                  })
+                  .pipe(outStream);
+              });
+
+              if (done) {
+                fs.rename(
+                  path.join(dbLocation, "..", "tmp", `${this.chunk}.tmp`),
+                  path.join(dbLocation, "..", "tmp", `${this.chunk}`),
+                  () => {},
+                );
+              } else {
+                fs.rm(path.join(dbLocation, "..", "tmp", `${this.chunk}.tmp`), () => {});
+              }
+            } catch (e) {
+              done = false;
+            }
+          }
+        }
+      }
+
+      let chunkCount = 0;
+      const chunkProcessors: ChunkProcessor[] = [];
+
+      for (let i = 0; i < latestChunks.length; i++) {
+        const chunk = latestChunks[i];
+        if (!chunk) {
+          log.error({ error: new Error("missing chunk") }, `Chunk info missing for index ${i}`);
+          return terminatingError(new HubError("unavailable", "An error occurred during snapshot synchronization"));
+        }
+        chunkProcessors.push(new ChunkProcessor(chunk));
+      }
+
+      let runningPromises = 0;
+      const promises = [];
+      while (chunkProcessors.length > 0) {
+        while (runningPromises < 4 && chunkProcessors.length > 0) {
+          const processor = chunkProcessors.shift();
+          if (processor) {
+            runningPromises += 1;
+            promises.push(
+              processor.run().then(() => {
+                runningPromises -= 1;
+              }),
+            );
+          }
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      await Promise.allSettled(promises);
+
+      return ok(true);
+    } catch (error) {
+      log.error({ error }, "An error occurred during snapshot synchronization");
+      progressBar?.stop();
+      return err(new HubError("unavailable", "An error occurred during snapshot synchronization"));
+    }
   }
 
   async getContactInfoContent(): HubAsyncResult<ContactInfoContent> {
