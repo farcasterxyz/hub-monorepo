@@ -1,17 +1,10 @@
 import cron from "node-cron";
 import { logger } from "../../utils/logger.js";
 import SyncEngine from "./syncEngine.js";
-import {
-  RpcMetadataRetriever,
-  SyncEngineMetadataRetriever,
-  computeSyncHealthMessageStats,
-  divergingSyncIds,
-  tryPushingMissingMessages,
-} from "../../utils/syncHealth.js";
+import { RpcMetadataRetriever, SyncEngineMetadataRetriever, SyncHealthProbe } from "../../utils/syncHealth.js";
 import { HubInterface } from "hubble.js";
 import { peerIdFromString } from "@libp2p/peer-id";
-import { SyncId, SyncIdType } from "../../network/sync/syncId.js";
-import { bytesToHexString, OnChainEventType, HubResult, Message, UserDataType } from "@farcaster/hub-nodejs";
+import { bytesToHexString, HubResult, Message, UserDataType } from "@farcaster/hub-nodejs";
 
 const log = logger.child({
   component: "SyncHealth",
@@ -26,15 +19,12 @@ export class MeasureSyncHealthJobScheduler {
   private _startSecondsAgo = 60 * 15;
   private _spanSeconds = 60 * 10;
   private _hub: HubInterface;
-  private _peersToPushTo: Set<string>;
   private _peersInScope: string[];
-  private _maxSyncIdsToPrint = 10;
 
   constructor(syncEngine: SyncEngine, hub: HubInterface) {
     this._metadataRetriever = new SyncEngineMetadataRetriever(hub, syncEngine);
     this._hub = hub;
     this._peersInScope = this.peersInScope();
-    this._peersToPushTo = new Set(this._peersInScope);
   }
 
   start(cronSchedule?: string) {
@@ -116,13 +106,12 @@ export class MeasureSyncHealthJobScheduler {
       }
 
       const peerMetadataRetriever = new RpcMetadataRetriever(rpcClient);
-      computeSyncHealthMessageStats;
 
-      const syncHealthMessageStats = await computeSyncHealthMessageStats(
+      const syncHealthProbe = new SyncHealthProbe(this._metadataRetriever, peerMetadataRetriever);
+
+      const syncHealthMessageStats = await syncHealthProbe.computeSyncHealthMessageStats(
         new Date(startTime),
         new Date(stopTime),
-        this._metadataRetriever,
-        peerMetadataRetriever,
       );
 
       if (syncHealthMessageStats.isErr()) {
@@ -130,54 +119,15 @@ export class MeasureSyncHealthJobScheduler {
         continue;
       }
 
-      const syncIds = await divergingSyncIds(
-        this._metadataRetriever,
-        peerMetadataRetriever,
+      const resultsPushingToUs = await syncHealthProbe.tryPushingDivergingSyncIds(
         new Date(startTime),
         new Date(stopTime),
-      );
-
-      if (syncIds.isErr()) {
-        log.info({ error: syncIds.error }, "Error computing diverging sync ids");
-        continue;
-      }
-
-      const resultsPushingToUs = await tryPushingMissingMessages(
-        peerMetadataRetriever,
-        this._metadataRetriever,
-        syncIds.value.idsOnlyInPeer,
+        "FromPeer",
       );
 
       if (resultsPushingToUs.isErr()) {
         log.info({ error: resultsPushingToUs.error }, "Error pushing new messages to ourself");
         continue;
-      }
-
-      let resultsPushingToPeer;
-      if (this._peersToPushTo.has(peerId)) {
-        const unparsedResultsPushingToPeer = await tryPushingMissingMessages(
-          this._metadataRetriever,
-          peerMetadataRetriever,
-          syncIds.value.idsOnlyInPrimary,
-        );
-
-        if (unparsedResultsPushingToPeer.isErr()) {
-          log.info({ error: unparsedResultsPushingToPeer.error }, "Error pushing new messages to peer");
-          continue;
-        }
-
-        // Don't try to submit to peers you're not authorized to
-        const peerRequiresAuth = unparsedResultsPushingToPeer.value.find((value) => {
-          return value.isErr() && (value.error.errCode === "unauthenticated" || value.error.errCode === "unauthorized");
-        });
-
-        if (peerRequiresAuth !== undefined) {
-          this._peersToPushTo.delete(peerId);
-        } else {
-          this._peersToPushTo.add(peerId);
-        }
-
-        resultsPushingToPeer = this.processSumbitResults(unparsedResultsPushingToPeer.value);
       }
 
       log.info(
@@ -187,7 +137,6 @@ export class MeasureSyncHealthJobScheduler {
           syncHealth: syncHealthMessageStats.value.computeDiff(),
           syncHealthPercentage: syncHealthMessageStats.value.computeDiffPercentage(),
           resultsPushingToUs: this.processSumbitResults(resultsPushingToUs.value),
-          resultsPushingToPeer,
           peerId,
         },
         "Computed SyncHealth stats for peer",

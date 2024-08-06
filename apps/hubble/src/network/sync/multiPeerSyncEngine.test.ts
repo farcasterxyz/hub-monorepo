@@ -23,12 +23,7 @@ import { MockHub } from "../../test/mocks.js";
 import { sleep, sleepWhile } from "../../utils/crypto.js";
 import { ensureMessageData } from "../../storage/db/message.js";
 import { EMPTY_HASH } from "./merkleTrie.js";
-import {
-  SyncEngineMetadataRetriever,
-  computeSyncHealthMessageStats,
-  divergingSyncIds,
-  tryPushingMissingMessages,
-} from "../../utils/syncHealth.js";
+import { SyncEngineMetadataRetriever, SyncHealthProbe } from "../../utils/syncHealth.js";
 
 const TEST_TIMEOUT_SHORT = 10 * 1000;
 const TEST_TIMEOUT_LONG = 60 * 1000;
@@ -750,6 +745,8 @@ describe("Multi peer sync engine", () => {
     const metadataRetriever1 = new SyncEngineMetadataRetriever(hub1, syncEngine1);
     const metadataRetriever2 = new SyncEngineMetadataRetriever(hub2, syncEngine2);
 
+    const syncHealthProbe = new SyncHealthProbe(metadataRetriever1, metadataRetriever2);
+
     const setupEngine = async (engine: Engine) => {
       await engine.mergeOnChainEvent(custodyEvent);
       await engine.mergeOnChainEvent(signerEvent);
@@ -769,7 +766,7 @@ describe("Multi peer sync engine", () => {
     const start = new Date(fromFarcasterTime(farcasterTime + 150)._unsafeUnwrap());
     const stop = new Date(fromFarcasterTime(farcasterTime + 200)._unsafeUnwrap());
 
-    const messageStats1 = await computeSyncHealthMessageStats(start, stop, metadataRetriever1, metadataRetriever2);
+    const messageStats1 = await syncHealthProbe.computeSyncHealthMessageStats(start, stop);
 
     // This happens because there are no messages under the common prefix for engine2
     expect(messageStats1.isErr());
@@ -777,26 +774,14 @@ describe("Multi peer sync engine", () => {
     await engine2.mergeMessages(messages.slice(0, 2));
     await sleepWhile(() => syncEngine2.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
-    const messageStats2 = (
-      await computeSyncHealthMessageStats(start, stop, metadataRetriever1, metadataRetriever2)
-    )._unsafeUnwrap();
+    const messageStats2 = (await syncHealthProbe.computeSyncHealthMessageStats(start, stop))._unsafeUnwrap();
 
     // Query is inclusive of the start time and exclusive of the stop time. We cound 150, 170, 180 on engine1 and  150, 170 on engine 2
     expect(messageStats2.primaryNumMessages).toEqual(3);
     expect(messageStats2.peerNumMessages).toEqual(2);
 
-    const divergingSyncIds2 = (
-      await divergingSyncIds(metadataRetriever1, metadataRetriever2, start, stop)
-    )._unsafeUnwrap();
-
-    // There's only one message that's uniquely on engine 1. This is consistent with the message counts.
-    expect(divergingSyncIds2.idsOnlyInPrimary.length).toEqual(1);
-    expect(divergingSyncIds2.idsOnlyInPeer.length).toEqual(0);
-
-    // Show that pushing missing messages works
-    const pushResults2 = (
-      await tryPushingMissingMessages(metadataRetriever1, metadataRetriever2, divergingSyncIds2.idsOnlyInPrimary)
-    )._unsafeUnwrap();
+    // Show that pushing diverging sync ids works
+    const pushResults2 = (await syncHealthProbe.tryPushingDivergingSyncIds(start, stop, "ToPeer"))._unsafeUnwrap();
 
     expect(pushResults2.length).toEqual(1);
 
@@ -804,21 +789,24 @@ describe("Multi peer sync engine", () => {
     await addMessagesWithTimeDelta(engine2, [185]);
     await sleepWhile(() => syncEngine2.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
-    const messageStats3 = (
-      await computeSyncHealthMessageStats(start, stop, metadataRetriever1, metadataRetriever2)
-    )._unsafeUnwrap();
+    const messageStats3 = (await syncHealthProbe.computeSyncHealthMessageStats(start, stop))._unsafeUnwrap();
 
     // engine2 has all the messages engine1 has in addition to 185.
     expect(messageStats3.primaryNumMessages).toEqual(3);
     expect(messageStats3.peerNumMessages).toEqual(4);
 
-    const divergingSyncIds3 = (
-      await divergingSyncIds(metadataRetriever1, metadataRetriever2, start, stop)
-    )._unsafeUnwrap();
+    // Show that pushing diverging sync ids works
+    const pushResults3 = (await syncHealthProbe.tryPushingDivergingSyncIds(start, stop, "FromPeer"))._unsafeUnwrap();
 
-    // There's only one message that's uniquely on engine 2. This is consistent with the message counts.
-    expect(divergingSyncIds3.idsOnlyInPrimary.length).toEqual(0);
-    expect(divergingSyncIds3.idsOnlyInPeer.length).toEqual(1);
+    expect(pushResults3.length).toEqual(1);
+
+    await sleepWhile(() => syncEngine1.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
+
+    const messageStats4 = (await syncHealthProbe.computeSyncHealthMessageStats(start, stop))._unsafeUnwrap();
+
+    // engine2 has all the messages engine1 has
+    expect(messageStats4.primaryNumMessages).toEqual(4);
+    expect(messageStats4.peerNumMessages).toEqual(4);
   });
 
   xtest(
