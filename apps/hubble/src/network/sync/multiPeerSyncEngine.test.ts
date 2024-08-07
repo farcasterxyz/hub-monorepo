@@ -75,9 +75,9 @@ beforeAll(async () => {
 
 describe("Multi peer sync engine", () => {
   jest.setTimeout(TEST_TIMEOUT_LONG);
-  const addMessagesWithTimeDelta = async (engine: Engine, timeDelta: number[]) => {
+  const addMessagesWithTimeDelta = async (engine: Engine, timeDelta: number[], startFarcasterTime?: number) => {
     // Take care that the farcasterTime is not in the future
-    const farcasterTime = getFarcasterTime()._unsafeUnwrap() - 1000;
+    const farcasterTime = startFarcasterTime ? startFarcasterTime : getFarcasterTime()._unsafeUnwrap() - 1000;
 
     return await Promise.all(
       timeDelta.map(async (t) => {
@@ -741,7 +741,7 @@ describe("Multi peer sync engine", () => {
     }
   });
 
-  test("perform sync health computation", async () => {
+  test("sync health: basic", async () => {
     const metadataRetriever1 = new SyncEngineMetadataRetriever(hub1, syncEngine1);
     const metadataRetriever2 = new SyncEngineMetadataRetriever(hub2, syncEngine2);
 
@@ -807,6 +807,56 @@ describe("Multi peer sync engine", () => {
     // engine2 has all the messages engine1 has
     expect(messageStats4.primaryNumMessages).toEqual(4);
     expect(messageStats4.peerNumMessages).toEqual(4);
+  });
+
+  test("sync health: push diverging sync ids with a lot of sync ids", async () => {
+    const metadataRetriever1 = new SyncEngineMetadataRetriever(hub1, syncEngine1);
+    const metadataRetriever2 = new SyncEngineMetadataRetriever(hub2, syncEngine2);
+
+    const syncHealthProbe = new SyncHealthProbe(metadataRetriever1, metadataRetriever2, 10);
+
+    const setupEngine = async (engine: Engine) => {
+      await engine.mergeOnChainEvent(custodyEvent);
+      await engine.mergeOnChainEvent(signerEvent);
+      await engine.mergeOnChainEvent(storageEvent);
+    };
+
+    // Engine1 has no messages
+    await setupEngine(engine1);
+    await setupEngine(engine2);
+
+    // This is the start time from addMessagesWithTimeDelta
+    const startFarcasterTime = getFarcasterTime()._unsafeUnwrap() - 3000;
+
+    const timeDeltas = [];
+    for (let j = 0; j < 15; j++) {
+      timeDeltas.push(j);
+    }
+
+    await addMessagesWithTimeDelta(engine1, timeDeltas, startFarcasterTime);
+    await sleepWhile(() => syncEngine1.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
+    await sleepWhile(() => syncEngine2.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
+
+    // Make the query range wide so that you start on a node with a lot of messages under it.
+    const start = new Date(fromFarcasterTime(0)._unsafeUnwrap());
+    const stop = new Date(fromFarcasterTime(startFarcasterTime + 50000)._unsafeUnwrap());
+
+    const messageStats1 = (await syncHealthProbe.computeSyncHealthMessageStats(start, stop))._unsafeUnwrap();
+
+    // The 3 comes from custody, signer, storage events
+    expect(messageStats1.primaryNumMessages).toEqual(18);
+    expect(messageStats1.peerNumMessages).toEqual(3);
+
+    // Show that pushing diverging sync ids works when there are more than 1024 sync ids under a prefix
+    const pushResults = (await syncHealthProbe.tryPushingDivergingSyncIds(start, stop, "ToPeer"))._unsafeUnwrap();
+
+    expect(pushResults.length).toEqual(15);
+    await sleepWhile(() => syncEngine2.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
+
+    const messageStats2 = (await syncHealthProbe.computeSyncHealthMessageStats(start, stop))._unsafeUnwrap();
+
+    expect(messageStats2.primaryNumMessages).toEqual(18);
+    expect(messageStats2.peerNumMessages).toEqual(18);
   });
 
   xtest(

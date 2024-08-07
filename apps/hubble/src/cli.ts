@@ -960,12 +960,14 @@ app
   .option("--peers <ip:port,...>", "Peers to compare with (default: pick random connected peers)")
   .option("--username <username>", "Username for primary node")
   .option("--password <password>", "Password for primary node")
+  .option("--use-secure-client-for-peers", "Use a secure rpc client for all peers", false)
   .action(async (cliOptions) => {
     await printSyncHealth(
       cliOptions.startTimeOfday,
       cliOptions.stopTimeOfday,
       cliOptions.maxNumPeers,
       cliOptions.primaryNode,
+      cliOptions.useSecureClientForPeers,
       cliOptions.outfile,
       cliOptions.peers ? cliOptions.peers.split(",") : undefined,
       cliOptions.username,

@@ -99,7 +99,14 @@ import { startupCheck, StartupCheckStatus } from "./utils/startupCheck.js";
 import { AddressInfo } from "node:net";
 import { MeasureSyncHealthJobScheduler } from "./network/sync/syncHealthJob.js";
 
-export type HubSubmitSource = "gossip" | "rpc" | "eth-provider" | "l2-provider" | "sync" | "fname-registry";
+export type HubSubmitSource =
+  | "gossip"
+  | "rpc"
+  | "eth-provider"
+  | "l2-provider"
+  | "sync"
+  | "fname-registry"
+  | "sync-health";
 
 export const APP_VERSION = JSON.parse(
   fs.readFileSync(path.join(new URL(".", import.meta.url).pathname, "..", "./package.json")).toString(),

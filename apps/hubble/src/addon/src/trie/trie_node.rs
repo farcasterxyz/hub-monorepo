@@ -9,6 +9,8 @@ use std::collections::HashMap;
 use super::merkle_trie::TrieSnapshot;
 
 pub const TIMESTAMP_LENGTH: usize = 10;
+
+// This value is mirrored in [rpc/server.ts], make sure to change it in both places
 const MAX_VALUES_RETURNED_PER_CALL: usize = 1024;
 
 /// Represents a node in a MerkleTrie. Automatically updates the hashes when items are added,

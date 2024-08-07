@@ -13,6 +13,7 @@ import {
   bytesToHexString,
   SyncIds,
   MessagesResponse,
+  MessageType,
 } from "@farcaster/hub-nodejs";
 
 import { appendFile } from "fs/promises";
@@ -21,7 +22,7 @@ import { addressInfoFromGossip, addressInfoToString } from "./p2p.js";
 
 import { SyncId, timestampToPaddedTimestampPrefix } from "../network/sync/syncId.js";
 import { err, ok } from "neverthrow";
-import { toTrieNodeMetadataResponse } from "../rpc/server.js";
+import { MAX_VALUES_RETURNED_PER_SYNC_ID_REQUEST, toTrieNodeMetadataResponse } from "../rpc/server.js";
 import SyncEngine from "../network/sync/syncEngine.js";
 import { HubInterface } from "hubble.js";
 
@@ -103,7 +104,11 @@ class Stats {
     const successTypes = new Set();
     for (const success of this.successResults(who)) {
       if (success.isOk()) {
-        successTypes.add(success.value.data?.userDataBody?.type);
+        const hashString = bytesToHexString(success.value.hash);
+        const hash = hashString.isOk() ? hashString.value : "unknown hash";
+        const typeValue = success.value.data?.type;
+        const type = typeValue ? MessageType[typeValue] : "unknown type";
+        successTypes.add({ type, hash, fid: success.value.data?.fid });
       }
     }
     return [...successTypes];
@@ -199,7 +204,7 @@ export class SyncEngineMetadataRetriever implements MetadataRetriever {
   };
 
   submitMessage = async (message: Message) => {
-    return (await this._hub.submitMessage(message)).map(() => {
+    return (await this._hub.submitMessage(message, "sync-health")).map(() => {
       return message;
     });
   };
@@ -330,7 +335,7 @@ const getNumMessagesInSpan = async (metadataRetriever: MetadataRetriever, startT
   return ok(numMessages);
 };
 
-const pickPeers = async (rpcClient: HubRpcClient, count: number): Promise<HubResult<(string | undefined)[]>> => {
+const pickPeers = async (rpcClient: HubRpcClient, count: number) => {
   const peers = await rpcClient.getCurrentPeers({});
   return peers.map((peers) => {
     // Shuffle peers then pick [count]
@@ -343,7 +348,7 @@ const pickPeers = async (rpcClient: HubRpcClient, count: number): Promise<HubRes
         if (peer.rpcAddress) {
           const addrInfo = addressInfoFromGossip(peer.rpcAddress);
           if (addrInfo.isOk()) {
-            return addressInfoToString(addrInfo.value);
+            return { hostAndPort: addressInfoToString(addrInfo.value), username: undefined, password: undefined };
           }
         }
         return;
@@ -351,7 +356,53 @@ const pickPeers = async (rpcClient: HubRpcClient, count: number): Promise<HubRes
   });
 };
 
-const computeSyncIdsInSpan = async (metadataRetriever: MetadataRetriever, startTime: Date, stopTime: Date) => {
+const computeSyncIdsUnderPrefix = async (
+  metadataRetriever: MetadataRetriever,
+  prefix: Uint8Array,
+  maxValuesReturnedPerSyncIdRequest: number,
+): Promise<HubResult<Uint8Array[]>> => {
+  const metadata = await metadataRetriever.getMetadata(Buffer.from(prefix));
+
+  if (metadata.isErr()) {
+    return err(metadata.error);
+  }
+
+  // We need to do this weird hack because the length of the results of [getAllSyncIdsByPrefix] is capped at 1024.
+  if (metadata.value.numMessages <= maxValuesReturnedPerSyncIdRequest) {
+    const syncIds = await metadataRetriever.getAllSyncIdsByPrefix(Buffer.from(prefix));
+
+    if (syncIds.isErr()) {
+      return err(syncIds.error);
+    }
+
+    return ok(syncIds.value.syncIds);
+  } else {
+    const computedSyncIds = [];
+
+    for (const child of metadata.value.children) {
+      const childSyncIds = await computeSyncIdsUnderPrefix(
+        metadataRetriever,
+        child.prefix,
+        maxValuesReturnedPerSyncIdRequest,
+      );
+
+      if (childSyncIds.isErr()) {
+        return err(childSyncIds.error);
+      }
+
+      computedSyncIds.push(...childSyncIds.value);
+    }
+
+    return ok(computedSyncIds);
+  }
+};
+
+const computeSyncIdsInSpan = async (
+  metadataRetriever: MetadataRetriever,
+  startTime: Date,
+  stopTime: Date,
+  maxValuesReturnedPerSyncIdRequest: number,
+) => {
   const prefixInfo = await getPrefixInfo(metadataRetriever, startTime, stopTime);
 
   if (prefixInfo.isErr()) {
@@ -375,9 +426,9 @@ const computeSyncIdsInSpan = async (metadataRetriever: MetadataRetriever, startT
 
   const syncIds = [];
   for (const prefix of prefixes) {
-    const prefixSyncIds = await metadataRetriever.getAllSyncIdsByPrefix(Buffer.from(prefix));
+    const prefixSyncIds = await computeSyncIdsUnderPrefix(metadataRetriever, prefix, maxValuesReturnedPerSyncIdRequest);
     if (prefixSyncIds.isOk()) {
-      syncIds.push(...prefixSyncIds.value.syncIds);
+      syncIds.push(...prefixSyncIds.value);
     }
   }
 
@@ -410,10 +461,18 @@ const uniqueSyncIds = (mySyncIds: Uint8Array[], otherSyncIds: Uint8Array[]) => {
 export class SyncHealthProbe {
   _primaryMetadataRetriever: MetadataRetriever;
   _peerMetadataRetriever: MetadataRetriever;
+  _maxValuesReturnedPerSyncIdRequest: number = MAX_VALUES_RETURNED_PER_SYNC_ID_REQUEST;
 
-  constructor(primaryMetadataRetriever: MetadataRetriever, peerMetadataRetriever: MetadataRetriever) {
+  constructor(
+    primaryMetadataRetriever: MetadataRetriever,
+    peerMetadataRetriever: MetadataRetriever,
+    maxValuesReturnedPerSyncIdRequest?: number,
+  ) {
     this._primaryMetadataRetriever = primaryMetadataRetriever;
     this._peerMetadataRetriever = peerMetadataRetriever;
+    if (maxValuesReturnedPerSyncIdRequest) {
+      this._maxValuesReturnedPerSyncIdRequest = maxValuesReturnedPerSyncIdRequest;
+    }
   }
 
   computeSyncHealthMessageStats = async (startTime: Date, stopTime: Date) => {
@@ -456,13 +515,23 @@ export class SyncHealthProbe {
   };
 
   divergingSyncIds = async (startTime: Date, stopTime: Date) => {
-    const primarySyncIds = await computeSyncIdsInSpan(this._primaryMetadataRetriever, startTime, stopTime);
+    const primarySyncIds = await computeSyncIdsInSpan(
+      this._primaryMetadataRetriever,
+      startTime,
+      stopTime,
+      this._maxValuesReturnedPerSyncIdRequest,
+    );
 
     if (primarySyncIds.isErr()) {
       return err(primarySyncIds.error);
     }
 
-    const peerSyncIds = await computeSyncIdsInSpan(this._peerMetadataRetriever, startTime, stopTime);
+    const peerSyncIds = await computeSyncIdsInSpan(
+      this._peerMetadataRetriever,
+      startTime,
+      stopTime,
+      this._maxValuesReturnedPerSyncIdRequest,
+    );
 
     if (peerSyncIds.isErr()) {
       return err(peerSyncIds.error);
@@ -511,11 +580,36 @@ const parseTime = (timeString: string) => {
   return;
 };
 
+const parsePeers = (peers: string[]) => {
+  const parsedPeers = [];
+
+  for (const peer of peers) {
+    const [hostAndPort, auth] = peer.split("?");
+
+    if (!hostAndPort) {
+      return err(
+        new Error(`Host and port missing ${peer}. Input must be in format <host>:<port>?<username>:<password>`),
+      );
+    }
+
+    if (auth === undefined) {
+      parsedPeers.push({ hostAndPort, username: undefined, password: undefined });
+      continue;
+    }
+
+    const [username, password] = auth.split(":");
+    parsedPeers.push({ hostAndPort, username, password });
+  }
+
+  return ok(parsedPeers);
+};
+
 export const printSyncHealth = async (
   startTimeOfDay: string,
   stopTimeOfDay: string,
   maxNumPeers: number,
   primaryNode: string,
+  useSecureClientForPeers: boolean,
   outfile?: string,
   userSpecifiedPeers?: string[],
   username?: string,
@@ -538,7 +632,13 @@ export const printSyncHealth = async (
       console.log("Primary rpc client not ready", err);
       throw Error();
     }
-    const peers = userSpecifiedPeers ? ok(userSpecifiedPeers) : await pickPeers(primaryRpcClient, maxNumPeers);
+
+    const parsedUserSpecifiedPeers = userSpecifiedPeers ? parsePeers(userSpecifiedPeers)._unsafeUnwrap() : undefined;
+
+    const peers = parsedUserSpecifiedPeers
+      ? ok(parsedUserSpecifiedPeers)
+      : await pickPeers(primaryRpcClient, maxNumPeers);
+
     if (peers.isErr()) {
       console.log("Error querying peers");
       return;
@@ -554,23 +654,27 @@ export const printSyncHealth = async (
 
       try {
         // Most hubs seem to work with the insecure one
-        peerRpcClient = getInsecureHubRpcClient(peer);
+        if (useSecureClientForPeers) {
+          peerRpcClient = getSSLHubRpcClient(peer.hostAndPort);
+        } else {
+          peerRpcClient = getInsecureHubRpcClient(peer.hostAndPort);
+        }
 
         peerRpcClient.$.waitForReady(Date.now() + RPC_TIMEOUT_SECONDS * 1000, (err) => {
           if (err) {
-            peerRpcClient = getSSLHubRpcClient(peer);
+            peerRpcClient = getSSLHubRpcClient(peer.hostAndPort);
           }
         });
       } catch (e) {
-        peerRpcClient = getSSLHubRpcClient(peer);
+        peerRpcClient = getSSLHubRpcClient(peer.hostAndPort);
       }
 
-      const peerRpcMetadataRetriever = new RpcMetadataRetriever(peerRpcClient);
+      const peerRpcMetadataRetriever = new RpcMetadataRetriever(peerRpcClient, peer.username, peer.password);
 
       const syncHealthProbe = new SyncHealthProbe(primaryRpcMetadataRetriever, peerRpcMetadataRetriever);
 
       try {
-        console.log("Connecting to peer", peer);
+        console.log("Connecting to peer", peer.hostAndPort);
         const syncHealthStats = await syncHealthProbe.computeSyncHealthMessageStats(startTime, stopTime);
         if (syncHealthStats.isOk()) {
           // Sync health is us relative to peer. If the sync health is high, means we have more messages. If it's low, we have less.
@@ -593,13 +697,21 @@ export const printSyncHealth = async (
 
                 console.log("Error investigating diff", resultToPeerSummary, resultFromPeerSummary);
                 // Report the stats anyway, but with no investigation results
-                aggregateStats = new Stats(startTime, stopTime, primaryNode, peer, syncHealthStats.value, [], []);
+                aggregateStats = new Stats(
+                  startTime,
+                  stopTime,
+                  primaryNode,
+                  peer.hostAndPort,
+                  syncHealthStats.value,
+                  [],
+                  [],
+                );
               } else {
                 aggregateStats = new Stats(
                   startTime,
                   stopTime,
                   primaryNode,
-                  peer,
+                  peer.hostAndPort,
                   syncHealthStats.value,
                   resultToPeer.value,
                   resultFromPeer.value,
@@ -607,7 +719,15 @@ export const printSyncHealth = async (
               }
             } else {
               // Report the stats anyway, but with no investigation results
-              aggregateStats = new Stats(startTime, stopTime, primaryNode, peer, syncHealthStats.value, [], []);
+              aggregateStats = new Stats(
+                startTime,
+                stopTime,
+                primaryNode,
+                peer.hostAndPort,
+                syncHealthStats.value,
+                [],
+                [],
+              );
             }
 
             // The data is valuable, let's just wait to write it. Note, data is appended to any existing file.
