@@ -2050,7 +2050,7 @@ export class Hub implements HubInterface {
           submittedMessage: messageToLog(submittedMessage),
           source,
         });
-        logMessage.warn({ errCode: e.errCode, source }, `submitMessage error: ${e.message}`);
+        logMessage.warn({ errCode: e.errCode, source, message: e.message }, `submitMessage error: ${e.message}`);
         const tags: { [key: string]: string } = {
           error_code: e.errCode,
           message_type: type,
