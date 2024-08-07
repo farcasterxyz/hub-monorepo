@@ -61,7 +61,7 @@ export class MeasureSyncHealthJobScheduler {
   }
 
   processSumbitResults(results: HubResult<Message>[]) {
-    const errorReasons = new Set();
+    const errorReasons = [];
     const successInfo = [];
     for (const result of results) {
       if (result.isOk()) {
@@ -78,10 +78,18 @@ export class MeasureSyncHealthJobScheduler {
           hash,
         });
       } else {
-        errorReasons.add(result.error.message);
+        errorReasons.push(result.error.message);
       }
     }
-    return { errorReasons: [...errorReasons], successInfo };
+
+    const uniqueErrorReasons = new Set(errorReasons);
+
+    return {
+      numErrors: errorReasons.length,
+      numSuccesses: successInfo.length,
+      errorReasons: [...uniqueErrorReasons],
+      successInfo,
+    };
   }
 
   async doJobs() {
