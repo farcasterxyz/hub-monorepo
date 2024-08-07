@@ -76,6 +76,7 @@ export const DEFAULT_SUBSCRIBE_PERIP_LIMIT = 4; // Max 4 subscriptions per IP
 export const DEFAULT_SUBSCRIBE_GLOBAL_LIMIT = 4096; // Max 4096 subscriptions globally
 const MAX_EVENT_STREAM_SHARDS = 10;
 export const DEFAULT_SERVER_INTERNET_ADDRESS_IPV4 = "0.0.0.0";
+export const MAX_VALUES_RETURNED_PER_SYNC_ID_REQUEST = 1024;
 
 export type RpcUsers = Map<string, string[]>;
 

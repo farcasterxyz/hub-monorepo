@@ -22,7 +22,7 @@ import { addressInfoFromGossip, addressInfoToString } from "./p2p.js";
 
 import { SyncId, timestampToPaddedTimestampPrefix } from "../network/sync/syncId.js";
 import { err, ok } from "neverthrow";
-import { toTrieNodeMetadataResponse } from "../rpc/server.js";
+import { MAX_VALUES_RETURNED_PER_SYNC_ID_REQUEST, toTrieNodeMetadataResponse } from "../rpc/server.js";
 import SyncEngine from "../network/sync/syncEngine.js";
 import { HubInterface } from "hubble.js";
 
@@ -360,12 +360,6 @@ const computeSyncIdsUnderPrefix = async (
   metadataRetriever: MetadataRetriever,
   prefix: Uint8Array,
 ): Promise<HubResult<Uint8Array[]>> => {
-  const syncIds = await metadataRetriever.getAllSyncIdsByPrefix(Buffer.from(prefix));
-
-  if (syncIds.isErr()) {
-    return err(syncIds.error);
-  }
-
   const metadata = await metadataRetriever.getMetadata(Buffer.from(prefix));
 
   if (metadata.isErr()) {
@@ -373,7 +367,13 @@ const computeSyncIdsUnderPrefix = async (
   }
 
   // We need to do this weird hack because the length of the results of [getAllSyncIdsByPrefix] is capped at 1024.
-  if (syncIds.value.syncIds.length === metadata.value.numMessages) {
+  if (metadata.value.numMessages <= MAX_VALUES_RETURNED_PER_SYNC_ID_REQUEST) {
+    const syncIds = await metadataRetriever.getAllSyncIdsByPrefix(Buffer.from(prefix));
+
+    if (syncIds.isErr()) {
+      return err(syncIds.error);
+    }
+
     return ok(syncIds.value.syncIds);
   } else {
     const computedSyncIds = [];
