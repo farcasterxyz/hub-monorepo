@@ -510,6 +510,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     if (result.success) {
       return ok(undefined);
     } else {
+      log.error(`Failed to connect to address: ${result.errorMessage}`);
       return err(new HubError("unavailable", result.errorMessage as string));
     }
   }
