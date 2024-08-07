@@ -204,7 +204,7 @@ export class SyncEngineMetadataRetriever implements MetadataRetriever {
   };
 
   submitMessage = async (message: Message) => {
-    return (await this._hub.submitMessage(message)).map(() => {
+    return (await this._hub.submitMessage(message, "sync-health")).map(() => {
       return message;
     });
   };
