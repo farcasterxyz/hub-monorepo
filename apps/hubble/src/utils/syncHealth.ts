@@ -359,6 +359,7 @@ const pickPeers = async (rpcClient: HubRpcClient, count: number) => {
 const computeSyncIdsUnderPrefix = async (
   metadataRetriever: MetadataRetriever,
   prefix: Uint8Array,
+  maxValuesReturnedPerSyncIdRequest: number,
 ): Promise<HubResult<Uint8Array[]>> => {
   const metadata = await metadataRetriever.getMetadata(Buffer.from(prefix));
 
@@ -367,7 +368,7 @@ const computeSyncIdsUnderPrefix = async (
   }
 
   // We need to do this weird hack because the length of the results of [getAllSyncIdsByPrefix] is capped at 1024.
-  if (metadata.value.numMessages <= MAX_VALUES_RETURNED_PER_SYNC_ID_REQUEST) {
+  if (metadata.value.numMessages <= maxValuesReturnedPerSyncIdRequest) {
     const syncIds = await metadataRetriever.getAllSyncIdsByPrefix(Buffer.from(prefix));
 
     if (syncIds.isErr()) {
@@ -379,7 +380,11 @@ const computeSyncIdsUnderPrefix = async (
     const computedSyncIds = [];
 
     for (const child of metadata.value.children) {
-      const childSyncIds = await computeSyncIdsUnderPrefix(metadataRetriever, child.prefix);
+      const childSyncIds = await computeSyncIdsUnderPrefix(
+        metadataRetriever,
+        child.prefix,
+        maxValuesReturnedPerSyncIdRequest,
+      );
 
       if (childSyncIds.isErr()) {
         return err(childSyncIds.error);
@@ -392,7 +397,12 @@ const computeSyncIdsUnderPrefix = async (
   }
 };
 
-const computeSyncIdsInSpan = async (metadataRetriever: MetadataRetriever, startTime: Date, stopTime: Date) => {
+const computeSyncIdsInSpan = async (
+  metadataRetriever: MetadataRetriever,
+  startTime: Date,
+  stopTime: Date,
+  maxValuesReturnedPerSyncIdRequest: number,
+) => {
   const prefixInfo = await getPrefixInfo(metadataRetriever, startTime, stopTime);
 
   if (prefixInfo.isErr()) {
@@ -416,7 +426,7 @@ const computeSyncIdsInSpan = async (metadataRetriever: MetadataRetriever, startT
 
   const syncIds = [];
   for (const prefix of prefixes) {
-    const prefixSyncIds = await computeSyncIdsUnderPrefix(metadataRetriever, prefix);
+    const prefixSyncIds = await computeSyncIdsUnderPrefix(metadataRetriever, prefix, maxValuesReturnedPerSyncIdRequest);
     if (prefixSyncIds.isOk()) {
       syncIds.push(...prefixSyncIds.value);
     }
@@ -451,10 +461,18 @@ const uniqueSyncIds = (mySyncIds: Uint8Array[], otherSyncIds: Uint8Array[]) => {
 export class SyncHealthProbe {
   _primaryMetadataRetriever: MetadataRetriever;
   _peerMetadataRetriever: MetadataRetriever;
+  _maxValuesReturnedPerSyncIdRequest: number = MAX_VALUES_RETURNED_PER_SYNC_ID_REQUEST;
 
-  constructor(primaryMetadataRetriever: MetadataRetriever, peerMetadataRetriever: MetadataRetriever) {
+  constructor(
+    primaryMetadataRetriever: MetadataRetriever,
+    peerMetadataRetriever: MetadataRetriever,
+    maxValuesReturnedPerSyncIdRequest?: number,
+  ) {
     this._primaryMetadataRetriever = primaryMetadataRetriever;
     this._peerMetadataRetriever = peerMetadataRetriever;
+    if (maxValuesReturnedPerSyncIdRequest) {
+      this._maxValuesReturnedPerSyncIdRequest = maxValuesReturnedPerSyncIdRequest;
+    }
   }
 
   computeSyncHealthMessageStats = async (startTime: Date, stopTime: Date) => {
@@ -497,13 +515,23 @@ export class SyncHealthProbe {
   };
 
   divergingSyncIds = async (startTime: Date, stopTime: Date) => {
-    const primarySyncIds = await computeSyncIdsInSpan(this._primaryMetadataRetriever, startTime, stopTime);
+    const primarySyncIds = await computeSyncIdsInSpan(
+      this._primaryMetadataRetriever,
+      startTime,
+      stopTime,
+      this._maxValuesReturnedPerSyncIdRequest,
+    );
 
     if (primarySyncIds.isErr()) {
       return err(primarySyncIds.error);
     }
 
-    const peerSyncIds = await computeSyncIdsInSpan(this._peerMetadataRetriever, startTime, stopTime);
+    const peerSyncIds = await computeSyncIdsInSpan(
+      this._peerMetadataRetriever,
+      startTime,
+      stopTime,
+      this._maxValuesReturnedPerSyncIdRequest,
+    );
 
     if (peerSyncIds.isErr()) {
       return err(peerSyncIds.error);

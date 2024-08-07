@@ -813,7 +813,7 @@ describe("Multi peer sync engine", () => {
     const metadataRetriever1 = new SyncEngineMetadataRetriever(hub1, syncEngine1);
     const metadataRetriever2 = new SyncEngineMetadataRetriever(hub2, syncEngine2);
 
-    const syncHealthProbe = new SyncHealthProbe(metadataRetriever1, metadataRetriever2);
+    const syncHealthProbe = new SyncHealthProbe(metadataRetriever1, metadataRetriever2, 10);
 
     const setupEngine = async (engine: Engine) => {
       await engine.mergeOnChainEvent(custodyEvent);
@@ -829,34 +829,34 @@ describe("Multi peer sync engine", () => {
     const startFarcasterTime = getFarcasterTime()._unsafeUnwrap() - 3000;
 
     const timeDeltas = [];
-    for (let j = 0; j < 2000; j++) {
+    for (let j = 0; j < 15; j++) {
       timeDeltas.push(j);
     }
 
-    const messages = await addMessagesWithTimeDelta(engine1, timeDeltas, startFarcasterTime);
-    // Push a message to engine2 just so we don't get an error saying engine 2 has no messages in time range
-    engine2.mergeMessages(messages.slice(0, 1));
+    await addMessagesWithTimeDelta(engine1, timeDeltas, startFarcasterTime);
     await sleepWhile(() => syncEngine1.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
     await sleepWhile(() => syncEngine2.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
-    const start = new Date(fromFarcasterTime(startFarcasterTime)._unsafeUnwrap());
-    const stop = new Date(fromFarcasterTime(startFarcasterTime + 2001)._unsafeUnwrap());
+    // Make the query range wide so that you start on a node with a lot of messages under it.
+    const start = new Date(fromFarcasterTime(0)._unsafeUnwrap());
+    const stop = new Date(fromFarcasterTime(startFarcasterTime + 50000)._unsafeUnwrap());
 
     const messageStats1 = (await syncHealthProbe.computeSyncHealthMessageStats(start, stop))._unsafeUnwrap();
 
-    expect(messageStats1.primaryNumMessages).toEqual(2000);
-    expect(messageStats1.peerNumMessages).toEqual(1);
+    // The 3 comes from custody, signer, storage events
+    expect(messageStats1.primaryNumMessages).toEqual(18);
+    expect(messageStats1.peerNumMessages).toEqual(3);
 
     // Show that pushing diverging sync ids works when there are more than 1024 sync ids under a prefix
     const pushResults = (await syncHealthProbe.tryPushingDivergingSyncIds(start, stop, "ToPeer"))._unsafeUnwrap();
 
-    expect(pushResults.length).toEqual(1999);
+    expect(pushResults.length).toEqual(15);
     await sleepWhile(() => syncEngine2.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
     const messageStats2 = (await syncHealthProbe.computeSyncHealthMessageStats(start, stop))._unsafeUnwrap();
 
-    expect(messageStats2.primaryNumMessages).toEqual(2000);
-    expect(messageStats2.peerNumMessages).toEqual(2000);
+    expect(messageStats2.primaryNumMessages).toEqual(18);
+    expect(messageStats2.peerNumMessages).toEqual(18);
   });
 
   xtest(

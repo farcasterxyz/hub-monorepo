@@ -12,5 +12,8 @@
     "source.organizeImports.biome": "explicit"
   },
   "cSpell.words": ["farcaster", "gossipsub", "protobufs"],
-  "rust-analyzer.linkedProjects": ["${workspaceFolder}/apps/hubble/src/addon/Cargo.toml"]
+  "rust-analyzer.linkedProjects": ["${workspaceFolder}/apps/hubble/src/addon/Cargo.toml"],
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer"
+  }
 }
