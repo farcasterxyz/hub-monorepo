@@ -13,6 +13,7 @@ import {
   bytesToHexString,
   SyncIds,
   MessagesResponse,
+  MessageType,
 } from "@farcaster/hub-nodejs";
 
 import { appendFile } from "fs/promises";
@@ -103,7 +104,11 @@ class Stats {
     const successTypes = new Set();
     for (const success of this.successResults(who)) {
       if (success.isOk()) {
-        successTypes.add(success.value.data?.userDataBody?.type);
+        const hashString = bytesToHexString(success.value.hash);
+        const hash = hashString.isOk() ? hashString.value : "unknown hash";
+        const typeValue = success.value.data?.type;
+        const type = typeValue ? MessageType[typeValue] : "unknown type";
+        successTypes.add({ type, hash, fid: success.value.data?.fid });
       }
     }
     return [...successTypes];
