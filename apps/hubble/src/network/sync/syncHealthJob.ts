@@ -72,7 +72,9 @@ export class MeasureSyncHealthJobScheduler {
         const type = typeValue ? UserDataType[typeValue] : "unknown type";
 
         log.info(
-          { type, fid: result.value.data?.fid, timestamp: result.value.data?.timestamp, hash, peerId },
+          {
+            msgDetails: { type, fid: result.value.data?.fid, timestamp: result.value.data?.timestamp, hash, peerId },
+          },
           "Successfully submitted message via SyncHealth",
         );
 
