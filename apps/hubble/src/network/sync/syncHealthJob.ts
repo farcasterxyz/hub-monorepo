@@ -78,7 +78,7 @@ export class MeasureSyncHealthJobScheduler {
 
         numSuccesses += 1;
       } else {
-        log.info({ message: result.error.message, peerId }, "Failed to submit message via SyncHealth");
+        log.info({ errMessage: result.error.message, peerId }, "Failed to submit message via SyncHealth");
 
         numErrors += 1;
       }
