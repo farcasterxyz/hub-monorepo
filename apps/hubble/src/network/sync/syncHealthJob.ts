@@ -60,9 +60,9 @@ export class MeasureSyncHealthJobScheduler {
     return peers;
   }
 
-  processSumbitResults(results: HubResult<Message>[]) {
-    const errorReasons = [];
-    const successInfo = [];
+  processSumbitResults(results: HubResult<Message>[], peerId: string) {
+    let numSuccesses = 0;
+    let numErrors = 0;
     for (const result of results) {
       if (result.isOk()) {
         const hashString = bytesToHexString(result.value.hash);
@@ -71,25 +71,19 @@ export class MeasureSyncHealthJobScheduler {
         const typeValue = result.value.data?.type;
         const type = typeValue ? UserDataType[typeValue] : "unknown type";
 
-        successInfo.push({
-          type,
-          fid: result.value.data?.fid,
-          timestamp: result.value.data?.timestamp,
-          hash,
-        });
+        log.info(
+          { type, fid: result.value.data?.fid, timestamp: result.value.data?.timestamp, hash, peerId },
+          "Successfully submitted message via SyncHealth",
+        );
+
+        numSuccesses += 1;
       } else {
-        errorReasons.push(result.error.message);
+        log.info({ message: result.error.message, peerId }, "Failed to submit message via SyncHealth");
+
+        numErrors += 1;
       }
     }
-
-    const uniqueErrorReasons = new Set(errorReasons);
-
-    return {
-      numErrors: errorReasons.length,
-      numSuccesses: successInfo.length,
-      errorReasons: [...uniqueErrorReasons],
-      successInfo,
-    };
+    return { numSuccesses, numErrors };
   }
 
   async doJobs() {
@@ -123,7 +117,10 @@ export class MeasureSyncHealthJobScheduler {
       );
 
       if (syncHealthMessageStats.isErr()) {
-        log.info({ error: syncHealthMessageStats.error }, "Error computing SyncHealth");
+        log.info(
+          { peerId, err: syncHealthMessageStats.error, contactInfo },
+          `Error computing SyncHealth: ${syncHealthMessageStats.error}`,
+        );
         continue;
       }
 
@@ -134,7 +131,10 @@ export class MeasureSyncHealthJobScheduler {
       );
 
       if (resultsPushingToUs.isErr()) {
-        log.info({ error: resultsPushingToUs.error }, "Error pushing new messages to ourself");
+        log.info(
+          { peerId, err: resultsPushingToUs.error },
+          `Error pushing new messages to ourself ${resultsPushingToUs.error}`,
+        );
         continue;
       }
 
@@ -144,7 +144,7 @@ export class MeasureSyncHealthJobScheduler {
           theirNumMessages: syncHealthMessageStats.value.peerNumMessages,
           syncHealth: syncHealthMessageStats.value.computeDiff(),
           syncHealthPercentage: syncHealthMessageStats.value.computeDiffPercentage(),
-          resultsPushingToUs: this.processSumbitResults(resultsPushingToUs.value),
+          resultsPushingToUs: this.processSumbitResults(resultsPushingToUs.value, peerId),
           peerId,
         },
         "Computed SyncHealth stats for peer",

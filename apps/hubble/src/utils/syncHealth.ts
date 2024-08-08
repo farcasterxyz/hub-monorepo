@@ -197,10 +197,7 @@ export class SyncEngineMetadataRetriever implements MetadataRetriever {
 
   getAllSyncIdsByPrefix = async (prefix: Buffer) => {
     const result = await this._syncEngine.getAllSyncIdsByPrefix(prefix);
-    if (result) {
-      return ok(SyncIds.create({ syncIds: result ?? [] }));
-    }
-    return err(new HubError("unavailable", "No sync ids for prefix"));
+    return ok(SyncIds.create({ syncIds: result }));
   };
 
   submitMessage = async (message: Message) => {
