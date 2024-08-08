@@ -7,6 +7,7 @@ import {
   CastRemoveMessage,
   FarcasterNetwork,
   getDefaultStoreLimit,
+  getFarcasterTime,
   getStoreLimits,
   hexStringToBytes,
   HubAsyncResult,
@@ -68,7 +69,11 @@ import type { PublicClient } from "viem";
 import { normalize } from "viem/ens";
 import UsernameProofStore from "../stores/usernameProofStore.js";
 import OnChainEventStore from "../stores/onChainEventStore.js";
-import { consumeRateLimitByKey, getRateLimiterForTotalMessages, isRateLimitedByKey } from "../../utils/rateLimits.js";
+import {
+  consumeRateLimitByKey,
+  getRateLimiterForTotalMessagesByTimeBucket,
+  isRateLimitedByKey,
+} from "../../utils/rateLimits.js";
 import { rsValidationMethods } from "../../rustfunctions.js";
 import { RateLimiterAbstract, RateLimiterMemory } from "rate-limiter-flexible";
 import { TypedEmitter } from "tiny-typed-emitter";
@@ -280,6 +285,10 @@ class Engine extends TypedEmitter<EngineEvents> {
   async mergeMessages(messages: Message[]): Promise<Map<number, HubResult<number>>> {
     const mergeResults: Map<number, HubResult<number>> = new Map();
     const validatedMessages: IndexedMessage[] = [];
+    const current = await getFarcasterTime();
+    if (current.isErr()) {
+      throw current.error;
+    }
 
     // Validate all messages first
     await Promise.all(
@@ -305,7 +314,12 @@ class Engine extends TypedEmitter<EngineEvents> {
         }
 
         // We rate limit the number of messages that can be merged per FID
-        const limiter = getRateLimiterForTotalMessages(storageUnits.value * this._totalPruneSize);
+        const limiter = getRateLimiterForTotalMessagesByTimeBucket(
+          current.value,
+          message.data?.timestamp ?? 0,
+          storageUnits.value,
+          this._totalPruneSize,
+        );
         const isRateLimited = await isRateLimitedByKey(`${fid}`, limiter);
         if (isRateLimited) {
           log.warn({ fid }, "rate limit exceeded for FID");
