@@ -285,6 +285,10 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
   ) {
     for (const event of logs) {
       const { blockNumber, blockHash, transactionHash, transactionIndex, logIndex } = event;
+      log.info(
+        { blockNumber, blockHash, transactionHash, transactionIndex, logIndex, eventName: event.eventName },
+        `processStorageEvent for block ${blockNumber}`,
+      );
 
       // Do nothing if the block is pending
       if (
@@ -351,6 +355,11 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
   private async processKeyRegistryEvents(logs: WatchContractEventOnLogsParameter<typeof KeyRegistry.abi>, version = 0) {
     for (const event of logs) {
       const { blockNumber, blockHash, transactionHash, transactionIndex, logIndex } = event;
+
+      log.info(
+        { blockNumber, blockHash, transactionHash, transactionIndex, logIndex, eventName: event.eventName },
+        `processKeyRegistryEvent for block ${blockNumber}`,
+      );
 
       // Do nothing if the block is pending
       if (
@@ -478,6 +487,11 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
   private async processIdRegistryEvents(logs: WatchContractEventOnLogsParameter<typeof IdRegistry.abi>, version = 0) {
     for (const event of logs) {
       const { blockNumber, blockHash, transactionHash, transactionIndex, logIndex } = event;
+
+      log.info(
+        { blockNumber, blockHash, transactionHash, transactionIndex, logIndex, eventName: event.eventName },
+        `processIdRegistryEvent for block ${blockNumber}`,
+      );
 
       // Do nothing if the block is pending
       if (
