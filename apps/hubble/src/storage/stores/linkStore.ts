@@ -1,10 +1,4 @@
-import {
-  getDefaultStoreLimit,
-  LinkAddMessage,
-  LinkCompactStateMessage,
-  LinkRemoveMessage,
-  StoreType,
-} from "@farcaster/hub-nodejs";
+import { LinkAddMessage, LinkCompactStateMessage, LinkRemoveMessage } from "@farcaster/hub-nodejs";
 import { makeFidKey, messageDecode } from "../../storage/db/message.js";
 import { UserPostfix } from "../db/types.js";
 import { MessagesPage, PageOptions, StorePruneOptions } from "./types.js";
@@ -38,7 +32,7 @@ import storeEventHandler from "./storeEventHandler.js";
  */
 class LinkStore extends RustStoreBase<LinkAddMessage, LinkRemoveMessage> {
   constructor(db: RocksDB, eventHandler: storeEventHandler, options: StorePruneOptions = {}) {
-    const pruneSizeLimit = options.pruneSizeLimit ?? getDefaultStoreLimit(StoreType.LINKS);
+    const pruneSizeLimit = options.pruneSizeLimit ?? 0;
     const rustReactionStore = rsLinkStore.CreateLinkStore(
       db.rustDb,
       eventHandler.getRustStoreEventHandler(),

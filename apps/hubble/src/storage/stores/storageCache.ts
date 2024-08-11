@@ -10,6 +10,8 @@ import {
   Message,
   OnChainEventType,
   StorageRentOnChainEvent,
+  StorageUnitType,
+  toFarcasterTime,
 } from "@farcaster/hub-nodejs";
 import { err, ok } from "neverthrow";
 import RocksDB from "../db/rocksdb.js";
@@ -21,14 +23,44 @@ import { forEachOnChainEvent } from "../db/onChainEvent.js";
 import { addProgressBar } from "../../utils/progressBars.js";
 
 const MAX_PENDING_MESSAGE_COUNT_SCANS = 100;
+export const LEGACY_STORAGE_UNIT_CUTOFF_TIMESTAMP = 1724889600; // 2024-08-29 00:00:00 UTC
+const ONE_YEAR_IN_SECONDS = 365 * 24 * 60 * 60;
 
 const makeKey = (fid: number, set: UserMessagePostfix): string => {
   return Buffer.concat([makeFidKey(fid), Buffer.from([set])]).toString("hex");
 };
 
+const getStorageUnitType = (event: StorageRentOnChainEvent) => {
+  if (event.blockTimestamp < LEGACY_STORAGE_UNIT_CUTOFF_TIMESTAMP) {
+    return StorageUnitType.UNIT_TYPE_LEGACY;
+  } else {
+    return StorageUnitType.UNIT_TYPE_2024;
+  }
+};
+
+const getStorageUnitExpiry = (event: StorageRentOnChainEvent) => {
+  if (event.blockTimestamp < LEGACY_STORAGE_UNIT_CUTOFF_TIMESTAMP) {
+    // Legacy storage units expire after 2 years
+    return event.blockTimestamp + ONE_YEAR_IN_SECONDS * 2;
+  } else {
+    // 2024 storage units expire after 1 year
+    return event.blockTimestamp + ONE_YEAR_IN_SECONDS;
+  }
+};
+
+const storageSlotFromEvent = (event: StorageRentOnChainEvent): StorageSlot => {
+  const isLegacy = getStorageUnitType(event) === StorageUnitType.UNIT_TYPE_LEGACY;
+  return {
+    units: isLegacy ? 0 : event.storageRentEventBody.units,
+    legacy_units: isLegacy ? event.storageRentEventBody.units : 0,
+    invalidateAt: toFarcasterTime(getStorageUnitExpiry(event) * 1000).unwrapOr(0),
+  };
+};
+
 const log = logger.child({ component: "StorageCache" });
 
-type StorageSlot = {
+export type StorageSlot = {
+  legacy_units: number;
   units: number;
   invalidateAt: number;
 };
@@ -66,14 +98,19 @@ export class StorageCache {
       await forEachOnChainEvent(this._db, OnChainEventType.EVENT_TYPE_STORAGE_RENT, (event) => {
         const existingSlot = this._activeStorageSlots.get(event.fid);
         if (isStorageRentOnChainEvent(event) && event.storageRentEventBody.expiry > time.value) {
-          const rentEventBody = event.storageRentEventBody;
-          this._activeStorageSlots.set(event.fid, {
-            units: rentEventBody.units + (existingSlot?.units ?? 0),
-            invalidateAt:
-              (existingSlot?.invalidateAt ?? rentEventBody.expiry) < rentEventBody.expiry
-                ? existingSlot?.invalidateAt ?? rentEventBody.expiry
-                : rentEventBody.expiry,
-          });
+          const rentEventSlot = storageSlotFromEvent(event);
+          if (existingSlot) {
+            this._activeStorageSlots.set(event.fid, {
+              units: rentEventSlot.units + existingSlot.units,
+              legacy_units: rentEventSlot.legacy_units + existingSlot.legacy_units,
+              invalidateAt:
+                existingSlot.invalidateAt < rentEventSlot.invalidateAt
+                  ? existingSlot.invalidateAt
+                  : rentEventSlot.invalidateAt,
+            });
+          } else {
+            this._activeStorageSlots.set(event.fid, rentEventSlot);
+          }
           progressBar?.increment();
         }
       });
@@ -127,11 +164,11 @@ export class StorageCache {
     }
   }
 
-  async getCurrentStorageUnitsForFid(fid: number): HubAsyncResult<number> {
+  async getCurrentStorageSlotForFid(fid: number): HubAsyncResult<StorageSlot> {
     let slot = this._activeStorageSlots.get(fid);
 
     if (!slot) {
-      return ok(0);
+      return ok({ units: 0, legacy_units: 0, invalidateAt: 0 });
     }
 
     const time = getFarcasterTime();
@@ -141,19 +178,19 @@ export class StorageCache {
     }
 
     if (slot.invalidateAt < time.value) {
-      const newSlot = { units: 0, invalidateAt: time.value + 365 * 24 * 60 * 60 };
+      const newSlot = { units: 0, legacy_units: 0, invalidateAt: time.value + 365 * 24 * 60 * 60 };
       await forEachOnChainEvent(
         this._db,
         OnChainEventType.EVENT_TYPE_STORAGE_RENT,
         (event) => {
           if (isStorageRentOnChainEvent(event)) {
-            const rentEventBody = event.storageRentEventBody;
-            if (rentEventBody.expiry < time.value) return;
-            if (newSlot.invalidateAt > rentEventBody.expiry) {
-              newSlot.invalidateAt = rentEventBody.expiry;
+            const rentEventSlot = storageSlotFromEvent(event);
+            if (rentEventSlot.invalidateAt < time.value) return;
+            if (newSlot.invalidateAt > rentEventSlot.invalidateAt) {
+              newSlot.invalidateAt = rentEventSlot.invalidateAt;
             }
-
-            newSlot.units += rentEventBody.units;
+            newSlot.units += rentEventSlot.units;
+            newSlot.legacy_units += rentEventSlot.legacy_units;
           }
         },
         fid,
@@ -162,7 +199,7 @@ export class StorageCache {
       this._activeStorageSlots.set(fid, slot);
     }
 
-    return ok(slot.units);
+    return ok(slot);
   }
 
   async getEarliestTsHash(fid: number, set: UserMessagePostfix): HubAsyncResult<Uint8Array | undefined> {
@@ -296,20 +333,23 @@ export class StorageCache {
         return;
       }
 
-      const rentEventBody = event.storageRentEventBody;
-      if (time.value > (existingSlot?.invalidateAt ?? 0)) {
+      const rentEventSlot = storageSlotFromEvent(event);
+      // If the storage unit has already expired, ignore
+      if (rentEventSlot.invalidateAt < time.value) {
+        return;
+      }
+
+      if (existingSlot) {
         this._activeStorageSlots.set(event.fid, {
-          units: rentEventBody.units,
-          invalidateAt: rentEventBody.expiry,
+          units: rentEventSlot.units + existingSlot.units,
+          legacy_units: rentEventSlot.legacy_units + existingSlot.legacy_units,
+          invalidateAt:
+            existingSlot.invalidateAt < rentEventSlot.invalidateAt
+              ? existingSlot.invalidateAt
+              : rentEventSlot.invalidateAt,
         });
       } else {
-        this._activeStorageSlots.set(event.fid, {
-          units: rentEventBody.units + (existingSlot?.units ?? 0),
-          invalidateAt:
-            (existingSlot?.invalidateAt ?? rentEventBody.expiry) < rentEventBody.expiry
-              ? existingSlot?.invalidateAt ?? rentEventBody.expiry
-              : rentEventBody.expiry,
-        });
+        this._activeStorageSlots.set(event.fid, rentEventSlot);
       }
     }
   }

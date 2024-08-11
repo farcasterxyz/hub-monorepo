@@ -175,6 +175,7 @@ message OnChainEventResponse {
 message StorageLimitsResponse {
   repeated StorageLimit limits = 1;
   uint32 units = 2;
+  repeated StorageUnitDetails unit_details = 3;
 }
 
 enum StoreType {
@@ -185,6 +186,16 @@ enum StoreType {
   STORE_TYPE_USER_DATA = 4;
   STORE_TYPE_VERIFICATIONS = 5;
   STORE_TYPE_USERNAME_PROOFS = 6;
+}
+
+enum StorageUnitType {
+  UNIT_TYPE_LEGACY = 0;
+  UNIT_TYPE_2024 = 1;
+}
+
+message StorageUnitDetails {
+  StorageUnitType unit_type = 1;
+  uint32 unit_size = 2;
 }
 
 message StorageLimit {

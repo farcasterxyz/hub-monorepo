@@ -75,6 +75,35 @@ export function storeTypeToJSON(object: StoreType): string {
   }
 }
 
+export enum StorageUnitType {
+  UNIT_TYPE_LEGACY = 0,
+  UNIT_TYPE_2024 = 1,
+}
+
+export function storageUnitTypeFromJSON(object: any): StorageUnitType {
+  switch (object) {
+    case 0:
+    case "UNIT_TYPE_LEGACY":
+      return StorageUnitType.UNIT_TYPE_LEGACY;
+    case 1:
+    case "UNIT_TYPE_2024":
+      return StorageUnitType.UNIT_TYPE_2024;
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum StorageUnitType");
+  }
+}
+
+export function storageUnitTypeToJSON(object: StorageUnitType): string {
+  switch (object) {
+    case StorageUnitType.UNIT_TYPE_LEGACY:
+      return "UNIT_TYPE_LEGACY";
+    case StorageUnitType.UNIT_TYPE_2024:
+      return "UNIT_TYPE_2024";
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum StorageUnitType");
+  }
+}
+
 export interface Empty {
 }
 
@@ -239,6 +268,12 @@ export interface OnChainEventResponse {
 export interface StorageLimitsResponse {
   limits: StorageLimit[];
   units: number;
+  unitDetails: StorageUnitDetails[];
+}
+
+export interface StorageUnitDetails {
+  unitType: StorageUnitType;
+  unitSize: number;
 }
 
 export interface StorageLimit {
@@ -2638,7 +2673,7 @@ export const OnChainEventResponse = {
 };
 
 function createBaseStorageLimitsResponse(): StorageLimitsResponse {
-  return { limits: [], units: 0 };
+  return { limits: [], units: 0, unitDetails: [] };
 }
 
 export const StorageLimitsResponse = {
@@ -2648,6 +2683,9 @@ export const StorageLimitsResponse = {
     }
     if (message.units !== 0) {
       writer.uint32(16).uint32(message.units);
+    }
+    for (const v of message.unitDetails) {
+      StorageUnitDetails.encode(v!, writer.uint32(26).fork()).ldelim();
     }
     return writer;
   },
@@ -2673,6 +2711,13 @@ export const StorageLimitsResponse = {
 
           message.units = reader.uint32();
           continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.unitDetails.push(StorageUnitDetails.decode(reader, reader.uint32()));
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -2686,6 +2731,9 @@ export const StorageLimitsResponse = {
     return {
       limits: Array.isArray(object?.limits) ? object.limits.map((e: any) => StorageLimit.fromJSON(e)) : [],
       units: isSet(object.units) ? Number(object.units) : 0,
+      unitDetails: Array.isArray(object?.unitDetails)
+        ? object.unitDetails.map((e: any) => StorageUnitDetails.fromJSON(e))
+        : [],
     };
   },
 
@@ -2697,6 +2745,11 @@ export const StorageLimitsResponse = {
       obj.limits = [];
     }
     message.units !== undefined && (obj.units = Math.round(message.units));
+    if (message.unitDetails) {
+      obj.unitDetails = message.unitDetails.map((e) => e ? StorageUnitDetails.toJSON(e) : undefined);
+    } else {
+      obj.unitDetails = [];
+    }
     return obj;
   },
 
@@ -2708,6 +2761,78 @@ export const StorageLimitsResponse = {
     const message = createBaseStorageLimitsResponse();
     message.limits = object.limits?.map((e) => StorageLimit.fromPartial(e)) || [];
     message.units = object.units ?? 0;
+    message.unitDetails = object.unitDetails?.map((e) => StorageUnitDetails.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBaseStorageUnitDetails(): StorageUnitDetails {
+  return { unitType: 0, unitSize: 0 };
+}
+
+export const StorageUnitDetails = {
+  encode(message: StorageUnitDetails, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.unitType !== 0) {
+      writer.uint32(8).int32(message.unitType);
+    }
+    if (message.unitSize !== 0) {
+      writer.uint32(16).uint32(message.unitSize);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): StorageUnitDetails {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseStorageUnitDetails();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.unitType = reader.int32() as any;
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.unitSize = reader.uint32();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): StorageUnitDetails {
+    return {
+      unitType: isSet(object.unitType) ? storageUnitTypeFromJSON(object.unitType) : 0,
+      unitSize: isSet(object.unitSize) ? Number(object.unitSize) : 0,
+    };
+  },
+
+  toJSON(message: StorageUnitDetails): unknown {
+    const obj: any = {};
+    message.unitType !== undefined && (obj.unitType = storageUnitTypeToJSON(message.unitType));
+    message.unitSize !== undefined && (obj.unitSize = Math.round(message.unitSize));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<StorageUnitDetails>, I>>(base?: I): StorageUnitDetails {
+    return StorageUnitDetails.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<StorageUnitDetails>, I>>(object: I): StorageUnitDetails {
+    const message = createBaseStorageUnitDetails();
+    message.unitType = object.unitType ?? 0;
+    message.unitSize = object.unitSize ?? 0;
     return message;
   },
 };

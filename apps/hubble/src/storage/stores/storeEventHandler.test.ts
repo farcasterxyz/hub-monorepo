@@ -187,14 +187,14 @@ describe("getCurrentStorageUnitsForFid", () => {
   const fid = Factories.Fid.build();
 
   test("returns 0 if no storage event", async () => {
-    expect(await eventHandler.getCurrentStorageUnitsForFid(fid)).toEqual(ok(0));
+    expect(await eventHandler.getCurrentStorageSlotForFid(fid)).toEqual(ok(0));
   });
 
   test("returns actual storage based on units rented", async () => {
     const storageEvent = Factories.StorageRentOnChainEvent.build({ fid });
     const onChainEventStore = new OnChainEventStore(db, eventHandler);
     await onChainEventStore.mergeOnChainEvent(storageEvent);
-    expect(await eventHandler.getCurrentStorageUnitsForFid(fid)).toEqual(ok(storageEvent.storageRentEventBody.units));
+    expect(await eventHandler.getCurrentStorageSlotForFid(fid)).toEqual(ok(storageEvent.storageRentEventBody.units));
   });
 });
 

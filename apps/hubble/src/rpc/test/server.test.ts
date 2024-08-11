@@ -15,6 +15,7 @@ import {
   StoreType,
   getDefaultStoreLimit,
   HubError,
+  StorageUnitType,
 } from "@farcaster/hub-nodejs";
 import Engine from "../../storage/engine/index.js";
 import { MockHub } from "../../test/mocks.js";
@@ -141,7 +142,7 @@ describe("server rpc tests", () => {
       const storageLimits = limitsResponse.limits;
       expect(storageLimits).toContainEqual(
         StorageLimit.create({
-          limit: getDefaultStoreLimit(StoreType.CASTS),
+          limit: getDefaultStoreLimit(StoreType.CASTS, StorageUnitType.UNIT_TYPE_2024),
           storeType: StoreType.CASTS,
           name: "CASTS",
           used: 2,
@@ -151,7 +152,7 @@ describe("server rpc tests", () => {
       );
       expect(storageLimits).toContainEqual(
         StorageLimit.create({
-          limit: getDefaultStoreLimit(StoreType.REACTIONS),
+          limit: getDefaultStoreLimit(StoreType.REACTIONS, StorageUnitType.UNIT_TYPE_2024),
           storeType: StoreType.REACTIONS,
           name: "REACTIONS",
           used: 0,
@@ -161,7 +162,7 @@ describe("server rpc tests", () => {
       );
       expect(storageLimits).toContainEqual(
         StorageLimit.create({
-          limit: getDefaultStoreLimit(StoreType.LINKS),
+          limit: getDefaultStoreLimit(StoreType.LINKS, StorageUnitType.UNIT_TYPE_2024),
           storeType: StoreType.LINKS,
           name: "LINKS",
           used: 0,
@@ -171,7 +172,7 @@ describe("server rpc tests", () => {
       );
       expect(storageLimits).toContainEqual(
         StorageLimit.create({
-          limit: getDefaultStoreLimit(StoreType.USER_DATA),
+          limit: getDefaultStoreLimit(StoreType.USER_DATA, StorageUnitType.UNIT_TYPE_2024),
           storeType: StoreType.USER_DATA,
           name: "USER_DATA",
           used: 0,
@@ -181,7 +182,7 @@ describe("server rpc tests", () => {
       );
       expect(storageLimits).toContainEqual(
         StorageLimit.create({
-          limit: getDefaultStoreLimit(StoreType.VERIFICATIONS),
+          limit: getDefaultStoreLimit(StoreType.VERIFICATIONS, StorageUnitType.UNIT_TYPE_2024),
           storeType: StoreType.VERIFICATIONS,
           name: "VERIFICATIONS",
           used: 1,
@@ -191,7 +192,7 @@ describe("server rpc tests", () => {
       );
       expect(storageLimits).toContainEqual(
         StorageLimit.create({
-          limit: getDefaultStoreLimit(StoreType.USERNAME_PROOFS),
+          limit: getDefaultStoreLimit(StoreType.USERNAME_PROOFS, StorageUnitType.UNIT_TYPE_2024),
           storeType: StoreType.USERNAME_PROOFS,
           name: "USERNAME_PROOFS",
           used: 0,
@@ -212,7 +213,7 @@ describe("server rpc tests", () => {
       const newLimits = limitsResponse2.limits;
       expect(newLimits.length).toEqual(6);
       for (const limit of newLimits) {
-        expect(limit.limit).toEqual(getDefaultStoreLimit(limit.storeType) * 3);
+        expect(limit.limit).toEqual(getDefaultStoreLimit(limit.storeType, StorageUnitType.UNIT_TYPE_2024) * 3);
       }
     });
   });

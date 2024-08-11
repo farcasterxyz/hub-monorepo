@@ -955,19 +955,23 @@ impl Store {
         &self,
         fid: u32,
         cached_count: u64,
-        units: u64,
+        max_count: u64,
     ) -> Result<Vec<HubEvent>, HubError> {
         let mut pruned_events = vec![];
 
         let mut count = cached_count;
-        let prune_size_limit = self.store_def.get_prune_size_limit();
+        let max_message_count = if self.store_def.get_prune_size_limit() > 0 {
+            self.store_def.get_prune_size_limit() as u64
+        } else {
+            max_count
+        };
 
         let mut txn = self.db.txn();
 
         let prefix = &make_message_primary_key(fid, self.store_def.postfix(), None);
         self.db
             .for_each_iterator_by_prefix(prefix, &PageOptions::default(), |_key, value| {
-                if count <= (prune_size_limit as u64) * units {
+                if count <= max_message_count {
                     return Ok(true); // Stop the iteration, nothing left to prune
                 }
 

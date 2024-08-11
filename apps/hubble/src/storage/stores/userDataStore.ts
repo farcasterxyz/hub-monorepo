@@ -1,12 +1,4 @@
-import {
-  UserNameProof,
-  UserDataAddMessage,
-  UserDataType,
-  getDefaultStoreLimit,
-  StoreType,
-  Message,
-  HubEvent,
-} from "@farcaster/hub-nodejs";
+import { UserNameProof, UserDataAddMessage, UserDataType, HubEvent } from "@farcaster/hub-nodejs";
 import { ResultAsync } from "neverthrow";
 import { UserPostfix } from "../db/types.js";
 import { MessagesPage, PageOptions, StorePruneOptions } from "../stores/types.js";
@@ -45,7 +37,7 @@ import { messageDecode } from "../../storage/db/message.js";
  */
 class UserDataStore extends RustStoreBase<UserDataAddMessage, never> {
   constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
-    const pruneSizeLimit = options.pruneSizeLimit ?? getDefaultStoreLimit(StoreType.USER_DATA);
+    const pruneSizeLimit = options.pruneSizeLimit ?? 0;
 
     const rustUserDataStore = rsCreateUserDataStore(db.rustDb, eventHandler.getRustStoreEventHandler(), pruneSizeLimit);
 

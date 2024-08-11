@@ -1,4 +1,4 @@
-import { CastAddMessage, CastId, CastRemoveMessage, getDefaultStoreLimit, StoreType } from "@farcaster/hub-nodejs";
+import { CastAddMessage, CastId, CastRemoveMessage } from "@farcaster/hub-nodejs";
 import { ResultAsync } from "neverthrow";
 import RocksDB from "../db/rocksdb.js";
 import { UserPostfix } from "../db/types.js";
@@ -19,7 +19,7 @@ import { messageDecode } from "../../storage/db/message.js";
 
 class CastStore extends RustStoreBase<CastAddMessage, CastRemoveMessage> {
   constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
-    const pruneSizeLimit = options.pruneSizeLimit ?? getDefaultStoreLimit(StoreType.CASTS);
+    const pruneSizeLimit = options.pruneSizeLimit ?? 0;
     const rustCastStore = rsCreateCastStore(db.rustDb, eventHandler.getRustStoreEventHandler(), pruneSizeLimit);
 
     super(db, rustCastStore, UserPostfix.CastMessage, eventHandler, pruneSizeLimit);

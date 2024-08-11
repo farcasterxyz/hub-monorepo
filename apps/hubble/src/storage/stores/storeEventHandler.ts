@@ -1,6 +1,6 @@
 import {
   bytesIncrement,
-  FARCASTER_EPOCH,
+  getStoreLimit,
   HubAsyncResult,
   HubError,
   HubEvent,
@@ -17,6 +17,7 @@ import {
   MergeUsernameProofHubEvent,
   PruneMessageHubEvent,
   RevokeMessageHubEvent,
+  StorageUnitType,
   StoreType,
 } from "@farcaster/hub-nodejs";
 import AsyncLock from "async-lock";
@@ -24,7 +25,7 @@ import { err, ok, ResultAsync } from "neverthrow";
 import { TypedEmitter } from "tiny-typed-emitter";
 import RocksDB, { RocksDbIteratorOptions, RocksDbTransaction } from "../db/rocksdb.js";
 import { RootPrefix, UserMessagePostfix, UserPostfix } from "../db/types.js";
-import { StorageCache } from "./storageCache.js";
+import { StorageCache, StorageSlot } from "./storageCache.js";
 import { makeTsHash, unpackTsHash } from "../db/message.js";
 import {
   bytesCompare,
@@ -53,6 +54,16 @@ const STORE_TO_SET: Record<StoreType, UserMessagePostfix> = {
   [StoreType.USER_DATA]: UserPostfix.UserDataMessage,
   [StoreType.VERIFICATIONS]: UserPostfix.VerificationMessage,
   [StoreType.USERNAME_PROOFS]: UserPostfix.UsernameProofMessage,
+};
+
+// @ts-ignore
+const SET_TO_STORE: Record<UserMessagePostfix, StoreType> = {
+  [UserPostfix.CastMessage]: StoreType.CASTS,
+  [UserPostfix.LinkMessage]: StoreType.LINKS,
+  [UserPostfix.ReactionMessage]: StoreType.REACTIONS,
+  [UserPostfix.UserDataMessage]: StoreType.USER_DATA,
+  [UserPostfix.VerificationMessage]: StoreType.VERIFICATIONS,
+  [UserPostfix.UsernameProofMessage]: StoreType.USERNAME_PROOFS,
 };
 
 type PrunableMessage =
@@ -173,14 +184,14 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     return this._rustStoreEventHandler;
   }
 
-  async getCurrentStorageUnitsForFid(fid: number): HubAsyncResult<number> {
-    const units = await this._storageCache.getCurrentStorageUnitsForFid(fid);
+  async getCurrentStorageSlotForFid(fid: number): HubAsyncResult<StorageSlot> {
+    const slot = await this._storageCache.getCurrentStorageSlotForFid(fid);
 
-    if (units.isOk() && units.value === 0) {
+    if (slot.isOk() && slot.value.legacy_units + slot.value.units === 0) {
       logger.debug({ fid }, "fid has no registered storage, would be pruned");
     }
 
-    return units;
+    return slot;
   }
 
   async getUsage(fid: number, store: StoreType): HubAsyncResult<StoreUsage> {
@@ -214,6 +225,25 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
 
   async getCacheMessageCount(fid: number, set: UserMessagePostfix, forceFetch = true): HubAsyncResult<number> {
     return await this._storageCache.getMessageCount(fid, set, forceFetch);
+  }
+
+  async getMaxMessageCount(fid: number, set: UserMessagePostfix): HubAsyncResult<number> {
+    const slot = await this.getCurrentStorageSlotForFid(fid);
+
+    if (slot.isErr()) {
+      return err(slot.error);
+    }
+
+    const storeType = SET_TO_STORE[set];
+    if (!storeType) {
+      return err(new HubError("bad_request.invalid_param", `invalid store type ${set}`));
+    }
+    return ok(
+      getStoreLimit(storeType, [
+        { unitType: StorageUnitType.UNIT_TYPE_LEGACY, unitSize: slot.value.legacy_units },
+        { unitType: StorageUnitType.UNIT_TYPE_2024, unitSize: slot.value.units },
+      ]),
+    );
   }
 
   async getEarliestTsHash(fid: number, set: UserMessagePostfix): HubAsyncResult<Uint8Array | undefined> {
@@ -290,18 +320,17 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     set: UserMessagePostfix,
     sizeLimit: number,
   ): HubAsyncResult<boolean> {
-    const units = await this.getCurrentStorageUnitsForFid(message.data.fid);
-
-    if (units.isErr()) {
-      return err(units.error);
-    }
-
     const messageCount = await this.getCacheMessageCount(message.data.fid, set);
     if (messageCount.isErr()) {
       return err(messageCount.error);
     }
 
-    if (messageCount.value < sizeLimit * units.value) {
+    const maxMessageCount = await this.getMaxMessageCount(message.data.fid, set);
+    if (maxMessageCount.isErr()) {
+      return err(maxMessageCount.error);
+    }
+
+    if (messageCount.value < maxMessageCount.value) {
       return ok(false);
     }
 

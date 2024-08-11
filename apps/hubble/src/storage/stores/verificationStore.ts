@@ -1,10 +1,4 @@
-import {
-  HubAsyncResult,
-  StoreType,
-  VerificationAddAddressMessage,
-  VerificationRemoveMessage,
-  getDefaultStoreLimit,
-} from "@farcaster/hub-nodejs";
+import { HubAsyncResult, VerificationAddAddressMessage, VerificationRemoveMessage } from "@farcaster/hub-nodejs";
 import {
   rsCreateVerificationStore,
   rsGetVerificationAdd,
@@ -24,7 +18,7 @@ import { messageDecode } from "../../storage/db/message.js";
 
 class VerificationStore extends RustStoreBase<VerificationAddAddressMessage, VerificationRemoveMessage> {
   constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
-    const pruneSizeLimit = options.pruneSizeLimit ?? getDefaultStoreLimit(StoreType.VERIFICATIONS);
+    const pruneSizeLimit = options.pruneSizeLimit ?? 0;
     const rustVerificationStore = rsCreateVerificationStore(
       db.rustDb,
       eventHandler.getRustStoreEventHandler(),

@@ -1,53 +1,71 @@
-import { StoreType } from "./protobufs";
+import { StorageUnitDetails, StorageUnitType, StoreType } from "./protobufs";
 
-const CASTS_SIZE_LIMIT_DEFAULT = 5_000;
-const LINKS_SIZE_LIMIT_DEFAULT = 2_500;
-const REACTIONS_SIZE_LIMIT_DEFAULT = 2_500;
-const USER_DATA_SIZE_LIMIT_DEFAULT = 50;
-const USERNAME_PROOFS_SIZE_LIMIT_DEFAULT = 5;
-const VERIFICATIONS_SIZE_LIMIT_DEFAULT = 25;
+const STORAGE_UNIT_DEFAULTS = {
+  [StoreType.CASTS]: {
+    [StorageUnitType.UNIT_TYPE_LEGACY]: 5000,
+    [StorageUnitType.UNIT_TYPE_2024]: 2000,
+  },
+  [StoreType.LINKS]: {
+    [StorageUnitType.UNIT_TYPE_LEGACY]: 2500,
+    [StorageUnitType.UNIT_TYPE_2024]: 1000,
+  },
+  [StoreType.REACTIONS]: {
+    [StorageUnitType.UNIT_TYPE_LEGACY]: 2500,
+    [StorageUnitType.UNIT_TYPE_2024]: 1000,
+  },
+  [StoreType.USER_DATA]: {
+    [StorageUnitType.UNIT_TYPE_LEGACY]: 50,
+    [StorageUnitType.UNIT_TYPE_2024]: 50,
+  },
+  [StoreType.USERNAME_PROOFS]: {
+    [StorageUnitType.UNIT_TYPE_LEGACY]: 5,
+    [StorageUnitType.UNIT_TYPE_2024]: 5,
+  },
+  [StoreType.VERIFICATIONS]: {
+    [StorageUnitType.UNIT_TYPE_LEGACY]: 25,
+    [StorageUnitType.UNIT_TYPE_2024]: 25,
+  },
+  [StoreType.NONE]: {
+    [StorageUnitType.UNIT_TYPE_LEGACY]: 0,
+    [StorageUnitType.UNIT_TYPE_2024]: 0,
+  },
+};
 
-export const getStoreLimits = (units: number) => [
+export const getStoreLimits = (unit_details: StorageUnitDetails[]) => [
   {
     storeType: StoreType.CASTS,
-    limit: getDefaultStoreLimit(StoreType.CASTS) * units,
+    limit: getStoreLimit(StoreType.CASTS, unit_details),
   },
   {
     storeType: StoreType.LINKS,
-    limit: getDefaultStoreLimit(StoreType.LINKS) * units,
+    limit: getStoreLimit(StoreType.LINKS, unit_details),
   },
   {
     storeType: StoreType.REACTIONS,
-    limit: getDefaultStoreLimit(StoreType.REACTIONS) * units,
+    limit: getStoreLimit(StoreType.REACTIONS, unit_details),
   },
   {
     storeType: StoreType.USER_DATA,
-    limit: getDefaultStoreLimit(StoreType.USER_DATA) * units,
+    limit: getStoreLimit(StoreType.USER_DATA, unit_details),
   },
   {
     storeType: StoreType.USERNAME_PROOFS,
-    limit: getDefaultStoreLimit(StoreType.USERNAME_PROOFS) * units,
+    limit: getStoreLimit(StoreType.USERNAME_PROOFS, unit_details),
   },
   {
     storeType: StoreType.VERIFICATIONS,
-    limit: getDefaultStoreLimit(StoreType.VERIFICATIONS) * units,
+    limit: getStoreLimit(StoreType.VERIFICATIONS, unit_details),
   },
 ];
-export const getDefaultStoreLimit = (storeType: StoreType) => {
-  switch (storeType) {
-    case StoreType.CASTS:
-      return CASTS_SIZE_LIMIT_DEFAULT;
-    case StoreType.LINKS:
-      return LINKS_SIZE_LIMIT_DEFAULT;
-    case StoreType.REACTIONS:
-      return REACTIONS_SIZE_LIMIT_DEFAULT;
-    case StoreType.USER_DATA:
-      return USER_DATA_SIZE_LIMIT_DEFAULT;
-    case StoreType.USERNAME_PROOFS:
-      return USERNAME_PROOFS_SIZE_LIMIT_DEFAULT;
-    case StoreType.VERIFICATIONS:
-      return VERIFICATIONS_SIZE_LIMIT_DEFAULT;
-    default:
-      throw new Error(`Unknown store type: ${storeType}`);
+
+export const getStoreLimit = (storeType: StoreType, unit_details: StorageUnitDetails[]) => {
+  let limit = 0;
+  for (const unit of unit_details) {
+    limit += getDefaultStoreLimit(storeType, unit.unitType) * unit.unitSize;
   }
+  return limit;
+};
+
+export const getDefaultStoreLimit = (storeType: StoreType, unit_type: StorageUnitType) => {
+  return STORAGE_UNIT_DEFAULTS[storeType][unit_type];
 };

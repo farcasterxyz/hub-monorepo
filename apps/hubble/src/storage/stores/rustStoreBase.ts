@@ -168,24 +168,24 @@ export abstract class RustStoreBase<TAdd extends Message, TRemove extends Messag
 
   async pruneMessages(fid: number): HubAsyncResult<number[]> {
     const cachedCount = await this._eventHandler.getCacheMessageCount(fid, this._postfix, false);
-    const units = await this._eventHandler.getCurrentStorageUnitsForFid(fid);
+    const maxCount = await this._eventHandler.getMaxMessageCount(fid, this._postfix);
 
     // Require storage cache to be synced to prune
     if (cachedCount.isErr()) {
       return err(cachedCount.error);
     }
 
-    if (units.isErr()) {
-      return err(units.error);
+    if (maxCount.isErr()) {
+      return err(maxCount.error);
     }
 
     // Return immediately if there are no messages to prune
-    if (cachedCount.value <= this._pruneSizeLimit * units.value) {
+    if (cachedCount.value <= maxCount.value) {
       return ok([]);
     }
 
     const result = await ResultAsync.fromPromise(
-      rsPruneMessages(this._rustStore, fid, cachedCount.value, units.value),
+      rsPruneMessages(this._rustStore, fid, cachedCount.value, maxCount.value),
       rustErrorToHubError,
     );
     if (result.isErr()) {

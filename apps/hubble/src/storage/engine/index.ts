@@ -38,6 +38,7 @@ import {
   SignerOnChainEvent,
   StorageLimit,
   StorageLimitsResponse,
+  StorageUnitType,
   StoreType,
   UserDataAddMessage,
   UserDataType,
@@ -51,9 +52,9 @@ import {
 import { err, ok, ResultAsync } from "neverthrow";
 import fs from "fs";
 import { Worker } from "worker_threads";
-import { forEachMessageBySigner, makeUserKey, messageDecode, typeToSetPostfix } from "../db/message.js";
+import { forEachMessageBySigner, typeToSetPostfix } from "../db/message.js";
 import RocksDB from "../db/rocksdb.js";
-import { UserMessagePostfixMax, UserPostfix } from "../db/types.js";
+import { UserPostfix } from "../db/types.js";
 import CastStore from "../stores/castStore.js";
 import LinkStore from "../stores/linkStore.js";
 import ReactionStore from "../stores/reactionStore.js";
@@ -292,20 +293,22 @@ class Engine extends TypedEmitter<EngineEvents> {
 
         // Extract the FID that this message was signed by
         const fid = message.data?.fid ?? 0;
-        const storageUnits = await this.eventHandler.getCurrentStorageUnitsForFid(fid);
+        const storageSlot = await this.eventHandler.getCurrentStorageSlotForFid(fid);
 
-        if (storageUnits.isErr()) {
-          mergeResults.set(i, err(storageUnits.error));
+        if (storageSlot.isErr()) {
+          mergeResults.set(i, err(storageSlot.error));
           return;
         }
 
-        if (storageUnits.value === 0) {
+        const totalUnits = storageSlot.value.legacy_units + storageSlot.value.units;
+
+        if (totalUnits === 0) {
           mergeResults.set(i, err(new HubError("bad_request.prunable", "no storage")));
           return;
         }
 
         // We rate limit the number of messages that can be merged per FID
-        const limiter = getRateLimiterForTotalMessages(storageUnits.value * this._totalPruneSize);
+        const limiter = getRateLimiterForTotalMessages(totalUnits * this._totalPruneSize);
         const isRateLimited = await isRateLimitedByKey(`${fid}`, limiter);
         if (isRateLimited) {
           log.warn({ fid }, "rate limit exceeded for FID");
@@ -861,13 +864,17 @@ class Engine extends TypedEmitter<EngineEvents> {
       return err(validatedFid.error);
     }
 
-    const units = await this.eventHandler.getCurrentStorageUnitsForFid(fid);
+    const slot = await this.eventHandler.getCurrentStorageSlotForFid(fid);
 
-    if (units.isErr()) {
-      return err(units.error);
+    if (slot.isErr()) {
+      return err(slot.error);
     }
 
-    const storeLimits = getStoreLimits(units.value);
+    const unitDetails = [
+      { unitType: StorageUnitType.UNIT_TYPE_LEGACY, unitSize: slot.value.legacy_units },
+      { unitType: StorageUnitType.UNIT_TYPE_2024, unitSize: slot.value.units },
+    ];
+    const storeLimits = getStoreLimits(unitDetails);
     const limits: StorageLimit[] = [];
     for (const limit of storeLimits) {
       const usageResult = await this.eventHandler.getUsage(fid, limit.storeType);
@@ -887,8 +894,9 @@ class Engine extends TypedEmitter<EngineEvents> {
       );
     }
     return ok({
-      units: units.value,
+      units: slot.value.units + slot.value.legacy_units,
       limits: limits,
+      unitDetails: unitDetails,
     });
   }
 
@@ -1193,7 +1201,8 @@ class Engine extends TypedEmitter<EngineEvents> {
     // LinkCompactStateMessages can't be more than 100 storage units
     if (
       isLinkCompactStateMessage(message) &&
-      message.data.linkCompactStateBody.targetFids.length > getDefaultStoreLimit(StoreType.LINKS) * 100
+      message.data.linkCompactStateBody.targetFids.length >
+        getDefaultStoreLimit(StoreType.LINKS, StorageUnitType.UNIT_TYPE_LEGACY) * 100
     ) {
       return err(
         new HubError("bad_request.validation_failure", "LinkCompactStateMessage is too big. Limit = 100 storage units"),

@@ -1,10 +1,4 @@
-import {
-  getDefaultStoreLimit,
-  StoreType,
-  UserNameProof,
-  UsernameProofMessage,
-  UserNameType,
-} from "@farcaster/hub-nodejs";
+import { UserNameProof, UsernameProofMessage, UserNameType } from "@farcaster/hub-nodejs";
 import { ResultAsync } from "neverthrow";
 import { UserPostfix } from "../db/types.js";
 import {
@@ -22,7 +16,7 @@ import { messageDecode } from "../../storage/db/message.js";
 
 class UsernameProofStore extends RustStoreBase<UsernameProofMessage, never> {
   constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
-    const pruneSizeLimit = options.pruneSizeLimit ?? getDefaultStoreLimit(StoreType.USERNAME_PROOFS);
+    const pruneSizeLimit = options.pruneSizeLimit ?? 0;
     const rustUsernameProofStore = rsCreateUsernameProofStore(
       db.rustDb,
       eventHandler.getRustStoreEventHandler(),

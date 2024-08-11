@@ -51,6 +51,7 @@ describe("syncFromDb", () => {
       for (let i = 0; i < fidUsage.usage.storage; i++) {
         const storageRentEvent = Factories.StorageRentOnChainEvent.build({
           fid: fidUsage.fid,
+          blockTimestamp: Date.now() / 1000 - 30 * 24 * 60 * 60, // 30 days ago
           storageRentEventBody: Factories.StorageRentEventBody.build({
             expiry: getFarcasterTime()._unsafeUnwrap() + 365 * 24 * 60 * 60 - i,
             units: 2,
@@ -73,7 +74,9 @@ describe("syncFromDb", () => {
       await expect(cache.getMessageCount(fidUsage.fid, UserPostfix.UserDataMessage)).resolves.toEqual(
         ok(fidUsage.usage.userData),
       );
-      await expect(cache.getCurrentStorageUnitsForFid(fidUsage.fid)).resolves.toEqual(ok(4));
+      const slot = (await cache.getCurrentStorageSlotForFid(fidUsage.fid))._unsafeUnwrap();
+      expect(slot.legacy_units).toEqual(4);
+      expect(slot.units).toEqual(0);
     }
   });
 });
@@ -92,9 +95,19 @@ describe("getCurrentStorageUnitsForFid", () => {
       await db.commit(putOnChainEventTransaction(db.transaction(), event));
     }
     await cache.syncFromDb();
-    await expect(cache.getCurrentStorageUnitsForFid(fid)).resolves.toEqual(ok(4));
+    await expect(cache.getCurrentStorageSlotForFid(fid)).resolves.toEqual(ok(4));
     await new Promise((resolve) => setTimeout(resolve, 2000));
-    await expect(cache.getCurrentStorageUnitsForFid(fid)).resolves.toEqual(ok(2));
+    await expect(cache.getCurrentStorageSlotForFid(fid)).resolves.toEqual(ok(2));
+  });
+
+  test("user with storage units before 2024 migration has 2 years of storage at old limits", async () => {
+    throw new Error("Not implemented");
+  });
+  test("user with storage units after 2024 migration has 1 year of storage at new limits", async () => {
+    throw new Error("Not implemented");
+  });
+  test("user with mix of storage unit types has right limits", async () => {
+    throw new Error("Not implemented");
   });
 });
 
