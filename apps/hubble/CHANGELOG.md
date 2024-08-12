@@ -1,5 +1,14 @@
 # @farcaster/hubble
 
+## 1.14.3
+
+### Patch Changes
+
+- 63dd7c97: feat: make snapshot sync retry and parallelize
+- b2272f76: submit missing messages via the sync health job and enrich output logs
+- cb5ee7ac: feat: added a sync health measurement job
+- 9e0c9323: fix: query for all impacted sync ids via sync health job/command
+
 ## 1.14.2
 
 ### Patch Changes
