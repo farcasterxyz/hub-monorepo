@@ -97,8 +97,13 @@ export class StorageCache {
     } else {
       await forEachOnChainEvent(this._db, OnChainEventType.EVENT_TYPE_STORAGE_RENT, (event) => {
         const existingSlot = this._activeStorageSlots.get(event.fid);
-        if (isStorageRentOnChainEvent(event) && event.storageRentEventBody.expiry > time.value) {
+        if (isStorageRentOnChainEvent(event)) {
           const rentEventSlot = storageSlotFromEvent(event);
+
+          if (rentEventSlot.invalidateAt < time.value) {
+            return;
+          }
+
           if (existingSlot) {
             this._activeStorageSlots.set(event.fid, {
               units: rentEventSlot.units + existingSlot.units,

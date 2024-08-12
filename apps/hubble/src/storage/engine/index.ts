@@ -173,15 +173,14 @@ class Engine extends TypedEmitter<EngineEvents> {
     this._onchainEventsStore = new OnChainEventStore(db, this.eventHandler);
     this._usernameProofStore = new UsernameProofStore(db, this.eventHandler);
 
-    // Calculate total storage available per unit of store. Note that OnChainEventStore
-    // is not included in this calculation because it is not pruned.
+    // Total set size for all stores. We should probably reduce this to just the size of the cast store.
     this._totalPruneSize =
-      this._linkStore.pruneSizeLimit +
-      this._reactionStore.pruneSizeLimit +
-      this._castStore.pruneSizeLimit +
-      this._userDataStore.pruneSizeLimit +
-      this._verificationStore.pruneSizeLimit +
-      this._usernameProofStore.pruneSizeLimit;
+      getDefaultStoreLimit(StoreType.CASTS, StorageUnitType.UNIT_TYPE_LEGACY) +
+      getDefaultStoreLimit(StoreType.LINKS, StorageUnitType.UNIT_TYPE_LEGACY) +
+      getDefaultStoreLimit(StoreType.REACTIONS, StorageUnitType.UNIT_TYPE_LEGACY) +
+      getDefaultStoreLimit(StoreType.USER_DATA, StorageUnitType.UNIT_TYPE_LEGACY) +
+      getDefaultStoreLimit(StoreType.USERNAME_PROOFS, StorageUnitType.UNIT_TYPE_LEGACY) +
+      getDefaultStoreLimit(StoreType.VERIFICATIONS, StorageUnitType.UNIT_TYPE_LEGACY);
 
     log.info({ totalPruneSize: this._totalPruneSize }, "total default storage limit size");
 

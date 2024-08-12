@@ -1,4 +1,12 @@
-import { CastAddMessage, Factories, FARCASTER_EPOCH, HubEvent, HubEventType, StoreType } from "@farcaster/hub-nodejs";
+import {
+  CastAddMessage,
+  Factories,
+  FARCASTER_EPOCH,
+  HubEvent,
+  HubEventType,
+  StoreType,
+  toFarcasterTime,
+} from "@farcaster/hub-nodejs";
 import { ok, Result } from "neverthrow";
 import { jestRocksDB } from "../db/jestUtils.js";
 import { getMessage, makeTsHash, putMessage, putMessageTransaction } from "../db/message.js";
@@ -9,6 +17,7 @@ import { extractEventTimestamp, getFarcasterTime } from "@farcaster/core";
 import OnChainEventStore from "./onChainEventStore.js";
 import CastStore from "./castStore.js";
 import { rsCreateStoreEventHandler, rsGetNextEventId } from "../../rustfunctions.js";
+import { LEGACY_STORAGE_UNIT_CUTOFF_TIMESTAMP } from "./storageCache.js";
 
 const db = jestRocksDB("stores.storeEventHandler.test");
 const eventHandler = new StoreEventHandler(db);
@@ -187,14 +196,40 @@ describe("getCurrentStorageUnitsForFid", () => {
   const fid = Factories.Fid.build();
 
   test("returns 0 if no storage event", async () => {
-    expect(await eventHandler.getCurrentStorageSlotForFid(fid)).toEqual(ok(0));
+    const slot = (await eventHandler.getCurrentStorageSlotForFid(fid))._unsafeUnwrap();
+    expect(slot.units).toEqual(0);
+    expect(slot.legacy_units).toEqual(0);
   });
 
   test("returns actual storage based on units rented", async () => {
-    const storageEvent = Factories.StorageRentOnChainEvent.build({ fid });
+    const storageEvent = Factories.StorageRentOnChainEvent.build({
+      fid,
+      blockTimestamp: LEGACY_STORAGE_UNIT_CUTOFF_TIMESTAMP - 1,
+    });
     const onChainEventStore = new OnChainEventStore(db, eventHandler);
+
     await onChainEventStore.mergeOnChainEvent(storageEvent);
-    expect(await eventHandler.getCurrentStorageSlotForFid(fid)).toEqual(ok(storageEvent.storageRentEventBody.units));
+    let slot = (await eventHandler.getCurrentStorageSlotForFid(fid))._unsafeUnwrap();
+    expect(slot.legacy_units).toEqual(storageEvent.storageRentEventBody.units);
+    expect(slot.units).toEqual(0);
+    const legacyUnitExpiration = toFarcasterTime(
+      (storageEvent.blockTimestamp + 365 * 24 * 60 * 60 * 2) * 1000,
+    )._unsafeUnwrap();
+    expect(slot.invalidateAt).toEqual(legacyUnitExpiration); // 2 years
+
+    // Adding more units updates the slot
+    const newEvent = Factories.StorageRentOnChainEvent.build({
+      fid,
+      blockTimestamp: LEGACY_STORAGE_UNIT_CUTOFF_TIMESTAMP + 1,
+    });
+    await onChainEventStore.mergeOnChainEvent(newEvent);
+    slot = (await eventHandler.getCurrentStorageSlotForFid(fid))._unsafeUnwrap();
+    expect(slot.legacy_units).toEqual(storageEvent.storageRentEventBody.units);
+    expect(slot.units).toEqual(newEvent.storageRentEventBody.units);
+    const newUnitExpiration = toFarcasterTime((newEvent.blockTimestamp + 365 * 24 * 60 * 60) * 1000)._unsafeUnwrap();
+
+    // Invalidate at is resset to the new event's expiration (which comes first)
+    expect(slot.invalidateAt).toEqual(newUnitExpiration);
   });
 });
 

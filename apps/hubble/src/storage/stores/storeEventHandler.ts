@@ -330,7 +330,12 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
       return err(maxMessageCount.error);
     }
 
-    if (messageCount.value < maxMessageCount.value) {
+    let maxCount = maxMessageCount.value;
+    if (sizeLimit > 0 && sizeLimit < maxCount) {
+      maxCount = sizeLimit;
+    }
+
+    if (messageCount.value < maxCount) {
       return ok(false);
     }
 

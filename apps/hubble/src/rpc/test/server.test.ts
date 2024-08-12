@@ -25,6 +25,7 @@ import { Err, Ok } from "neverthrow";
 import { sleep } from "../../utils/crypto.js";
 import * as http from "http";
 import { AddressInfo, createServer } from "net";
+import { LEGACY_STORAGE_UNIT_CUTOFF_TIMESTAMP } from "../../storage/stores/storageCache.js";
 
 const db = jestRocksDB("protobufs.rpc.server.test");
 const network = FarcasterNetwork.TESTNET;
@@ -64,7 +65,10 @@ beforeEach(async () => {
   const custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
   custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid }, { transient: { to: custodySignerKey } });
   signerEvent = Factories.SignerOnChainEvent.build({ fid }, { transient: { signer: signerKey } });
-  storageEvent = Factories.StorageRentOnChainEvent.build({ fid }, { transient: { units: 1 } });
+  storageEvent = Factories.StorageRentOnChainEvent.build(
+    { fid, blockTimestamp: LEGACY_STORAGE_UNIT_CUTOFF_TIMESTAMP + 1 },
+    { transient: { units: 1 } },
+  );
   await engine.mergeOnChainEvent(custodyEvent);
   await engine.mergeOnChainEvent(signerEvent);
   await engine.mergeOnChainEvent(storageEvent);
@@ -204,6 +208,7 @@ describe("server rpc tests", () => {
       // add 2 more units
       const rentEvent2 = Factories.StorageRentOnChainEvent.build({
         fid,
+        blockTimestamp: LEGACY_STORAGE_UNIT_CUTOFF_TIMESTAMP + 2,
         storageRentEventBody: Factories.StorageRentEventBody.build({ units: 2 }),
       });
       await engine.mergeOnChainEvent(rentEvent2);
