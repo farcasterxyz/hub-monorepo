@@ -1,5 +1,11 @@
 # @farcaster/hub-nodejs
 
+## 0.11.24
+
+### Patch Changes
+
+- 47fbd34e: fix: adjust grpc keepalive time to 5s to encourage faster failover from uncooperative peers
+
 ## 0.11.23
 
 ### Patch Changes

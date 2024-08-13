@@ -1,5 +1,13 @@
 # @farcaster/hub-shuttle
 
+## 0.5.11
+
+### Patch Changes
+
+- 768dc875: fix: Reduce reconciliation default pagination size
+- Updated dependencies [47fbd34e]
+  - @farcaster/hub-nodejs@0.11.24
+
 ## 0.5.10
 
 ### Patch Changes

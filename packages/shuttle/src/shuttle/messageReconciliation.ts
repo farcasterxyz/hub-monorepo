@@ -2,7 +2,7 @@ import { HubRpcClient, Message, MessageType } from "@farcaster/hub-nodejs";
 import { DB, MessageRow, sql } from "./db";
 import { pino } from "pino";
 
-const MAX_PAGE_SIZE = 3_000;
+const MAX_PAGE_SIZE = 500;
 
 type DBMessage = {
   hash: Uint8Array;
