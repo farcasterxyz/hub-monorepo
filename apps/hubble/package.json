@@ -29,7 +29,7 @@
     "lint:ci": "yarn lint:customjs && biome ci src/",
     "lint:customjs": "node scripts/linter.cjs",
     "snapshot-url": "node --no-warnings build/cli.js snapshot-url",
-    "start": "node --max-old-space-size=8192 --no-warnings build/cli.js start",
+    "start": "node --max-old-space-size=8192 --no-warnings $HUBBLE_NODE_ARGS build/cli.js start",
     "identity": "node --no-warnings build/cli.js identity",
     "dbreset": "node build/cli.js dbreset",
     "events-reset": "node build/cli.js events-reset",

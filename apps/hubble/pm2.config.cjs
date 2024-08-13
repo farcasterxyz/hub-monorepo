@@ -19,6 +19,7 @@ module.exports = {
       args: process.env.HUBBLE_ARGS,
       env: {
         "CATCHUP_SYNC_WITH_SNAPSHOT": process.env.CATCHUP_SYNC_WITH_SNAPSHOT ? (process.env.CATCHUP_SYNC_WITH_SNAPSHOT === "true") : "true",
+        "HUBBLE_NODE_ARGS": process.env.HUBBLE_NODE_ARGS || "",
       },
       watch: false,
       log_type: "json",
