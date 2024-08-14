@@ -952,7 +952,7 @@ export default class Server {
 
         const { fid, pageSize, pageToken, reverse } = call.request;
 
-        const userDataResult = await this.engine?.getUserDataByFid(fid, {
+        const userDataResult = await this.engine?.getUserDataByFid(fid, undefined, undefined, {
           pageSize,
           pageToken,
           reverse,
@@ -1201,8 +1201,8 @@ export default class Server {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getAllCastMessagesByFid", req: call.request }, `RPC call from ${peer}`);
 
-        const { fid, pageSize, pageToken, reverse } = call.request;
-        const result = await this.engine?.getAllCastMessagesByFid(fid, {
+        const { fid, pageSize, pageToken, reverse, startTimestamp, stopTimestamp } = call.request;
+        const result = await this.engine?.getAllCastMessagesByFid(fid, startTimestamp, stopTimestamp, {
           pageSize,
           pageToken,
           reverse,
@@ -1220,8 +1220,8 @@ export default class Server {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getAllReactionMessagesByFid", req: call.request }, `RPC call from ${peer}`);
 
-        const { fid, pageSize, pageToken, reverse } = call.request;
-        const result = await this.engine?.getAllReactionMessagesByFid(fid, {
+        const { fid, pageSize, pageToken, reverse, startTimestamp, stopTimestamp } = call.request;
+        const result = await this.engine?.getAllReactionMessagesByFid(fid, startTimestamp, stopTimestamp, {
           pageSize,
           pageToken,
           reverse,
@@ -1239,8 +1239,8 @@ export default class Server {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getAllVerificationMessagesByFid", req: call.request }, `RPC call from ${peer}`);
 
-        const { fid, pageSize, pageToken, reverse } = call.request;
-        const result = await this.engine?.getAllVerificationMessagesByFid(fid, {
+        const { fid, pageSize, pageToken, reverse, startTimestamp, stopTimestamp } = call.request;
+        const result = await this.engine?.getAllVerificationMessagesByFid(fid, startTimestamp, stopTimestamp, {
           pageSize,
           pageToken,
           reverse,
@@ -1258,8 +1258,8 @@ export default class Server {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getAllUserDataMessagesByFid", req: call.request }, `RPC call from ${peer}`);
 
-        const { fid, pageSize, pageToken, reverse } = call.request;
-        const result = await this.engine?.getUserDataByFid(fid, {
+        const { fid, pageSize, pageToken, reverse, startTimestamp, stopTimestamp } = call.request;
+        const result = await this.engine?.getUserDataByFid(fid, startTimestamp, stopTimestamp, {
           pageSize,
           pageToken,
           reverse,
@@ -1277,8 +1277,8 @@ export default class Server {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getAllLinkMessagesByFid", req: call.request }, `RPC call from ${peer}`);
 
-        const { fid, pageSize, pageToken, reverse } = call.request;
-        const result = await this.engine?.getAllLinkMessagesByFid(fid, {
+        const { fid, pageSize, pageToken, reverse, startTimestamp, stopTimestamp } = call.request;
+        const result = await this.engine?.getAllLinkMessagesByFid(fid, startTimestamp, stopTimestamp, {
           pageSize,
           pageToken,
           reverse,

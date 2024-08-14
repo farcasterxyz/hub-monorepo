@@ -162,6 +162,15 @@ export interface FidRequest {
   reverse?: boolean | undefined;
 }
 
+export interface TimestampFidRequest {
+  fid: number;
+  pageSize?: number | undefined;
+  pageToken?: Uint8Array | undefined;
+  reverse?: boolean | undefined;
+  startTimestamp?: number | undefined;
+  stopTimestamp?: number | undefined;
+}
+
 export interface FidsRequest {
   pageSize?: number | undefined;
   pageToken?: Uint8Array | undefined;
@@ -1547,6 +1556,137 @@ export const FidRequest = {
     message.pageSize = object.pageSize ?? undefined;
     message.pageToken = object.pageToken ?? undefined;
     message.reverse = object.reverse ?? undefined;
+    return message;
+  },
+};
+
+function createBaseTimestampFidRequest(): TimestampFidRequest {
+  return {
+    fid: 0,
+    pageSize: undefined,
+    pageToken: undefined,
+    reverse: undefined,
+    startTimestamp: undefined,
+    stopTimestamp: undefined,
+  };
+}
+
+export const TimestampFidRequest = {
+  encode(message: TimestampFidRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.fid !== 0) {
+      writer.uint32(8).uint64(message.fid);
+    }
+    if (message.pageSize !== undefined) {
+      writer.uint32(16).uint32(message.pageSize);
+    }
+    if (message.pageToken !== undefined) {
+      writer.uint32(26).bytes(message.pageToken);
+    }
+    if (message.reverse !== undefined) {
+      writer.uint32(32).bool(message.reverse);
+    }
+    if (message.startTimestamp !== undefined) {
+      writer.uint32(40).uint64(message.startTimestamp);
+    }
+    if (message.stopTimestamp !== undefined) {
+      writer.uint32(48).uint64(message.stopTimestamp);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): TimestampFidRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseTimestampFidRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.fid = longToNumber(reader.uint64() as Long);
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.pageSize = reader.uint32();
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.pageToken = reader.bytes();
+          continue;
+        case 4:
+          if (tag != 32) {
+            break;
+          }
+
+          message.reverse = reader.bool();
+          continue;
+        case 5:
+          if (tag != 40) {
+            break;
+          }
+
+          message.startTimestamp = longToNumber(reader.uint64() as Long);
+          continue;
+        case 6:
+          if (tag != 48) {
+            break;
+          }
+
+          message.stopTimestamp = longToNumber(reader.uint64() as Long);
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): TimestampFidRequest {
+    return {
+      fid: isSet(object.fid) ? Number(object.fid) : 0,
+      pageSize: isSet(object.pageSize) ? Number(object.pageSize) : undefined,
+      pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : undefined,
+      reverse: isSet(object.reverse) ? Boolean(object.reverse) : undefined,
+      startTimestamp: isSet(object.startTimestamp) ? Number(object.startTimestamp) : undefined,
+      stopTimestamp: isSet(object.stopTimestamp) ? Number(object.stopTimestamp) : undefined,
+    };
+  },
+
+  toJSON(message: TimestampFidRequest): unknown {
+    const obj: any = {};
+    message.fid !== undefined && (obj.fid = Math.round(message.fid));
+    message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
+    message.pageToken !== undefined &&
+      (obj.pageToken = message.pageToken !== undefined ? base64FromBytes(message.pageToken) : undefined);
+    message.reverse !== undefined && (obj.reverse = message.reverse);
+    message.startTimestamp !== undefined && (obj.startTimestamp = Math.round(message.startTimestamp));
+    message.stopTimestamp !== undefined && (obj.stopTimestamp = Math.round(message.stopTimestamp));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<TimestampFidRequest>, I>>(base?: I): TimestampFidRequest {
+    return TimestampFidRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<TimestampFidRequest>, I>>(object: I): TimestampFidRequest {
+    const message = createBaseTimestampFidRequest();
+    message.fid = object.fid ?? 0;
+    message.pageSize = object.pageSize ?? undefined;
+    message.pageToken = object.pageToken ?? undefined;
+    message.reverse = object.reverse ?? undefined;
+    message.startTimestamp = object.startTimestamp ?? undefined;
+    message.stopTimestamp = object.stopTimestamp ?? undefined;
     return message;
   },
 };

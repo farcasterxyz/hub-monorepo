@@ -420,8 +420,10 @@ export const rsGetAllMessagesByFid = async (
   store: RustDynStore,
   fid: number,
   pageOptions: PageOptions,
+  startTime?: number,
+  stopTime?: number,
 ): Promise<RustMessagesPage> => {
-  return await lib.getAllMessagesByFid.call(store, fid, pageOptions);
+  return await lib.getAllMessagesByFid.call(store, fid, pageOptions, startTime, stopTime);
 };
 
 export const rsGetReactionAdd = async (
@@ -491,8 +493,10 @@ export const rsGetUserDataAddsByFid = async (
   store: RustDynStore,
   fid: number,
   pageOptions: PageOptions,
+  startTime?: number,
+  stopTime?: number,
 ): Promise<RustMessagesPage> => {
-  return await lib.getUserDataAddsByFid.call(store, fid, pageOptions);
+  return await lib.getUserDataAddsByFid.call(store, fid, pageOptions, startTime, stopTime);
 };
 
 export const rsGetUserNameProof = async (store: RustDynStore, name: Uint8Array): Promise<Buffer> => {
@@ -636,8 +640,10 @@ export namespace rsLinkStore {
     store: RustDynStore,
     fid: number,
     pageOptions: PageOptions,
+    startTime?: number,
+    stopTime?: number,
   ): Promise<RustMessagesPage> => {
-    return await lib.getAllLinkMessagesByFid.call(store, fid, pageOptions);
+    return await lib.getAllLinkMessagesByFid.call(store, fid, pageOptions, startTime, stopTime);
   };
 
   export const GetLinkCompactStateMessageByFid = async (

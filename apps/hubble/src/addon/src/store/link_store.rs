@@ -164,8 +164,10 @@ impl LinkStore {
         store: &Store,
         fid: u32,
         page_options: &PageOptions,
+        start_time: Option<u32>,
+        stop_time: Option<u32>,
     ) -> Result<MessagesPage, HubError> {
-        store.get_all_messages_by_fid(fid, page_options)
+        store.get_all_messages_by_fid(fid, start_time, stop_time, page_options)
     }
 
     pub fn get_link_compact_state_message_by_fid(
@@ -677,6 +679,20 @@ impl LinkStore {
 
         let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
         let page_options = get_page_options(&mut cx, 1)?;
+        let start_time = match cx.argument_opt(2) {
+            Some(arg) => match arg.downcast::<JsNumber, _>(&mut cx) {
+                Ok(v) => Some(v.value(&mut cx) as u32),
+                _ => None,
+            },
+            None => None,
+        };
+        let stop_time = match cx.argument_opt(3) {
+            Some(arg) => match arg.downcast::<JsNumber, _>(&mut cx) {
+                Ok(v) => Some(v.value(&mut cx) as u32),
+                _ => None,
+            },
+            None => None,
+        };
 
         // fid must be specified
         if fid == 0 {
@@ -687,7 +703,13 @@ impl LinkStore {
         let (deferred, promise) = cx.promise();
 
         THREAD_POOL.lock().unwrap().execute(move || {
-            let messages = Self::get_all_link_messages_by_fid(&store, fid, &page_options);
+            let messages = Self::get_all_link_messages_by_fid(
+                &store,
+                fid,
+                &page_options,
+                start_time,
+                stop_time,
+            );
 
             deferred_settle_messages(deferred, &channel, messages);
         });

@@ -1,6 +1,7 @@
 use super::{
     bytes_compare, delete_message_transaction, get_message, hub_error_to_js_throw,
-    make_message_primary_key, message, message_decode, message_encode, put_message_transaction,
+    is_message_in_time_range, make_message_primary_key, message, message_decode, message_encode,
+    put_message_transaction,
     utils::{self, encode_messages_to_js_object, get_page_options, get_store, vec_to_u8_24},
     MessagesPage, StoreEventHandler, TS_HASH_LENGTH,
 };
@@ -1010,14 +1011,17 @@ impl Store {
     pub fn get_all_messages_by_fid(
         &self,
         fid: u32,
+        start_time: Option<u32>,
+        stop_time: Option<u32>,
         page_options: &PageOptions,
     ) -> Result<MessagesPage, HubError> {
         let prefix = make_message_primary_key(fid, self.store_def.postfix(), None);
         let messages =
             message::get_messages_page_by_prefix(&self.db, &prefix, &page_options, |message| {
-                self.store_def.is_add_type(&message)
-                    || (self.store_def.remove_type_supported()
-                        && self.store_def.is_remove_type(&message))
+                is_message_in_time_range(start_time, stop_time, message)
+                    && (self.store_def.is_add_type(&message)
+                        || (self.store_def.remove_type_supported()
+                            && self.store_def.is_remove_type(&message)))
             })?;
 
         Ok(messages)
@@ -1259,15 +1263,30 @@ impl Store {
 
         let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
         let page_options = get_page_options(&mut cx, 1)?;
+        let start_time = match cx.argument_opt(2) {
+            Some(arg) => match arg.downcast::<JsNumber, _>(&mut cx) {
+                Ok(v) => Some(v.value(&mut cx) as u32),
+                _ => None,
+            },
+            None => None,
+        };
+        let stop_time = match cx.argument_opt(3) {
+            Some(arg) => match arg.downcast::<JsNumber, _>(&mut cx) {
+                Ok(v) => Some(v.value(&mut cx) as u32),
+                _ => None,
+            },
+            None => None,
+        };
 
         let channel = cx.channel();
         let (deferred, promise) = cx.promise();
 
         deferred.settle_with(&channel, move |mut tcx| {
-            let messages = match store.get_all_messages_by_fid(fid, &page_options) {
-                Ok(messages) => messages,
-                Err(e) => return tcx.throw_error(format!("{}/{}", e.code, e.message)),
-            };
+            let messages =
+                match store.get_all_messages_by_fid(fid, start_time, stop_time, &page_options) {
+                    Ok(messages) => messages,
+                    Err(e) => return tcx.throw_error(format!("{}/{}", e.code, e.message)),
+                };
 
             encode_messages_to_js_object(&mut tcx, messages)
         });

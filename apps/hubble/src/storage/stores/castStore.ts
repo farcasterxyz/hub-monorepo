@@ -72,8 +72,10 @@ class CastStore extends RustStoreBase<CastAddMessage, CastRemoveMessage> {
   async getAllCastMessagesByFid(
     fid: number,
     pageOptions: PageOptions = {},
+    startTime?: number,
+    stopTime?: number,
   ): Promise<MessagesPage<CastAddMessage | CastRemoveMessage>> {
-    return await this.getAllMessagesByFid(fid, pageOptions);
+    return await this.getAllMessagesByFid(fid, pageOptions, startTime, stopTime);
   }
 
   /** Gets all CastAdd messages for a parent cast (fid and tsHash) */

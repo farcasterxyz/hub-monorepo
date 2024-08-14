@@ -51,9 +51,9 @@ import {
 import { err, ok, ResultAsync } from "neverthrow";
 import fs from "fs";
 import { Worker } from "worker_threads";
-import { forEachMessageBySigner, makeUserKey, messageDecode, typeToSetPostfix } from "../db/message.js";
+import { forEachMessageBySigner, typeToSetPostfix } from "../db/message.js";
 import RocksDB from "../db/rocksdb.js";
-import { UserMessagePostfixMax, UserPostfix } from "../db/types.js";
+import { UserPostfix } from "../db/types.js";
 import CastStore from "../stores/castStore.js";
 import LinkStore from "../stores/linkStore.js";
 import ReactionStore from "../stores/reactionStore.js";
@@ -64,7 +64,7 @@ import VerificationStore from "../stores/verificationStore.js";
 import { logger } from "../../utils/logger.js";
 import { RevokeMessagesBySignerJobQueue, RevokeMessagesBySignerJobWorker } from "../jobs/revokeMessagesBySignerJob.js";
 import { ensureAboveTargetFarcasterVersion } from "../../utils/versions.js";
-import type { PublicClient } from "viem";
+import { type PublicClient } from "viem";
 import { normalize } from "viem/ens";
 import UsernameProofStore from "../stores/usernameProofStore.js";
 import OnChainEventStore from "../stores/onChainEventStore.js";
@@ -653,9 +653,19 @@ class Engine extends TypedEmitter<EngineEvents> {
 
   async getAllCastMessagesByFid(
     fid: number,
+    startTime?: number,
+    stopTime?: number,
     pageOptions: PageOptions = {},
   ): HubAsyncResult<MessagesPage<CastAddMessage | CastRemoveMessage>> {
-    return ResultAsync.fromPromise(this._castStore.getAllCastMessagesByFid(fid, pageOptions), (e) => e as HubError);
+    const validatedFid = validations.validateFid(fid);
+    if (validatedFid.isErr()) {
+      return err(validatedFid.error);
+    }
+
+    return ResultAsync.fromPromise(
+      this._castStore.getAllCastMessagesByFid(fid, pageOptions, startTime, stopTime),
+      (e) => e as HubError,
+    );
   }
 
   /* -------------------------------------------------------------------------- */
@@ -712,6 +722,8 @@ class Engine extends TypedEmitter<EngineEvents> {
 
   async getAllReactionMessagesByFid(
     fid: number,
+    startTime?: number,
+    stopTime?: number,
     pageOptions: PageOptions = {},
   ): HubAsyncResult<MessagesPage<ReactionAddMessage | ReactionRemoveMessage>> {
     const validatedFid = validations.validateFid(fid);
@@ -720,7 +732,7 @@ class Engine extends TypedEmitter<EngineEvents> {
     }
 
     return ResultAsync.fromPromise(
-      this._reactionStore.getAllReactionMessagesByFid(fid, pageOptions),
+      this._reactionStore.getAllReactionMessagesByFid(fid, pageOptions, startTime, stopTime),
       (e) => e as HubError,
     );
   }
@@ -758,6 +770,8 @@ class Engine extends TypedEmitter<EngineEvents> {
 
   async getAllVerificationMessagesByFid(
     fid: number,
+    startTime?: number,
+    stopTime?: number,
     pageOptions: PageOptions = {},
   ): HubAsyncResult<MessagesPage<VerificationAddAddressMessage | VerificationRemoveMessage>> {
     const validatedFid = validations.validateFid(fid);
@@ -766,7 +780,7 @@ class Engine extends TypedEmitter<EngineEvents> {
     }
 
     return ResultAsync.fromPromise(
-      this._verificationStore.getAllVerificationMessagesByFid(fid, pageOptions),
+      this._verificationStore.getAllVerificationMessagesByFid(fid, pageOptions, startTime, stopTime),
       (e) => e as HubError,
     );
   }
@@ -829,13 +843,21 @@ class Engine extends TypedEmitter<EngineEvents> {
     return ResultAsync.fromPromise(this._userDataStore.getUserDataAdd(fid, type), (e) => e as HubError);
   }
 
-  async getUserDataByFid(fid: number, pageOptions: PageOptions = {}): HubAsyncResult<MessagesPage<UserDataAddMessage>> {
+  async getUserDataByFid(
+    fid: number,
+    startTime?: number,
+    stopTime?: number,
+    pageOptions: PageOptions = {},
+  ): HubAsyncResult<MessagesPage<UserDataAddMessage>> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
       return err(validatedFid.error);
     }
 
-    return ResultAsync.fromPromise(this._userDataStore.getUserDataAddsByFid(fid, pageOptions), (e) => e as HubError);
+    return ResultAsync.fromPromise(
+      this._userDataStore.getUserDataAddsByFid(fid, pageOptions, startTime, stopTime),
+      (e) => e as HubError,
+    );
   }
 
   async getOnChainEvents(type: OnChainEventType, fid: number): HubAsyncResult<OnChainEventResponse> {
@@ -1018,6 +1040,8 @@ class Engine extends TypedEmitter<EngineEvents> {
 
   async getAllLinkMessagesByFid(
     fid: number,
+    startTime?: number,
+    stopTime?: number,
     pageOptions: PageOptions = {},
   ): HubAsyncResult<MessagesPage<LinkAddMessage | LinkRemoveMessage>> {
     const versionCheck = ensureAboveTargetFarcasterVersion("2023.4.19");
@@ -1030,7 +1054,10 @@ class Engine extends TypedEmitter<EngineEvents> {
       return err(validatedFid.error);
     }
 
-    return ResultAsync.fromPromise(this._linkStore.getAllLinkMessagesByFid(fid, pageOptions), (e) => e as HubError);
+    return ResultAsync.fromPromise(
+      this._linkStore.getAllLinkMessagesByFid(fid, pageOptions, startTime, stopTime),
+      (e) => e as HubError,
+    );
   }
 
   async getLinkCompactStateMessageByFid(

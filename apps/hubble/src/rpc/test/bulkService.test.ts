@@ -4,14 +4,18 @@ import {
   Factories,
   FarcasterNetwork,
   FidRequest,
+  getFarcasterTime,
   getInsecureHubRpcClient,
   HubResult,
   HubRpcClient,
+  LinkAddMessage,
+  LinkRemoveMessage,
   Message,
   MessagesResponse,
   OnChainEvent,
   ReactionAddMessage,
   ReactionRemoveMessage,
+  TimestampFidRequest,
   UserDataAddMessage,
   UserDataType,
   VerificationAddAddressMessage,
@@ -50,6 +54,7 @@ afterAll(async () => {
 const fid = Factories.Fid.build();
 const signer = Factories.Ed25519Signer.build();
 const custodySigner = Factories.Eip712Signer.build();
+const timestamp = getFarcasterTime()._unsafeUnwrap();
 
 let custodyEvent: OnChainEvent;
 let signerEvent: OnChainEvent;
@@ -72,7 +77,7 @@ describe("getAllCastMessagesByFid", () => {
   let castRemove: CastRemoveMessage;
 
   beforeAll(async () => {
-    castAdd = await Factories.CastAddMessage.create({ data: { fid, network } }, { transient: { signer } });
+    castAdd = await Factories.CastAddMessage.create({ data: { fid, network, timestamp } }, { transient: { signer } });
 
     castRemove = await Factories.CastRemoveMessage.create(
       { data: { fid, network, timestamp: castAdd.data.timestamp + 1 } },
@@ -89,13 +94,40 @@ describe("getAllCastMessagesByFid", () => {
   test("succeeds", async () => {
     await engine.mergeMessage(castAdd);
     await engine.mergeMessage(castRemove);
-    const result = await client.getAllCastMessagesByFid(FidRequest.create({ fid }));
+    const result = await client.getAllCastMessagesByFid(TimestampFidRequest.create({ fid }));
     assertMessagesMatchResult(result, [castAdd, castRemove]);
   });
 
   test("returns empty array without messages", async () => {
-    const result = await client.getAllCastMessagesByFid(FidRequest.create({ fid }));
+    const result = await client.getAllCastMessagesByFid(TimestampFidRequest.create({ fid }));
     expect(result._unsafeUnwrap().messages.length).toEqual(0);
+  });
+
+  test("applies time filter", async () => {
+    await engine.mergeMessage(castAdd);
+    await engine.mergeMessage(castRemove);
+    // Start timestamp is applied and it's inclusive
+    const result1 = await client.getAllCastMessagesByFid(
+      TimestampFidRequest.create({ fid, startTimestamp: timestamp + 1 }),
+    );
+    assertMessagesMatchResult(result1, [castRemove]);
+
+    // If there's no stop time, we include everything past start time
+    const result2 = await client.getAllCastMessagesByFid(
+      TimestampFidRequest.create({ fid, startTimestamp: timestamp }),
+    );
+    assertMessagesMatchResult(result2, [castAdd, castRemove]);
+    getFarcasterTime;
+
+    // Stop timestamp is applied and it's inclusive
+    const result3 = await client.getAllCastMessagesByFid(TimestampFidRequest.create({ fid, stopTimestamp: timestamp }));
+    assertMessagesMatchResult(result3, [castAdd]);
+
+    // If there's no start time, we include everything before stop time
+    const result4 = await client.getAllCastMessagesByFid(
+      TimestampFidRequest.create({ fid, stopTimestamp: timestamp + 1 }),
+    );
+    assertMessagesMatchResult(result4, [castAdd, castRemove]);
   });
 });
 
@@ -104,7 +136,10 @@ describe("getAllReactionMessagesByFid", () => {
   let reactionRemove: ReactionRemoveMessage;
 
   beforeAll(async () => {
-    reactionAdd = await Factories.ReactionAddMessage.create({ data: { fid, network } }, { transient: { signer } });
+    reactionAdd = await Factories.ReactionAddMessage.create(
+      { data: { fid, network, timestamp } },
+      { transient: { signer } },
+    );
 
     reactionRemove = await Factories.ReactionRemoveMessage.create(
       { data: { fid, network, timestamp: reactionAdd.data.timestamp + 1 } },
@@ -121,13 +156,42 @@ describe("getAllReactionMessagesByFid", () => {
   test("succeeds", async () => {
     await engine.mergeMessage(reactionAdd);
     await engine.mergeMessage(reactionRemove);
-    const result = await client.getAllReactionMessagesByFid(FidRequest.create({ fid }));
+    const result = await client.getAllReactionMessagesByFid(TimestampFidRequest.create({ fid }));
     assertMessagesMatchResult(result, [reactionAdd, reactionRemove]);
   });
 
   test("returns empty array without messages", async () => {
-    const result = await client.getAllReactionMessagesByFid(FidRequest.create({ fid }));
+    const result = await client.getAllReactionMessagesByFid(TimestampFidRequest.create({ fid }));
     expect(result._unsafeUnwrap().messages.length).toEqual(0);
+  });
+
+  test("applies time filter", async () => {
+    await engine.mergeMessage(reactionAdd);
+    await engine.mergeMessage(reactionRemove);
+    // Start timestamp is applied and it's inclusive
+    const result1 = await client.getAllReactionMessagesByFid(
+      TimestampFidRequest.create({ fid, startTimestamp: timestamp + 1 }),
+    );
+    assertMessagesMatchResult(result1, [reactionRemove]);
+
+    // If there's no stop time, we include everything past start time
+    const result2 = await client.getAllReactionMessagesByFid(
+      TimestampFidRequest.create({ fid, startTimestamp: timestamp }),
+    );
+    assertMessagesMatchResult(result2, [reactionAdd, reactionRemove]);
+    getFarcasterTime;
+
+    // Stop timestamp is applied and it's inclusive
+    const result3 = await client.getAllReactionMessagesByFid(
+      TimestampFidRequest.create({ fid, stopTimestamp: timestamp }),
+    );
+    assertMessagesMatchResult(result3, [reactionAdd]);
+
+    // If there's no start time, we include everything before stop time
+    const result4 = await client.getAllReactionMessagesByFid(
+      TimestampFidRequest.create({ fid, stopTimestamp: timestamp + 1 }),
+    );
+    assertMessagesMatchResult(result4, [reactionAdd, reactionRemove]);
   });
 });
 
@@ -137,7 +201,7 @@ describe("getAllVerificationMessagesByFid", () => {
 
   beforeAll(async () => {
     verificationAdd = await Factories.VerificationAddEthAddressMessage.create(
-      { data: { fid, network } },
+      { data: { fid, network, timestamp } },
       { transient: { signer } },
     );
 
@@ -156,22 +220,56 @@ describe("getAllVerificationMessagesByFid", () => {
   test("succeeds", async () => {
     await engine.mergeMessage(verificationAdd);
     await engine.mergeMessage(verificationRemove);
-    const result = await client.getAllVerificationMessagesByFid(FidRequest.create({ fid }));
+    const result = await client.getAllVerificationMessagesByFid(TimestampFidRequest.create({ fid }));
     assertMessagesMatchResult(result, [verificationAdd, verificationRemove]);
   });
 
   test("returns empty array without messages", async () => {
-    const result = await client.getAllVerificationMessagesByFid(FidRequest.create({ fid }));
+    const result = await client.getAllVerificationMessagesByFid(TimestampFidRequest.create({ fid }));
     expect(result._unsafeUnwrap().messages.length).toEqual(0);
+  });
+
+  test("applies time filter", async () => {
+    await engine.mergeMessage(verificationAdd);
+    await engine.mergeMessage(verificationRemove);
+    // Start timestamp is applied and it's inclusive
+    const result1 = await client.getAllVerificationMessagesByFid(
+      TimestampFidRequest.create({ fid, startTimestamp: timestamp + 1 }),
+    );
+    assertMessagesMatchResult(result1, [verificationRemove]);
+
+    // If there's no stop time, we include everything past start time
+    const result2 = await client.getAllVerificationMessagesByFid(
+      TimestampFidRequest.create({ fid, startTimestamp: timestamp }),
+    );
+    assertMessagesMatchResult(result2, [verificationAdd, verificationRemove]);
+    getFarcasterTime;
+
+    // Stop timestamp is applied and it's inclusive
+    const result3 = await client.getAllVerificationMessagesByFid(
+      TimestampFidRequest.create({ fid, stopTimestamp: timestamp }),
+    );
+    assertMessagesMatchResult(result3, [verificationAdd]);
+
+    // If there's no start time, we include everything before stop time
+    const result4 = await client.getAllVerificationMessagesByFid(
+      TimestampFidRequest.create({ fid, stopTimestamp: timestamp + 1 }),
+    );
+    assertMessagesMatchResult(result4, [verificationAdd, verificationRemove]);
   });
 });
 
 describe("getAllUserDataMessagesByFid", () => {
-  let userDataAdd: UserDataAddMessage;
+  let userDataAdd1: UserDataAddMessage;
+  let userDataAdd2: UserDataAddMessage;
 
   beforeAll(async () => {
-    userDataAdd = await Factories.UserDataAddMessage.create(
-      { data: { fid, network, userDataBody: { type: UserDataType.BIO } } },
+    userDataAdd1 = await Factories.UserDataAddMessage.create(
+      { data: { fid, network, timestamp, userDataBody: { type: UserDataType.BIO } } },
+      { transient: { signer } },
+    );
+    userDataAdd2 = await Factories.UserDataAddMessage.create(
+      { data: { fid, network, timestamp: userDataAdd1.data.timestamp + 1, userDataBody: { type: UserDataType.PFP } } },
       { transient: { signer } },
     );
   });
@@ -183,13 +281,106 @@ describe("getAllUserDataMessagesByFid", () => {
   });
 
   test("succeeds", async () => {
-    await engine.mergeMessage(userDataAdd);
-    const result = await client.getAllUserDataMessagesByFid(FidRequest.create({ fid }));
-    assertMessagesMatchResult(result, [userDataAdd]);
+    await engine.mergeMessage(userDataAdd1);
+    const result = await client.getAllUserDataMessagesByFid(TimestampFidRequest.create({ fid }));
+    assertMessagesMatchResult(result, [userDataAdd1]);
   });
 
   test("returns empty array without messages", async () => {
-    const result = await client.getAllUserDataMessagesByFid(FidRequest.create({ fid }));
+    const result = await client.getAllUserDataMessagesByFid(TimestampFidRequest.create({ fid }));
     expect(result._unsafeUnwrap().messages.length).toEqual(0);
+  });
+
+  test("applies time filter", async () => {
+    await engine.mergeMessage(userDataAdd1);
+    await engine.mergeMessage(userDataAdd2);
+
+    // Start timestamp is applied and it's inclusive
+    const result1 = await client.getAllUserDataMessagesByFid(
+      TimestampFidRequest.create({ fid, startTimestamp: timestamp + 1 }),
+    );
+    assertMessagesMatchResult(result1, [userDataAdd2]);
+
+    // If there's no stop time, we include everything past start time
+    const result2 = await client.getAllUserDataMessagesByFid(
+      TimestampFidRequest.create({ fid, startTimestamp: timestamp }),
+    );
+    assertMessagesMatchResult(result2, [userDataAdd1, userDataAdd2]);
+
+    // Stop timestamp is applied and it's inclusive
+    const result3 = await client.getAllUserDataMessagesByFid(
+      TimestampFidRequest.create({ fid, stopTimestamp: timestamp }),
+    );
+    assertMessagesMatchResult(result3, [userDataAdd1]);
+
+    // If there's no start time, we include everything before stop time
+    const result4 = await client.getAllUserDataMessagesByFid(
+      TimestampFidRequest.create({ fid, stopTimestamp: timestamp + 1 }),
+    );
+    assertMessagesMatchResult(result4, [userDataAdd1, userDataAdd2]);
+  });
+});
+
+describe("getAllLinkMessagesByFid", () => {
+  let linkAdd: LinkAddMessage;
+  let linkRemove: LinkRemoveMessage;
+
+  beforeAll(async () => {
+    linkAdd = await Factories.LinkAddMessage.create({ data: { fid, timestamp } }, { transient: { signer } });
+
+    linkRemove = await Factories.LinkRemoveMessage.create(
+      {
+        data: {
+          fid,
+          timestamp: linkAdd.data.timestamp + 1,
+        },
+      },
+      { transient: { signer } },
+    );
+  });
+
+  beforeEach(async () => {
+    await engine.mergeOnChainEvent(custodyEvent);
+    await engine.mergeOnChainEvent(signerEvent);
+    await engine.mergeOnChainEvent(storageEvent);
+  });
+
+  test("succeeds", async () => {
+    await engine.mergeMessage(linkAdd);
+    await engine.mergeMessage(linkRemove);
+    const result = await client.getAllLinkMessagesByFid(TimestampFidRequest.create({ fid }));
+    assertMessagesMatchResult(result, [linkAdd, linkRemove]);
+  });
+
+  test("returns empty array without messages", async () => {
+    const result = await client.getAllLinkMessagesByFid(TimestampFidRequest.create({ fid }));
+    expect(result._unsafeUnwrap().messages.length).toEqual(0);
+  });
+
+  test("applies time filter", async () => {
+    await engine.mergeMessage(linkAdd);
+    await engine.mergeMessage(linkRemove);
+    // Start timestamp is applied and it's inclusive
+    const result1 = await client.getAllLinkMessagesByFid(
+      TimestampFidRequest.create({ fid, startTimestamp: timestamp + 1 }),
+    );
+    assertMessagesMatchResult(result1, [linkRemove]);
+
+    // If there's no stop time, we include everything past start time
+    const result2 = await client.getAllLinkMessagesByFid(
+      TimestampFidRequest.create({ fid, startTimestamp: timestamp }),
+    );
+    assertMessagesMatchResult(result2, [linkAdd, linkRemove]);
+    getFarcasterTime;
+
+    // Stop timestamp is applied and it's inclusive
+    const result3 = await client.getAllLinkMessagesByFid(TimestampFidRequest.create({ fid, stopTimestamp: timestamp }));
+    assertMessagesMatchResult(result3, [linkAdd]);
+
+    // If there's no start time, we include everything before stop time
+    const result4 = await client.getAllLinkMessagesByFid(
+      TimestampFidRequest.create({ fid, stopTimestamp: timestamp + 1 }),
+    );
+    assertMessagesMatchResult(result4, [linkAdd, linkRemove]);
   });
 });

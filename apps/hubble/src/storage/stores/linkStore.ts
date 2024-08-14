@@ -125,8 +125,16 @@ class LinkStore extends RustStoreBase<LinkAddMessage, LinkRemoveMessage> {
   async getAllLinkMessagesByFid(
     fid: number,
     pageOptions: PageOptions = {},
+    startTime?: number,
+    stopTime?: number,
   ): Promise<MessagesPage<LinkAddMessage | LinkRemoveMessage>> {
-    const messages_page = await rsLinkStore.GetAllLinkMessagesByFid(this._rustStore, fid, pageOptions);
+    const messages_page = await rsLinkStore.GetAllLinkMessagesByFid(
+      this._rustStore,
+      fid,
+      pageOptions,
+      startTime,
+      stopTime,
+    );
 
     const messages =
       messages_page.messageBytes?.map((message_bytes) => {
