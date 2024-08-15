@@ -126,7 +126,7 @@ export const getServer = (): grpc.Server => {
   // max_connection_age_ms will interfere with subscribe() which is a long-lived call, but maybe we should
   // set it anyway.
   const server = new grpc.Server({
-    "grpc.keepalive_time_ms": 5 * 1000,
+    "grpc.keepalive_time_ms": 10 * 1000,
     "grpc.keepalive_timeout_ms": 5 * 1000,
     "grpc.client_idle_timeout_ms": 60 * 1000,
   });
