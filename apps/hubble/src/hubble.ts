@@ -1735,7 +1735,7 @@ export class Hub implements HubInterface {
       try {
         return await this.getHubRpcClient(`${rpcAddressInfo.value.address}:${rpcAddressInfo.value.port}`, {
           "grpc.keepalive_time_ms": 5000,
-          "grpc.keepalive_timeout_ms": 25000,
+          "grpc.keepalive_timeout_ms": 5000,
           ...options,
         });
       } catch (e) {
@@ -1773,7 +1773,7 @@ export class Hub implements HubInterface {
     try {
       return await this.getHubRpcClient(addressInfoToString(ai), {
         "grpc.keepalive_time_ms": 5000,
-        "grpc.keepalive_timeout_ms": 25000,
+        "grpc.keepalive_timeout_ms": 5000,
         ...options,
       });
     } catch (e) {
