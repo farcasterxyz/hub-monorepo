@@ -1733,11 +1733,7 @@ export class Hub implements HubInterface {
 
     if (rpcAddressInfo.value.address) {
       try {
-        return await this.getHubRpcClient(`${rpcAddressInfo.value.address}:${rpcAddressInfo.value.port}`, {
-          "grpc.keepalive_time_ms": 5000,
-          "grpc.keepalive_timeout_ms": 25000,
-          ...options,
-        });
+        return await this.getHubRpcClient(`${rpcAddressInfo.value.address}:${rpcAddressInfo.value.port}`);
       } catch (e) {
         log.error({ error: e, peer, peerId }, "unable to connect to peer");
         return undefined;
@@ -1771,11 +1767,7 @@ export class Hub implements HubInterface {
     };
 
     try {
-      return await this.getHubRpcClient(addressInfoToString(ai), {
-        "grpc.keepalive_time_ms": 5000,
-        "grpc.keepalive_timeout_ms": 25000,
-        ...options,
-      });
+      return await this.getHubRpcClient(addressInfoToString(ai), options);
     } catch (e) {
       log.error({ error: e, peer, peerId, addressInfo: ai }, "unable to connect to peer");
       // If the peer is unreachable (e.g. behind a firewall), remove it from our address book

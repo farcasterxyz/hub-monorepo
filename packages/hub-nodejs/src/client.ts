@@ -127,7 +127,7 @@ export const getServer = (): grpc.Server => {
   // set it anyway.
   const server = new grpc.Server({
     "grpc.keepalive_time_ms": 5 * 1000,
-    "grpc.keepalive_timeout_ms": 25 * 1000,
+    "grpc.keepalive_timeout_ms": 5 * 1000,
     "grpc.client_idle_timeout_ms": 60 * 1000,
   });
 
