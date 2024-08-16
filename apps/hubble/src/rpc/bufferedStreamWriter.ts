@@ -72,7 +72,8 @@ export class BufferedStreamWriter {
 
   private destroyStream() {
     this.dataWaitingForDrain = [];
-    this.stream.destroy(new Error("Stream is backed up, please consume events faster. Closing stream."));
+    this.stream.emit("error", new Error("Stream is backed up, please consume events faster. Closing stream."));
+    this.stream.end();
   }
 
   public getCacheSize(): number {

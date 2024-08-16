@@ -78,7 +78,7 @@
     "@farcaster/hub-nodejs": "^0.11.23",
     "@fastify/cors": "^8.4.0",
     "@figma/hot-shots": "^9.0.0-figma.1",
-    "@grpc/grpc-js": "~1.8.22",
+    "@grpc/grpc-js": "~1.11.1",
     "@libp2p/interface": "1.6.2",
     "@libp2p/interface-compliance-tests": "5.4.10",
     "@libp2p/autonat": "^1.1.3",
