@@ -29,7 +29,9 @@ class MockStream {
     }
   }
 
-  destroy() {
+  emit(evt: string, error: Error) {}
+
+  end() {
     this.isDestroyed = true;
   }
 
