@@ -41,8 +41,6 @@ import {
   OnChainEvent,
   HubResult,
   HubAsyncResult,
-  ServerWritableStream,
-  SubscribeRequest,
 } from "@farcaster/hub-nodejs";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import { APP_NICKNAME, APP_VERSION, HubInterface } from "../hubble.js";
@@ -331,11 +329,6 @@ class IpConnectionLimiter {
   }
 }
 
-export function destroyStream(stream: ServerWritableStream<SubscribeRequest, HubEvent>, error: Error) {
-  stream.emit("error", error);
-  stream.end();
-}
-
 export const toTrieNodeMetadataResponse = (metadata?: NodeMetadata): TrieNodeMetadataResponse => {
   const childrenTrie = [];
 
@@ -365,6 +358,7 @@ export const toTrieNodeMetadataResponse = (metadata?: NodeMetadata): TrieNodeMet
 
   return metadataResponse;
 };
+
 export default class Server {
   private hub: HubInterface | undefined;
   private engine: Engine | undefined;
@@ -1342,7 +1336,8 @@ export default class Server {
           log.info({ r: request, peer }, "subscribe: starting stream");
         } else {
           log.info({ r: request, peer, err: allowed.error.message }, "subscribe: rejected stream");
-          destroyStream(stream, allowed.error);
+
+          stream.destroy(new Error(allowed.error.message));
           return;
         }
 
@@ -1354,11 +1349,11 @@ export default class Server {
         const totalShards = request.totalShards || 0;
         if (totalShards > MAX_EVENT_STREAM_SHARDS) {
           log.info({ r: request, peer, err: "invalid totalShards" }, "subscribe: rejected stream");
-          destroyStream(stream, new Error(`totalShards must be less than ${MAX_EVENT_STREAM_SHARDS}`));
+          stream.destroy(new Error(`totalShards must be less than ${MAX_EVENT_STREAM_SHARDS}`));
         }
         if (totalShards > 0 && (request.shardIndex === undefined || request.shardIndex >= totalShards)) {
           log.info({ r: request, peer, err: "invalid shard index" }, "subscribe: rejected stream");
-          destroyStream(stream, new Error("invalid shard index"));
+          stream.destroy(new Error("invalid shard index"));
         }
         const shardIndex = request.shardIndex || 0;
 
@@ -1396,7 +1391,7 @@ export default class Server {
         if (this.engine && request.fromId !== undefined && request.fromId >= 0) {
           const eventsIteratorOpts = this.engine.eventHandler.getEventsIteratorOpts({ fromId: request.fromId });
           if (eventsIteratorOpts.isErr()) {
-            destroyStream(stream, eventsIteratorOpts.error);
+            stream.destroy(eventsIteratorOpts.error);
             return;
           }
 
@@ -1410,7 +1405,7 @@ export default class Server {
             );
 
             const error = new HubError("unavailable.network_failure", `stream timeout for peer: ${stream.getPeer()}`);
-            destroyStream(stream, error);
+            stream.destroy(error);
           }, HUBEVENTS_READER_TIMEOUT);
 
           // Track our RSS usage, to detect a situation where we're writing a lot of data to the stream,
@@ -1455,7 +1450,7 @@ export default class Server {
                   // We'll destroy the stream.
                   const error = new HubError("unavailable.network_failure", "stream memory usage too much");
                   logger.error({ errCode: error.errCode }, error.message);
-                  destroyStream(stream, error);
+                  stream.destroy(error);
 
                   return true;
                 }
