@@ -66,7 +66,7 @@ beforeEach(async () => {
   custodyEvent = Factories.IdRegistryOnChainEvent.build({ fid }, { transient: { to: custodySignerKey } });
   signerEvent = Factories.SignerOnChainEvent.build({ fid }, { transient: { signer: signerKey } });
   storageEvent = Factories.StorageRentOnChainEvent.build(
-    { fid, blockTimestamp: LEGACY_STORAGE_UNIT_CUTOFF_TIMESTAMP + 1 },
+    { fid, blockTimestamp: LEGACY_STORAGE_UNIT_CUTOFF_TIMESTAMP - 1 },
     { transient: { units: 1 } },
   );
   await engine.mergeOnChainEvent(custodyEvent);
@@ -146,7 +146,7 @@ describe("server rpc tests", () => {
       const storageLimits = limitsResponse.limits;
       expect(storageLimits).toContainEqual(
         StorageLimit.create({
-          limit: getDefaultStoreLimit(StoreType.CASTS, StorageUnitType.UNIT_TYPE_2024),
+          limit: getDefaultStoreLimit(StoreType.CASTS, StorageUnitType.UNIT_TYPE_LEGACY),
           storeType: StoreType.CASTS,
           name: "CASTS",
           used: 2,
@@ -156,7 +156,7 @@ describe("server rpc tests", () => {
       );
       expect(storageLimits).toContainEqual(
         StorageLimit.create({
-          limit: getDefaultStoreLimit(StoreType.REACTIONS, StorageUnitType.UNIT_TYPE_2024),
+          limit: getDefaultStoreLimit(StoreType.REACTIONS, StorageUnitType.UNIT_TYPE_LEGACY),
           storeType: StoreType.REACTIONS,
           name: "REACTIONS",
           used: 0,
@@ -166,7 +166,7 @@ describe("server rpc tests", () => {
       );
       expect(storageLimits).toContainEqual(
         StorageLimit.create({
-          limit: getDefaultStoreLimit(StoreType.LINKS, StorageUnitType.UNIT_TYPE_2024),
+          limit: getDefaultStoreLimit(StoreType.LINKS, StorageUnitType.UNIT_TYPE_LEGACY),
           storeType: StoreType.LINKS,
           name: "LINKS",
           used: 0,
@@ -176,7 +176,7 @@ describe("server rpc tests", () => {
       );
       expect(storageLimits).toContainEqual(
         StorageLimit.create({
-          limit: getDefaultStoreLimit(StoreType.USER_DATA, StorageUnitType.UNIT_TYPE_2024),
+          limit: getDefaultStoreLimit(StoreType.USER_DATA, StorageUnitType.UNIT_TYPE_LEGACY),
           storeType: StoreType.USER_DATA,
           name: "USER_DATA",
           used: 0,
@@ -186,7 +186,7 @@ describe("server rpc tests", () => {
       );
       expect(storageLimits).toContainEqual(
         StorageLimit.create({
-          limit: getDefaultStoreLimit(StoreType.VERIFICATIONS, StorageUnitType.UNIT_TYPE_2024),
+          limit: getDefaultStoreLimit(StoreType.VERIFICATIONS, StorageUnitType.UNIT_TYPE_LEGACY),
           storeType: StoreType.VERIFICATIONS,
           name: "VERIFICATIONS",
           used: 1,
@@ -196,7 +196,7 @@ describe("server rpc tests", () => {
       );
       expect(storageLimits).toContainEqual(
         StorageLimit.create({
-          limit: getDefaultStoreLimit(StoreType.USERNAME_PROOFS, StorageUnitType.UNIT_TYPE_2024),
+          limit: getDefaultStoreLimit(StoreType.USERNAME_PROOFS, StorageUnitType.UNIT_TYPE_LEGACY),
           storeType: StoreType.USERNAME_PROOFS,
           name: "USERNAME_PROOFS",
           used: 0,
@@ -218,7 +218,11 @@ describe("server rpc tests", () => {
       const newLimits = limitsResponse2.limits;
       expect(newLimits.length).toEqual(6);
       for (const limit of newLimits) {
-        expect(limit.limit).toEqual(getDefaultStoreLimit(limit.storeType, StorageUnitType.UNIT_TYPE_2024) * 3);
+        // 1 unit of legacy storage from the first event, 2 units of 2024 storage from the second event
+        const expectedLimit =
+          getDefaultStoreLimit(limit.storeType, StorageUnitType.UNIT_TYPE_LEGACY) +
+          getDefaultStoreLimit(limit.storeType, StorageUnitType.UNIT_TYPE_2024) * 2;
+        expect(limit.limit).toEqual(expectedLimit);
       }
     });
   });
