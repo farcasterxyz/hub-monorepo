@@ -6,6 +6,7 @@ import {
   Message,
   MessageType,
   PruneMessageHubEvent,
+  StorageUnitType,
   StoreType,
 } from "@farcaster/hub-nodejs";
 import { jestRocksDB } from "../db/jestUtils.js";
@@ -32,7 +33,7 @@ const seedMessagesFromTimestamp = async (engine: Engine, fid: number, signer: Ed
   );
   const linkAdd = await Factories.LinkAddMessage.create({ data: { fid, timestamp } }, { transient: { signer } });
   const proofs = await Factories.VerificationAddEthAddressMessage.createList(
-    getDefaultStoreLimit(StoreType.VERIFICATIONS) + 1,
+    getDefaultStoreLimit(StoreType.VERIFICATIONS, StorageUnitType.UNIT_TYPE_2024) + 1,
     { data: { fid, timestamp } },
     { transient: { signer } },
   );
@@ -109,7 +110,7 @@ describe("doJobs", () => {
 
         const verifications = await engine.getVerificationsByFid(fid);
         expect(verifications._unsafeUnwrap().messages.length).toEqual(
-          getDefaultStoreLimit(StoreType.VERIFICATIONS) + 1,
+          getDefaultStoreLimit(StoreType.VERIFICATIONS, StorageUnitType.UNIT_TYPE_2024) + 1,
         );
       }
 

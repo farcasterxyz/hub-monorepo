@@ -411,9 +411,9 @@ export const rsPruneMessages = async (
   store: RustDynStore,
   fid: number,
   cachedCount: number,
-  units: number,
+  maxCount: number,
 ): Promise<Buffer> => {
-  return await lib.pruneMessages.call(store, fid, cachedCount, units);
+  return await lib.pruneMessages.call(store, fid, cachedCount, maxCount);
 };
 
 export const rsGetAllMessagesByFid = async (

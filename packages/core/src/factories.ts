@@ -802,8 +802,16 @@ const StorageRentEventBodyFactory = Factory.define<protobufs.StorageRentEventBod
 
 const StorageRentOnChainEventFactory = Factory.define<StorageRentOnChainEvent, { units?: number }>(
   ({ transientParams }) => {
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const randomDate = faker.date.between(oneYearAgo, yesterday);
+    const randomDateInSeconds = Math.floor(randomDate.getTime() / 1000);
+
     return OnChainEventFactory.build({
       type: OnChainEventType.EVENT_TYPE_STORAGE_RENT,
+      blockTimestamp: randomDateInSeconds,
       storageRentEventBody: transientParams.units
         ? StorageRentEventBodyFactory.build({ units: transientParams.units })
         : StorageRentEventBodyFactory.build(),

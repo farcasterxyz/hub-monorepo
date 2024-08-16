@@ -3,9 +3,10 @@ import { Factories, HubEvent, HubEventType, getFarcasterTime } from "@farcaster/
 import { jestRocksDB } from "../db/jestUtils.js";
 import { makeTsHash, putMessage } from "../db/message.js";
 import { UserPostfix } from "../db/types.js";
-import { StorageCache } from "./storageCache.js";
+import { LEGACY_STORAGE_UNIT_CUTOFF_TIMESTAMP, StorageCache } from "./storageCache.js";
 import { putOnChainEventTransaction } from "../db/onChainEvent.js";
 import { sleep } from "../../utils/crypto.js";
+import { jest } from "@jest/globals";
 
 const db = jestRocksDB("engine.storageCache.test");
 
@@ -73,28 +74,79 @@ describe("syncFromDb", () => {
       await expect(cache.getMessageCount(fidUsage.fid, UserPostfix.UserDataMessage)).resolves.toEqual(
         ok(fidUsage.usage.userData),
       );
-      await expect(cache.getCurrentStorageUnitsForFid(fidUsage.fid)).resolves.toEqual(ok(4));
+      const slot = (await cache.getCurrentStorageSlotForFid(fidUsage.fid))._unsafeUnwrap();
+      expect(slot.legacy_units).toEqual(4);
+      expect(slot.units).toEqual(0);
     }
   });
 });
 
 describe("getCurrentStorageUnitsForFid", () => {
+  beforeEach(async () => {
+    jest.useFakeTimers();
+  });
+  afterEach(() => {
+    jest.useRealTimers();
+  });
   test("cache invalidation happens when expected", async () => {
     const fid = Factories.Fid.build();
-    for (let i = 1; i < 3; i++) {
-      const event = Factories.StorageRentOnChainEvent.build({
-        fid: fid,
-        storageRentEventBody: Factories.StorageRentEventBody.build({
-          expiry: getFarcasterTime()._unsafeUnwrap() + i,
-          units: 2,
-        }),
-      });
-      await db.commit(putOnChainEventTransaction(db.transaction(), event));
-    }
+    const ONE_YEAR = 1000 * 60 * 60 * 24 * 365;
+    // 2 years and 2 seconds before the cutoff
+    jest.setSystemTime((LEGACY_STORAGE_UNIT_CUTOFF_TIMESTAMP - 2) * 1000 - ONE_YEAR * 2);
+    // Unit rented on Aug 2022, expires Aug 2024 (2 years)
+    let event = Factories.StorageRentOnChainEvent.build({
+      fid: fid,
+      blockTimestamp: Math.floor(Date.now() / 1000) + 1,
+      storageRentEventBody: Factories.StorageRentEventBody.build({
+        units: 1,
+      }),
+    });
+    await db.commit(putOnChainEventTransaction(db.transaction(), event));
+
+    jest.advanceTimersByTime(ONE_YEAR);
+    // Unit rented on Aug 2023, expires Aug 2025 (2 years)
+    event = Factories.StorageRentOnChainEvent.build({
+      fid: fid,
+      blockTimestamp: Math.floor(Date.now() / 1000) + 1,
+      storageRentEventBody: Factories.StorageRentEventBody.build({
+        units: 2,
+      }),
+    });
+    await db.commit(putOnChainEventTransaction(db.transaction(), event));
+
+    // Unit rented on Aug 2024 after the cutoff, expires Aug 2025 (1 year)
+    jest.advanceTimersByTime(ONE_YEAR);
+    event = Factories.StorageRentOnChainEvent.build({
+      fid: fid,
+      blockTimestamp: Math.floor(Date.now() / 1000) + 3, // 3s after the cutoff
+      storageRentEventBody: Factories.StorageRentEventBody.build({
+        units: 2,
+      }),
+    });
+    await db.commit(putOnChainEventTransaction(db.transaction(), event));
+
+    jest.advanceTimersByTime(ONE_YEAR);
+    // The first unit should be expired at this point
     await cache.syncFromDb();
-    await expect(cache.getCurrentStorageUnitsForFid(fid)).resolves.toEqual(ok(4));
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    await expect(cache.getCurrentStorageUnitsForFid(fid)).resolves.toEqual(ok(2));
+
+    let slot = (await cache.getCurrentStorageSlotForFid(fid))._unsafeUnwrap();
+    // 2nd and 3rd units are still valid
+    expect(slot.legacy_units).toEqual(2);
+    expect(slot.units).toEqual(2);
+
+    jest.advanceTimersByTime(2000);
+
+    slot = (await cache.getCurrentStorageSlotForFid(fid))._unsafeUnwrap();
+    // 2nd unit is expired
+    expect(slot.legacy_units).toEqual(0);
+    expect(slot.units).toEqual(2);
+
+    jest.advanceTimersByTime(2000);
+
+    slot = (await cache.getCurrentStorageSlotForFid(fid))._unsafeUnwrap();
+    // All units expired
+    expect(slot.legacy_units).toEqual(0);
+    expect(slot.units).toEqual(0);
   });
 });
 

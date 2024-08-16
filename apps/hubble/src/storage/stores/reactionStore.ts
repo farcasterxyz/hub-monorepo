@@ -1,12 +1,4 @@
-import {
-  CastId,
-  Message,
-  ReactionAddMessage,
-  ReactionRemoveMessage,
-  ReactionType,
-  StoreType,
-  getDefaultStoreLimit,
-} from "@farcaster/hub-nodejs";
+import { CastId, ReactionAddMessage, ReactionRemoveMessage, ReactionType } from "@farcaster/hub-nodejs";
 import {
   rsCreateReactionStore,
   rsGetReactionAdd,
@@ -26,7 +18,7 @@ import { messageDecode } from "../../storage/db/message.js";
 
 class ReactionStore extends RustStoreBase<ReactionAddMessage, ReactionRemoveMessage> {
   constructor(db: RocksDB, eventHandler: StoreEventHandler, options: StorePruneOptions = {}) {
-    const pruneSizeLimit = options.pruneSizeLimit ?? getDefaultStoreLimit(StoreType.REACTIONS);
+    const pruneSizeLimit = options.pruneSizeLimit ?? 0;
     const rustReactionStore = rsCreateReactionStore(db.rustDb, eventHandler.getRustStoreEventHandler(), pruneSizeLimit);
 
     super(db, rustReactionStore, UserPostfix.ReactionMessage, eventHandler, pruneSizeLimit);

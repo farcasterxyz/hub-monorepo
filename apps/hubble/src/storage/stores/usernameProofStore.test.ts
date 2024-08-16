@@ -186,10 +186,6 @@ describe("usernameProofStore", () => {
     describe("with size limit", () => {
       const sizePrunedStore = new UsernameProofStore(db, eventHandler, { pruneSizeLimit: 2 });
 
-      test("defaults size limit", async () => {
-        expect(set.pruneSizeLimit).toEqual(getDefaultStoreLimit(StoreType.USERNAME_PROOFS));
-      });
-
       test("no-ops when no messages have been merged", async () => {
         const result = await sizePrunedStore.pruneMessages(fid);
         expect(result._unsafeUnwrap()).toEqual([]);
