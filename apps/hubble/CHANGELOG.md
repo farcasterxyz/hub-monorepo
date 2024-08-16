@@ -1,5 +1,14 @@
 # @farcaster/hubble
 
+## 1.14.4
+
+### Patch Changes
+
+- 97c68142: fix: Add env var to specify hubble node arguments
+- dd634c79: feat: Implement Storage Extension FIP
+- Updated dependencies [dd634c79]
+  - @farcaster/hub-nodejs@0.12.0
+
 ## 1.14.3
 
 ### Patch Changes

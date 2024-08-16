@@ -1,5 +1,16 @@
 # @farcaster/hub-nodejs
 
+## 0.12.0
+
+### Minor Changes
+
+- dd634c79: feat: Implement Storage Extension FIP
+
+### Patch Changes
+
+- Updated dependencies [dd634c79]
+  - @farcaster/core@0.15.0
+
 ## 0.11.24
 
 ### Patch Changes

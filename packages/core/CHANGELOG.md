@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.15.0
+
+### Minor Changes
+
+- dd634c79: feat: Implement Storage Extension FIP
+
 ## 0.14.20
 
 ### Patch Changes
