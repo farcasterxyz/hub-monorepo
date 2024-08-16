@@ -329,6 +329,36 @@ class IpConnectionLimiter {
   }
 }
 
+export const toTrieNodeMetadataResponse = (metadata?: NodeMetadata): TrieNodeMetadataResponse => {
+  const childrenTrie = [];
+
+  if (!metadata) {
+    return TrieNodeMetadataResponse.create({});
+  }
+
+  if (metadata.children) {
+    for (const [, child] of metadata.children) {
+      childrenTrie.push(
+        TrieNodeMetadataResponse.create({
+          prefix: child.prefix,
+          numMessages: child.numMessages,
+          hash: child.hash,
+          children: [],
+        }),
+      );
+    }
+  }
+
+  const metadataResponse = TrieNodeMetadataResponse.create({
+    prefix: metadata.prefix,
+    numMessages: metadata.numMessages,
+    hash: metadata.hash,
+    children: childrenTrie,
+  });
+
+  return metadataResponse;
+};
+
 export default class Server {
   private hub: HubInterface | undefined;
   private engine: Engine | undefined;
