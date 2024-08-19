@@ -82,15 +82,15 @@ service HubService {
   // The Bulk methods don't have corresponding HTTP API endpoints because the 
   // regular endpoints can be used to get all the messages
   // @http-api: none
-  rpc GetAllCastMessagesByFid(TimestampFidRequest) returns (MessagesResponse);
+  rpc GetAllCastMessagesByFid(FidTimestampRequest) returns (MessagesResponse);
   // @http-api: none
-  rpc GetAllReactionMessagesByFid(TimestampFidRequest) returns (MessagesResponse);
+  rpc GetAllReactionMessagesByFid(FidTimestampRequest) returns (MessagesResponse);
   // @http-api: none
-  rpc GetAllVerificationMessagesByFid(TimestampFidRequest) returns (MessagesResponse);
+  rpc GetAllVerificationMessagesByFid(FidTimestampRequest) returns (MessagesResponse);
   // @http-api: none
-  rpc GetAllUserDataMessagesByFid(TimestampFidRequest) returns (MessagesResponse);
+  rpc GetAllUserDataMessagesByFid(FidTimestampRequest) returns (MessagesResponse);
   // @http-api: none
-  rpc GetAllLinkMessagesByFid(TimestampFidRequest) returns (MessagesResponse);
+  rpc GetAllLinkMessagesByFid(FidTimestampRequest) returns (MessagesResponse);
   // @http-api: none
   rpc GetLinkCompactStateMessageByFid(FidRequest) returns (MessagesResponse);
 

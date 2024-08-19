@@ -162,7 +162,7 @@ export interface FidRequest {
   reverse?: boolean | undefined;
 }
 
-export interface TimestampFidRequest {
+export interface FidTimestampRequest {
   fid: number;
   pageSize?: number | undefined;
   pageToken?: Uint8Array | undefined;
@@ -1560,7 +1560,7 @@ export const FidRequest = {
   },
 };
 
-function createBaseTimestampFidRequest(): TimestampFidRequest {
+function createBaseFidTimestampRequest(): FidTimestampRequest {
   return {
     fid: 0,
     pageSize: undefined,
@@ -1571,8 +1571,8 @@ function createBaseTimestampFidRequest(): TimestampFidRequest {
   };
 }
 
-export const TimestampFidRequest = {
-  encode(message: TimestampFidRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+export const FidTimestampRequest = {
+  encode(message: FidTimestampRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
     if (message.fid !== 0) {
       writer.uint32(8).uint64(message.fid);
     }
@@ -1594,10 +1594,10 @@ export const TimestampFidRequest = {
     return writer;
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): TimestampFidRequest {
+  decode(input: _m0.Reader | Uint8Array, length?: number): FidTimestampRequest {
     const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseTimestampFidRequest();
+    const message = createBaseFidTimestampRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -1652,7 +1652,7 @@ export const TimestampFidRequest = {
     return message;
   },
 
-  fromJSON(object: any): TimestampFidRequest {
+  fromJSON(object: any): FidTimestampRequest {
     return {
       fid: isSet(object.fid) ? Number(object.fid) : 0,
       pageSize: isSet(object.pageSize) ? Number(object.pageSize) : undefined,
@@ -1663,7 +1663,7 @@ export const TimestampFidRequest = {
     };
   },
 
-  toJSON(message: TimestampFidRequest): unknown {
+  toJSON(message: FidTimestampRequest): unknown {
     const obj: any = {};
     message.fid !== undefined && (obj.fid = Math.round(message.fid));
     message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
@@ -1675,12 +1675,12 @@ export const TimestampFidRequest = {
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<TimestampFidRequest>, I>>(base?: I): TimestampFidRequest {
-    return TimestampFidRequest.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<FidTimestampRequest>, I>>(base?: I): FidTimestampRequest {
+    return FidTimestampRequest.fromPartial(base ?? {});
   },
 
-  fromPartial<I extends Exact<DeepPartial<TimestampFidRequest>, I>>(object: I): TimestampFidRequest {
-    const message = createBaseTimestampFidRequest();
+  fromPartial<I extends Exact<DeepPartial<FidTimestampRequest>, I>>(object: I): FidTimestampRequest {
+    const message = createBaseFidTimestampRequest();
     message.fid = object.fid ?? 0;
     message.pageSize = object.pageSize ?? undefined;
     message.pageToken = object.pageToken ?? undefined;

@@ -92,7 +92,7 @@ message FidRequest {
   optional bool reverse = 4;
 }
 
-message TimestampFidRequest {
+message FidTimestampRequest {
   uint64 fid = 1;
   optional uint32 page_size = 2;
   optional bytes page_token = 3;

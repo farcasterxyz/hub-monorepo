@@ -15,7 +15,7 @@ import {
   OnChainEvent,
   ReactionAddMessage,
   ReactionRemoveMessage,
-  TimestampFidRequest,
+  FidTimestampRequest,
   UserDataAddMessage,
   UserDataType,
   VerificationAddAddressMessage,
@@ -94,12 +94,12 @@ describe("getAllCastMessagesByFid", () => {
   test("succeeds", async () => {
     await engine.mergeMessage(castAdd);
     await engine.mergeMessage(castRemove);
-    const result = await client.getAllCastMessagesByFid(TimestampFidRequest.create({ fid }));
+    const result = await client.getAllCastMessagesByFid(FidTimestampRequest.create({ fid }));
     assertMessagesMatchResult(result, [castAdd, castRemove]);
   });
 
   test("returns empty array without messages", async () => {
-    const result = await client.getAllCastMessagesByFid(TimestampFidRequest.create({ fid }));
+    const result = await client.getAllCastMessagesByFid(FidTimestampRequest.create({ fid }));
     expect(result._unsafeUnwrap().messages.length).toEqual(0);
   });
 
@@ -108,24 +108,24 @@ describe("getAllCastMessagesByFid", () => {
     await engine.mergeMessage(castRemove);
     // Start timestamp is applied and it's inclusive
     const result1 = await client.getAllCastMessagesByFid(
-      TimestampFidRequest.create({ fid, startTimestamp: timestamp + 1 }),
+      FidTimestampRequest.create({ fid, startTimestamp: timestamp + 1 }),
     );
     assertMessagesMatchResult(result1, [castRemove]);
 
     // If there's no stop time, we include everything past start time
     const result2 = await client.getAllCastMessagesByFid(
-      TimestampFidRequest.create({ fid, startTimestamp: timestamp }),
+      FidTimestampRequest.create({ fid, startTimestamp: timestamp }),
     );
     assertMessagesMatchResult(result2, [castAdd, castRemove]);
     getFarcasterTime;
 
     // Stop timestamp is applied and it's inclusive
-    const result3 = await client.getAllCastMessagesByFid(TimestampFidRequest.create({ fid, stopTimestamp: timestamp }));
+    const result3 = await client.getAllCastMessagesByFid(FidTimestampRequest.create({ fid, stopTimestamp: timestamp }));
     assertMessagesMatchResult(result3, [castAdd]);
 
     // If there's no start time, we include everything before stop time
     const result4 = await client.getAllCastMessagesByFid(
-      TimestampFidRequest.create({ fid, stopTimestamp: timestamp + 1 }),
+      FidTimestampRequest.create({ fid, stopTimestamp: timestamp + 1 }),
     );
     assertMessagesMatchResult(result4, [castAdd, castRemove]);
   });
@@ -156,12 +156,12 @@ describe("getAllReactionMessagesByFid", () => {
   test("succeeds", async () => {
     await engine.mergeMessage(reactionAdd);
     await engine.mergeMessage(reactionRemove);
-    const result = await client.getAllReactionMessagesByFid(TimestampFidRequest.create({ fid }));
+    const result = await client.getAllReactionMessagesByFid(FidTimestampRequest.create({ fid }));
     assertMessagesMatchResult(result, [reactionAdd, reactionRemove]);
   });
 
   test("returns empty array without messages", async () => {
-    const result = await client.getAllReactionMessagesByFid(TimestampFidRequest.create({ fid }));
+    const result = await client.getAllReactionMessagesByFid(FidTimestampRequest.create({ fid }));
     expect(result._unsafeUnwrap().messages.length).toEqual(0);
   });
 
@@ -170,26 +170,26 @@ describe("getAllReactionMessagesByFid", () => {
     await engine.mergeMessage(reactionRemove);
     // Start timestamp is applied and it's inclusive
     const result1 = await client.getAllReactionMessagesByFid(
-      TimestampFidRequest.create({ fid, startTimestamp: timestamp + 1 }),
+      FidTimestampRequest.create({ fid, startTimestamp: timestamp + 1 }),
     );
     assertMessagesMatchResult(result1, [reactionRemove]);
 
     // If there's no stop time, we include everything past start time
     const result2 = await client.getAllReactionMessagesByFid(
-      TimestampFidRequest.create({ fid, startTimestamp: timestamp }),
+      FidTimestampRequest.create({ fid, startTimestamp: timestamp }),
     );
     assertMessagesMatchResult(result2, [reactionAdd, reactionRemove]);
     getFarcasterTime;
 
     // Stop timestamp is applied and it's inclusive
     const result3 = await client.getAllReactionMessagesByFid(
-      TimestampFidRequest.create({ fid, stopTimestamp: timestamp }),
+      FidTimestampRequest.create({ fid, stopTimestamp: timestamp }),
     );
     assertMessagesMatchResult(result3, [reactionAdd]);
 
     // If there's no start time, we include everything before stop time
     const result4 = await client.getAllReactionMessagesByFid(
-      TimestampFidRequest.create({ fid, stopTimestamp: timestamp + 1 }),
+      FidTimestampRequest.create({ fid, stopTimestamp: timestamp + 1 }),
     );
     assertMessagesMatchResult(result4, [reactionAdd, reactionRemove]);
   });
@@ -220,12 +220,12 @@ describe("getAllVerificationMessagesByFid", () => {
   test("succeeds", async () => {
     await engine.mergeMessage(verificationAdd);
     await engine.mergeMessage(verificationRemove);
-    const result = await client.getAllVerificationMessagesByFid(TimestampFidRequest.create({ fid }));
+    const result = await client.getAllVerificationMessagesByFid(FidTimestampRequest.create({ fid }));
     assertMessagesMatchResult(result, [verificationAdd, verificationRemove]);
   });
 
   test("returns empty array without messages", async () => {
-    const result = await client.getAllVerificationMessagesByFid(TimestampFidRequest.create({ fid }));
+    const result = await client.getAllVerificationMessagesByFid(FidTimestampRequest.create({ fid }));
     expect(result._unsafeUnwrap().messages.length).toEqual(0);
   });
 
@@ -234,26 +234,26 @@ describe("getAllVerificationMessagesByFid", () => {
     await engine.mergeMessage(verificationRemove);
     // Start timestamp is applied and it's inclusive
     const result1 = await client.getAllVerificationMessagesByFid(
-      TimestampFidRequest.create({ fid, startTimestamp: timestamp + 1 }),
+      FidTimestampRequest.create({ fid, startTimestamp: timestamp + 1 }),
     );
     assertMessagesMatchResult(result1, [verificationRemove]);
 
     // If there's no stop time, we include everything past start time
     const result2 = await client.getAllVerificationMessagesByFid(
-      TimestampFidRequest.create({ fid, startTimestamp: timestamp }),
+      FidTimestampRequest.create({ fid, startTimestamp: timestamp }),
     );
     assertMessagesMatchResult(result2, [verificationAdd, verificationRemove]);
     getFarcasterTime;
 
     // Stop timestamp is applied and it's inclusive
     const result3 = await client.getAllVerificationMessagesByFid(
-      TimestampFidRequest.create({ fid, stopTimestamp: timestamp }),
+      FidTimestampRequest.create({ fid, stopTimestamp: timestamp }),
     );
     assertMessagesMatchResult(result3, [verificationAdd]);
 
     // If there's no start time, we include everything before stop time
     const result4 = await client.getAllVerificationMessagesByFid(
-      TimestampFidRequest.create({ fid, stopTimestamp: timestamp + 1 }),
+      FidTimestampRequest.create({ fid, stopTimestamp: timestamp + 1 }),
     );
     assertMessagesMatchResult(result4, [verificationAdd, verificationRemove]);
   });
@@ -282,12 +282,12 @@ describe("getAllUserDataMessagesByFid", () => {
 
   test("succeeds", async () => {
     await engine.mergeMessage(userDataAdd1);
-    const result = await client.getAllUserDataMessagesByFid(TimestampFidRequest.create({ fid }));
+    const result = await client.getAllUserDataMessagesByFid(FidTimestampRequest.create({ fid }));
     assertMessagesMatchResult(result, [userDataAdd1]);
   });
 
   test("returns empty array without messages", async () => {
-    const result = await client.getAllUserDataMessagesByFid(TimestampFidRequest.create({ fid }));
+    const result = await client.getAllUserDataMessagesByFid(FidTimestampRequest.create({ fid }));
     expect(result._unsafeUnwrap().messages.length).toEqual(0);
   });
 
@@ -297,25 +297,25 @@ describe("getAllUserDataMessagesByFid", () => {
 
     // Start timestamp is applied and it's inclusive
     const result1 = await client.getAllUserDataMessagesByFid(
-      TimestampFidRequest.create({ fid, startTimestamp: timestamp + 1 }),
+      FidTimestampRequest.create({ fid, startTimestamp: timestamp + 1 }),
     );
     assertMessagesMatchResult(result1, [userDataAdd2]);
 
     // If there's no stop time, we include everything past start time
     const result2 = await client.getAllUserDataMessagesByFid(
-      TimestampFidRequest.create({ fid, startTimestamp: timestamp }),
+      FidTimestampRequest.create({ fid, startTimestamp: timestamp }),
     );
     assertMessagesMatchResult(result2, [userDataAdd1, userDataAdd2]);
 
     // Stop timestamp is applied and it's inclusive
     const result3 = await client.getAllUserDataMessagesByFid(
-      TimestampFidRequest.create({ fid, stopTimestamp: timestamp }),
+      FidTimestampRequest.create({ fid, stopTimestamp: timestamp }),
     );
     assertMessagesMatchResult(result3, [userDataAdd1]);
 
     // If there's no start time, we include everything before stop time
     const result4 = await client.getAllUserDataMessagesByFid(
-      TimestampFidRequest.create({ fid, stopTimestamp: timestamp + 1 }),
+      FidTimestampRequest.create({ fid, stopTimestamp: timestamp + 1 }),
     );
     assertMessagesMatchResult(result4, [userDataAdd1, userDataAdd2]);
   });
@@ -348,12 +348,12 @@ describe("getAllLinkMessagesByFid", () => {
   test("succeeds", async () => {
     await engine.mergeMessage(linkAdd);
     await engine.mergeMessage(linkRemove);
-    const result = await client.getAllLinkMessagesByFid(TimestampFidRequest.create({ fid }));
+    const result = await client.getAllLinkMessagesByFid(FidTimestampRequest.create({ fid }));
     assertMessagesMatchResult(result, [linkAdd, linkRemove]);
   });
 
   test("returns empty array without messages", async () => {
-    const result = await client.getAllLinkMessagesByFid(TimestampFidRequest.create({ fid }));
+    const result = await client.getAllLinkMessagesByFid(FidTimestampRequest.create({ fid }));
     expect(result._unsafeUnwrap().messages.length).toEqual(0);
   });
 
@@ -362,24 +362,24 @@ describe("getAllLinkMessagesByFid", () => {
     await engine.mergeMessage(linkRemove);
     // Start timestamp is applied and it's inclusive
     const result1 = await client.getAllLinkMessagesByFid(
-      TimestampFidRequest.create({ fid, startTimestamp: timestamp + 1 }),
+      FidTimestampRequest.create({ fid, startTimestamp: timestamp + 1 }),
     );
     assertMessagesMatchResult(result1, [linkRemove]);
 
     // If there's no stop time, we include everything past start time
     const result2 = await client.getAllLinkMessagesByFid(
-      TimestampFidRequest.create({ fid, startTimestamp: timestamp }),
+      FidTimestampRequest.create({ fid, startTimestamp: timestamp }),
     );
     assertMessagesMatchResult(result2, [linkAdd, linkRemove]);
     getFarcasterTime;
 
     // Stop timestamp is applied and it's inclusive
-    const result3 = await client.getAllLinkMessagesByFid(TimestampFidRequest.create({ fid, stopTimestamp: timestamp }));
+    const result3 = await client.getAllLinkMessagesByFid(FidTimestampRequest.create({ fid, stopTimestamp: timestamp }));
     assertMessagesMatchResult(result3, [linkAdd]);
 
     // If there's no start time, we include everything before stop time
     const result4 = await client.getAllLinkMessagesByFid(
-      TimestampFidRequest.create({ fid, stopTimestamp: timestamp + 1 }),
+      FidTimestampRequest.create({ fid, stopTimestamp: timestamp + 1 }),
     );
     assertMessagesMatchResult(result4, [linkAdd, linkRemove]);
   });
