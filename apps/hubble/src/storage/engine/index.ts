@@ -6,6 +6,7 @@ import {
   CastId,
   CastRemoveMessage,
   FarcasterNetwork,
+  fromFarcasterTime,
   getDefaultStoreLimit,
   getStoreLimits,
   hexStringToBytes,
@@ -39,6 +40,7 @@ import {
   StorageLimit,
   StorageLimitsResponse,
   StoreType,
+  toFarcasterTime,
   UserDataAddMessage,
   UserDataType,
   UserNameProof,
@@ -662,8 +664,28 @@ class Engine extends TypedEmitter<EngineEvents> {
       return err(validatedFid.error);
     }
 
+    let validatedStartTime;
+    if (startTime) {
+      const validatedStartTimeResult = validations.validateFarcasterTime(startTime);
+      if (validatedStartTimeResult.isErr()) {
+        return err(validatedStartTimeResult.error);
+      }
+
+      validatedStartTime = validatedStartTimeResult.value;
+    }
+
+    let validatedStopTime;
+    if (stopTime) {
+      const validatedStopTimeResult = validations.validateFarcasterTime(stopTime);
+      if (validatedStopTimeResult.isErr()) {
+        return err(validatedStopTimeResult.error);
+      }
+
+      validatedStopTime = validatedStopTimeResult.value;
+    }
+
     return ResultAsync.fromPromise(
-      this._castStore.getAllCastMessagesByFid(fid, pageOptions, startTime, stopTime),
+      this._castStore.getAllCastMessagesByFid(fid, pageOptions, validatedStartTime, validatedStopTime),
       (e) => e as HubError,
     );
   }
@@ -731,8 +753,28 @@ class Engine extends TypedEmitter<EngineEvents> {
       return err(validatedFid.error);
     }
 
+    let validatedStartTime;
+    if (startTime) {
+      const validatedStartTimeResult = validations.validateFarcasterTime(startTime);
+      if (validatedStartTimeResult.isErr()) {
+        return err(validatedStartTimeResult.error);
+      }
+
+      validatedStartTime = validatedStartTimeResult.value;
+    }
+
+    let validatedStopTime;
+    if (stopTime) {
+      const validatedStopTimeResult = validations.validateFarcasterTime(stopTime);
+      if (validatedStopTimeResult.isErr()) {
+        return err(validatedStopTimeResult.error);
+      }
+
+      validatedStopTime = validatedStopTimeResult.value;
+    }
+
     return ResultAsync.fromPromise(
-      this._reactionStore.getAllReactionMessagesByFid(fid, pageOptions, startTime, stopTime),
+      this._reactionStore.getAllReactionMessagesByFid(fid, pageOptions, validatedStartTime, validatedStopTime),
       (e) => e as HubError,
     );
   }
@@ -779,8 +821,28 @@ class Engine extends TypedEmitter<EngineEvents> {
       return err(validatedFid.error);
     }
 
+    let validatedStartTime;
+    if (startTime) {
+      const validatedStartTimeResult = validations.validateFarcasterTime(startTime);
+      if (validatedStartTimeResult.isErr()) {
+        return err(validatedStartTimeResult.error);
+      }
+
+      validatedStartTime = validatedStartTimeResult.value;
+    }
+
+    let validatedStopTime;
+    if (stopTime) {
+      const validatedStopTimeResult = validations.validateFarcasterTime(stopTime);
+      if (validatedStopTimeResult.isErr()) {
+        return err(validatedStopTimeResult.error);
+      }
+
+      validatedStopTime = validatedStopTimeResult.value;
+    }
+
     return ResultAsync.fromPromise(
-      this._verificationStore.getAllVerificationMessagesByFid(fid, pageOptions, startTime, stopTime),
+      this._verificationStore.getAllVerificationMessagesByFid(fid, pageOptions, validatedStartTime, validatedStopTime),
       (e) => e as HubError,
     );
   }
@@ -854,8 +916,28 @@ class Engine extends TypedEmitter<EngineEvents> {
       return err(validatedFid.error);
     }
 
+    let validatedStartTime;
+    if (startTime) {
+      const validatedStartTimeResult = validations.validateFarcasterTime(startTime);
+      if (validatedStartTimeResult.isErr()) {
+        return err(validatedStartTimeResult.error);
+      }
+
+      validatedStartTime = validatedStartTimeResult.value;
+    }
+
+    let validatedStopTime;
+    if (stopTime) {
+      const validatedStopTimeResult = validations.validateFarcasterTime(stopTime);
+      if (validatedStopTimeResult.isErr()) {
+        return err(validatedStopTimeResult.error);
+      }
+
+      validatedStopTime = validatedStopTimeResult.value;
+    }
+
     return ResultAsync.fromPromise(
-      this._userDataStore.getUserDataAddsByFid(fid, pageOptions, startTime, stopTime),
+      this._userDataStore.getUserDataAddsByFid(fid, pageOptions, validatedStartTime, validatedStopTime),
       (e) => e as HubError,
     );
   }
@@ -1054,8 +1136,28 @@ class Engine extends TypedEmitter<EngineEvents> {
       return err(validatedFid.error);
     }
 
+    let validatedStartTime;
+    if (startTime) {
+      const validatedStartTimeResult = validations.validateFarcasterTime(startTime);
+      if (validatedStartTimeResult.isErr()) {
+        return err(validatedStartTimeResult.error);
+      }
+
+      validatedStartTime = validatedStartTimeResult.value;
+    }
+
+    let validatedStopTime;
+    if (stopTime) {
+      const validatedStopTimeResult = validations.validateFarcasterTime(stopTime);
+      if (validatedStopTimeResult.isErr()) {
+        return err(validatedStopTimeResult.error);
+      }
+
+      validatedStopTime = validatedStopTimeResult.value;
+    }
+
     return ResultAsync.fromPromise(
-      this._linkStore.getAllLinkMessagesByFid(fid, pageOptions, startTime, stopTime),
+      this._linkStore.getAllLinkMessagesByFid(fid, pageOptions, validatedStartTime, validatedStopTime),
       (e) => e as HubError,
     );
   }
