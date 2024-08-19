@@ -653,9 +653,9 @@ class Engine extends TypedEmitter<EngineEvents> {
 
   async getAllCastMessagesByFid(
     fid: number,
+    pageOptions: PageOptions = {},
     startTime?: number,
     stopTime?: number,
-    pageOptions: PageOptions = {},
   ): HubAsyncResult<MessagesPage<CastAddMessage | CastRemoveMessage>> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
@@ -722,9 +722,9 @@ class Engine extends TypedEmitter<EngineEvents> {
 
   async getAllReactionMessagesByFid(
     fid: number,
+    pageOptions: PageOptions = {},
     startTime?: number,
     stopTime?: number,
-    pageOptions: PageOptions = {},
   ): HubAsyncResult<MessagesPage<ReactionAddMessage | ReactionRemoveMessage>> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
@@ -770,9 +770,9 @@ class Engine extends TypedEmitter<EngineEvents> {
 
   async getAllVerificationMessagesByFid(
     fid: number,
+    pageOptions: PageOptions = {},
     startTime?: number,
     stopTime?: number,
-    pageOptions: PageOptions = {},
   ): HubAsyncResult<MessagesPage<VerificationAddAddressMessage | VerificationRemoveMessage>> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
@@ -845,9 +845,9 @@ class Engine extends TypedEmitter<EngineEvents> {
 
   async getUserDataByFid(
     fid: number,
+    pageOptions: PageOptions = {},
     startTime?: number,
     stopTime?: number,
-    pageOptions: PageOptions = {},
   ): HubAsyncResult<MessagesPage<UserDataAddMessage>> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
@@ -1040,9 +1040,9 @@ class Engine extends TypedEmitter<EngineEvents> {
 
   async getAllLinkMessagesByFid(
     fid: number,
+    pageOptions: PageOptions = {},
     startTime?: number,
     stopTime?: number,
-    pageOptions: PageOptions = {},
   ): HubAsyncResult<MessagesPage<LinkAddMessage | LinkRemoveMessage>> {
     const versionCheck = ensureAboveTargetFarcasterVersion("2023.4.19");
     if (versionCheck.isErr()) {

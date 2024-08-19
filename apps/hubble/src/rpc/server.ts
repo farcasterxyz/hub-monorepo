@@ -952,7 +952,7 @@ export default class Server {
 
         const { fid, pageSize, pageToken, reverse } = call.request;
 
-        const userDataResult = await this.engine?.getUserDataByFid(fid, undefined, undefined, {
+        const userDataResult = await this.engine?.getUserDataByFid(fid, {
           pageSize,
           pageToken,
           reverse,
@@ -1202,11 +1202,16 @@ export default class Server {
         log.debug({ method: "getAllCastMessagesByFid", req: call.request }, `RPC call from ${peer}`);
 
         const { fid, pageSize, pageToken, reverse, startTimestamp, stopTimestamp } = call.request;
-        const result = await this.engine?.getAllCastMessagesByFid(fid, startTimestamp, stopTimestamp, {
-          pageSize,
-          pageToken,
-          reverse,
-        });
+        const result = await this.engine?.getAllCastMessagesByFid(
+          fid,
+          {
+            pageSize,
+            pageToken,
+            reverse,
+          },
+          startTimestamp,
+          stopTimestamp,
+        );
         result?.match(
           (page: MessagesPage<CastAddMessage | CastRemoveMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1221,11 +1226,16 @@ export default class Server {
         log.debug({ method: "getAllReactionMessagesByFid", req: call.request }, `RPC call from ${peer}`);
 
         const { fid, pageSize, pageToken, reverse, startTimestamp, stopTimestamp } = call.request;
-        const result = await this.engine?.getAllReactionMessagesByFid(fid, startTimestamp, stopTimestamp, {
-          pageSize,
-          pageToken,
-          reverse,
-        });
+        const result = await this.engine?.getAllReactionMessagesByFid(
+          fid,
+          {
+            pageSize,
+            pageToken,
+            reverse,
+          },
+          startTimestamp,
+          stopTimestamp,
+        );
         result?.match(
           (page: MessagesPage<ReactionAddMessage | ReactionRemoveMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1240,11 +1250,16 @@ export default class Server {
         log.debug({ method: "getAllVerificationMessagesByFid", req: call.request }, `RPC call from ${peer}`);
 
         const { fid, pageSize, pageToken, reverse, startTimestamp, stopTimestamp } = call.request;
-        const result = await this.engine?.getAllVerificationMessagesByFid(fid, startTimestamp, stopTimestamp, {
-          pageSize,
-          pageToken,
-          reverse,
-        });
+        const result = await this.engine?.getAllVerificationMessagesByFid(
+          fid,
+          {
+            pageSize,
+            pageToken,
+            reverse,
+          },
+          startTimestamp,
+          stopTimestamp,
+        );
         result?.match(
           (page: MessagesPage<VerificationAddAddressMessage | VerificationRemoveMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1259,11 +1274,16 @@ export default class Server {
         log.debug({ method: "getAllUserDataMessagesByFid", req: call.request }, `RPC call from ${peer}`);
 
         const { fid, pageSize, pageToken, reverse, startTimestamp, stopTimestamp } = call.request;
-        const result = await this.engine?.getUserDataByFid(fid, startTimestamp, stopTimestamp, {
-          pageSize,
-          pageToken,
-          reverse,
-        });
+        const result = await this.engine?.getUserDataByFid(
+          fid,
+          {
+            pageSize,
+            pageToken,
+            reverse,
+          },
+          startTimestamp,
+          stopTimestamp,
+        );
         result?.match(
           (page: MessagesPage<UserDataAddMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1278,11 +1298,16 @@ export default class Server {
         log.debug({ method: "getAllLinkMessagesByFid", req: call.request }, `RPC call from ${peer}`);
 
         const { fid, pageSize, pageToken, reverse, startTimestamp, stopTimestamp } = call.request;
-        const result = await this.engine?.getAllLinkMessagesByFid(fid, startTimestamp, stopTimestamp, {
-          pageSize,
-          pageToken,
-          reverse,
-        });
+        const result = await this.engine?.getAllLinkMessagesByFid(
+          fid,
+          {
+            pageSize,
+            pageToken,
+            reverse,
+          },
+          startTimestamp,
+          stopTimestamp,
+        );
         result?.match(
           (page: MessagesPage<LinkAddMessage | LinkRemoveMessage>) => {
             callback(null, messagesPageToResponse(page));

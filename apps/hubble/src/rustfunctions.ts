@@ -636,16 +636,6 @@ export namespace rsLinkStore {
     return await lib.getLinkRemove.call(store, fid, type, target);
   };
 
-  export const GetAllLinkMessagesByFid = async (
-    store: RustDynStore,
-    fid: number,
-    pageOptions: PageOptions,
-    startTime?: number,
-    stopTime?: number,
-  ): Promise<RustMessagesPage> => {
-    return await lib.getAllLinkMessagesByFid.call(store, fid, pageOptions, startTime, stopTime);
-  };
-
   export const GetLinkCompactStateMessageByFid = async (
     store: RustDynStore,
     fid: number,
