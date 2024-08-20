@@ -4,6 +4,7 @@ import {
   FARCASTER_EPOCH,
   HubEvent,
   HubEventType,
+  LEGACY_STORAGE_UNIT_CUTOFF_TIMESTAMP,
   StoreType,
   toFarcasterTime,
 } from "@farcaster/hub-nodejs";
@@ -17,7 +18,6 @@ import { extractEventTimestamp, getFarcasterTime } from "@farcaster/core";
 import OnChainEventStore from "./onChainEventStore.js";
 import CastStore from "./castStore.js";
 import { rsCreateStoreEventHandler, rsGetNextEventId } from "../../rustfunctions.js";
-import { LEGACY_STORAGE_UNIT_CUTOFF_TIMESTAMP } from "./storageCache.js";
 
 const db = jestRocksDB("stores.storeEventHandler.test");
 const eventHandler = new StoreEventHandler(db);
