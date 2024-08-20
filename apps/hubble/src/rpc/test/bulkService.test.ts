@@ -128,6 +128,12 @@ describe("getAllCastMessagesByFid", () => {
       FidTimestampRequest.create({ fid, stopTimestamp: timestamp + 1 }),
     );
     assertMessagesMatchResult(result4, [castAdd, castRemove]);
+
+    // If the start time is 0, we include everything before stop time
+    const result5 = await client.getAllCastMessagesByFid(
+      FidTimestampRequest.create({ fid, startTimestamp: 0, stopTimestamp: timestamp + 1 }),
+    );
+    assertMessagesMatchResult(result5, [castAdd, castRemove]);
   });
 });
 
@@ -192,6 +198,12 @@ describe("getAllReactionMessagesByFid", () => {
       FidTimestampRequest.create({ fid, stopTimestamp: timestamp + 1 }),
     );
     assertMessagesMatchResult(result4, [reactionAdd, reactionRemove]);
+
+    // If the start time is 0, we include everything before stop time
+    const result5 = await client.getAllReactionMessagesByFid(
+      FidTimestampRequest.create({ fid, startTimestamp: 0, stopTimestamp: timestamp + 1 }),
+    );
+    assertMessagesMatchResult(result5, [reactionAdd, reactionRemove]);
   });
 });
 
@@ -256,6 +268,12 @@ describe("getAllVerificationMessagesByFid", () => {
       FidTimestampRequest.create({ fid, stopTimestamp: timestamp + 1 }),
     );
     assertMessagesMatchResult(result4, [verificationAdd, verificationRemove]);
+
+    // If the start time is 0, we include everything before stop time
+    const result5 = await client.getAllVerificationMessagesByFid(
+      FidTimestampRequest.create({ fid, startTimestamp: 0, stopTimestamp: timestamp + 1 }),
+    );
+    assertMessagesMatchResult(result5, [verificationAdd, verificationRemove]);
   });
 });
 
@@ -318,6 +336,12 @@ describe("getAllUserDataMessagesByFid", () => {
       FidTimestampRequest.create({ fid, stopTimestamp: timestamp + 1 }),
     );
     assertMessagesMatchResult(result4, [userDataAdd1, userDataAdd2]);
+
+    // If the start time is 0, we include everything before stop time
+    const result5 = await client.getAllUserDataMessagesByFid(
+      FidTimestampRequest.create({ fid, startTimestamp: 0, stopTimestamp: timestamp + 1 }),
+    );
+    assertMessagesMatchResult(result5, [userDataAdd1, userDataAdd2]);
   });
 });
 
@@ -382,5 +406,11 @@ describe("getAllLinkMessagesByFid", () => {
       FidTimestampRequest.create({ fid, stopTimestamp: timestamp + 1 }),
     );
     assertMessagesMatchResult(result4, [linkAdd, linkRemove]);
+
+    // If the start time is 0, we include everything before stop time
+    const result5 = await client.getAllLinkMessagesByFid(
+      FidTimestampRequest.create({ fid, startTimestamp: 0, stopTimestamp: timestamp + 1 }),
+    );
+    assertMessagesMatchResult(result5, [linkAdd, linkRemove]);
   });
 });
