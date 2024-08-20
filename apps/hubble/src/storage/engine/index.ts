@@ -611,6 +611,30 @@ class Engine extends TypedEmitter<EngineEvents> {
   /*                             Cast Store Methods                             */
   /* -------------------------------------------------------------------------- */
 
+  validateStartAndStopTime(startTime?: number, stopTime?: number) {
+    let validatedStartTime;
+    if (startTime) {
+      const validatedStartTimeResult = validations.validateFarcasterTime(startTime);
+      if (validatedStartTimeResult.isErr()) {
+        return err(validatedStartTimeResult.error);
+      }
+
+      validatedStartTime = validatedStartTimeResult.value;
+    }
+
+    let validatedStopTime;
+    if (stopTime) {
+      const validatedStopTimeResult = validations.validateFarcasterTime(stopTime);
+      if (validatedStopTimeResult.isErr()) {
+        return err(validatedStopTimeResult.error);
+      }
+
+      validatedStopTime = validatedStopTimeResult.value;
+    }
+
+    return ok({ validatedStartTime, validatedStopTime });
+  }
+
   async getCast(fid: number, hash: Uint8Array): HubAsyncResult<CastAddMessage> {
     const validatedFid = validations.validateFid(fid);
     if (validatedFid.isErr()) {
@@ -664,28 +688,18 @@ class Engine extends TypedEmitter<EngineEvents> {
       return err(validatedFid.error);
     }
 
-    let validatedStartTime;
-    if (startTime) {
-      const validatedStartTimeResult = validations.validateFarcasterTime(startTime);
-      if (validatedStartTimeResult.isErr()) {
-        return err(validatedStartTimeResult.error);
-      }
-
-      validatedStartTime = validatedStartTimeResult.value;
-    }
-
-    let validatedStopTime;
-    if (stopTime) {
-      const validatedStopTimeResult = validations.validateFarcasterTime(stopTime);
-      if (validatedStopTimeResult.isErr()) {
-        return err(validatedStopTimeResult.error);
-      }
-
-      validatedStopTime = validatedStopTimeResult.value;
+    const validatedTimes = this.validateStartAndStopTime(startTime, stopTime);
+    if (validatedTimes.isErr()) {
+      return err(validatedTimes.error);
     }
 
     return ResultAsync.fromPromise(
-      this._castStore.getAllCastMessagesByFid(fid, pageOptions, validatedStartTime, validatedStopTime),
+      this._castStore.getAllCastMessagesByFid(
+        fid,
+        pageOptions,
+        validatedTimes.value.validatedStartTime,
+        validatedTimes.value.validatedStopTime,
+      ),
       (e) => e as HubError,
     );
   }
@@ -753,28 +767,18 @@ class Engine extends TypedEmitter<EngineEvents> {
       return err(validatedFid.error);
     }
 
-    let validatedStartTime;
-    if (startTime) {
-      const validatedStartTimeResult = validations.validateFarcasterTime(startTime);
-      if (validatedStartTimeResult.isErr()) {
-        return err(validatedStartTimeResult.error);
-      }
-
-      validatedStartTime = validatedStartTimeResult.value;
-    }
-
-    let validatedStopTime;
-    if (stopTime) {
-      const validatedStopTimeResult = validations.validateFarcasterTime(stopTime);
-      if (validatedStopTimeResult.isErr()) {
-        return err(validatedStopTimeResult.error);
-      }
-
-      validatedStopTime = validatedStopTimeResult.value;
+    const validatedTimes = this.validateStartAndStopTime(startTime, stopTime);
+    if (validatedTimes.isErr()) {
+      return err(validatedTimes.error);
     }
 
     return ResultAsync.fromPromise(
-      this._reactionStore.getAllReactionMessagesByFid(fid, pageOptions, validatedStartTime, validatedStopTime),
+      this._reactionStore.getAllReactionMessagesByFid(
+        fid,
+        pageOptions,
+        validatedTimes.value.validatedStartTime,
+        validatedTimes.value.validatedStopTime,
+      ),
       (e) => e as HubError,
     );
   }
@@ -821,28 +825,18 @@ class Engine extends TypedEmitter<EngineEvents> {
       return err(validatedFid.error);
     }
 
-    let validatedStartTime;
-    if (startTime) {
-      const validatedStartTimeResult = validations.validateFarcasterTime(startTime);
-      if (validatedStartTimeResult.isErr()) {
-        return err(validatedStartTimeResult.error);
-      }
-
-      validatedStartTime = validatedStartTimeResult.value;
-    }
-
-    let validatedStopTime;
-    if (stopTime) {
-      const validatedStopTimeResult = validations.validateFarcasterTime(stopTime);
-      if (validatedStopTimeResult.isErr()) {
-        return err(validatedStopTimeResult.error);
-      }
-
-      validatedStopTime = validatedStopTimeResult.value;
+    const validatedTimes = this.validateStartAndStopTime(startTime, stopTime);
+    if (validatedTimes.isErr()) {
+      return err(validatedTimes.error);
     }
 
     return ResultAsync.fromPromise(
-      this._verificationStore.getAllVerificationMessagesByFid(fid, pageOptions, validatedStartTime, validatedStopTime),
+      this._verificationStore.getAllVerificationMessagesByFid(
+        fid,
+        pageOptions,
+        validatedTimes.value.validatedStartTime,
+        validatedTimes.value.validatedStopTime,
+      ),
       (e) => e as HubError,
     );
   }
@@ -916,28 +910,18 @@ class Engine extends TypedEmitter<EngineEvents> {
       return err(validatedFid.error);
     }
 
-    let validatedStartTime;
-    if (startTime) {
-      const validatedStartTimeResult = validations.validateFarcasterTime(startTime);
-      if (validatedStartTimeResult.isErr()) {
-        return err(validatedStartTimeResult.error);
-      }
-
-      validatedStartTime = validatedStartTimeResult.value;
-    }
-
-    let validatedStopTime;
-    if (stopTime) {
-      const validatedStopTimeResult = validations.validateFarcasterTime(stopTime);
-      if (validatedStopTimeResult.isErr()) {
-        return err(validatedStopTimeResult.error);
-      }
-
-      validatedStopTime = validatedStopTimeResult.value;
+    const validatedTimes = this.validateStartAndStopTime(startTime, stopTime);
+    if (validatedTimes.isErr()) {
+      return err(validatedTimes.error);
     }
 
     return ResultAsync.fromPromise(
-      this._userDataStore.getUserDataAddsByFid(fid, pageOptions, validatedStartTime, validatedStopTime),
+      this._userDataStore.getUserDataAddsByFid(
+        fid,
+        pageOptions,
+        validatedTimes.value.validatedStartTime,
+        validatedTimes.value.validatedStopTime,
+      ),
       (e) => e as HubError,
     );
   }
@@ -1136,28 +1120,18 @@ class Engine extends TypedEmitter<EngineEvents> {
       return err(validatedFid.error);
     }
 
-    let validatedStartTime;
-    if (startTime) {
-      const validatedStartTimeResult = validations.validateFarcasterTime(startTime);
-      if (validatedStartTimeResult.isErr()) {
-        return err(validatedStartTimeResult.error);
-      }
-
-      validatedStartTime = validatedStartTimeResult.value;
-    }
-
-    let validatedStopTime;
-    if (stopTime) {
-      const validatedStopTimeResult = validations.validateFarcasterTime(stopTime);
-      if (validatedStopTimeResult.isErr()) {
-        return err(validatedStopTimeResult.error);
-      }
-
-      validatedStopTime = validatedStopTimeResult.value;
+    const validatedTimes = this.validateStartAndStopTime(startTime, stopTime);
+    if (validatedTimes.isErr()) {
+      return err(validatedTimes.error);
     }
 
     return ResultAsync.fromPromise(
-      this._linkStore.getAllLinkMessagesByFid(fid, pageOptions, validatedStartTime, validatedStopTime),
+      this._linkStore.getAllLinkMessagesByFid(
+        fid,
+        pageOptions,
+        validatedTimes.value.validatedStartTime,
+        validatedTimes.value.validatedStopTime,
+      ),
       (e) => e as HubError,
     );
   }
