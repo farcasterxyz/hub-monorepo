@@ -1,5 +1,12 @@
 # @farcaster/core
 
+## 0.15.1
+
+### Patch Changes
+
+- fbd3ba5f: fix: Move storage unit type helper functions to hub-nodejs package
+- cc0d0a3e: feat: added start/stop time filters for bulk queries
+
 ## 0.15.0
 
 ### Minor Changes

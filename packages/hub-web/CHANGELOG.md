@@ -1,5 +1,14 @@
 # @farcaster/hub-web
 
+## 0.9.1
+
+### Patch Changes
+
+- cc0d0a3e: feat: added start/stop time filters for bulk queries
+- Updated dependencies [fbd3ba5f]
+- Updated dependencies [cc0d0a3e]
+  - @farcaster/core@0.15.1
+
 ## 0.9.0
 
 ### Minor Changes

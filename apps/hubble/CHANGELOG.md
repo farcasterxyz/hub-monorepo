@@ -1,5 +1,14 @@
 # @farcaster/hubble
 
+## 1.14.5
+
+### Patch Changes
+
+- fbd3ba5f: fix: Move storage unit type helper functions to hub-nodejs package
+- cc0d0a3e: feat: added start/stop time filters for bulk queries
+- Updated dependencies [cc0d0a3e]
+  - @farcaster/hub-nodejs@0.12.1
+
 ## 1.14.4
 
 ### Patch Changes

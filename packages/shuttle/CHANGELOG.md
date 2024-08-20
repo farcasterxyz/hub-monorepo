@@ -1,5 +1,13 @@
 # @farcaster/hub-shuttle
 
+## 0.5.13
+
+### Patch Changes
+
+- 70d1f830: feat: add time range option for reconciliation
+- Updated dependencies [cc0d0a3e]
+  - @farcaster/hub-nodejs@0.12.1
+
 ## 0.5.12
 
 ### Patch Changes
