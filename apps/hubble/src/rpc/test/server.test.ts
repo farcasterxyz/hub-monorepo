@@ -16,6 +16,7 @@ import {
   getDefaultStoreLimit,
   HubError,
   StorageUnitType,
+  LEGACY_STORAGE_UNIT_CUTOFF_TIMESTAMP,
 } from "@farcaster/hub-nodejs";
 import Engine from "../../storage/engine/index.js";
 import { MockHub } from "../../test/mocks.js";
@@ -25,7 +26,6 @@ import { Err, Ok } from "neverthrow";
 import { sleep } from "../../utils/crypto.js";
 import * as http from "http";
 import { AddressInfo, createServer } from "net";
-import { LEGACY_STORAGE_UNIT_CUTOFF_TIMESTAMP } from "../../storage/stores/storageCache.js";
 
 const db = jestRocksDB("protobufs.rpc.server.test");
 const network = FarcasterNetwork.TESTNET;

@@ -1,4 +1,7 @@
-import { StorageUnitDetails, StorageUnitType, StoreType } from "./protobufs";
+import { StorageRentOnChainEvent, StorageUnitDetails, StorageUnitType, StoreType } from "./protobufs";
+
+export const LEGACY_STORAGE_UNIT_CUTOFF_TIMESTAMP = 1724889600; // 2024-08-29 00:00:00 UTC
+const ONE_YEAR_IN_SECONDS = 365 * 24 * 60 * 60;
 
 const STORAGE_UNIT_DEFAULTS = {
   [StoreType.CASTS]: {
@@ -68,4 +71,22 @@ export const getStoreLimit = (storeType: StoreType, unit_details: StorageUnitDet
 
 export const getDefaultStoreLimit = (storeType: StoreType, unit_type: StorageUnitType) => {
   return STORAGE_UNIT_DEFAULTS[storeType][unit_type];
+};
+
+export const getStorageUnitType = (event: StorageRentOnChainEvent) => {
+  if (event.blockTimestamp < LEGACY_STORAGE_UNIT_CUTOFF_TIMESTAMP) {
+    return StorageUnitType.UNIT_TYPE_LEGACY;
+  } else {
+    return StorageUnitType.UNIT_TYPE_2024;
+  }
+};
+
+export const getStorageUnitExpiry = (event: StorageRentOnChainEvent) => {
+  if (event.blockTimestamp < LEGACY_STORAGE_UNIT_CUTOFF_TIMESTAMP) {
+    // Legacy storage units expire after 2 years
+    return event.blockTimestamp + ONE_YEAR_IN_SECONDS * 2;
+  } else {
+    // 2024 storage units expire after 1 year
+    return event.blockTimestamp + ONE_YEAR_IN_SECONDS;
+  }
 };

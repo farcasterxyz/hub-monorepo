@@ -1,4 +1,6 @@
 import {
+  getStorageUnitExpiry,
+  getStorageUnitType,
   HubError,
   HubEvent,
   isMergeMessageHubEvent,
@@ -23,29 +25,9 @@ import { forEachOnChainEvent } from "../db/onChainEvent.js";
 import { addProgressBar } from "../../utils/progressBars.js";
 
 const MAX_PENDING_MESSAGE_COUNT_SCANS = 100;
-export const LEGACY_STORAGE_UNIT_CUTOFF_TIMESTAMP = 1724889600; // 2024-08-29 00:00:00 UTC
-const ONE_YEAR_IN_SECONDS = 365 * 24 * 60 * 60;
 
 const makeKey = (fid: number, set: UserMessagePostfix): string => {
   return Buffer.concat([makeFidKey(fid), Buffer.from([set])]).toString("hex");
-};
-
-const getStorageUnitType = (event: StorageRentOnChainEvent) => {
-  if (event.blockTimestamp < LEGACY_STORAGE_UNIT_CUTOFF_TIMESTAMP) {
-    return StorageUnitType.UNIT_TYPE_LEGACY;
-  } else {
-    return StorageUnitType.UNIT_TYPE_2024;
-  }
-};
-
-const getStorageUnitExpiry = (event: StorageRentOnChainEvent) => {
-  if (event.blockTimestamp < LEGACY_STORAGE_UNIT_CUTOFF_TIMESTAMP) {
-    // Legacy storage units expire after 2 years
-    return event.blockTimestamp + ONE_YEAR_IN_SECONDS * 2;
-  } else {
-    // 2024 storage units expire after 1 year
-    return event.blockTimestamp + ONE_YEAR_IN_SECONDS;
-  }
 };
 
 const storageSlotFromEvent = (event: StorageRentOnChainEvent): StorageSlot => {
