@@ -20,21 +20,19 @@ export class MessageReconciliation {
   private client: HubRpcClient;
   private db: DB;
   private log: pino.Logger;
-  private startTimestamp?: number;
-  private stopTimestamp?: number;
 
-  constructor(client: HubRpcClient, db: DB, log: pino.Logger, startTimestamp?: number, stopTimestamp?: number) {
+  constructor(client: HubRpcClient, db: DB, log: pino.Logger) {
     this.client = client;
     this.db = db;
     this.log = log;
-    this.startTimestamp = startTimestamp;
-    this.stopTimestamp = stopTimestamp;
   }
 
   async reconcileMessagesForFid(
     fid: number,
     onHubMessage: (message: Message, missingInDb: boolean, prunedInDb: boolean, revokedInDb: boolean) => Promise<void>,
     onDbMessage: (message: DBMessage, missingInHub: boolean) => Promise<void>,
+    startTimestamp?: number,
+    stopTimestamp?: number,
   ) {
     for (const type of [
       MessageType.CAST_ADD,
@@ -44,7 +42,7 @@ export class MessageReconciliation {
       MessageType.USER_DATA_ADD,
     ]) {
       this.log.debug(`Reconciling messages for FID ${fid} of type ${type}`);
-      await this.reconcileMessagesOfTypeForFid(fid, type, onHubMessage, onDbMessage);
+      await this.reconcileMessagesOfTypeForFid(fid, type, onHubMessage, onDbMessage, startTimestamp, stopTimestamp);
     }
   }
 
@@ -53,6 +51,8 @@ export class MessageReconciliation {
     type: MessageType,
     onHubMessage: (message: Message, missingInDb: boolean, prunedInDb: boolean, revokedInDb: boolean) => Promise<void>,
     onDbMessage: (message: DBMessage, missingInHub: boolean) => Promise<void>,
+    startTimestamp?: number,
+    stopTimestamp?: number,
   ) {
     // todo: Username proofs, and on chain events
 
@@ -100,12 +100,9 @@ export class MessageReconciliation {
     }
 
     // Next, reconcile messages that are in the database but not in the hub
-    const dbMessages = await this.allActiveDbMessagesOfTypeForFid(fid, type, this.startTimestamp, this.stopTimestamp);
+    const dbMessages = await this.allActiveDbMessagesOfTypeForFid(fid, type, startTimestamp, stopTimestamp);
     if (dbMessages.isErr()) {
-      this.log.error(
-        { startTimestamp: this.startTimestamp, stopTimestamp: this.stopTimestamp },
-        "Invalid time range provided to reconciliation",
-      );
+      this.log.error({ startTimestamp, stopTimestamp }, "Invalid time range provided to reconciliation");
       return;
     }
 
@@ -115,7 +112,12 @@ export class MessageReconciliation {
     }
   }
 
-  private async *allHubMessagesOfTypeForFid(fid: number, type: MessageType) {
+  private async *allHubMessagesOfTypeForFid(
+    fid: number,
+    type: MessageType,
+    startTimestamp?: number,
+    stopTimestamp?: number,
+  ) {
     let fn;
     switch (type) {
       case MessageType.CAST_ADD:
@@ -136,7 +138,7 @@ export class MessageReconciliation {
       default:
         throw `Unknown message type ${type}`;
     }
-    for await (const messages of fn.call(this, fid, MAX_PAGE_SIZE, this.startTimestamp, this.stopTimestamp)) {
+    for await (const messages of fn.call(this, fid, MAX_PAGE_SIZE, startTimestamp, stopTimestamp)) {
       yield messages as Message[];
     }
   }

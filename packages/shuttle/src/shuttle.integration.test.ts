@@ -585,13 +585,7 @@ describe("shuttle", () => {
     };
 
     // Only include 2 of the 3 messages in the time window
-    const reconciler = new MessageReconciliation(
-      mockRPCClient as unknown as HubRpcClient,
-      db,
-      log,
-      startTimestamp - 1,
-      startTimestamp,
-    );
+    const reconciler = new MessageReconciliation(mockRPCClient as unknown as HubRpcClient, db, log);
     const messagesOnHub: Message[] = [];
     const messagesInDb: {
       hash: Uint8Array;
@@ -610,6 +604,8 @@ describe("shuttle", () => {
       async (dbMsg, _missing) => {
         messagesInDb.push(dbMsg);
       },
+      startTimestamp - 1,
+      startTimestamp,
     );
 
     expect(messagesOnHub.length).toBe(1);
