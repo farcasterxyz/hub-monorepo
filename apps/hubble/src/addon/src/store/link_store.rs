@@ -160,14 +160,6 @@ impl LinkStore {
         )
     }
 
-    pub fn get_all_link_messages_by_fid(
-        store: &Store,
-        fid: u32,
-        page_options: &PageOptions,
-    ) -> Result<MessagesPage, HubError> {
-        store.get_all_messages_by_fid(fid, page_options)
-    }
-
     pub fn get_link_compact_state_message_by_fid(
         store: &Store,
         fid: u32,
@@ -665,29 +657,6 @@ impl LinkStore {
 
         THREAD_POOL.lock().unwrap().execute(move || {
             let messages = Self::get_links_by_target(&store, &target, link_type, &page_options);
-
-            deferred_settle_messages(deferred, &channel, messages);
-        });
-
-        Ok(promise)
-    }
-
-    pub fn js_get_all_link_messages_by_fid(mut cx: FunctionContext) -> JsResult<JsPromise> {
-        let store = get_store(&mut cx)?;
-
-        let fid = cx.argument::<JsNumber>(0).unwrap().value(&mut cx) as u32;
-        let page_options = get_page_options(&mut cx, 1)?;
-
-        // fid must be specified
-        if fid == 0 {
-            return cx.throw_error("fid is required");
-        }
-
-        let channel = cx.channel();
-        let (deferred, promise) = cx.promise();
-
-        THREAD_POOL.lock().unwrap().execute(move || {
-            let messages = Self::get_all_link_messages_by_fid(&store, fid, &page_options);
 
             deferred_settle_messages(deferred, &channel, messages);
         });

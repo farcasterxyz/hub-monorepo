@@ -60,8 +60,13 @@ class UserDataStore extends RustStoreBase<UserDataAddMessage, never> {
   }
 
   /** Finds all UserDataAdd messages for an fid */
-  async getUserDataAddsByFid(fid: number, pageOptions: PageOptions = {}): Promise<MessagesPage<UserDataAddMessage>> {
-    const messages_page = await rsGetUserDataAddsByFid(this._rustStore, fid, pageOptions);
+  async getUserDataAddsByFid(
+    fid: number,
+    pageOptions: PageOptions = {},
+    startTime?: number,
+    stopTime?: number,
+  ): Promise<MessagesPage<UserDataAddMessage>> {
+    const messages_page = await rsGetUserDataAddsByFid(this._rustStore, fid, pageOptions, startTime, stopTime);
 
     const messages =
       messages_page.messageBytes?.map((message_bytes) => {

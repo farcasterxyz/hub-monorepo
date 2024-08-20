@@ -14,6 +14,7 @@ import {
   FidRequest,
   FidsRequest,
   FidsResponse,
+  FidTimestampRequest,
   HubInfoRequest,
   HubInfoResponse,
   IdRegistryEventByAddressRequest,
@@ -131,18 +132,30 @@ export interface HubService {
    * regular endpoints can be used to get all the messages
    * @http-api: none
    */
-  getAllCastMessagesByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
-  /** @http-api: none */
-  getAllReactionMessagesByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
-  /** @http-api: none */
-  getAllVerificationMessagesByFid(
-    request: DeepPartial<FidRequest>,
+  getAllCastMessagesByFid(
+    request: DeepPartial<FidTimestampRequest>,
     metadata?: grpcWeb.grpc.Metadata,
   ): Promise<MessagesResponse>;
   /** @http-api: none */
-  getAllUserDataMessagesByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
+  getAllReactionMessagesByFid(
+    request: DeepPartial<FidTimestampRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<MessagesResponse>;
   /** @http-api: none */
-  getAllLinkMessagesByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
+  getAllVerificationMessagesByFid(
+    request: DeepPartial<FidTimestampRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<MessagesResponse>;
+  /** @http-api: none */
+  getAllUserDataMessagesByFid(
+    request: DeepPartial<FidTimestampRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<MessagesResponse>;
+  /** @http-api: none */
+  getAllLinkMessagesByFid(
+    request: DeepPartial<FidTimestampRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<MessagesResponse>;
   /** @http-api: none */
   getLinkCompactStateMessageByFid(
     request: DeepPartial<FidRequest>,
@@ -354,27 +367,51 @@ export class HubServiceClientImpl implements HubService {
     return this.rpc.unary(HubServiceGetLinksByTargetDesc, LinksByTargetRequest.fromPartial(request), metadata);
   }
 
-  getAllCastMessagesByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse> {
-    return this.rpc.unary(HubServiceGetAllCastMessagesByFidDesc, FidRequest.fromPartial(request), metadata);
+  getAllCastMessagesByFid(
+    request: DeepPartial<FidTimestampRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<MessagesResponse> {
+    return this.rpc.unary(HubServiceGetAllCastMessagesByFidDesc, FidTimestampRequest.fromPartial(request), metadata);
   }
 
-  getAllReactionMessagesByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse> {
-    return this.rpc.unary(HubServiceGetAllReactionMessagesByFidDesc, FidRequest.fromPartial(request), metadata);
+  getAllReactionMessagesByFid(
+    request: DeepPartial<FidTimestampRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<MessagesResponse> {
+    return this.rpc.unary(
+      HubServiceGetAllReactionMessagesByFidDesc,
+      FidTimestampRequest.fromPartial(request),
+      metadata,
+    );
   }
 
   getAllVerificationMessagesByFid(
-    request: DeepPartial<FidRequest>,
+    request: DeepPartial<FidTimestampRequest>,
     metadata?: grpcWeb.grpc.Metadata,
   ): Promise<MessagesResponse> {
-    return this.rpc.unary(HubServiceGetAllVerificationMessagesByFidDesc, FidRequest.fromPartial(request), metadata);
+    return this.rpc.unary(
+      HubServiceGetAllVerificationMessagesByFidDesc,
+      FidTimestampRequest.fromPartial(request),
+      metadata,
+    );
   }
 
-  getAllUserDataMessagesByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse> {
-    return this.rpc.unary(HubServiceGetAllUserDataMessagesByFidDesc, FidRequest.fromPartial(request), metadata);
+  getAllUserDataMessagesByFid(
+    request: DeepPartial<FidTimestampRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<MessagesResponse> {
+    return this.rpc.unary(
+      HubServiceGetAllUserDataMessagesByFidDesc,
+      FidTimestampRequest.fromPartial(request),
+      metadata,
+    );
   }
 
-  getAllLinkMessagesByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse> {
-    return this.rpc.unary(HubServiceGetAllLinkMessagesByFidDesc, FidRequest.fromPartial(request), metadata);
+  getAllLinkMessagesByFid(
+    request: DeepPartial<FidTimestampRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<MessagesResponse> {
+    return this.rpc.unary(HubServiceGetAllLinkMessagesByFidDesc, FidTimestampRequest.fromPartial(request), metadata);
   }
 
   getLinkCompactStateMessageByFid(
@@ -1080,7 +1117,7 @@ export const HubServiceGetAllCastMessagesByFidDesc: UnaryMethodDefinitionish = {
   responseStream: false,
   requestType: {
     serializeBinary() {
-      return FidRequest.encode(this).finish();
+      return FidTimestampRequest.encode(this).finish();
     },
   } as any,
   responseType: {
@@ -1103,7 +1140,7 @@ export const HubServiceGetAllReactionMessagesByFidDesc: UnaryMethodDefinitionish
   responseStream: false,
   requestType: {
     serializeBinary() {
-      return FidRequest.encode(this).finish();
+      return FidTimestampRequest.encode(this).finish();
     },
   } as any,
   responseType: {
@@ -1126,7 +1163,7 @@ export const HubServiceGetAllVerificationMessagesByFidDesc: UnaryMethodDefinitio
   responseStream: false,
   requestType: {
     serializeBinary() {
-      return FidRequest.encode(this).finish();
+      return FidTimestampRequest.encode(this).finish();
     },
   } as any,
   responseType: {
@@ -1149,7 +1186,7 @@ export const HubServiceGetAllUserDataMessagesByFidDesc: UnaryMethodDefinitionish
   responseStream: false,
   requestType: {
     serializeBinary() {
-      return FidRequest.encode(this).finish();
+      return FidTimestampRequest.encode(this).finish();
     },
   } as any,
   responseType: {
@@ -1172,7 +1209,7 @@ export const HubServiceGetAllLinkMessagesByFidDesc: UnaryMethodDefinitionish = {
   responseStream: false,
   requestType: {
     serializeBinary() {
-      return FidRequest.encode(this).finish();
+      return FidTimestampRequest.encode(this).finish();
     },
   } as any,
   responseType: {

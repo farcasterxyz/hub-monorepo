@@ -5,7 +5,7 @@ import { err, ok, Result } from "neverthrow";
 import { bytesCompare, bytesToUtf8String, utf8StringToBytes } from "./bytes";
 import { ed25519, eip712 } from "./crypto";
 import { HubAsyncResult, HubError, HubResult } from "./errors";
-import { getFarcasterTime, toFarcasterTime } from "./time";
+import { fromFarcasterTime, getFarcasterTime, toFarcasterTime } from "./time";
 import {
   makeVerificationAddressClaim,
   recreateSolanaClaimMessage,
@@ -195,6 +195,22 @@ export const validateEd25519PublicKey = (publicKey?: Uint8Array | null): HubResu
   }
 
   return ok(publicKey);
+};
+
+export const validateFarcasterTime = (farcasterTime: number) => {
+  // Roundtrip the farcasterTime and bubble any errors up to catch invalid farcaster time inputs.
+  const unixTime = fromFarcasterTime(farcasterTime);
+  if (unixTime.isErr()) {
+    return err(unixTime.error);
+  }
+
+  const rtFarcasterTime = toFarcasterTime(unixTime.value);
+
+  if (rtFarcasterTime.isErr()) {
+    return err(rtFarcasterTime.error);
+  }
+
+  return ok(rtFarcasterTime.value);
 };
 
 export const validateMessage = async (

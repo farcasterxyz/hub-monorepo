@@ -150,10 +150,6 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("getLinkAddsByFid", LinkStore::js_get_link_adds_by_fid)?;
     cx.export_function("getLinkRemovesByFid", LinkStore::js_get_link_removes_by_fid)?;
     cx.export_function(
-        "getAllLinkMessagesByFid",
-        LinkStore::js_get_all_link_messages_by_fid,
-    )?;
-    cx.export_function(
         "getLinkCompactStateMessageByFid",
         LinkStore::js_get_link_compact_state_message_by_fid,
     )?;

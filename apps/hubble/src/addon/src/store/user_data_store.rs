@@ -1,6 +1,6 @@
 use super::{
     bytes_compare, encode_messages_to_js_object, get_page_options, get_store,
-    hub_error_to_js_throw, make_user_key,
+    hub_error_to_js_throw, is_message_in_time_range, make_user_key,
     name_registry_events::{
         delete_username_proof_transaction, get_fname_proof_by_fid, get_username_proof,
         put_username_proof_transaction,
@@ -226,8 +226,16 @@ impl UserDataStore {
         store: &Store,
         fid: u32,
         page_options: &PageOptions,
+        start_time: Option<u32>,
+        stop_time: Option<u32>,
     ) -> Result<MessagesPage, HubError> {
-        store.get_adds_by_fid::<fn(&protos::Message) -> bool>(fid, page_options, None)
+        store.get_adds_by_fid(
+            fid,
+            page_options,
+            Some(|message: &Message| {
+                return is_message_in_time_range(start_time, stop_time, message);
+            }),
+        )
     }
 
     pub fn js_get_user_data_adds_by_fid(mut cx: FunctionContext) -> JsResult<JsPromise> {
@@ -235,8 +243,28 @@ impl UserDataStore {
 
         let fid = cx.argument::<JsNumber>(0)?.value(&mut cx) as u32;
         let page_options = get_page_options(&mut cx, 1)?;
+        let start_time = match cx.argument_opt(2) {
+            Some(arg) => match arg.downcast::<JsNumber, _>(&mut cx) {
+                Ok(v) => Some(v.value(&mut cx) as u32),
+                _ => None,
+            },
+            None => None,
+        };
+        let stop_time = match cx.argument_opt(3) {
+            Some(arg) => match arg.downcast::<JsNumber, _>(&mut cx) {
+                Ok(v) => Some(v.value(&mut cx) as u32),
+                _ => None,
+            },
+            None => None,
+        };
 
-        let messages = match Self::get_user_data_adds_by_fid(&store, fid, &page_options) {
+        let messages = match Self::get_user_data_adds_by_fid(
+            &store,
+            fid,
+            &page_options,
+            start_time,
+            stop_time,
+        ) {
             Ok(messages) => messages,
             Err(e) => return hub_error_to_js_throw(&mut cx, e),
         };

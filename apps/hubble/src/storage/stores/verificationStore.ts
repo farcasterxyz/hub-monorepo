@@ -81,8 +81,10 @@ class VerificationStore extends RustStoreBase<VerificationAddAddressMessage, Ver
   async getAllVerificationMessagesByFid(
     fid: number,
     pageOptions: PageOptions = {},
+    startTime?: number,
+    stopTime?: number,
   ): Promise<MessagesPage<VerificationAddAddressMessage | VerificationRemoveMessage>> {
-    return await this.getAllMessagesByFid(fid, pageOptions);
+    return await this.getAllMessagesByFid(fid, pageOptions, startTime, stopTime);
   }
 
   async migrateVerifications(): HubAsyncResult<{ total: number; duplicates: number }> {

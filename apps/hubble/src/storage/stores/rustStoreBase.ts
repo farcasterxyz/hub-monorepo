@@ -219,8 +219,13 @@ export abstract class RustStoreBase<TAdd extends Message, TRemove extends Messag
     return messageDecode(new Uint8Array(message_bytes.value));
   }
 
-  async getAllMessagesByFid(fid: number, pageOptions: PageOptions = {}): Promise<MessagesPage<TAdd | TRemove>> {
-    const messages_page = await rsGetAllMessagesByFid(this._rustStore, fid, pageOptions);
+  async getAllMessagesByFid(
+    fid: number,
+    pageOptions: PageOptions = {},
+    startTime?: number,
+    stopTime?: number,
+  ): Promise<MessagesPage<TAdd | TRemove>> {
+    const messages_page = await rsGetAllMessagesByFid(this._rustStore, fid, pageOptions, startTime, stopTime);
 
     const messages =
       messages_page.messageBytes?.map((message_bytes) => {

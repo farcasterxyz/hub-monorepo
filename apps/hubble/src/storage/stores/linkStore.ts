@@ -4,7 +4,7 @@ import { UserPostfix } from "../db/types.js";
 import { MessagesPage, PageOptions, StorePruneOptions } from "./types.js";
 import { ResultAsync } from "neverthrow";
 import RocksDB from "../db/rocksdb.js";
-import { rsLinkStore, rustErrorToHubError } from "../../rustfunctions.js";
+import { rsGetAllMessagesByFid, rsLinkStore, rustErrorToHubError } from "../../rustfunctions.js";
 import { RustStoreBase } from "./rustStoreBase.js";
 import storeEventHandler from "./storeEventHandler.js";
 
@@ -119,8 +119,10 @@ class LinkStore extends RustStoreBase<LinkAddMessage, LinkRemoveMessage> {
   async getAllLinkMessagesByFid(
     fid: number,
     pageOptions: PageOptions = {},
+    startTime?: number,
+    stopTime?: number,
   ): Promise<MessagesPage<LinkAddMessage | LinkRemoveMessage>> {
-    const messages_page = await rsLinkStore.GetAllLinkMessagesByFid(this._rustStore, fid, pageOptions);
+    const messages_page = await rsGetAllMessagesByFid(this._rustStore, fid, pageOptions, startTime, stopTime);
 
     const messages =
       messages_page.messageBytes?.map((message_bytes) => {

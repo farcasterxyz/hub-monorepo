@@ -99,6 +99,18 @@ describe("validateFname", () => {
   });
 });
 
+describe("validateFarcasterTime", () => {
+  test("zero is a valid time", () => {
+    expect(validations.validateFarcasterTime(0).isOk()).toBeTruthy();
+  });
+
+  test("millisecond precision time is rejected", () => {
+    expect(validations.validateFarcasterTime(1724120917791)).toEqual(
+      err(new HubError("bad_request.invalid_param", "time too far in future")),
+    );
+  });
+});
+
 describe("validateENSname", () => {
   test("succeeds with valid byte array input", () => {
     const ensName = Factories.EnsName.build();

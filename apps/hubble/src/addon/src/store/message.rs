@@ -415,3 +415,19 @@ pub fn delete_message_transaction(
 
     Ok(())
 }
+
+pub fn is_message_in_time_range(
+    start_time: Option<u32>,
+    stop_time: Option<u32>,
+    message: &MessageProto,
+) -> bool {
+    let start_time = start_time.unwrap_or(std::u32::MIN);
+    let stop_time = stop_time.unwrap_or(std::u32::MAX);
+    match &message.data {
+        None => {
+            // We expect all valid messages to have data
+            return false;
+        }
+        Some(data) => return data.timestamp >= start_time && data.timestamp <= stop_time,
+    };
+}

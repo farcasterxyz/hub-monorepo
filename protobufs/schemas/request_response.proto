@@ -92,6 +92,15 @@ message FidRequest {
   optional bool reverse = 4;
 }
 
+message FidTimestampRequest {
+  uint64 fid = 1;
+  optional uint32 page_size = 2;
+  optional bytes page_token = 3;
+  optional bool reverse = 4;
+  optional uint64 start_timestamp = 5;
+  optional uint64 stop_timestamp = 6;
+}
+
 message FidsRequest {
   optional uint32 page_size = 1;
   optional bytes page_token = 2;

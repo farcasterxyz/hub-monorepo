@@ -97,8 +97,10 @@ class ReactionStore extends RustStoreBase<ReactionAddMessage, ReactionRemoveMess
   async getAllReactionMessagesByFid(
     fid: number,
     pageOptions: PageOptions = {},
+    startTime?: number,
+    stopTime?: number,
   ): Promise<MessagesPage<ReactionAddMessage | ReactionRemoveMessage>> {
-    return await this.getAllMessagesByFid(fid, pageOptions);
+    return await this.getAllMessagesByFid(fid, pageOptions, startTime, stopTime);
   }
 
   async getReactionsByTarget(
