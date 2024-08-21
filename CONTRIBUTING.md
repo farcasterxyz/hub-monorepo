@@ -38,7 +38,7 @@ Before you get down to coding, take a minute to consider this:
 
 ## 2. Setting up your development environment
 
-### 2.1 Installing Dependencies
+### 2.1. Installing Dependencies
 
 First, ensure that the following are installed globally on your machine:
 
@@ -103,7 +103,7 @@ All changes that involve features or bugfixes should be accompanied by tests, an
 - Tests should use [factories](https://github.com/thoughtbot/fishery) instead of stubs wherever possible.
 - Critical code paths should have 100% test coverage, which you can check in the Coveralls CI.
 
-### 3.2 Writing Docs
+### 3.2. Writing Docs
 
 If your PR has changes to gRPC or protobuf files, you must update the [public documentation website](./apps/hubble/www/). See the [Protobuf README](./protobufs/README.md) for instructions on how to auto-gen the documentation.
 
@@ -277,7 +277,7 @@ when the repo manager runs a release process.
 3. Select minor version if breaking change or patch otherwise, since we haven't release 1.0 yet
 4. Commit the generated files into your branch.
 
-### 3.6 Releasing Versions
+### 3.6. Releasing Versions
 
 Permission to publish to the @farcaster organization in NPM is necessary. This is a non-reversible process so if you
 are at all unsure about how to proceed, please reach out to Varun ([Github](https://github.com/varunsrin) | [Warpcast](https://warpcast.com/v))
@@ -296,7 +296,7 @@ are at all unsure about how to proceed, please reach out to Varun ([Github](http
 11. If this is a non-patch change, create an NFT for the release.
 12. Make sure that the Docker image for the latest release gets built and published to [Docker hub](https://hub.docker.com/r/farcasterxyz/hubble/tags).
 
-### 3.7 Working in Rust
+### 3.7. Working in Rust
 
 Some of the CPU intensive code is written in Rust for speed. We import the Rust modules via [Neon](https://neon-bindings.com/) that are built as a part of the `@farcaster/core` package.
 
@@ -305,7 +305,7 @@ To add new code to Rust,
 2. Add a bridge implementation and types into `packages/core/src/addon/addon.js` and `packages/core/src/addon/addon.d.ts`
 3. Export the callable typescript function in `packages/core/src/rustfunctions.ts`. This function can then be used throughout the project to transparently call into Rust from Typescript
 
-### 3.8 DB Migrations
+### 3.8. DB Migrations
 
 One-time changes to RocksDB and the data stored can be made as a part of migrations. Migrations are scripts that are run once, at startup. They are run blocking, so you can safely make big changes before the Hub starts running.
 
