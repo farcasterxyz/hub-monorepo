@@ -1,4 +1,4 @@
-import { Message } from "@farcaster/hub-nodejs";
+import { HubEvent, Message } from "@farcaster/hub-nodejs";
 import { DB } from "./db";
 
 export * from "./db";
@@ -26,6 +26,10 @@ export type ProcessResult = {
 // is semantically a delete of the existing add, and state will be set to "deleted" in that case)
 
 export interface MessageHandler {
+  // Called for every hub event. Return true to skip processing the event.
+  // Returning true will not insert into the messages table. Should always return false unless you have a good reason.
+  onHubEvent(event: HubEvent): Promise<boolean>;
+
   handleMessageMerge(
     message: Message,
     txn: DB,
