@@ -3,9 +3,11 @@ import {
   CallOptions,
   ChannelCredentials,
   Client,
+  ClientDuplexStream,
   ClientOptions,
   ClientReadableStream,
   ClientUnaryCall,
+  handleBidiStreamingCall,
   handleServerStreamingCall,
   handleUnaryCall,
   makeGenericClientConstructor,
@@ -39,6 +41,8 @@ import {
   ReactionsByTargetRequest,
   SignerRequest,
   StorageLimitsResponse,
+  StreamSyncRequest,
+  StreamSyncResponse,
   SubscribeRequest,
   SyncIds,
   SyncStatusRequest,
@@ -509,6 +513,16 @@ export const HubServiceService = {
       Buffer.from(TrieNodeSnapshotResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer) => TrieNodeSnapshotResponse.decode(value),
   },
+  /** @http-api: none */
+  streamSync: {
+    path: "/HubService/StreamSync",
+    requestStream: true,
+    responseStream: true,
+    requestSerialize: (value: StreamSyncRequest) => Buffer.from(StreamSyncRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => StreamSyncRequest.decode(value),
+    responseSerialize: (value: StreamSyncResponse) => Buffer.from(StreamSyncResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => StreamSyncResponse.decode(value),
+  },
 } as const;
 
 export interface HubServiceServer extends UntypedServiceImplementation {
@@ -618,6 +632,8 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   getSyncMetadataByPrefix: handleUnaryCall<TrieNodePrefix, TrieNodeMetadataResponse>;
   /** @http-api: none */
   getSyncSnapshotByPrefix: handleUnaryCall<TrieNodePrefix, TrieNodeSnapshotResponse>;
+  /** @http-api: none */
+  streamSync: handleBidiStreamingCall<StreamSyncRequest, StreamSyncResponse>;
 }
 
 export interface HubServiceClient extends Client {
@@ -1308,6 +1324,13 @@ export interface HubServiceClient extends Client {
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: TrieNodeSnapshotResponse) => void,
   ): ClientUnaryCall;
+  /** @http-api: none */
+  streamSync(): ClientDuplexStream<StreamSyncRequest, StreamSyncResponse>;
+  streamSync(options: Partial<CallOptions>): ClientDuplexStream<StreamSyncRequest, StreamSyncResponse>;
+  streamSync(
+    metadata: Metadata,
+    options?: Partial<CallOptions>,
+  ): ClientDuplexStream<StreamSyncRequest, StreamSyncResponse>;
 }
 
 export const HubServiceClient = makeGenericClientConstructor(HubServiceService, "HubService") as unknown as {

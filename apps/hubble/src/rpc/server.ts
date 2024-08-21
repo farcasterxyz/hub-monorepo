@@ -43,6 +43,13 @@ import {
   HubAsyncResult,
   ServerWritableStream,
   SubscribeRequest,
+  StreamSyncError,
+  StreamSyncRequest,
+  StreamSyncResponse,
+  HubInfoRequest,
+  Empty,
+  SyncStatusRequest,
+  TrieNodePrefix,
 } from "@farcaster/hub-nodejs";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import { APP_NICKNAME, APP_VERSION, HubInterface } from "../hubble.js";
@@ -69,6 +76,7 @@ import * as net from "node:net";
 import axios from "axios";
 import { fidFromEvent } from "../storage/stores/storeEventHandler.js";
 import { rustErrorToHubError } from "../rustfunctions.js";
+import { sendUnaryData, ServerDuplexStream, ServerUnaryCall } from "@grpc/grpc-js";
 
 const HUBEVENTS_READER_TIMEOUT = 1 * 60 * 60 * 1000; // 1 hour
 
@@ -485,247 +493,345 @@ export default class Server {
     this.subscribeIpLimiter.clear();
   }
 
+  public async getInfo(request: HubInfoRequest) {
+    const info = HubInfoResponse.create({
+      version: APP_VERSION,
+      isSyncing: !!this.syncEngine?.isSyncing(),
+      nickname: APP_NICKNAME,
+      rootHash: (await this.syncEngine?.trie.rootHash()) ?? "",
+      peerId: Result.fromThrowable(
+        () => this.hub?.identity ?? "",
+        (e) => e,
+      )().unwrapOr(""),
+      hubOperatorFid: this.hub?.hubOperatorFid ?? 0,
+    });
+
+    if (request.dbStats && this.syncEngine) {
+      const stats = await this.syncEngine.getDbStats();
+      info.dbStats = DbStats.create({
+        approxSize: stats?.approxSize,
+        numMessages: stats?.numItems,
+        numFidEvents: stats?.numFids,
+        numFnameEvents: stats?.numFnames,
+      });
+    }
+    return info;
+  }
+
+  public getInfoRPC(call: ServerUnaryCall<HubInfoRequest, HubInfoResponse>, callback: sendUnaryData<HubInfoResponse>) {
+    (async () => {
+      const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
+      log.debug({ method: "getInfo", req: call.request }, `RPC call from ${peer}`);
+
+      const { request } = call;
+      const info = await this.getInfo(request);
+
+      callback(null, info);
+    })();
+  }
+
+  public async stopSync() {
+    const result = await this.syncEngine?.stopSync();
+    if (!result) {
+      return err(new HubError("bad_request", "Stop sync timed out"));
+    } else {
+      return ok(
+        SyncStatusResponse.create({
+          isSyncing: this.syncEngine?.isSyncing() || false,
+          engineStarted: this.syncEngine?.isStarted() || false,
+          syncStatus: [],
+        }),
+      );
+    }
+  }
+
+  public stopSyncRPC(call: ServerUnaryCall<Empty, SyncStatusResponse>, callback: sendUnaryData<SyncStatusResponse>) {
+    (async () => {
+      const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
+      log.debug({ method: "stopSync", req: call.request }, `RPC call from ${peer}`);
+
+      const result = await this.stopSync();
+      if (result.isErr()) {
+        callback(toServiceError(result.error));
+      } else {
+        callback(null, result.value);
+      }
+    })();
+  }
+
+  public async forceSync(request: SyncStatusRequest) {
+    const peerId = request.peerId;
+    if (!peerId || peerId.length === 0) {
+      return err(new HubError("bad_request", "peerId is required"));
+    }
+    const result = await this.syncEngine?.forceSyncWithPeer(peerId);
+    if (!result || result.isErr()) {
+      return err(result?.error || new HubError("bad_request", "sync engine not available"));
+    } else {
+      const status = result.value;
+      const response = SyncStatusResponse.create({
+        isSyncing: this.syncEngine?.isSyncing() || false,
+        engineStarted: this.syncEngine?.isStarted() || false,
+        syncStatus: [
+          SyncStatus.create({
+            peerId,
+            inSync: status.inSync,
+            shouldSync: status.shouldSync,
+            lastBadSync: status.lastBadSync,
+            ourMessages: status.ourSnapshot.numMessages,
+            theirMessages: status.theirSnapshot.numMessages,
+            score: status.score,
+          }),
+        ],
+      });
+      return ok(response);
+    }
+  }
+
+  public forceSyncRPC(
+    call: ServerUnaryCall<SyncStatusRequest, SyncStatusResponse>,
+    callback: sendUnaryData<SyncStatusResponse>,
+  ) {
+    (async () => {
+      const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
+      log.debug({ method: "forceSync", req: call.request }, `RPC call from ${peer}`);
+
+      const result = await this.forceSync(call.request);
+      if (result.isErr()) {
+        callback(toServiceError(result.error));
+      } else {
+        callback(null, result.value);
+      }
+    })();
+  }
+
+  public getCurrentPeers() {
+    const currentHubPeerContacts = this.syncEngine?.getCurrentHubPeerContacts();
+
+    if (!currentHubPeerContacts) {
+      return ContactInfoResponse.create({ contacts: [] });
+    }
+
+    const contactInfoArray = Array.from(currentHubPeerContacts).map((peerContact) => peerContact[1]);
+    return ContactInfoResponse.create({ contacts: contactInfoArray });
+  }
+
+  public getCurrentPeersRPC(
+    call: ServerUnaryCall<Empty, ContactInfoResponse>,
+    callback: sendUnaryData<ContactInfoResponse>,
+  ) {
+    (async () => {
+      const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
+      log.debug({ method: "getCurrentPeers", req: call.request }, `RPC call from ${peer}`);
+
+      const result = this.getCurrentPeers();
+      callback(null, result);
+    })();
+  }
+
+  public async getSyncStatus(peerId: string | undefined) {
+    if (!this.gossipNode || !this.syncEngine || !this.hub) {
+      return err(new HubError("bad_request", "Hub isn't initialized"));
+    }
+
+    let peersToCheck: string[];
+    if (peerId && peerId.length > 0) {
+      peersToCheck = [peerId];
+    } else {
+      // If no peerId is specified, check upto 20 peers
+      peersToCheck = (await this.gossipNode.allPeerIds()).slice(0, 20);
+    }
+
+    const response = SyncStatusResponse.create({
+      isSyncing: false,
+      syncStatus: [],
+      engineStarted: this.syncEngine.isStarted(),
+    });
+
+    await Promise.all(
+      peersToCheck.map(async (peerId) => {
+        const statusResult = await this.syncEngine?.getSyncStatusForPeer(peerId, this.hub as HubInterface);
+        if (statusResult?.isOk()) {
+          const status = statusResult.value;
+          response.isSyncing = status.isSyncing;
+          response.syncStatus.push(
+            SyncStatus.create({
+              peerId,
+              inSync: status.inSync,
+              shouldSync: status.shouldSync,
+              lastBadSync: status.lastBadSync,
+              ourMessages: status.ourSnapshot.numMessages,
+              theirMessages: status.theirSnapshot.numMessages,
+              score: status.score,
+            }),
+          );
+        }
+      }),
+    );
+
+    return ok(response);
+  }
+
+  public getSyncStatusRPC(
+    call: ServerUnaryCall<SyncStatusRequest, SyncStatusResponse>,
+    callback: sendUnaryData<SyncStatusResponse>,
+  ) {
+    (async () => {
+      const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
+      log.debug({ method: "getSyncStatus", req: call.request }, `RPC call from ${peer}`);
+
+      const peerId = call.request.peerId;
+      const result = await this.getSyncStatus(peerId);
+      if (result.isErr()) {
+        callback(toServiceError(result.error));
+      } else {
+        callback(null, result.value);
+      }
+    })();
+  }
+
+  public async getAllSyncIdsByPrefix(request: TrieNodePrefix) {
+    const syncIdsResponse = await this.syncEngine?.getAllSyncIdsByPrefix(request.prefix);
+    return ok(SyncIds.create({ syncIds: syncIdsResponse ?? [] }));
+  }
+
+  public getAllSyncIdsByPrefixRPC(call: ServerUnaryCall<TrieNodePrefix, SyncIds>, callback: sendUnaryData<SyncIds>) {
+    const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
+    log.debug({ method: "getAllSyncIdsByPrefix", req: call.request }, `RPC call from ${peer}`);
+
+    (async () => {
+      const result = await this.getAllSyncIdsByPrefix(call.request);
+      if (result.isErr()) {
+        callback(toServiceError(result.error));
+      } else {
+        callback(null, result.value);
+      }
+    })();
+  }
+
+  public async getAllMessagesBySyncIds(request: SyncIds) {
+    const syncIds = request.syncIds.map((syncId) => SyncId.fromBytes(syncId));
+    const messagesResult = await this.syncEngine?.getAllMessagesBySyncIds(syncIds);
+    if (messagesResult?.isErr()) {
+      return err(messagesResult.error);
+    } else if (messagesResult?.isOk()) {
+      let messages = messagesResult.value;
+      // Check the messages for corruption. If a message is blank, that means it was present
+      // in our sync trie, but the DB couldn't find it. So remove it from the sync Trie.
+      const corruptedSyncIds = this.syncEngine?.findCorruptedSyncIDs(messages, syncIds);
+
+      if ((corruptedSyncIds?.length ?? 0) > 0) {
+        log.warn(
+          { num: corruptedSyncIds?.length },
+          "Found corrupted messages while serving API, rebuilding some syncIDs",
+        );
+
+        // Don't wait for this to finish, just return the messages we have.
+        this.syncEngine?.revokeSyncIds(corruptedSyncIds ?? []);
+
+        // biome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
+        messages = messages.filter((message) => message.data !== undefined && message.hash.length > 0);
+      }
+
+      const response = MessagesResponse.create({ messages });
+      return ok(response);
+    } else {
+      return err(new HubError("unavailable", "no messages available"));
+    }
+  }
+
+  public async getAllMessagesBySyncIdsRPC(
+    call: ServerUnaryCall<SyncIds, MessagesResponse>,
+    callback: sendUnaryData<MessagesResponse>,
+  ) {
+    const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
+    log.debug({ method: "getAllMessagesBySyncIds", req: call.request }, `RPC call from ${peer}`);
+
+    const result = await this.getAllMessagesBySyncIds(call.request);
+    if (result.isErr()) {
+      callback(toServiceError(result.error));
+    } else {
+      callback(null, result.value);
+    }
+  }
+
+  public async getSyncMetadataByPrefix(request: TrieNodePrefix) {
+    const metadata = await this.syncEngine?.getTrieNodeMetadata(request.prefix);
+    return ok(toTrieNodeMetadataResponse(metadata));
+  }
+
+  public getSyncMetadataByPrefixRPC(
+    call: ServerUnaryCall<TrieNodePrefix, TrieNodeMetadataResponse>,
+    callback: sendUnaryData<TrieNodeMetadataResponse>,
+  ) {
+    const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
+    log.debug({ method: "getSyncMetadataByPrefix", req: call.request }, `RPC call from ${peer}`);
+
+    (async () => {
+      const result = await this.getSyncMetadataByPrefix(call.request);
+      if (result.isErr()) {
+        callback(toServiceError(result.error));
+      } else {
+        callback(null, result.value);
+      }
+    })();
+  }
+
+  public async getSyncSnapshotByPrefix(request: TrieNodePrefix) {
+    const rootHash = (await this.syncEngine?.trie.rootHash()) ?? "";
+    const snapshot = await this.syncEngine?.getSnapshotByPrefix(request.prefix);
+    if (snapshot?.isErr()) {
+      return err(snapshot.error);
+    } else if (snapshot?.isOk()) {
+      const snapshotResponse = TrieNodeSnapshotResponse.create({
+        prefix: snapshot.value.prefix,
+        numMessages: snapshot.value.numMessages,
+        rootHash,
+        excludedHashes: snapshot.value.excludedHashes,
+      });
+      return ok(snapshotResponse);
+    } else {
+      return err(new HubError("unavailable", "no snapshot available"));
+    }
+  }
+
+  public getSyncSnapshotByPrefixRPC(
+    call: ServerUnaryCall<TrieNodePrefix, TrieNodeSnapshotResponse>,
+    callback: sendUnaryData<TrieNodeSnapshotResponse>,
+  ) {
+    const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
+    log.debug({ method: "getSyncSnapshotByPrefix", req: call.request }, `RPC call from ${peer}`);
+
+    // If someone is asking for our sync snapshot, that means we're getting incoming
+    // connections
+    this.incomingConnections += 1;
+    statsd().increment("rpc.get_sync_snapshot");
+
+    (async () => {
+      const result = await this.getSyncSnapshotByPrefix(call.request);
+      if (result.isErr()) {
+        callback(toServiceError(result.error));
+      } else {
+        callback(null, result.value);
+      }
+    })();
+  }
+
   getImpl(): HubServiceServer {
     return this.impl;
   }
 
   makeImpl(): HubServiceServer {
     return {
-      getInfo: (call, callback) => {
-        (async () => {
-          const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-          log.debug({ method: "getInfo", req: call.request }, `RPC call from ${peer}`);
-
-          const info = HubInfoResponse.create({
-            version: APP_VERSION,
-            isSyncing: !!this.syncEngine?.isSyncing(),
-            nickname: APP_NICKNAME,
-            rootHash: (await this.syncEngine?.trie.rootHash()) ?? "",
-            peerId: Result.fromThrowable(
-              () => this.hub?.identity ?? "",
-              (e) => e,
-            )().unwrapOr(""),
-            hubOperatorFid: this.hub?.hubOperatorFid ?? 0,
-          });
-
-          if (call.request.dbStats && this.syncEngine) {
-            const stats = await this.syncEngine.getDbStats();
-            info.dbStats = DbStats.create({
-              approxSize: stats?.approxSize,
-              numMessages: stats?.numItems,
-              numFidEvents: stats?.numFids,
-              numFnameEvents: stats?.numFnames,
-            });
-          }
-
-          callback(null, info);
-        })();
-      },
-      getCurrentPeers: (call, callback) => {
-        (async () => {
-          const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-          log.debug({ method: "getCurrentPeers", req: call.request }, `RPC call from ${peer}`);
-
-          const currentHubPeerContacts = this.syncEngine?.getCurrentHubPeerContacts();
-
-          if (!currentHubPeerContacts) {
-            callback(null, ContactInfoResponse.create({ contacts: [] }));
-            return;
-          }
-
-          const contactInfoArray = Array.from(currentHubPeerContacts).map((peerContact) => peerContact[1]);
-          callback(null, ContactInfoResponse.create({ contacts: contactInfoArray }));
-        })();
-      },
-      stopSync: (call, callback) => {
-        (async () => {
-          const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-          log.debug({ method: "stopSync", req: call.request }, `RPC call from ${peer}`);
-
-          const result = await this.syncEngine?.stopSync();
-          if (!result) {
-            callback(toServiceError(new HubError("bad_request", "Stop sync timed out")));
-          } else {
-            callback(
-              null,
-              SyncStatusResponse.create({
-                isSyncing: this.syncEngine?.isSyncing() || false,
-                engineStarted: this.syncEngine?.isStarted() || false,
-                syncStatus: [],
-              }),
-            );
-          }
-        })();
-      },
-      forceSync: (call, callback) => {
-        (async () => {
-          const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-          log.debug({ method: "forceSync", req: call.request }, `RPC call from ${peer}`);
-
-          const peerId = call.request.peerId;
-          if (!peerId || peerId.length === 0) {
-            callback(toServiceError(new HubError("bad_request", "peerId is required")));
-            return;
-          }
-          const result = await this.syncEngine?.forceSyncWithPeer(peerId);
-          if (!result || result.isErr()) {
-            callback(toServiceError(result?.error || new HubError("bad_request", "sync engine not available")));
-          } else {
-            const status = result.value;
-            const response = SyncStatusResponse.create({
-              isSyncing: this.syncEngine?.isSyncing() || false,
-              engineStarted: this.syncEngine?.isStarted() || false,
-              syncStatus: [
-                SyncStatus.create({
-                  peerId,
-                  inSync: status.inSync,
-                  shouldSync: status.shouldSync,
-                  lastBadSync: status.lastBadSync,
-                  ourMessages: status.ourSnapshot.numMessages,
-                  theirMessages: status.theirSnapshot.numMessages,
-                  score: status.score,
-                }),
-              ],
-            });
-            callback(null, response);
-          }
-        })();
-      },
-      getSyncStatus: (call, callback) => {
-        (async () => {
-          const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-          log.debug({ method: "getSyncStatus", req: call.request }, `RPC call from ${peer}`);
-
-          if (!this.gossipNode || !this.syncEngine || !this.hub) {
-            callback(toServiceError(new HubError("bad_request", "Hub isn't initialized")));
-            return;
-          }
-
-          let peersToCheck: string[];
-          if (call.request.peerId && call.request.peerId.length > 0) {
-            peersToCheck = [call.request.peerId];
-          } else {
-            // If no peerId is specified, check upto 20 peers
-            peersToCheck = (await this.gossipNode.allPeerIds()).slice(0, 20);
-          }
-
-          const response = SyncStatusResponse.create({
-            isSyncing: false,
-            syncStatus: [],
-            engineStarted: this.syncEngine.isStarted(),
-          });
-
-          await Promise.all(
-            peersToCheck.map(async (peerId) => {
-              const statusResult = await this.syncEngine?.getSyncStatusForPeer(peerId, this.hub as HubInterface);
-              if (statusResult?.isOk()) {
-                const status = statusResult.value;
-                response.isSyncing = status.isSyncing;
-                response.syncStatus.push(
-                  SyncStatus.create({
-                    peerId,
-                    inSync: status.inSync,
-                    shouldSync: status.shouldSync,
-                    lastBadSync: status.lastBadSync,
-                    ourMessages: status.ourSnapshot.numMessages,
-                    theirMessages: status.theirSnapshot.numMessages,
-                    score: status.score,
-                  }),
-                );
-              }
-            }),
-          );
-
-          callback(null, response);
-        })();
-      },
-      getAllSyncIdsByPrefix: (call, callback) => {
-        const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getAllSyncIdsByPrefix", req: call.request }, `RPC call from ${peer}`);
-
-        const request = call.request;
-
-        (async () => {
-          const syncIdsResponse = await this.syncEngine?.getAllSyncIdsByPrefix(request.prefix);
-          callback(null, SyncIds.create({ syncIds: syncIdsResponse ?? [] }));
-        })();
-      },
-      getAllMessagesBySyncIds: async (call, callback) => {
-        const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getAllMessagesBySyncIds", req: call.request }, `RPC call from ${peer}`);
-
-        const request = call.request;
-
-        const syncIds = request.syncIds.map((syncId) => SyncId.fromBytes(syncId));
-        const messagesResult = await this.syncEngine?.getAllMessagesBySyncIds(syncIds);
-        messagesResult?.match(
-          (messages) => {
-            // Check the messages for corruption. If a message is blank, that means it was present
-            // in our sync trie, but the DB couldn't find it. So remove it from the sync Trie.
-            const corruptedSyncIds = this.syncEngine?.findCorruptedSyncIDs(messages, syncIds);
-
-            if ((corruptedSyncIds?.length ?? 0) > 0) {
-              log.warn(
-                { num: corruptedSyncIds?.length },
-                "Found corrupted messages while serving API, rebuilding some syncIDs",
-              );
-
-              // Don't wait for this to finish, just return the messages we have.
-              this.syncEngine?.revokeSyncIds(corruptedSyncIds ?? []);
-
-              // biome-ignore lint/style/noParameterAssign: legacy code, avoid using ignore for new code
-              messages = messages.filter((message) => message.data !== undefined && message.hash.length > 0);
-            }
-
-            const response = MessagesResponse.create({ messages });
-            callback(null, response);
-          },
-          (err: HubError) => {
-            callback(toServiceError(err));
-          },
-        );
-      },
-      getSyncMetadataByPrefix: (call, callback) => {
-        const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getSyncMetadataByPrefix", req: call.request }, `RPC call from ${peer}`);
-
-        const request = call.request;
-
-        (async () => {
-          const metadata = await this.syncEngine?.getTrieNodeMetadata(request.prefix);
-          callback(null, toTrieNodeMetadataResponse(metadata));
-        })();
-      },
-      getSyncSnapshotByPrefix: (call, callback) => {
-        const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getSyncSnapshotByPrefix", req: call.request }, `RPC call from ${peer}`);
-
-        // If someone is asking for our sync snapshot, that means we're getting incoming
-        // connections
-        this.incomingConnections += 1;
-        statsd().increment("rpc.get_sync_snapshot");
-
-        const request = call.request;
-
-        (async () => {
-          const rootHash = (await this.syncEngine?.trie.rootHash()) ?? "";
-          const snapshot = await this.syncEngine?.getSnapshotByPrefix(request.prefix);
-          snapshot?.match(
-            (snapshot) => {
-              const snapshotResponse = TrieNodeSnapshotResponse.create({
-                prefix: snapshot.prefix,
-                numMessages: snapshot.numMessages,
-                rootHash,
-                excludedHashes: snapshot.excludedHashes,
-              });
-              callback(null, snapshotResponse);
-            },
-            (err: HubError) => {
-              callback(toServiceError(err));
-            },
-          );
-        })();
-      },
+      getInfo: this.getInfoRPC,
+      getCurrentPeers: this.getCurrentPeersRPC,
+      stopSync: this.stopSyncRPC,
+      forceSync: this.forceSyncRPC,
+      getSyncStatus: this.getSyncStatusRPC,
+      getAllSyncIdsByPrefix: this.getAllSyncIdsByPrefixRPC,
+      getAllMessagesBySyncIds: this.getAllMessagesBySyncIdsRPC,
+      getSyncMetadataByPrefix: this.getSyncMetadataByPrefixRPC,
+      getSyncSnapshotByPrefix: this.getSyncSnapshotByPrefixRPC,
       submitMessage: async (call, callback) => {
         // Identify peer that is calling, if available. This is used for rate limiting.
         const peer = Result.fromThrowable(
@@ -1513,6 +1619,155 @@ export default class Server {
               this.engine?.eventHandler.on("mergeUsernameProofEvent", eventListener);
             } else if (eventType === HubEventType.MERGE_ON_CHAIN_EVENT) {
               this.engine?.eventHandler.on("mergeOnChainEvent", eventListener);
+            }
+          }
+        }
+      },
+      streamSync: async (stream: ServerDuplexStream<StreamSyncRequest, StreamSyncResponse>) => {
+        while (!stream.closed) {
+          const request = stream.read();
+          if (request.forceSync) {
+            const result = await this.forceSync(request.forceSync);
+            if (result.isErr()) {
+              stream.write(
+                StreamSyncResponse.create({
+                  error: StreamSyncError.create({
+                    errCode: result.error.errCode,
+                    message: result.error.message,
+                    request: "forceSync",
+                  }),
+                }),
+              );
+            } else {
+              stream.write(
+                StreamSyncResponse.create({
+                  forceSync: result.value,
+                }),
+              );
+            }
+          } else if (request.getAllMessagesBySyncIds) {
+            const result = await this.getAllMessagesBySyncIds(request.getAllMessagesBySyncIds);
+            if (result.isErr()) {
+              stream.write(
+                StreamSyncResponse.create({
+                  error: StreamSyncError.create({
+                    errCode: result.error.errCode,
+                    message: result.error.message,
+                    request: "getAllMessagesBySyncIds",
+                  }),
+                }),
+              );
+            } else {
+              stream.write(
+                StreamSyncResponse.create({
+                  getAllMessagesBySyncIds: result.value,
+                }),
+              );
+            }
+          } else if (request.getAllSyncIdsByPrefix) {
+            const result = await this.getAllSyncIdsByPrefix(request.getAllSyncIdsByPrefix);
+            if (result.isErr()) {
+              stream.write(
+                StreamSyncResponse.create({
+                  error: StreamSyncError.create({
+                    request: "getAllSyncIdsByPrefix",
+                  }),
+                }),
+              );
+            } else {
+              stream.write(
+                StreamSyncResponse.create({
+                  getAllSyncIdsByPrefix: result.value,
+                }),
+              );
+            }
+          } else if (request.getCurrentPeers) {
+            const result = await this.getCurrentPeers();
+            stream.write(
+              StreamSyncResponse.create({
+                getCurrentPeers: result,
+              }),
+            );
+          } else if (request.getInfo) {
+            const result = await this.getInfo(request.getInfo);
+            stream.write(
+              StreamSyncResponse.create({
+                getInfo: result,
+              }),
+            );
+          } else if (request.getSyncMetadataByPrefix) {
+            const result = await this.getSyncMetadataByPrefix(request.getSyncMetadataByPrefix);
+            if (result.isErr()) {
+              stream.write(
+                StreamSyncResponse.create({
+                  error: StreamSyncError.create({
+                    request: "getSyncMetadataByPrefix",
+                  }),
+                }),
+              );
+            } else {
+              stream.write(
+                StreamSyncResponse.create({
+                  getSyncMetadataByPrefix: result.value,
+                }),
+              );
+            }
+          } else if (request.getSyncSnapshotByPrefix) {
+            const result = await this.getSyncSnapshotByPrefix(request.getSyncSnapshotByPrefix);
+            if (result.isErr()) {
+              stream.write(
+                StreamSyncResponse.create({
+                  error: StreamSyncError.create({
+                    errCode: result.error.errCode,
+                    message: result.error.message,
+                    request: "getSyncSnapshotByPrefix",
+                  }),
+                }),
+              );
+            } else {
+              stream.write(
+                StreamSyncResponse.create({
+                  getSyncSnapshotByPrefix: result.value,
+                }),
+              );
+            }
+          } else if (request.getSyncStatus) {
+            const result = await this.getSyncStatus(request.getSyncStatus.peerId);
+            if (result.isErr()) {
+              stream.write(
+                StreamSyncResponse.create({
+                  error: StreamSyncError.create({
+                    errCode: result.error.errCode,
+                    message: result.error.message,
+                    request: "getSyncStatus",
+                  }),
+                }),
+              );
+            } else {
+              stream.write(
+                StreamSyncResponse.create({
+                  getSyncStatus: result.value,
+                }),
+              );
+            }
+          } else if (request.stopSync) {
+            const result = await this.stopSync();
+            if (result.isErr()) {
+              stream.write(
+                StreamSyncResponse.create({
+                  error: StreamSyncError.create({
+                    errCode: result.error.errCode,
+                    message: result.error.message,
+                    request: "stopSync",
+                  }),
+                }),
+              );
+            } else {
+              stream.write(
+                StreamSyncResponse.create({
+                  stopSync: result.value,
+                }),
+              );
             }
           }
         }

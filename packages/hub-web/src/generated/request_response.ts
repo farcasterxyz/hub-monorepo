@@ -347,6 +347,37 @@ export interface ValidationResponse {
   message: Message | undefined;
 }
 
+export interface StreamSyncRequest {
+  getInfo?: HubInfoRequest | undefined;
+  getCurrentPeers?: Empty | undefined;
+  stopSync?: Empty | undefined;
+  forceSync?: SyncStatusRequest | undefined;
+  getSyncStatus?: SyncStatusRequest | undefined;
+  getAllSyncIdsByPrefix?: TrieNodePrefix | undefined;
+  getAllMessagesBySyncIds?: SyncIds | undefined;
+  getSyncMetadataByPrefix?: TrieNodePrefix | undefined;
+  getSyncSnapshotByPrefix?: TrieNodePrefix | undefined;
+}
+
+export interface StreamSyncError {
+  errCode: string;
+  message: string;
+  request: string;
+}
+
+export interface StreamSyncResponse {
+  getInfo?: HubInfoResponse | undefined;
+  getCurrentPeers?: ContactInfoResponse | undefined;
+  stopSync?: SyncStatusResponse | undefined;
+  forceSync?: SyncStatusResponse | undefined;
+  getSyncStatus?: SyncStatusResponse | undefined;
+  getAllSyncIdsByPrefix?: SyncIds | undefined;
+  getAllMessagesBySyncIds?: MessagesResponse | undefined;
+  getSyncMetadataByPrefix?: TrieNodeMetadataResponse | undefined;
+  getSyncSnapshotByPrefix?: TrieNodeSnapshotResponse | undefined;
+  error?: StreamSyncError | undefined;
+}
+
 function createBaseEmpty(): Empty {
   return {};
 }
@@ -3861,6 +3892,535 @@ export const ValidationResponse = {
     message.valid = object.valid ?? false;
     message.message = (object.message !== undefined && object.message !== null)
       ? Message.fromPartial(object.message)
+      : undefined;
+    return message;
+  },
+};
+
+function createBaseStreamSyncRequest(): StreamSyncRequest {
+  return {
+    getInfo: undefined,
+    getCurrentPeers: undefined,
+    stopSync: undefined,
+    forceSync: undefined,
+    getSyncStatus: undefined,
+    getAllSyncIdsByPrefix: undefined,
+    getAllMessagesBySyncIds: undefined,
+    getSyncMetadataByPrefix: undefined,
+    getSyncSnapshotByPrefix: undefined,
+  };
+}
+
+export const StreamSyncRequest = {
+  encode(message: StreamSyncRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.getInfo !== undefined) {
+      HubInfoRequest.encode(message.getInfo, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.getCurrentPeers !== undefined) {
+      Empty.encode(message.getCurrentPeers, writer.uint32(18).fork()).ldelim();
+    }
+    if (message.stopSync !== undefined) {
+      Empty.encode(message.stopSync, writer.uint32(26).fork()).ldelim();
+    }
+    if (message.forceSync !== undefined) {
+      SyncStatusRequest.encode(message.forceSync, writer.uint32(34).fork()).ldelim();
+    }
+    if (message.getSyncStatus !== undefined) {
+      SyncStatusRequest.encode(message.getSyncStatus, writer.uint32(42).fork()).ldelim();
+    }
+    if (message.getAllSyncIdsByPrefix !== undefined) {
+      TrieNodePrefix.encode(message.getAllSyncIdsByPrefix, writer.uint32(50).fork()).ldelim();
+    }
+    if (message.getAllMessagesBySyncIds !== undefined) {
+      SyncIds.encode(message.getAllMessagesBySyncIds, writer.uint32(58).fork()).ldelim();
+    }
+    if (message.getSyncMetadataByPrefix !== undefined) {
+      TrieNodePrefix.encode(message.getSyncMetadataByPrefix, writer.uint32(66).fork()).ldelim();
+    }
+    if (message.getSyncSnapshotByPrefix !== undefined) {
+      TrieNodePrefix.encode(message.getSyncSnapshotByPrefix, writer.uint32(74).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): StreamSyncRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseStreamSyncRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.getInfo = HubInfoRequest.decode(reader, reader.uint32());
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.getCurrentPeers = Empty.decode(reader, reader.uint32());
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.stopSync = Empty.decode(reader, reader.uint32());
+          continue;
+        case 4:
+          if (tag != 34) {
+            break;
+          }
+
+          message.forceSync = SyncStatusRequest.decode(reader, reader.uint32());
+          continue;
+        case 5:
+          if (tag != 42) {
+            break;
+          }
+
+          message.getSyncStatus = SyncStatusRequest.decode(reader, reader.uint32());
+          continue;
+        case 6:
+          if (tag != 50) {
+            break;
+          }
+
+          message.getAllSyncIdsByPrefix = TrieNodePrefix.decode(reader, reader.uint32());
+          continue;
+        case 7:
+          if (tag != 58) {
+            break;
+          }
+
+          message.getAllMessagesBySyncIds = SyncIds.decode(reader, reader.uint32());
+          continue;
+        case 8:
+          if (tag != 66) {
+            break;
+          }
+
+          message.getSyncMetadataByPrefix = TrieNodePrefix.decode(reader, reader.uint32());
+          continue;
+        case 9:
+          if (tag != 74) {
+            break;
+          }
+
+          message.getSyncSnapshotByPrefix = TrieNodePrefix.decode(reader, reader.uint32());
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): StreamSyncRequest {
+    return {
+      getInfo: isSet(object.getInfo) ? HubInfoRequest.fromJSON(object.getInfo) : undefined,
+      getCurrentPeers: isSet(object.getCurrentPeers) ? Empty.fromJSON(object.getCurrentPeers) : undefined,
+      stopSync: isSet(object.stopSync) ? Empty.fromJSON(object.stopSync) : undefined,
+      forceSync: isSet(object.forceSync) ? SyncStatusRequest.fromJSON(object.forceSync) : undefined,
+      getSyncStatus: isSet(object.getSyncStatus) ? SyncStatusRequest.fromJSON(object.getSyncStatus) : undefined,
+      getAllSyncIdsByPrefix: isSet(object.getAllSyncIdsByPrefix)
+        ? TrieNodePrefix.fromJSON(object.getAllSyncIdsByPrefix)
+        : undefined,
+      getAllMessagesBySyncIds: isSet(object.getAllMessagesBySyncIds)
+        ? SyncIds.fromJSON(object.getAllMessagesBySyncIds)
+        : undefined,
+      getSyncMetadataByPrefix: isSet(object.getSyncMetadataByPrefix)
+        ? TrieNodePrefix.fromJSON(object.getSyncMetadataByPrefix)
+        : undefined,
+      getSyncSnapshotByPrefix: isSet(object.getSyncSnapshotByPrefix)
+        ? TrieNodePrefix.fromJSON(object.getSyncSnapshotByPrefix)
+        : undefined,
+    };
+  },
+
+  toJSON(message: StreamSyncRequest): unknown {
+    const obj: any = {};
+    message.getInfo !== undefined &&
+      (obj.getInfo = message.getInfo ? HubInfoRequest.toJSON(message.getInfo) : undefined);
+    message.getCurrentPeers !== undefined &&
+      (obj.getCurrentPeers = message.getCurrentPeers ? Empty.toJSON(message.getCurrentPeers) : undefined);
+    message.stopSync !== undefined && (obj.stopSync = message.stopSync ? Empty.toJSON(message.stopSync) : undefined);
+    message.forceSync !== undefined &&
+      (obj.forceSync = message.forceSync ? SyncStatusRequest.toJSON(message.forceSync) : undefined);
+    message.getSyncStatus !== undefined &&
+      (obj.getSyncStatus = message.getSyncStatus ? SyncStatusRequest.toJSON(message.getSyncStatus) : undefined);
+    message.getAllSyncIdsByPrefix !== undefined && (obj.getAllSyncIdsByPrefix = message.getAllSyncIdsByPrefix
+      ? TrieNodePrefix.toJSON(message.getAllSyncIdsByPrefix)
+      : undefined);
+    message.getAllMessagesBySyncIds !== undefined && (obj.getAllMessagesBySyncIds = message.getAllMessagesBySyncIds
+      ? SyncIds.toJSON(message.getAllMessagesBySyncIds)
+      : undefined);
+    message.getSyncMetadataByPrefix !== undefined && (obj.getSyncMetadataByPrefix = message.getSyncMetadataByPrefix
+      ? TrieNodePrefix.toJSON(message.getSyncMetadataByPrefix)
+      : undefined);
+    message.getSyncSnapshotByPrefix !== undefined && (obj.getSyncSnapshotByPrefix = message.getSyncSnapshotByPrefix
+      ? TrieNodePrefix.toJSON(message.getSyncSnapshotByPrefix)
+      : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<StreamSyncRequest>, I>>(base?: I): StreamSyncRequest {
+    return StreamSyncRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<StreamSyncRequest>, I>>(object: I): StreamSyncRequest {
+    const message = createBaseStreamSyncRequest();
+    message.getInfo = (object.getInfo !== undefined && object.getInfo !== null)
+      ? HubInfoRequest.fromPartial(object.getInfo)
+      : undefined;
+    message.getCurrentPeers = (object.getCurrentPeers !== undefined && object.getCurrentPeers !== null)
+      ? Empty.fromPartial(object.getCurrentPeers)
+      : undefined;
+    message.stopSync = (object.stopSync !== undefined && object.stopSync !== null)
+      ? Empty.fromPartial(object.stopSync)
+      : undefined;
+    message.forceSync = (object.forceSync !== undefined && object.forceSync !== null)
+      ? SyncStatusRequest.fromPartial(object.forceSync)
+      : undefined;
+    message.getSyncStatus = (object.getSyncStatus !== undefined && object.getSyncStatus !== null)
+      ? SyncStatusRequest.fromPartial(object.getSyncStatus)
+      : undefined;
+    message.getAllSyncIdsByPrefix =
+      (object.getAllSyncIdsByPrefix !== undefined && object.getAllSyncIdsByPrefix !== null)
+        ? TrieNodePrefix.fromPartial(object.getAllSyncIdsByPrefix)
+        : undefined;
+    message.getAllMessagesBySyncIds =
+      (object.getAllMessagesBySyncIds !== undefined && object.getAllMessagesBySyncIds !== null)
+        ? SyncIds.fromPartial(object.getAllMessagesBySyncIds)
+        : undefined;
+    message.getSyncMetadataByPrefix =
+      (object.getSyncMetadataByPrefix !== undefined && object.getSyncMetadataByPrefix !== null)
+        ? TrieNodePrefix.fromPartial(object.getSyncMetadataByPrefix)
+        : undefined;
+    message.getSyncSnapshotByPrefix =
+      (object.getSyncSnapshotByPrefix !== undefined && object.getSyncSnapshotByPrefix !== null)
+        ? TrieNodePrefix.fromPartial(object.getSyncSnapshotByPrefix)
+        : undefined;
+    return message;
+  },
+};
+
+function createBaseStreamSyncError(): StreamSyncError {
+  return { errCode: "", message: "", request: "" };
+}
+
+export const StreamSyncError = {
+  encode(message: StreamSyncError, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.errCode !== "") {
+      writer.uint32(10).string(message.errCode);
+    }
+    if (message.message !== "") {
+      writer.uint32(18).string(message.message);
+    }
+    if (message.request !== "") {
+      writer.uint32(26).string(message.request);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): StreamSyncError {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseStreamSyncError();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.errCode = reader.string();
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.message = reader.string();
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.request = reader.string();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): StreamSyncError {
+    return {
+      errCode: isSet(object.errCode) ? String(object.errCode) : "",
+      message: isSet(object.message) ? String(object.message) : "",
+      request: isSet(object.request) ? String(object.request) : "",
+    };
+  },
+
+  toJSON(message: StreamSyncError): unknown {
+    const obj: any = {};
+    message.errCode !== undefined && (obj.errCode = message.errCode);
+    message.message !== undefined && (obj.message = message.message);
+    message.request !== undefined && (obj.request = message.request);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<StreamSyncError>, I>>(base?: I): StreamSyncError {
+    return StreamSyncError.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<StreamSyncError>, I>>(object: I): StreamSyncError {
+    const message = createBaseStreamSyncError();
+    message.errCode = object.errCode ?? "";
+    message.message = object.message ?? "";
+    message.request = object.request ?? "";
+    return message;
+  },
+};
+
+function createBaseStreamSyncResponse(): StreamSyncResponse {
+  return {
+    getInfo: undefined,
+    getCurrentPeers: undefined,
+    stopSync: undefined,
+    forceSync: undefined,
+    getSyncStatus: undefined,
+    getAllSyncIdsByPrefix: undefined,
+    getAllMessagesBySyncIds: undefined,
+    getSyncMetadataByPrefix: undefined,
+    getSyncSnapshotByPrefix: undefined,
+    error: undefined,
+  };
+}
+
+export const StreamSyncResponse = {
+  encode(message: StreamSyncResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.getInfo !== undefined) {
+      HubInfoResponse.encode(message.getInfo, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.getCurrentPeers !== undefined) {
+      ContactInfoResponse.encode(message.getCurrentPeers, writer.uint32(18).fork()).ldelim();
+    }
+    if (message.stopSync !== undefined) {
+      SyncStatusResponse.encode(message.stopSync, writer.uint32(26).fork()).ldelim();
+    }
+    if (message.forceSync !== undefined) {
+      SyncStatusResponse.encode(message.forceSync, writer.uint32(34).fork()).ldelim();
+    }
+    if (message.getSyncStatus !== undefined) {
+      SyncStatusResponse.encode(message.getSyncStatus, writer.uint32(42).fork()).ldelim();
+    }
+    if (message.getAllSyncIdsByPrefix !== undefined) {
+      SyncIds.encode(message.getAllSyncIdsByPrefix, writer.uint32(50).fork()).ldelim();
+    }
+    if (message.getAllMessagesBySyncIds !== undefined) {
+      MessagesResponse.encode(message.getAllMessagesBySyncIds, writer.uint32(58).fork()).ldelim();
+    }
+    if (message.getSyncMetadataByPrefix !== undefined) {
+      TrieNodeMetadataResponse.encode(message.getSyncMetadataByPrefix, writer.uint32(66).fork()).ldelim();
+    }
+    if (message.getSyncSnapshotByPrefix !== undefined) {
+      TrieNodeSnapshotResponse.encode(message.getSyncSnapshotByPrefix, writer.uint32(74).fork()).ldelim();
+    }
+    if (message.error !== undefined) {
+      StreamSyncError.encode(message.error, writer.uint32(82).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): StreamSyncResponse {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseStreamSyncResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.getInfo = HubInfoResponse.decode(reader, reader.uint32());
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.getCurrentPeers = ContactInfoResponse.decode(reader, reader.uint32());
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.stopSync = SyncStatusResponse.decode(reader, reader.uint32());
+          continue;
+        case 4:
+          if (tag != 34) {
+            break;
+          }
+
+          message.forceSync = SyncStatusResponse.decode(reader, reader.uint32());
+          continue;
+        case 5:
+          if (tag != 42) {
+            break;
+          }
+
+          message.getSyncStatus = SyncStatusResponse.decode(reader, reader.uint32());
+          continue;
+        case 6:
+          if (tag != 50) {
+            break;
+          }
+
+          message.getAllSyncIdsByPrefix = SyncIds.decode(reader, reader.uint32());
+          continue;
+        case 7:
+          if (tag != 58) {
+            break;
+          }
+
+          message.getAllMessagesBySyncIds = MessagesResponse.decode(reader, reader.uint32());
+          continue;
+        case 8:
+          if (tag != 66) {
+            break;
+          }
+
+          message.getSyncMetadataByPrefix = TrieNodeMetadataResponse.decode(reader, reader.uint32());
+          continue;
+        case 9:
+          if (tag != 74) {
+            break;
+          }
+
+          message.getSyncSnapshotByPrefix = TrieNodeSnapshotResponse.decode(reader, reader.uint32());
+          continue;
+        case 10:
+          if (tag != 82) {
+            break;
+          }
+
+          message.error = StreamSyncError.decode(reader, reader.uint32());
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): StreamSyncResponse {
+    return {
+      getInfo: isSet(object.getInfo) ? HubInfoResponse.fromJSON(object.getInfo) : undefined,
+      getCurrentPeers: isSet(object.getCurrentPeers) ? ContactInfoResponse.fromJSON(object.getCurrentPeers) : undefined,
+      stopSync: isSet(object.stopSync) ? SyncStatusResponse.fromJSON(object.stopSync) : undefined,
+      forceSync: isSet(object.forceSync) ? SyncStatusResponse.fromJSON(object.forceSync) : undefined,
+      getSyncStatus: isSet(object.getSyncStatus) ? SyncStatusResponse.fromJSON(object.getSyncStatus) : undefined,
+      getAllSyncIdsByPrefix: isSet(object.getAllSyncIdsByPrefix)
+        ? SyncIds.fromJSON(object.getAllSyncIdsByPrefix)
+        : undefined,
+      getAllMessagesBySyncIds: isSet(object.getAllMessagesBySyncIds)
+        ? MessagesResponse.fromJSON(object.getAllMessagesBySyncIds)
+        : undefined,
+      getSyncMetadataByPrefix: isSet(object.getSyncMetadataByPrefix)
+        ? TrieNodeMetadataResponse.fromJSON(object.getSyncMetadataByPrefix)
+        : undefined,
+      getSyncSnapshotByPrefix: isSet(object.getSyncSnapshotByPrefix)
+        ? TrieNodeSnapshotResponse.fromJSON(object.getSyncSnapshotByPrefix)
+        : undefined,
+      error: isSet(object.error) ? StreamSyncError.fromJSON(object.error) : undefined,
+    };
+  },
+
+  toJSON(message: StreamSyncResponse): unknown {
+    const obj: any = {};
+    message.getInfo !== undefined &&
+      (obj.getInfo = message.getInfo ? HubInfoResponse.toJSON(message.getInfo) : undefined);
+    message.getCurrentPeers !== undefined &&
+      (obj.getCurrentPeers = message.getCurrentPeers ? ContactInfoResponse.toJSON(message.getCurrentPeers) : undefined);
+    message.stopSync !== undefined &&
+      (obj.stopSync = message.stopSync ? SyncStatusResponse.toJSON(message.stopSync) : undefined);
+    message.forceSync !== undefined &&
+      (obj.forceSync = message.forceSync ? SyncStatusResponse.toJSON(message.forceSync) : undefined);
+    message.getSyncStatus !== undefined &&
+      (obj.getSyncStatus = message.getSyncStatus ? SyncStatusResponse.toJSON(message.getSyncStatus) : undefined);
+    message.getAllSyncIdsByPrefix !== undefined && (obj.getAllSyncIdsByPrefix = message.getAllSyncIdsByPrefix
+      ? SyncIds.toJSON(message.getAllSyncIdsByPrefix)
+      : undefined);
+    message.getAllMessagesBySyncIds !== undefined && (obj.getAllMessagesBySyncIds = message.getAllMessagesBySyncIds
+      ? MessagesResponse.toJSON(message.getAllMessagesBySyncIds)
+      : undefined);
+    message.getSyncMetadataByPrefix !== undefined && (obj.getSyncMetadataByPrefix = message.getSyncMetadataByPrefix
+      ? TrieNodeMetadataResponse.toJSON(message.getSyncMetadataByPrefix)
+      : undefined);
+    message.getSyncSnapshotByPrefix !== undefined && (obj.getSyncSnapshotByPrefix = message.getSyncSnapshotByPrefix
+      ? TrieNodeSnapshotResponse.toJSON(message.getSyncSnapshotByPrefix)
+      : undefined);
+    message.error !== undefined && (obj.error = message.error ? StreamSyncError.toJSON(message.error) : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<StreamSyncResponse>, I>>(base?: I): StreamSyncResponse {
+    return StreamSyncResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<StreamSyncResponse>, I>>(object: I): StreamSyncResponse {
+    const message = createBaseStreamSyncResponse();
+    message.getInfo = (object.getInfo !== undefined && object.getInfo !== null)
+      ? HubInfoResponse.fromPartial(object.getInfo)
+      : undefined;
+    message.getCurrentPeers = (object.getCurrentPeers !== undefined && object.getCurrentPeers !== null)
+      ? ContactInfoResponse.fromPartial(object.getCurrentPeers)
+      : undefined;
+    message.stopSync = (object.stopSync !== undefined && object.stopSync !== null)
+      ? SyncStatusResponse.fromPartial(object.stopSync)
+      : undefined;
+    message.forceSync = (object.forceSync !== undefined && object.forceSync !== null)
+      ? SyncStatusResponse.fromPartial(object.forceSync)
+      : undefined;
+    message.getSyncStatus = (object.getSyncStatus !== undefined && object.getSyncStatus !== null)
+      ? SyncStatusResponse.fromPartial(object.getSyncStatus)
+      : undefined;
+    message.getAllSyncIdsByPrefix =
+      (object.getAllSyncIdsByPrefix !== undefined && object.getAllSyncIdsByPrefix !== null)
+        ? SyncIds.fromPartial(object.getAllSyncIdsByPrefix)
+        : undefined;
+    message.getAllMessagesBySyncIds =
+      (object.getAllMessagesBySyncIds !== undefined && object.getAllMessagesBySyncIds !== null)
+        ? MessagesResponse.fromPartial(object.getAllMessagesBySyncIds)
+        : undefined;
+    message.getSyncMetadataByPrefix =
+      (object.getSyncMetadataByPrefix !== undefined && object.getSyncMetadataByPrefix !== null)
+        ? TrieNodeMetadataResponse.fromPartial(object.getSyncMetadataByPrefix)
+        : undefined;
+    message.getSyncSnapshotByPrefix =
+      (object.getSyncSnapshotByPrefix !== undefined && object.getSyncSnapshotByPrefix !== null)
+        ? TrieNodeSnapshotResponse.fromPartial(object.getSyncSnapshotByPrefix)
+        : undefined;
+    message.error = (object.error !== undefined && object.error !== null)
+      ? StreamSyncError.fromPartial(object.error)
       : undefined;
     return message;
   },

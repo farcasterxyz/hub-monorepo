@@ -272,3 +272,38 @@ message ValidationResponse {
   bool valid = 1;
   Message message = 2;
 }
+
+message StreamSyncRequest {
+  oneof request {
+    HubInfoRequest get_info = 1;
+    Empty get_current_peers = 2;
+    Empty stop_sync = 3;
+    SyncStatusRequest force_sync = 4;
+    SyncStatusRequest get_sync_status = 5;
+    TrieNodePrefix get_all_sync_ids_by_prefix = 6;
+    SyncIds get_all_messages_by_sync_ids = 7;
+    TrieNodePrefix get_sync_metadata_by_prefix = 8;
+    TrieNodePrefix get_sync_snapshot_by_prefix = 9;
+  }
+}
+
+message StreamSyncError {
+  string errCode = 1;
+  string message = 2;
+  string request = 3;
+}
+
+message StreamSyncResponse {
+  oneof response {
+    HubInfoResponse get_info = 1;
+    ContactInfoResponse get_current_peers = 2;
+    SyncStatusResponse stop_sync = 3;
+    SyncStatusResponse force_sync = 4;
+    SyncStatusResponse get_sync_status = 5;
+    SyncIds get_all_sync_ids_by_prefix = 6;
+    MessagesResponse get_all_messages_by_sync_ids = 7;
+    TrieNodeMetadataResponse get_sync_metadata_by_prefix = 8;
+    TrieNodeSnapshotResponse get_sync_snapshot_by_prefix = 9;
+    StreamSyncError error = 10;
+  }
+}
