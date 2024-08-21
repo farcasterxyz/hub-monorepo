@@ -6,6 +6,8 @@ import {
   isLinkCompactStateMessage,
   isLinkRemoveMessage,
   isMergeMessageHubEvent,
+  isMergeOnChainHubEvent,
+  isMergeUsernameProofHubEvent,
   isPruneMessageHubEvent,
   isReactionAddMessage,
   isReactionRemoveMessage,
@@ -23,6 +25,10 @@ import { bytesToHex } from "../utils";
 
 export class HubEventProcessor {
   static async processHubEvent(db: DB, event: HubEvent, handler: MessageHandler) {
+    const shouldSkip = await handler.onHubEvent(event);
+    if (shouldSkip) {
+      return;
+    }
     if (isMergeMessageHubEvent(event)) {
       await this.processMessage(
         db,

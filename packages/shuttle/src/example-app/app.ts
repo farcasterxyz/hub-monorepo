@@ -14,7 +14,19 @@ import {
   MessageState,
 } from "../index"; // If you want to use this as a standalone app, replace this import with "@farcaster/shuttle"
 import { AppDb, migrateToLatest, Tables } from "./db";
-import { bytesToHexString, HubEvent, isCastAddMessage, isCastRemoveMessage, Message } from "@farcaster/hub-nodejs";
+import {
+  bytesToHexString,
+  getStorageUnitExpiry,
+  getStorageUnitType,
+  HubEvent,
+  isCastAddMessage,
+  isCastRemoveMessage,
+  isIdRegisterOnChainEvent,
+  isMergeOnChainHubEvent,
+  isSignerOnChainEvent,
+  isStorageRentOnChainEvent,
+  Message,
+} from "@farcaster/hub-nodejs";
 import { log } from "./log";
 import { Command } from "@commander-js/extra-typings";
 import { readFileSync } from "fs";
@@ -35,7 +47,7 @@ import url from "node:url";
 import { ok, Result } from "neverthrow";
 import { getQueue, getWorker } from "./worker";
 import { Queue } from "bullmq";
-import { farcasterTimeToDate } from "../utils";
+import { bytesToHex, farcasterTimeToDate } from "../utils";
 
 const hubId = "shuttle";
 
@@ -91,6 +103,54 @@ export class App implements MessageHandler {
     const streamConsumer = new HubEventStreamConsumer(hub, eventStreamForRead, shardKey);
 
     return new App(db, dbSchema, redis, hubSubscriber, streamConsumer);
+  }
+
+  async onHubEvent(event: HubEvent): Promise<boolean> {
+    if (isMergeOnChainHubEvent(event)) {
+      const onChainEvent = event.mergeOnChainEventBody.onChainEvent;
+      let body = {};
+      if (isIdRegisterOnChainEvent(onChainEvent)) {
+        body = {
+          eventType: onChainEvent.idRegisterEventBody.eventType,
+          from: bytesToHex(onChainEvent.idRegisterEventBody.from),
+          to: bytesToHex(onChainEvent.idRegisterEventBody.to),
+          recoveryAddress: bytesToHex(onChainEvent.idRegisterEventBody.recoveryAddress),
+        };
+      } else if (isSignerOnChainEvent(onChainEvent)) {
+        body = {
+          eventType: onChainEvent.signerEventBody.eventType,
+          key: bytesToHex(onChainEvent.signerEventBody.key),
+          keyType: onChainEvent.signerEventBody.keyType,
+          metadata: bytesToHex(onChainEvent.signerEventBody.metadata),
+          metadataType: onChainEvent.signerEventBody.metadataType,
+        };
+      } else if (isStorageRentOnChainEvent(onChainEvent)) {
+        body = {
+          eventType: getStorageUnitType(onChainEvent),
+          expiry: getStorageUnitExpiry(onChainEvent),
+          units: onChainEvent.storageRentEventBody.units,
+          payer: bytesToHex(onChainEvent.storageRentEventBody.payer),
+        };
+      }
+      try {
+        await (this.db as AppDb)
+          .insertInto("onchain_events")
+          .values({
+            fid: onChainEvent.fid,
+            timestamp: new Date(onChainEvent.blockTimestamp * 1000),
+            blockNumber: onChainEvent.blockNumber,
+            logIndex: onChainEvent.logIndex,
+            txHash: onChainEvent.transactionHash,
+            type: onChainEvent.type,
+            body: body,
+          })
+          .execute();
+        log.info(`Recorded OnchainEvent ${onChainEvent.type} for fid  ${onChainEvent.fid}`);
+      } catch (e) {
+        log.error("Failed to insert onchain event", e);
+      }
+    }
+    return false;
   }
 
   async handleMessageMerge(

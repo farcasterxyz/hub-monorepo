@@ -54,6 +54,8 @@ class FakeHubSubscriber extends HubSubscriber implements MessageHandler {
     | undefined
   )[] = [];
 
+  shouldSkip = false;
+
   public override async processHubEvent(event: HubEvent): Promise<boolean> {
     await HubEventProcessor.processHubEvent(db, event, subscriber);
     return true;
@@ -69,6 +71,14 @@ class FakeHubSubscriber extends HubSubscriber implements MessageHandler {
     ) => void,
   ) {
     this.messageCallbacks.push(callback);
+  }
+
+  public setShouldSkip(shouldSkip: boolean): void {
+    this.shouldSkip = shouldSkip;
+  }
+
+  async onHubEvent(_event: HubEvent): Promise<boolean> {
+    return this.shouldSkip;
   }
 
   async handleMessageMerge(
@@ -152,6 +162,28 @@ describe("shuttle", () => {
     await subscriber.processHubEvent(
       HubEvent.create({ id: 101, type: HubEventType.MERGE_MESSAGE, mergeMessageBody: { message } }),
     );
+  });
+
+  test("shouldSkip skip handler callbacks", async () => {
+    const message = await Factories.CastAddMessage.create({}, { transient: { signer } });
+    subscriber.setShouldSkip(true);
+    subscriber.addMessageCallback(() => {
+      fail("Should not be called");
+    });
+    await subscriber.processHubEvent(
+      HubEvent.create({ id: 102, type: HubEventType.MERGE_MESSAGE, mergeMessageBody: { message } }),
+    );
+    expect(subscriber.messageCallbacks).toHaveLength(1); // 1 uncalled callback
+    // Need to clear the callback because afterEach expects it to be empty
+    subscriber.messageCallbacks.shift();
+
+    const addMessageInDb = await db
+      .selectFrom("messages")
+      .select(["hash", "deletedAt"])
+      .where("hash", "=", message.hash)
+      .executeTakeFirst();
+
+    expect(addMessageInDb).toBeUndefined();
   });
 
   test("marks messages as deleted", async () => {
