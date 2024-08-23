@@ -1,6 +1,6 @@
 import { FarcasterNetwork, Factories, HubRpcClient, CastAddMessage, OnChainEvent } from "@farcaster/hub-nodejs";
 import { getFarcasterTime } from "@farcaster/core";
-import SyncEngine from "../../network/sync/syncEngine.js";
+import SyncEngine, { FailoverStreamSyncClient } from "../../network/sync/syncEngine.js";
 import { jestRocksDB } from "../../storage/db/jestUtils.js";
 import { MockHub } from "../../test/mocks.js";
 import { MockRpcClient } from "./mock.js";
@@ -87,7 +87,7 @@ describe("SyncEnginePerfTest", () => {
         snapshot2.prefix = Buffer.from("00306622", "hex");
 
         let rpcClient = new MockRpcClient(hub2.engine, syncEngine2);
-        await syncEngine1.performSync("engine2", rpcClient as unknown as HubRpcClient);
+        await syncEngine1.performSync("engine2", new FailoverStreamSyncClient(rpcClient as unknown as HubRpcClient));
         expect(rpcClient.getAllSyncIdsByPrefixCalls.length).toEqual(0);
         expect(rpcClient.getAllMessagesBySyncIdsCalls.length).toEqual(0);
 
@@ -96,7 +96,7 @@ describe("SyncEnginePerfTest", () => {
 
         // Even with a bad snapshot, we should still not call the sync APIs because the hashes match
         rpcClient = new MockRpcClient(hub2.engine, syncEngine2);
-        await syncEngine1.performSync("engine2", rpcClient as unknown as HubRpcClient);
+        await syncEngine1.performSync("engine2", new FailoverStreamSyncClient(rpcClient as unknown as HubRpcClient));
         expect(rpcClient.getAllSyncIdsByPrefixCalls.length).toEqual(0);
         expect(rpcClient.getAllMessagesBySyncIdsCalls.length).toEqual(0);
       } finally {

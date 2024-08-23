@@ -2,7 +2,6 @@ import {
   FarcasterNetwork,
   Factories,
   getFarcasterTime,
-  HubRpcClient,
   MessageType,
   Message,
   ReactionType,
@@ -16,7 +15,7 @@ import {
 } from "@farcaster/hub-nodejs";
 import { Err, Ok, ok } from "neverthrow";
 import { anything, instance, mock, when } from "ts-mockito";
-import SyncEngine, { CurrentSyncStatus, SyncEngineWorkItem } from "./syncEngine.js";
+import SyncEngine, { CurrentSyncStatus, FailoverStreamSyncClient, SyncEngineWorkItem } from "./syncEngine.js";
 import { SyncId } from "./syncId.js";
 import { jestRocksDB } from "../../storage/db/jestUtils.js";
 import Engine from "../../storage/engine/index.js";
@@ -312,10 +311,10 @@ describe("SyncEngine", () => {
   });
 
   test("syncStatus.shouldSync is false when already syncing", async () => {
-    const mockRPCClient = mock<HubRpcClient>();
+    const mockRPCClient = mock<FailoverStreamSyncClient>();
     const rpcClient = instance(mockRPCClient);
     let called = false;
-    when(mockRPCClient.getSyncMetadataByPrefix(anything(), anything(), anything())).thenCall(async () => {
+    when(mockRPCClient.getSyncMetadataByPrefix(anything(), anything())).thenCall(async () => {
       const shouldSync = await syncEngine.syncStatus("test", {
         prefix: new Uint8Array(),
         numMessages: 10,
@@ -376,7 +375,7 @@ describe("SyncEngine", () => {
     await engine.mergeOnChainEvent(custodyEvent);
     await engine.mergeOnChainEvent(signerEvent);
     await engine.mergeOnChainEvent(storageEvent);
-    const mockRPCClient = mock<HubRpcClient>();
+    const mockRPCClient = mock<FailoverStreamSyncClient>();
     const rpcClient = instance(mockRPCClient);
 
     const oldSnapshot = (await syncEngine.getSnapshot())._unsafeUnwrap();
