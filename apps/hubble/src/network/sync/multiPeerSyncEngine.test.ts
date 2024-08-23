@@ -14,7 +14,7 @@ import {
   fromFarcasterTime,
 } from "@farcaster/hub-nodejs";
 import { APP_NICKNAME, APP_VERSION, HubInterface } from "../../hubble.js";
-import SyncEngine from "./syncEngine.js";
+import SyncEngine, { FailoverStreamSyncClient } from "./syncEngine.js";
 import { SyncId } from "./syncId.js";
 import Server from "../../rpc/server.js";
 import { jestRocksDB } from "../../storage/db/jestUtils.js";
@@ -125,7 +125,7 @@ describe("Multi peer sync engine", () => {
   let syncEngine1: SyncEngine;
   let server1: Server;
   let port1;
-  let clientForServer1: HubRpcClient;
+  let clientForServer1: FailoverStreamSyncClient;
 
   let engine2: Engine;
   let hub2: HubInterface;
@@ -142,7 +142,7 @@ describe("Multi peer sync engine", () => {
 
     server1 = new Server(hub1, engine1, syncEngine1);
     port1 = await server1.start();
-    clientForServer1 = getInsecureHubRpcClient(`127.0.0.1:${port1}`);
+    clientForServer1 = new FailoverStreamSyncClient(getInsecureHubRpcClient(`127.0.0.1:${port1}`));
 
     retryEventsMock.mockImplementation(async (blockNumber: number) => {
       const event = eventsByBlock.get(blockNumber);
@@ -337,7 +337,7 @@ describe("Multi peer sync engine", () => {
     {
       const server2 = new Server(new MockHub(testDb2, engine2), engine2, syncEngine2);
       const port2 = await server2.start();
-      const clientForServer2 = getInsecureHubRpcClient(`127.0.0.1:${port2}`);
+      const clientForServer2 = new FailoverStreamSyncClient(getInsecureHubRpcClient(`127.0.0.1:${port2}`));
       const engine1RootHashBefore = await syncEngine1.trie.rootHash();
 
       await syncEngine1.performSync("engine2", clientForServer2);
@@ -681,7 +681,7 @@ describe("Multi peer sync engine", () => {
     {
       const server2 = new Server(new MockHub(testDb2, engine2), engine2, syncEngine2);
       const port2 = await server2.start();
-      const clientForServer2 = getInsecureHubRpcClient(`127.0.0.1:${port2}`);
+      const clientForServer2 = new FailoverStreamSyncClient(getInsecureHubRpcClient(`127.0.0.1:${port2}`));
 
       await syncEngine1.performSync("engine2", clientForServer2);
       await sleepWhile(async () => (await syncEngine1.trie.items()) !== initialEngine2Count + 2, 1000);
@@ -690,7 +690,7 @@ describe("Multi peer sync engine", () => {
       expect(await syncEngine1.trie.items()).toEqual(await syncEngine2.trie.items());
       expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
 
-      clientForServer2.$.close();
+      clientForServer2.close();
       await server2.stop();
     }
   });
@@ -727,7 +727,7 @@ describe("Multi peer sync engine", () => {
     {
       const server2 = new Server(new MockHub(testDb2, engine2), engine2, syncEngine2);
       const port2 = await server2.start();
-      const clientForServer2 = getInsecureHubRpcClient(`127.0.0.1:${port2}`);
+      const clientForServer2 = new FailoverStreamSyncClient(getInsecureHubRpcClient(`127.0.0.1:${port2}`));
 
       await syncEngine1.performSync("engine2", clientForServer2);
       await sleepWhile(() => syncEngine1.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
@@ -736,7 +736,7 @@ describe("Multi peer sync engine", () => {
       expect(await syncEngine1.trie.items()).toEqual(await syncEngine2.trie.items());
       expect(await syncEngine1.trie.rootHash()).toEqual(await syncEngine2.trie.rootHash());
 
-      clientForServer2.$.close();
+      clientForServer2.close();
       await server2.stop();
     }
   });

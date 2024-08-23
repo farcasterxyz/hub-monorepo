@@ -357,6 +357,8 @@ export interface StreamSyncRequest {
   getAllMessagesBySyncIds?: SyncIds | undefined;
   getSyncMetadataByPrefix?: TrieNodePrefix | undefined;
   getSyncSnapshotByPrefix?: TrieNodePrefix | undefined;
+  getOnChainEvents?: OnChainEventRequest | undefined;
+  getOnChainSignersByFid?: FidRequest | undefined;
 }
 
 export interface StreamSyncError {
@@ -375,6 +377,8 @@ export interface StreamSyncResponse {
   getAllMessagesBySyncIds?: MessagesResponse | undefined;
   getSyncMetadataByPrefix?: TrieNodeMetadataResponse | undefined;
   getSyncSnapshotByPrefix?: TrieNodeSnapshotResponse | undefined;
+  getOnChainEvents?: OnChainEventResponse | undefined;
+  getOnChainSignersByFid?: OnChainEventResponse | undefined;
   error?: StreamSyncError | undefined;
 }
 
@@ -3908,6 +3912,8 @@ function createBaseStreamSyncRequest(): StreamSyncRequest {
     getAllMessagesBySyncIds: undefined,
     getSyncMetadataByPrefix: undefined,
     getSyncSnapshotByPrefix: undefined,
+    getOnChainEvents: undefined,
+    getOnChainSignersByFid: undefined,
   };
 }
 
@@ -3939,6 +3945,12 @@ export const StreamSyncRequest = {
     }
     if (message.getSyncSnapshotByPrefix !== undefined) {
       TrieNodePrefix.encode(message.getSyncSnapshotByPrefix, writer.uint32(74).fork()).ldelim();
+    }
+    if (message.getOnChainEvents !== undefined) {
+      OnChainEventRequest.encode(message.getOnChainEvents, writer.uint32(82).fork()).ldelim();
+    }
+    if (message.getOnChainSignersByFid !== undefined) {
+      FidRequest.encode(message.getOnChainSignersByFid, writer.uint32(90).fork()).ldelim();
     }
     return writer;
   },
@@ -4013,6 +4025,20 @@ export const StreamSyncRequest = {
 
           message.getSyncSnapshotByPrefix = TrieNodePrefix.decode(reader, reader.uint32());
           continue;
+        case 10:
+          if (tag != 82) {
+            break;
+          }
+
+          message.getOnChainEvents = OnChainEventRequest.decode(reader, reader.uint32());
+          continue;
+        case 11:
+          if (tag != 90) {
+            break;
+          }
+
+          message.getOnChainSignersByFid = FidRequest.decode(reader, reader.uint32());
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -4041,6 +4067,12 @@ export const StreamSyncRequest = {
       getSyncSnapshotByPrefix: isSet(object.getSyncSnapshotByPrefix)
         ? TrieNodePrefix.fromJSON(object.getSyncSnapshotByPrefix)
         : undefined,
+      getOnChainEvents: isSet(object.getOnChainEvents)
+        ? OnChainEventRequest.fromJSON(object.getOnChainEvents)
+        : undefined,
+      getOnChainSignersByFid: isSet(object.getOnChainSignersByFid)
+        ? FidRequest.fromJSON(object.getOnChainSignersByFid)
+        : undefined,
     };
   },
 
@@ -4066,6 +4098,12 @@ export const StreamSyncRequest = {
       : undefined);
     message.getSyncSnapshotByPrefix !== undefined && (obj.getSyncSnapshotByPrefix = message.getSyncSnapshotByPrefix
       ? TrieNodePrefix.toJSON(message.getSyncSnapshotByPrefix)
+      : undefined);
+    message.getOnChainEvents !== undefined && (obj.getOnChainEvents = message.getOnChainEvents
+      ? OnChainEventRequest.toJSON(message.getOnChainEvents)
+      : undefined);
+    message.getOnChainSignersByFid !== undefined && (obj.getOnChainSignersByFid = message.getOnChainSignersByFid
+      ? FidRequest.toJSON(message.getOnChainSignersByFid)
       : undefined);
     return obj;
   },
@@ -4106,6 +4144,13 @@ export const StreamSyncRequest = {
     message.getSyncSnapshotByPrefix =
       (object.getSyncSnapshotByPrefix !== undefined && object.getSyncSnapshotByPrefix !== null)
         ? TrieNodePrefix.fromPartial(object.getSyncSnapshotByPrefix)
+        : undefined;
+    message.getOnChainEvents = (object.getOnChainEvents !== undefined && object.getOnChainEvents !== null)
+      ? OnChainEventRequest.fromPartial(object.getOnChainEvents)
+      : undefined;
+    message.getOnChainSignersByFid =
+      (object.getOnChainSignersByFid !== undefined && object.getOnChainSignersByFid !== null)
+        ? FidRequest.fromPartial(object.getOnChainSignersByFid)
         : undefined;
     return message;
   },
@@ -4206,6 +4251,8 @@ function createBaseStreamSyncResponse(): StreamSyncResponse {
     getAllMessagesBySyncIds: undefined,
     getSyncMetadataByPrefix: undefined,
     getSyncSnapshotByPrefix: undefined,
+    getOnChainEvents: undefined,
+    getOnChainSignersByFid: undefined,
     error: undefined,
   };
 }
@@ -4239,8 +4286,14 @@ export const StreamSyncResponse = {
     if (message.getSyncSnapshotByPrefix !== undefined) {
       TrieNodeSnapshotResponse.encode(message.getSyncSnapshotByPrefix, writer.uint32(74).fork()).ldelim();
     }
+    if (message.getOnChainEvents !== undefined) {
+      OnChainEventResponse.encode(message.getOnChainEvents, writer.uint32(82).fork()).ldelim();
+    }
+    if (message.getOnChainSignersByFid !== undefined) {
+      OnChainEventResponse.encode(message.getOnChainSignersByFid, writer.uint32(90).fork()).ldelim();
+    }
     if (message.error !== undefined) {
-      StreamSyncError.encode(message.error, writer.uint32(82).fork()).ldelim();
+      StreamSyncError.encode(message.error, writer.uint32(98).fork()).ldelim();
     }
     return writer;
   },
@@ -4320,6 +4373,20 @@ export const StreamSyncResponse = {
             break;
           }
 
+          message.getOnChainEvents = OnChainEventResponse.decode(reader, reader.uint32());
+          continue;
+        case 11:
+          if (tag != 90) {
+            break;
+          }
+
+          message.getOnChainSignersByFid = OnChainEventResponse.decode(reader, reader.uint32());
+          continue;
+        case 12:
+          if (tag != 98) {
+            break;
+          }
+
           message.error = StreamSyncError.decode(reader, reader.uint32());
           continue;
       }
@@ -4350,6 +4417,12 @@ export const StreamSyncResponse = {
       getSyncSnapshotByPrefix: isSet(object.getSyncSnapshotByPrefix)
         ? TrieNodeSnapshotResponse.fromJSON(object.getSyncSnapshotByPrefix)
         : undefined,
+      getOnChainEvents: isSet(object.getOnChainEvents)
+        ? OnChainEventResponse.fromJSON(object.getOnChainEvents)
+        : undefined,
+      getOnChainSignersByFid: isSet(object.getOnChainSignersByFid)
+        ? OnChainEventResponse.fromJSON(object.getOnChainSignersByFid)
+        : undefined,
       error: isSet(object.error) ? StreamSyncError.fromJSON(object.error) : undefined,
     };
   },
@@ -4377,6 +4450,12 @@ export const StreamSyncResponse = {
       : undefined);
     message.getSyncSnapshotByPrefix !== undefined && (obj.getSyncSnapshotByPrefix = message.getSyncSnapshotByPrefix
       ? TrieNodeSnapshotResponse.toJSON(message.getSyncSnapshotByPrefix)
+      : undefined);
+    message.getOnChainEvents !== undefined && (obj.getOnChainEvents = message.getOnChainEvents
+      ? OnChainEventResponse.toJSON(message.getOnChainEvents)
+      : undefined);
+    message.getOnChainSignersByFid !== undefined && (obj.getOnChainSignersByFid = message.getOnChainSignersByFid
+      ? OnChainEventResponse.toJSON(message.getOnChainSignersByFid)
       : undefined);
     message.error !== undefined && (obj.error = message.error ? StreamSyncError.toJSON(message.error) : undefined);
     return obj;
@@ -4418,6 +4497,13 @@ export const StreamSyncResponse = {
     message.getSyncSnapshotByPrefix =
       (object.getSyncSnapshotByPrefix !== undefined && object.getSyncSnapshotByPrefix !== null)
         ? TrieNodeSnapshotResponse.fromPartial(object.getSyncSnapshotByPrefix)
+        : undefined;
+    message.getOnChainEvents = (object.getOnChainEvents !== undefined && object.getOnChainEvents !== null)
+      ? OnChainEventResponse.fromPartial(object.getOnChainEvents)
+      : undefined;
+    message.getOnChainSignersByFid =
+      (object.getOnChainSignersByFid !== undefined && object.getOnChainSignersByFid !== null)
+        ? OnChainEventResponse.fromPartial(object.getOnChainSignersByFid)
         : undefined;
     message.error = (object.error !== undefined && object.error !== null)
       ? StreamSyncError.fromPartial(object.error)

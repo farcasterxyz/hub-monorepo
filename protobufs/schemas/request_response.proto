@@ -284,6 +284,8 @@ message StreamSyncRequest {
     SyncIds get_all_messages_by_sync_ids = 7;
     TrieNodePrefix get_sync_metadata_by_prefix = 8;
     TrieNodePrefix get_sync_snapshot_by_prefix = 9;
+    OnChainEventRequest get_on_chain_events = 10;
+    FidRequest get_on_chain_signers_by_fid = 11;
   }
 }
 
@@ -304,6 +306,8 @@ message StreamSyncResponse {
     MessagesResponse get_all_messages_by_sync_ids = 7;
     TrieNodeMetadataResponse get_sync_metadata_by_prefix = 8;
     TrieNodeSnapshotResponse get_sync_snapshot_by_prefix = 9;
-    StreamSyncError error = 10;
+    OnChainEventResponse get_on_chain_events = 10;
+    OnChainEventResponse get_on_chain_signers_by_fid = 11;
+    StreamSyncError error = 12;
   }
 }
