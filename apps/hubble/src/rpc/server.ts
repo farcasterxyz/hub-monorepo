@@ -523,8 +523,7 @@ export default class Server {
       const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
       log.debug({ method: "getInfo", req: call.request }, `RPC call from ${peer}`);
 
-      const { request } = call;
-      const info = await this.getInfo(request);
+      const info = await this.getInfo(call.request);
 
       callback(null, info);
     })();
