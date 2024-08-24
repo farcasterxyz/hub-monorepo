@@ -521,9 +521,9 @@ export default class Server {
   public getInfoRPC(call: ServerUnaryCall<HubInfoRequest, HubInfoResponse>, callback: sendUnaryData<HubInfoResponse>) {
     (async () => {
       const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-      log.debug({ method: "getInfo", req: call.request }, `RPC call from ${peer}`);
+      log.debug({ method: "getInfo", req: call?.request || { dbStats: false } }, `RPC call from ${peer}`);
 
-      const info = await this.getInfo(call.request);
+      const info = await this.getInfo(call?.request || { dbStats: false });
 
       callback(null, info);
     })();
