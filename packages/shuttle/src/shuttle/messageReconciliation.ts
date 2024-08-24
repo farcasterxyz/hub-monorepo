@@ -58,7 +58,7 @@ export class MessageReconciliation {
 
     const hubMessagesByHash: Record<string, Message> = {};
     // First, reconcile messages that are in the hub but not in the database
-    for await (const messages of this.allHubMessagesOfTypeForFid(fid, type)) {
+    for await (const messages of this.allHubMessagesOfTypeForFid(fid, type, startTimestamp, stopTimestamp)) {
       const messageHashes = messages.map((msg) => msg.hash);
 
       if (messageHashes.length === 0) {
