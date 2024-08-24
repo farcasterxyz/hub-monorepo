@@ -76,7 +76,7 @@ import * as net from "node:net";
 import axios from "axios";
 import { fidFromEvent } from "../storage/stores/storeEventHandler.js";
 import { rustErrorToHubError } from "../rustfunctions.js";
-import { sendUnaryData, ServerDuplexStream, ServerUnaryCall } from "@grpc/grpc-js";
+import { handleUnaryCall, sendUnaryData, ServerDuplexStream, ServerUnaryCall } from "@grpc/grpc-js";
 
 const HUBEVENTS_READER_TIMEOUT = 1 * 60 * 60 * 1000; // 1 hour
 
@@ -822,15 +822,15 @@ export default class Server {
 
   makeImpl(): HubServiceServer {
     return {
-      getInfo: this.getInfoRPC,
-      getCurrentPeers: this.getCurrentPeersRPC,
-      stopSync: this.stopSyncRPC,
-      forceSync: this.forceSyncRPC,
-      getSyncStatus: this.getSyncStatusRPC,
-      getAllSyncIdsByPrefix: this.getAllSyncIdsByPrefixRPC,
-      getAllMessagesBySyncIds: this.getAllMessagesBySyncIdsRPC,
-      getSyncMetadataByPrefix: this.getSyncMetadataByPrefixRPC,
-      getSyncSnapshotByPrefix: this.getSyncSnapshotByPrefixRPC,
+      getInfo: async (call, callback) => this.getInfoRPC(call, callback),
+      getCurrentPeers: async (call, callback) => this.getCurrentPeersRPC(call, callback),
+      stopSync: async (call, callback) => this.stopSyncRPC(call, callback),
+      forceSync: async (call, callback) => this.forceSyncRPC(call, callback),
+      getSyncStatus: async (call, callback) => this.getSyncStatusRPC(call, callback),
+      getAllSyncIdsByPrefix: async (call, callback) => this.getAllSyncIdsByPrefixRPC(call, callback),
+      getAllMessagesBySyncIds: async (call, callback) => this.getAllMessagesBySyncIdsRPC(call, callback),
+      getSyncMetadataByPrefix: async (call, callback) => this.getSyncMetadataByPrefixRPC(call, callback),
+      getSyncSnapshotByPrefix: async (call, callback) => this.getSyncSnapshotByPrefixRPC(call, callback),
       submitMessage: async (call, callback) => {
         // Identify peer that is calling, if available. This is used for rate limiting.
         const peer = Result.fromThrowable(
