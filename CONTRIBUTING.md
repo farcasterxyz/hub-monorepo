@@ -24,7 +24,7 @@ No contribution is too small and we welcome your help. There's always something 
 
 - Opening issues or adding details to existing issues
 - Fixing bugs in the code
-- Making tests or the ci builds faster
+- Making tests or the CI builds faster
 - Improving the documentation
 - Keeping packages up-to-date
 - Proposing and implementing new features
@@ -55,7 +55,7 @@ Then, from the root folder run:
 - `yarn build` to build Hubble and its dependencies
 - `yarn test` to ensure that the test suite runs correctly
 
-NOTE: running `yarn test` currently fails due to an environment issue with shuttle. you can still run yarn test successfully from all the other repositories.
+NOTE: Running `yarn test` currently fails due to an environment issue with shuttle. you can still run `yarn test` successfully from all the other repositories.
 
 ### 2.2. Signing Commits
 
@@ -107,7 +107,7 @@ All changes that involve features or bugfixes should be accompanied by tests, an
 
 If your PR has changes to gRPC or protobuf files, you must update the [public documentation website](./apps/hubble/www/). See the [Protobuf README](./protobufs/README.md) for instructions on how to auto-gen the documentation.
 
-All PR's should have supporting documentation that makes reviewing and understanding the code easy. You should:
+All PRs should have supporting documentation that makes reviewing and understanding the code easy. You should:
 
 - Update high-level changes in the [contract docs](docs/docs.md).
 - Always use TSDoc style comments for functions, variables, constants, events and params.
@@ -116,7 +116,7 @@ All PR's should have supporting documentation that makes reviewing and understan
 - Comments explaining the 'why' when code is not obvious.
 - Do not comment obvious changes (e.g. `starts the db` before the line `db.start()`)
 - Add a `Safety: ..` comment explaining every use of `as`.
-- Prefer active, present-tense doing form (`Gets the connection`) over other forms (`Connection is obtained`, `Get the connection`, `We get the connection`, `will get a connection`)
+- Prefer active, present-tense doing form (e.g. `Gets the connection`) over other forms (e.g. `Connection is obtained`, `Get the connection`, `We get the connection`, `will get a connection`)
 
 ### 3.3. Handling Errors
 
@@ -183,7 +183,7 @@ const result = safeJsonStringify(json);
 
 ---
 
-Prefer `result.match` to handle HubResult since it is explicit about how all branches are handled
+Prefer `result.match` to handle `HubResult` since it is explicit about how all branches are handled
 
 ```ts
 const result = computationThatMightFail().match(
