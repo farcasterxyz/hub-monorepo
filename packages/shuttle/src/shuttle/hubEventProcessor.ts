@@ -6,8 +6,6 @@ import {
   isLinkCompactStateMessage,
   isLinkRemoveMessage,
   isMergeMessageHubEvent,
-  isMergeOnChainHubEvent,
-  isMergeUsernameProofHubEvent,
   isPruneMessageHubEvent,
   isReactionAddMessage,
   isReactionRemoveMessage,
@@ -15,41 +13,43 @@ import {
   isVerificationAddAddressMessage,
   isVerificationRemoveMessage,
   Message,
-  MessageType,
 } from "@farcaster/hub-nodejs";
-import { DB } from "./db";
+import { DB, DBTransaction } from "./db";
 import { MessageProcessor } from "./messageProcessor";
 import { MessageHandler, MessageState, StoreMessageOperation } from "./";
 import { log } from "../log";
-import { bytesToHex } from "../utils";
 
 export class HubEventProcessor {
   static async processHubEvent(db: DB, event: HubEvent, handler: MessageHandler) {
-    const shouldSkip = await handler.onHubEvent(event);
-    if (shouldSkip) {
-      return;
-    }
-    if (isMergeMessageHubEvent(event)) {
-      await this.processMessage(
-        db,
-        event.mergeMessageBody.message,
-        handler,
-        "merge",
-        event.mergeMessageBody.deletedMessages,
-      );
-    } else if (isRevokeMessageHubEvent(event)) {
-      await this.processMessage(db, event.revokeMessageBody.message, handler, "revoke");
-    } else if (isPruneMessageHubEvent(event)) {
-      await this.processMessage(db, event.pruneMessageBody.message, handler, "prune");
-    }
+    await db.transaction().execute(async (trx) => {
+      const shouldSkip = await handler.onHubEvent(event, trx);
+      if (shouldSkip) {
+        return;
+      }
+      if (isMergeMessageHubEvent(event)) {
+        await this.processMessage(
+          trx,
+          event.mergeMessageBody.message,
+          handler,
+          "merge",
+          event.mergeMessageBody.deletedMessages,
+        );
+      } else if (isRevokeMessageHubEvent(event)) {
+        await this.processMessage(trx, event.revokeMessageBody.message, handler, "revoke");
+      } else if (isPruneMessageHubEvent(event)) {
+        await this.processMessage(trx, event.pruneMessageBody.message, handler, "prune");
+      }
+    });
   }
 
   static async handleMissingMessage(db: DB, message: Message, handler: MessageHandler) {
-    await this.processMessage(db, message, handler, "merge", [], true);
+    await db.transaction().execute(async (trx) => {
+      await this.processMessage(trx, message, handler, "merge", [], true);
+    });
   }
 
   private static async processMessage(
-    db: DB,
+    trx: DBTransaction,
     message: Message,
     handler: MessageHandler,
     operation: StoreMessageOperation,
@@ -57,28 +57,26 @@ export class HubEventProcessor {
     wasMissed = false,
   ) {
     const shouldValidate = process.env["SHUTTLE_VALIDATE_MESSAGES"] === "true";
-    await db.transaction().execute(async (trx) => {
-      if (deletedMessages.length > 0) {
-        await Promise.all(
-          deletedMessages.map(async (deletedMessage) => {
-            const isNew = await MessageProcessor.storeMessage(deletedMessage, trx, "delete", log, shouldValidate);
-            const state = this.getMessageState(deletedMessage, "delete");
-            await handler.handleMessageMerge(deletedMessage, trx, "delete", state, isNew, wasMissed);
-          }),
-        );
-      } else if (operation === "merge" && MessageProcessor.isCompactStateMessage(message)) {
-        const affectedMessages = await MessageProcessor.deleteDifferenceMessages(message, trx, log);
-        await Promise.all(
-          affectedMessages.map(async (deletedMessage) => {
-            const state = this.getMessageState(deletedMessage, "delete");
-            await handler.handleMessageMerge(deletedMessage, trx, "delete", state, true, wasMissed);
-          }),
-        );
-      }
-      const isNew = await MessageProcessor.storeMessage(message, trx, operation, log, shouldValidate);
-      const state = this.getMessageState(message, operation);
-      await handler.handleMessageMerge(message, trx, operation, state, isNew, wasMissed);
-    });
+    if (deletedMessages.length > 0) {
+      await Promise.all(
+        deletedMessages.map(async (deletedMessage) => {
+          const isNew = await MessageProcessor.storeMessage(deletedMessage, trx, "delete", log, shouldValidate);
+          const state = this.getMessageState(deletedMessage, "delete");
+          await handler.handleMessageMerge(deletedMessage, trx, "delete", state, isNew, wasMissed);
+        }),
+      );
+    } else if (operation === "merge" && MessageProcessor.isCompactStateMessage(message)) {
+      const affectedMessages = await MessageProcessor.deleteDifferenceMessages(message, trx, log);
+      await Promise.all(
+        affectedMessages.map(async (deletedMessage) => {
+          const state = this.getMessageState(deletedMessage, "delete");
+          await handler.handleMessageMerge(deletedMessage, trx, "delete", state, true, wasMissed);
+        }),
+      );
+    }
+    const isNew = await MessageProcessor.storeMessage(message, trx, operation, log, shouldValidate);
+    const state = this.getMessageState(message, operation);
+    await handler.handleMessageMerge(message, trx, operation, state, isNew, wasMissed);
   }
 
   public static getMessageState(message: Message, operation: StoreMessageOperation): MessageState {

@@ -28,7 +28,7 @@ export type ProcessResult = {
 export interface MessageHandler {
   // Called for every hub event. Return true to skip processing the event.
   // Returning true will not insert into the messages table. Should always return false unless you have a good reason.
-  onHubEvent(event: HubEvent): Promise<boolean>;
+  onHubEvent(event: HubEvent, txn: DB): Promise<boolean>;
 
   handleMessageMerge(
     message: Message,
