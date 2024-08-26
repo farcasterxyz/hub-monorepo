@@ -60,9 +60,9 @@ jobs:
         include:
           - node_version: 20
             runs_on: 'warp-ubuntu-latest-x64-16x'
-          - node_version: 22
+          - node_version: 22.4.1 # HACK: There's an issue with node 22.7.0
             runs_on: 'warp-ubuntu-latest-arm64-16x' # Only works on ARM for now
-          - node_version: 22
+          - node_version: 22.4.1 # HACK: There's an issue with node 22.7.0
             runs_on: 'warp-ubuntu-latest-x64-16x'
 
     runs-on: ${{ matrix.runs_on }}
