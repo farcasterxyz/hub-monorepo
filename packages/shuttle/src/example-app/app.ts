@@ -105,7 +105,7 @@ export class App implements MessageHandler {
     return new App(db, dbSchema, redis, hubSubscriber, streamConsumer);
   }
 
-  async onHubEvent(event: HubEvent): Promise<boolean> {
+  async onHubEvent(event: HubEvent, txn: DB): Promise<boolean> {
     if (isMergeOnChainHubEvent(event)) {
       const onChainEvent = event.mergeOnChainEventBody.onChainEvent;
       let body = {};
@@ -133,7 +133,7 @@ export class App implements MessageHandler {
         };
       }
       try {
-        await (this.db as AppDb)
+        await (txn as AppDb)
           .insertInto("onchain_events")
           .values({
             fid: onChainEvent.fid,
