@@ -29,6 +29,8 @@ import {
   ReactionsByTargetRequest,
   SignerRequest,
   StorageLimitsResponse,
+  StreamFetchRequest,
+  StreamFetchResponse,
   StreamSyncRequest,
   StreamSyncResponse,
   SubscribeRequest,
@@ -194,6 +196,11 @@ export interface HubService {
     request: Observable<DeepPartial<StreamSyncRequest>>,
     metadata?: grpcWeb.grpc.Metadata,
   ): Observable<StreamSyncResponse>;
+  /** @http-api: none */
+  streamFetch(
+    request: Observable<DeepPartial<StreamFetchRequest>>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Observable<StreamFetchResponse>;
 }
 
 export class HubServiceClientImpl implements HubService {
@@ -245,6 +252,7 @@ export class HubServiceClientImpl implements HubService {
     this.getSyncMetadataByPrefix = this.getSyncMetadataByPrefix.bind(this);
     this.getSyncSnapshotByPrefix = this.getSyncSnapshotByPrefix.bind(this);
     this.streamSync = this.streamSync.bind(this);
+    this.streamFetch = this.streamFetch.bind(this);
   }
 
   submitMessage(request: DeepPartial<Message>, metadata?: grpcWeb.grpc.Metadata): Promise<Message> {
@@ -475,6 +483,13 @@ export class HubServiceClientImpl implements HubService {
     request: Observable<DeepPartial<StreamSyncRequest>>,
     metadata?: grpcWeb.grpc.Metadata,
   ): Observable<StreamSyncResponse> {
+    throw new Error("ts-proto does not yet support client streaming!");
+  }
+
+  streamFetch(
+    request: Observable<DeepPartial<StreamFetchRequest>>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Observable<StreamFetchResponse> {
     throw new Error("ts-proto does not yet support client streaming!");
   }
 }

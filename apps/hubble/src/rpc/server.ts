@@ -43,13 +43,15 @@ import {
   HubAsyncResult,
   ServerWritableStream,
   SubscribeRequest,
-  StreamSyncError,
   StreamSyncRequest,
   StreamSyncResponse,
   HubInfoRequest,
   Empty,
   SyncStatusRequest,
   TrieNodePrefix,
+  StreamFetchRequest,
+  StreamFetchResponse,
+  StreamError,
 } from "@farcaster/hub-nodejs";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import { APP_NICKNAME, APP_VERSION, HubInterface } from "../hubble.js";
@@ -1630,7 +1632,7 @@ export default class Server {
             if (result.isErr()) {
               stream.write(
                 StreamSyncResponse.create({
-                  error: StreamSyncError.create({
+                  error: StreamError.create({
                     errCode: result.error.errCode,
                     message: result.error.message,
                     request: "forceSync",
@@ -1649,7 +1651,7 @@ export default class Server {
             if (result.isErr()) {
               stream.write(
                 StreamSyncResponse.create({
-                  error: StreamSyncError.create({
+                  error: StreamError.create({
                     errCode: result.error.errCode,
                     message: result.error.message,
                     request: "getAllMessagesBySyncIds",
@@ -1668,7 +1670,7 @@ export default class Server {
             if (result.isErr()) {
               stream.write(
                 StreamSyncResponse.create({
-                  error: StreamSyncError.create({
+                  error: StreamError.create({
                     request: "getAllSyncIdsByPrefix",
                   }),
                 }),
@@ -1699,7 +1701,7 @@ export default class Server {
             if (result.isErr()) {
               stream.write(
                 StreamSyncResponse.create({
-                  error: StreamSyncError.create({
+                  error: StreamError.create({
                     request: "getSyncMetadataByPrefix",
                   }),
                 }),
@@ -1716,7 +1718,7 @@ export default class Server {
             if (result.isErr()) {
               stream.write(
                 StreamSyncResponse.create({
-                  error: StreamSyncError.create({
+                  error: StreamError.create({
                     errCode: result.error.errCode,
                     message: result.error.message,
                     request: "getSyncSnapshotByPrefix",
@@ -1735,7 +1737,7 @@ export default class Server {
             if (result.isErr()) {
               stream.write(
                 StreamSyncResponse.create({
-                  error: StreamSyncError.create({
+                  error: StreamError.create({
                     errCode: result.error.errCode,
                     message: result.error.message,
                     request: "getSyncStatus",
@@ -1754,7 +1756,7 @@ export default class Server {
             if (result.isErr()) {
               stream.write(
                 StreamSyncResponse.create({
-                  error: StreamSyncError.create({
+                  error: StreamError.create({
                     errCode: result.error.errCode,
                     message: result.error.message,
                     request: "stopSync",
@@ -1769,6 +1771,108 @@ export default class Server {
               );
             }
           }
+        }
+      },
+      streamFetch: async (stream: ServerDuplexStream<StreamFetchRequest, StreamFetchResponse>) => {
+        while (!stream.closed) {
+          const request = stream.read();
+          const requestPayload =
+            request.castMessagesByFid ||
+            request.linkMessagesByFid ||
+            request.reactionMessagesByFid ||
+            request.userDataMessagesByFid ||
+            request.verificationMessagesByFid;
+
+          if (!requestPayload) {
+            continue;
+          }
+
+          const { fid, pageSize, pageToken, reverse, startTimestamp, stopTimestamp } = requestPayload;
+          let result: HubResult<MessagesPage<Message>> | undefined;
+          if (request.castMessagesByFid) {
+            result = await this.engine?.getAllCastMessagesByFid(
+              fid,
+              {
+                pageSize,
+                pageToken,
+                reverse,
+              },
+              startTimestamp,
+              stopTimestamp,
+            );
+          } else if (request.linkMessagesByFid) {
+            result = await this.engine?.getAllLinkMessagesByFid(
+              fid,
+              {
+                pageSize,
+                pageToken,
+                reverse,
+              },
+              startTimestamp,
+              stopTimestamp,
+            );
+            if (result?.isOk() && !result.value.nextPageToken) {
+              const additional = await this.engine?.getLinkCompactStateMessageByFid(fid);
+              if (additional?.isOk()) {
+                result.value.messages.push(...additional.value.messages);
+              }
+            }
+          } else if (request.reactionMessagesByFid) {
+            result = await this.engine?.getAllReactionMessagesByFid(
+              fid,
+              {
+                pageSize,
+                pageToken,
+                reverse,
+              },
+              startTimestamp,
+              stopTimestamp,
+            );
+          } else if (request.userDataMessagesByFid) {
+            result = await this.engine?.getUserDataByFid(
+              fid,
+              {
+                pageSize,
+                pageToken,
+                reverse,
+              },
+              startTimestamp,
+              stopTimestamp,
+            );
+          } else if (request.verificationMessagesByFid) {
+            result = await this.engine?.getAllVerificationMessagesByFid(
+              fid,
+              {
+                pageSize,
+                pageToken,
+                reverse,
+              },
+              startTimestamp,
+              stopTimestamp,
+            );
+          }
+
+          result?.match(
+            (page: MessagesPage<Message>) => {
+              stream.write(
+                StreamFetchResponse.create({
+                  idempotencyKey: request.idempotencyKey,
+                  messages: messagesPageToResponse(page),
+                }),
+              );
+            },
+            (err: HubError) => {
+              stream.write(
+                StreamFetchResponse.create({
+                  error: StreamError.create({
+                    errCode: err.errCode,
+                    message: err.message,
+                    request: "fetch",
+                  }),
+                }),
+              );
+            },
+          );
         }
       },
     };

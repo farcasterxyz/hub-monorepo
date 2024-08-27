@@ -289,7 +289,7 @@ message StreamSyncRequest {
   }
 }
 
-message StreamSyncError {
+message StreamError {
   string errCode = 1;
   string message = 2;
   string request = 3;
@@ -308,6 +308,25 @@ message StreamSyncResponse {
     TrieNodeSnapshotResponse get_sync_snapshot_by_prefix = 9;
     OnChainEventResponse get_on_chain_events = 10;
     OnChainEventResponse get_on_chain_signers_by_fid = 11;
-    StreamSyncError error = 12;
+    StreamError error = 12;
+  }
+}
+
+message StreamFetchRequest {
+  string idempotency_key = 1;
+  oneof request {
+    FidTimestampRequest cast_messages_by_fid = 2;
+    FidTimestampRequest reaction_messages_by_fid = 3;
+    FidTimestampRequest verification_messages_by_fid = 4;
+    FidTimestampRequest user_data_messages_by_fid = 5;
+    FidTimestampRequest link_messages_by_fid = 6;
+  }
+}
+
+message StreamFetchResponse {
+  string idempotency_key = 1;
+  oneof response {
+    MessagesResponse messages = 2;
+    StreamError error = 3;
   }
 }

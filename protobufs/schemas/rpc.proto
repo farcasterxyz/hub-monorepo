@@ -114,6 +114,8 @@ service HubService {
   rpc GetSyncSnapshotByPrefix(TrieNodePrefix) returns (TrieNodeSnapshotResponse);
   // @http-api: none
   rpc StreamSync(stream StreamSyncRequest) returns (stream StreamSyncResponse);
+  // @http-api: none
+  rpc StreamFetch(stream StreamFetchRequest) returns (stream StreamFetchResponse);
 }
 
 service AdminService {
