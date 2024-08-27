@@ -1,5 +1,16 @@
 # @farcaster/hub-shuttle
 
+## 0.6.0
+
+### Minor Changes
+
+- 7eba6ee0: feat: Support event level callbacks in shuttle
+
+### Patch Changes
+
+- 49ecf50e: fix: reconciliation wasn't actually using time bounds for hub rpcs
+- 2bf64461: fix: Update onHubEvent to accept a txn for consistency
+
 ## 0.5.13
 
 ### Patch Changes

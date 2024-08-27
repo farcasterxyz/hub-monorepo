@@ -77,7 +77,7 @@ class FakeHubSubscriber extends HubSubscriber implements MessageHandler {
     this.shouldSkip = shouldSkip;
   }
 
-  async onHubEvent(_event: HubEvent): Promise<boolean> {
+  async onHubEvent(_event: HubEvent, _txn: DB): Promise<boolean> {
     return this.shouldSkip;
   }
 
