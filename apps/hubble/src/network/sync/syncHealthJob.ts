@@ -15,9 +15,9 @@ type SchedulerStatus = "started" | "stopped";
 export class MeasureSyncHealthJobScheduler {
   private _cronTask?: cron.ScheduledTask;
   private _metadataRetriever: SyncEngineMetadataRetriever;
-  // Start at 15 minutes ago and take a 10 minute span
-  private _startSecondsAgo = 60 * 15;
-  private _spanSeconds = 60 * 10;
+  // Start at 35 minutes ago and take a 30 minute span
+  private _startSecondsAgo = 60 * 35;
+  private _spanSeconds = 60 * 30;
   private _hub: HubInterface;
   private _peersInScope: string[];
 
