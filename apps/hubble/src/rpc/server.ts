@@ -67,6 +67,7 @@ import {
   BufferedStreamWriter,
   STREAM_MESSAGE_BUFFER_SIZE,
   SLOW_CLIENT_GRACE_PERIOD_MS,
+  BufferedDuplexStreamReaderWriter,
 } from "./bufferedStreamWriter.js";
 import { sleep } from "../utils/crypto.js";
 import { jumpConsistentHash } from "../utils/jumpConsistentHash.js";
@@ -1633,12 +1634,13 @@ export default class Server {
           destroyStream(stream, error);
         }, STREAM_METHODS_TIMEOUT);
 
-        while (!stream.closed) {
-          const request = stream.read();
+        const bufferedStreamWriter = new BufferedDuplexStreamReaderWriter(stream);
+        while (!bufferedStreamWriter.closed) {
+          const request = bufferedStreamWriter.readFromStream();
           if (request.forceSync) {
             const result = await this.forceSync(request.forceSync);
             if (result.isErr()) {
-              stream.write(
+              bufferedStreamWriter.writeToStream(
                 StreamSyncResponse.create({
                   error: StreamError.create({
                     errCode: result.error.errCode,
@@ -1648,7 +1650,7 @@ export default class Server {
                 }),
               );
             } else {
-              stream.write(
+              bufferedStreamWriter.writeToStream(
                 StreamSyncResponse.create({
                   forceSync: result.value,
                 }),
@@ -1657,7 +1659,7 @@ export default class Server {
           } else if (request.getAllMessagesBySyncIds) {
             const result = await this.getAllMessagesBySyncIds(request.getAllMessagesBySyncIds);
             if (result.isErr()) {
-              stream.write(
+              bufferedStreamWriter.writeToStream(
                 StreamSyncResponse.create({
                   error: StreamError.create({
                     errCode: result.error.errCode,
@@ -1667,7 +1669,7 @@ export default class Server {
                 }),
               );
             } else {
-              stream.write(
+              bufferedStreamWriter.writeToStream(
                 StreamSyncResponse.create({
                   getAllMessagesBySyncIds: result.value,
                 }),
@@ -1676,7 +1678,7 @@ export default class Server {
           } else if (request.getAllSyncIdsByPrefix) {
             const result = await this.getAllSyncIdsByPrefix(request.getAllSyncIdsByPrefix);
             if (result.isErr()) {
-              stream.write(
+              bufferedStreamWriter.writeToStream(
                 StreamSyncResponse.create({
                   error: StreamError.create({
                     request: "getAllSyncIdsByPrefix",
@@ -1684,7 +1686,7 @@ export default class Server {
                 }),
               );
             } else {
-              stream.write(
+              bufferedStreamWriter.writeToStream(
                 StreamSyncResponse.create({
                   getAllSyncIdsByPrefix: result.value,
                 }),
@@ -1692,14 +1694,14 @@ export default class Server {
             }
           } else if (request.getCurrentPeers) {
             const result = await this.getCurrentPeers();
-            stream.write(
+            bufferedStreamWriter.writeToStream(
               StreamSyncResponse.create({
                 getCurrentPeers: result,
               }),
             );
           } else if (request.getInfo) {
             const result = await this.getInfo(request.getInfo);
-            stream.write(
+            bufferedStreamWriter.writeToStream(
               StreamSyncResponse.create({
                 getInfo: result,
               }),
@@ -1707,7 +1709,7 @@ export default class Server {
           } else if (request.getSyncMetadataByPrefix) {
             const result = await this.getSyncMetadataByPrefix(request.getSyncMetadataByPrefix);
             if (result.isErr()) {
-              stream.write(
+              bufferedStreamWriter.writeToStream(
                 StreamSyncResponse.create({
                   error: StreamError.create({
                     request: "getSyncMetadataByPrefix",
@@ -1715,7 +1717,7 @@ export default class Server {
                 }),
               );
             } else {
-              stream.write(
+              bufferedStreamWriter.writeToStream(
                 StreamSyncResponse.create({
                   getSyncMetadataByPrefix: result.value,
                 }),
@@ -1724,7 +1726,7 @@ export default class Server {
           } else if (request.getSyncSnapshotByPrefix) {
             const result = await this.getSyncSnapshotByPrefix(request.getSyncSnapshotByPrefix);
             if (result.isErr()) {
-              stream.write(
+              bufferedStreamWriter.writeToStream(
                 StreamSyncResponse.create({
                   error: StreamError.create({
                     errCode: result.error.errCode,
@@ -1734,7 +1736,7 @@ export default class Server {
                 }),
               );
             } else {
-              stream.write(
+              bufferedStreamWriter.writeToStream(
                 StreamSyncResponse.create({
                   getSyncSnapshotByPrefix: result.value,
                 }),
@@ -1743,7 +1745,7 @@ export default class Server {
           } else if (request.getSyncStatus) {
             const result = await this.getSyncStatus(request.getSyncStatus.peerId);
             if (result.isErr()) {
-              stream.write(
+              bufferedStreamWriter.writeToStream(
                 StreamSyncResponse.create({
                   error: StreamError.create({
                     errCode: result.error.errCode,
@@ -1753,7 +1755,7 @@ export default class Server {
                 }),
               );
             } else {
-              stream.write(
+              bufferedStreamWriter.writeToStream(
                 StreamSyncResponse.create({
                   getSyncStatus: result.value,
                 }),
@@ -1762,7 +1764,7 @@ export default class Server {
           } else if (request.stopSync) {
             const result = await this.stopSync();
             if (result.isErr()) {
-              stream.write(
+              bufferedStreamWriter.writeToStream(
                 StreamSyncResponse.create({
                   error: StreamError.create({
                     errCode: result.error.errCode,
@@ -1772,7 +1774,7 @@ export default class Server {
                 }),
               );
             } else {
-              stream.write(
+              bufferedStreamWriter.writeToStream(
                 StreamSyncResponse.create({
                   stopSync: result.value,
                 }),
@@ -1790,8 +1792,9 @@ export default class Server {
           destroyStream(stream, error);
         }, STREAM_METHODS_TIMEOUT);
 
-        while (!stream.closed) {
-          const request = stream.read();
+        const bufferedStreamWriter = new BufferedDuplexStreamReaderWriter(stream);
+        while (!bufferedStreamWriter.closed) {
+          const request = bufferedStreamWriter.readFromStream();
           const requestPayload =
             request.castMessagesByFid ||
             request.linkMessagesByFid ||
@@ -1870,7 +1873,7 @@ export default class Server {
 
           result?.match(
             (page: MessagesPage<Message>) => {
-              stream.write(
+              bufferedStreamWriter.writeToStream(
                 StreamFetchResponse.create({
                   idempotencyKey: request.idempotencyKey,
                   messages: messagesPageToResponse(page),
@@ -1878,7 +1881,7 @@ export default class Server {
               );
             },
             (err: HubError) => {
-              stream.write(
+              bufferedStreamWriter.writeToStream(
                 StreamFetchResponse.create({
                   error: StreamError.create({
                     errCode: err.errCode,

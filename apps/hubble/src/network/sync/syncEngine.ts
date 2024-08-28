@@ -195,8 +195,8 @@ export class FailoverStreamSyncClient {
       );
 
       const response = this.stream.read();
-      if (!response.getSyncSnapshotByPrefix) {
-        if (response.error) {
+      if (!response || !response.getSyncSnapshotByPrefix) {
+        if (response?.error) {
           return err(new HubError(response.error.errCode as HubErrorCode, { message: response.error.message }));
         }
 
@@ -222,8 +222,8 @@ export class FailoverStreamSyncClient {
       );
 
       const response = this.stream.read();
-      if (!response.getSyncMetadataByPrefix) {
-        if (response.error) {
+      if (!response || !response.getSyncMetadataByPrefix) {
+        if (response?.error) {
           return err(new HubError(response.error.errCode as HubErrorCode, { message: response.error.message }));
         }
 
@@ -246,8 +246,8 @@ export class FailoverStreamSyncClient {
       );
 
       const response = this.stream.read();
-      if (!response.getAllMessagesBySyncIds) {
-        if (response.error) {
+      if (!response || !response.getAllMessagesBySyncIds) {
+        if (response?.error) {
           return err(new HubError(response.error.errCode as HubErrorCode, { message: response.error.message }));
         }
 
@@ -270,8 +270,8 @@ export class FailoverStreamSyncClient {
       );
 
       const response = this.stream.read();
-      if (!response.getAllSyncIdsByPrefix) {
-        if (response.error) {
+      if (!response || !response.getAllSyncIdsByPrefix) {
+        if (response?.error) {
           return err(new HubError(response.error.errCode as HubErrorCode, { message: response.error.message }));
         }
 
@@ -294,8 +294,8 @@ export class FailoverStreamSyncClient {
       );
 
       const response = this.stream.read();
-      if (!response.getInfo) {
-        if (response.error) {
+      if (!response || !response.getInfo) {
+        if (response?.error) {
           return err(new HubError(response.error.errCode as HubErrorCode, { message: response.error.message }));
         }
 
@@ -318,8 +318,8 @@ export class FailoverStreamSyncClient {
       );
 
       const response = this.stream.read();
-      if (!response.getOnChainEvents) {
-        if (response.error) {
+      if (!response || !response.getOnChainEvents) {
+        if (response?.error) {
           return err(new HubError(response.error.errCode as HubErrorCode, { message: response.error.message }));
         }
 
@@ -342,8 +342,8 @@ export class FailoverStreamSyncClient {
       );
 
       const response = this.stream.read();
-      if (!response.getOnChainSignersByFid) {
-        if (response.error) {
+      if (!response || !response.getOnChainSignersByFid) {
+        if (response?.error) {
           return err(new HubError(response.error.errCode as HubErrorCode, { message: response.error.message }));
         }
 
