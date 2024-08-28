@@ -82,7 +82,7 @@ import { rustErrorToHubError } from "../rustfunctions.js";
 import { handleUnaryCall, sendUnaryData, ServerDuplexStream, ServerUnaryCall } from "@grpc/grpc-js";
 
 const HUBEVENTS_READER_TIMEOUT = 1 * 60 * 60 * 1000; // 1 hour
-const STREAM_METHODS_TIMEOUT = 10 * 1000; // 10 seconds
+const STREAM_METHODS_TIMEOUT = 5 * 1000; // 5 seconds
 
 export const DEFAULT_SUBSCRIBE_PERIP_LIMIT = 4; // Max 4 subscriptions per IP
 export const DEFAULT_SUBSCRIBE_GLOBAL_LIMIT = 4096; // Max 4096 subscriptions globally
