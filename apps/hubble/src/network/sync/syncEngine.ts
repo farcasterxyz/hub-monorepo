@@ -186,7 +186,7 @@ export class FailoverStreamSyncClient {
     metadata?: Metadata,
   ): Promise<HubResult<TrieNodeSnapshotResponse>> {
     if (this.usingRPC || !this.stream) {
-      return await this.rpcClient.getSyncSnapshotByPrefix(request, metadata, rpcDeadline());
+      return await this.rpcClient.getSyncSnapshotByPrefix(request, metadata ?? new Metadata(), rpcDeadline());
     } else {
       this.stream.write(
         StreamSyncRequest.create({
@@ -213,7 +213,7 @@ export class FailoverStreamSyncClient {
     metadata?: Metadata,
   ): Promise<HubResult<TrieNodeMetadataResponse>> {
     if (this.usingRPC || !this.stream) {
-      return await this.rpcClient.getSyncMetadataByPrefix(request, metadata, rpcDeadline());
+      return await this.rpcClient.getSyncMetadataByPrefix(request, metadata ?? new Metadata(), rpcDeadline());
     } else {
       this.stream.write(
         StreamSyncRequest.create({
@@ -237,7 +237,7 @@ export class FailoverStreamSyncClient {
 
   public async getAllMessagesBySyncIds(request: SyncIds, metadata?: Metadata): Promise<HubResult<MessagesResponse>> {
     if (this.usingRPC || !this.stream) {
-      return await this.rpcClient.getAllMessagesBySyncIds(request, metadata, rpcDeadline());
+      return await this.rpcClient.getAllMessagesBySyncIds(request, metadata ?? new Metadata(), rpcDeadline());
     } else {
       this.stream.write(
         StreamSyncRequest.create({
@@ -261,7 +261,7 @@ export class FailoverStreamSyncClient {
 
   public async getAllSyncIdsByPrefix(request: TrieNodePrefix, metadata?: Metadata): Promise<HubResult<SyncIds>> {
     if (this.usingRPC || !this.stream) {
-      return await this.rpcClient.getAllSyncIdsByPrefix(request, metadata, rpcDeadline());
+      return await this.rpcClient.getAllSyncIdsByPrefix(request, metadata ?? new Metadata(), rpcDeadline());
     } else {
       this.stream.write(
         StreamSyncRequest.create({
