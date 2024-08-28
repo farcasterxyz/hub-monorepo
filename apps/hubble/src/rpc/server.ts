@@ -81,6 +81,7 @@ import { rustErrorToHubError } from "../rustfunctions.js";
 import { handleUnaryCall, sendUnaryData, ServerDuplexStream, ServerUnaryCall } from "@grpc/grpc-js";
 
 const HUBEVENTS_READER_TIMEOUT = 1 * 60 * 60 * 1000; // 1 hour
+const STREAM_METHODS_TIMEOUT = 10 * 1000; // 10 seconds
 
 export const DEFAULT_SUBSCRIBE_PERIP_LIMIT = 4; // Max 4 subscriptions per IP
 export const DEFAULT_SUBSCRIBE_GLOBAL_LIMIT = 4096; // Max 4096 subscriptions globally
@@ -341,7 +342,7 @@ class IpConnectionLimiter {
   }
 }
 
-export function destroyStream(stream: ServerWritableStream<SubscribeRequest, HubEvent>, error: Error) {
+export function destroyStream<T, R>(stream: ServerWritableStream<T, R> | ServerDuplexStream<T, R>, error: Error) {
   stream.emit("error", error);
   stream.end();
 }
@@ -1625,6 +1626,13 @@ export default class Server {
         }
       },
       streamSync: async (stream: ServerDuplexStream<StreamSyncRequest, StreamSyncResponse>) => {
+        const timeout = setTimeout(async () => {
+          logger.warn({ timeout: STREAM_METHODS_TIMEOUT }, "stream sync: timeout, stopping stream");
+
+          const error = new HubError("unavailable.network_failure", "stream timeout");
+          destroyStream(stream, error);
+        }, STREAM_METHODS_TIMEOUT);
+
         while (!stream.closed) {
           const request = stream.read();
           if (request.forceSync) {
@@ -1771,9 +1779,17 @@ export default class Server {
               );
             }
           }
+          timeout.refresh();
         }
       },
       streamFetch: async (stream: ServerDuplexStream<StreamFetchRequest, StreamFetchResponse>) => {
+        const timeout = setTimeout(async () => {
+          logger.warn({ timeout: STREAM_METHODS_TIMEOUT }, "stream fetch: timeout, stopping stream");
+
+          const error = new HubError("unavailable.network_failure", "stream timeout");
+          destroyStream(stream, error);
+        }, STREAM_METHODS_TIMEOUT);
+
         while (!stream.closed) {
           const request = stream.read();
           const requestPayload =
@@ -1873,6 +1889,7 @@ export default class Server {
               );
             },
           );
+          timeout.refresh();
         }
       },
     };
