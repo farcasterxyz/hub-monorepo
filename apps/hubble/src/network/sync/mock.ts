@@ -1,6 +1,18 @@
-import { ok } from "neverthrow";
+import { err, ok } from "neverthrow";
 
-import { HubResult, MessagesResponse, SyncIds, TrieNodeMetadataResponse, TrieNodePrefix } from "@farcaster/hub-nodejs";
+import {
+  CallOptions,
+  ClientDuplexStream,
+  HubError,
+  HubResult,
+  MessagesResponse,
+  Metadata,
+  StreamSyncRequest,
+  StreamSyncResponse,
+  SyncIds,
+  TrieNodeMetadataResponse,
+  TrieNodePrefix,
+} from "@farcaster/hub-nodejs";
 
 import Engine from "../../storage/engine/index.js";
 import { NodeMetadata } from "./merkleTrie.js";
@@ -22,6 +34,13 @@ export class MockRpcClient {
   constructor(engine: Engine, syncEngine: SyncEngine) {
     this.engine = engine;
     this.syncEngine = syncEngine;
+  }
+
+  async streamSync(
+    metadata?: Metadata,
+    options?: Partial<CallOptions>,
+  ): Promise<HubResult<ClientDuplexStream<StreamSyncRequest, StreamSyncResponse>>> {
+    return err(new HubError("unavailable", "unavailable"));
   }
 
   async getSyncMetadataByPrefix(request: TrieNodePrefix): Promise<HubResult<TrieNodeMetadataResponse>> {

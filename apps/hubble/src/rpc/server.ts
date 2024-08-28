@@ -1637,7 +1637,10 @@ export default class Server {
         const bufferedStreamWriter = new BufferedDuplexStreamReaderWriter(stream);
         while (!bufferedStreamWriter.closed) {
           const request = bufferedStreamWriter.readFromStream();
-          if (request.forceSync) {
+          if (!request) {
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            continue;
+          } else if (request.forceSync) {
             const result = await this.forceSync(request.forceSync);
             if (result.isErr()) {
               bufferedStreamWriter.writeToStream(
@@ -1795,6 +1798,11 @@ export default class Server {
         const bufferedStreamWriter = new BufferedDuplexStreamReaderWriter(stream);
         while (!bufferedStreamWriter.closed) {
           const request = bufferedStreamWriter.readFromStream();
+          if (!request) {
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            continue;
+          }
+
           const requestPayload =
             request.castMessagesByFid ||
             request.linkMessagesByFid ||
@@ -1803,6 +1811,7 @@ export default class Server {
             request.verificationMessagesByFid;
 
           if (!requestPayload) {
+            await new Promise((resolve) => setTimeout(resolve, 1000));
             continue;
           }
 
