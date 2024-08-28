@@ -176,8 +176,8 @@ describe("Multi peer sync engine", () => {
 
   test("toBytes test", async () => {
     // Add signer custody event to engine 1
-    await engine1.mergeOnChainEvent(custodyEvent);
-    await engine1.mergeOnChainEvent(signerEvent);
+    expect((await engine1.mergeOnChainEvent(custodyEvent)).isOk()).toBe(true);
+    expect((await engine1.mergeOnChainEvent(signerEvent)).isOk()).toBe(true);
 
     // Get info first
     const info = await clientForServer1.getInfo(HubInfoRequest.create());
@@ -198,7 +198,9 @@ describe("Multi peer sync engine", () => {
     // Create a new sync engine from the existing engine, and see if all the messages from the engine
     // are loaded into the sync engine Merkle Trie properly.
     const rootHash = await syncEngine1.trie.rootHash();
+    await clientForServer1.close();
     await syncEngine1.stop();
+    await server1.stop();
     const reinitSyncEngine = new SyncEngine(hub1, testDb1);
     await reinitSyncEngine.start();
 
