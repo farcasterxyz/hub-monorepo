@@ -52,7 +52,7 @@ const makeMessageData = async <TData extends protobufs.MessageData>(
   return validations.validateMessageData(data as TData, publicClients);
 };
 
-const makeMessage = async <TMessage extends protobufs.Message>(
+export const makeMessage = async <TMessage extends protobufs.Message>(
   messageData: protobufs.MessageData,
   signer: Signer,
 ): HubAsyncResult<TMessage> => {
