@@ -343,6 +343,9 @@ export interface HubOptions {
 
   /** Should we connect to DB peers on startup */
   connectToDbPeers?: boolean;
+
+  /** Should we use streaming for client-side sync? */
+  useStreaming?: boolean;
 }
 
 /** @returns A randomized string of the format `rocksdb.tmp.*` used for the DB Name */
@@ -476,6 +479,8 @@ export class Hub implements HubInterface {
       this.l2RegistryProvider,
       this.fNameRegistryEventsProvider,
       profileSync,
+      undefined,
+      options.useStreaming,
     );
 
     this.strictContactInfoValidation = options.strictContactInfoValidation || false;
@@ -866,6 +871,7 @@ export class Hub implements HubInterface {
       strictNoSign,
       shouldExit,
       solanaVerificationsEnabled,
+      useStreaming,
     } = applyNetworkConfig(
       networkConfig,
       this.allowedPeerIds,
@@ -875,6 +881,7 @@ export class Hub implements HubInterface {
       this.options.strictContactInfoValidation,
       this.options.strictNoSign,
       this.engine.solanaVerficationsEnabled,
+      this.options.useStreaming,
     );
 
     if (shouldExit) {

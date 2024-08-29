@@ -170,16 +170,19 @@ export class FailoverStreamSyncClient {
   rpcClient: HubRpcClient;
   stream?: ClientDuplexStream<StreamSyncRequest, StreamSyncResponse>;
 
-  constructor(rpcClient: HubRpcClient) {
+  constructor(rpcClient: HubRpcClient, useStreaming: boolean) {
     this.rpcClient = rpcClient;
-    this.rpcClient.streamSync().then((result) => {
-      if (result.isErr()) {
-        log.warn("encountered error when attempting to establish sync for stream, failing over to RPC", result.error);
-        this.usingRPC = true;
-      } else {
-        this.stream = result.value;
-      }
-    });
+    this.usingRPC = !useStreaming;
+    if (useStreaming) {
+      this.rpcClient.streamSync().then((result) => {
+        if (result.isErr()) {
+          log.warn("encountered error when attempting to establish sync for stream, failing over to RPC", result.error);
+          this.usingRPC = true;
+        } else {
+          this.stream = result.value;
+        }
+      });
+    }
   }
 
   public async getSyncSnapshotByPrefix(
@@ -611,6 +614,9 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   // Has the syncengine started yet?
   private _started = false;
 
+  // Enable/disable streaming client for sync
+  private _useStreaming = true;
+
   private _dbStats: DbStats = {
     approxSize: 0,
     numItems: 0,
@@ -625,6 +631,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     fnameEventsProvider?: FNameRegistryEventsProvider,
     profileSync = false,
     minSyncWindow?: number,
+    useStreaming?: boolean,
   ) {
     super();
 
@@ -636,6 +643,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     this._trie = new MerkleTrie(rocksDb);
     this._l2EventsProvider = l2EventsProvider;
     this._fnameEventsProvider = fnameEventsProvider;
+    this._useStreaming = useStreaming === undefined ? this._useStreaming : useStreaming;
 
     this.curSync = new CurrentSyncStatus();
 
@@ -1061,7 +1069,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       }
       return;
     }
-    let rpcClient = new FailoverStreamSyncClient(rawRpcClient);
+    let rpcClient = new FailoverStreamSyncClient(rawRpcClient, this._useStreaming);
 
     // Fill in the rpcClients for the secondary contacts
     const secondaryRpcClients: SecondaryRpcClient[] = (
@@ -1070,7 +1078,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           const rpcClient = await hub.getRPCClientForPeer(c.peerId, c.contactInfo);
           const info = await rpcClient?.getInfo({ dbStats: false }, new Metadata(), rpcDeadline());
           if (rpcClient && info && info.isOk()) {
-            return { peerId: c.peerId.toString(), rpcClient: new FailoverStreamSyncClient(rpcClient) };
+            return {
+              peerId: c.peerId.toString(),
+              rpcClient: new FailoverStreamSyncClient(rpcClient, this._useStreaming),
+            };
           } else {
             return undefined;
           }
@@ -1080,7 +1091,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
     // If a sync profile is enabled, wrap the rpcClient in a profiler
     if (this._syncProfiler) {
-      rpcClient = new FailoverStreamSyncClient(this._syncProfiler.profiledRpcClient(rawRpcClient));
+      rpcClient = new FailoverStreamSyncClient(this._syncProfiler.profiledRpcClient(rawRpcClient), this._useStreaming);
     }
 
     try {
@@ -1202,7 +1213,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     if (!rawRpcClient) {
       return err(new HubError("bad_request", "Unreachable peer"));
     }
-    const rpcClient = new FailoverStreamSyncClient(rawRpcClient);
+    const rpcClient = new FailoverStreamSyncClient(rawRpcClient, this._useStreaming);
 
     log.info({ peerId }, "Force sync: Starting sync");
 
