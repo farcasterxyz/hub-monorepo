@@ -38,6 +38,7 @@ import {
   StreamSyncRequest,
   StreamSyncResponse,
   SyncStatusRequest,
+  SyncStatusResponse,
   toFarcasterTime,
   TrieNodeSnapshotResponse,
 } from "@farcaster/core";
@@ -171,7 +172,7 @@ export class FailoverStreamSyncClient {
 
   constructor(rpcClient: HubRpcClient) {
     this.rpcClient = rpcClient;
-    this.rpcClient.streamSync(undefined, rpcDeadline()).then((result) => {
+    this.rpcClient.streamSync().then((result) => {
       if (result.isErr()) {
         log.warn("encountered error when attempting to establish sync for stream, failing over to RPC", result.error);
         this.usingRPC = true;
@@ -188,23 +189,41 @@ export class FailoverStreamSyncClient {
     if (this.usingRPC || !this.stream) {
       return await this.rpcClient.getSyncSnapshotByPrefix(request, metadata ?? new Metadata(), rpcDeadline());
     } else {
+      const result = new Promise<HubResult<TrieNodeSnapshotResponse>>((resolve) => {
+        if (!this.stream) {
+          resolve(err(new HubError("unavailable", "unexpected stream termination")));
+          return;
+        }
+        const process = async (response: StreamSyncResponse) => {
+          if (!this.stream) {
+            resolve(err(new HubError("unavailable", "unexpected stream termination")));
+            return;
+          }
+          this.stream.off("data", process);
+          if (!response.getSyncSnapshotByPrefix) {
+            if (response?.error) {
+              resolve(err(new HubError(response.error.errCode as HubErrorCode, { message: response.error.message })));
+              return;
+            }
+
+            this.stream.cancel();
+            this.stream = undefined;
+            this.usingRPC = true;
+            resolve(await this.getSyncSnapshotByPrefix(request));
+          } else {
+            resolve(ok(response.getSyncSnapshotByPrefix));
+          }
+        };
+        this.stream.on("data", process);
+      });
+
       this.stream.write(
         StreamSyncRequest.create({
           getSyncSnapshotByPrefix: request,
         }),
       );
 
-      const response = this.stream.read();
-      if (!response || !response.getSyncSnapshotByPrefix) {
-        if (response?.error) {
-          return err(new HubError(response.error.errCode as HubErrorCode, { message: response.error.message }));
-        }
-
-        this.usingRPC = true;
-        return await this.getSyncSnapshotByPrefix(request, metadata);
-      } else {
-        return ok(response.getSyncSnapshotByPrefix);
-      }
+      return await result;
     }
   }
 
@@ -215,23 +234,41 @@ export class FailoverStreamSyncClient {
     if (this.usingRPC || !this.stream) {
       return await this.rpcClient.getSyncMetadataByPrefix(request, metadata ?? new Metadata(), rpcDeadline());
     } else {
+      const result = new Promise<HubResult<TrieNodeMetadataResponse>>((resolve) => {
+        if (!this.stream) {
+          resolve(err(new HubError("unavailable", "unexpected stream termination")));
+          return;
+        }
+        const process = async (response: StreamSyncResponse) => {
+          if (!this.stream) {
+            resolve(err(new HubError("unavailable", "unexpected stream termination")));
+            return;
+          }
+          this.stream.off("data", process);
+          if (!response.getSyncMetadataByPrefix) {
+            if (response?.error) {
+              resolve(err(new HubError(response.error.errCode as HubErrorCode, { message: response.error.message })));
+              return;
+            }
+
+            this.stream.cancel();
+            this.stream = undefined;
+            this.usingRPC = true;
+            resolve(await this.getSyncMetadataByPrefix(request));
+          } else {
+            resolve(ok(response.getSyncMetadataByPrefix));
+          }
+        };
+        this.stream.on("data", process);
+      });
+
       this.stream.write(
         StreamSyncRequest.create({
           getSyncMetadataByPrefix: request,
         }),
       );
 
-      const response = this.stream.read();
-      if (!response || !response.getSyncMetadataByPrefix) {
-        if (response?.error) {
-          return err(new HubError(response.error.errCode as HubErrorCode, { message: response.error.message }));
-        }
-
-        this.usingRPC = true;
-        return await this.getSyncMetadataByPrefix(request, metadata);
-      } else {
-        return ok(response.getSyncMetadataByPrefix);
-      }
+      return await result;
     }
   }
 
@@ -239,23 +276,41 @@ export class FailoverStreamSyncClient {
     if (this.usingRPC || !this.stream) {
       return await this.rpcClient.getAllMessagesBySyncIds(request, metadata ?? new Metadata(), rpcDeadline());
     } else {
+      const result = new Promise<HubResult<MessagesResponse>>((resolve) => {
+        if (!this.stream) {
+          resolve(err(new HubError("unavailable", "unexpected stream termination")));
+          return;
+        }
+        const process = async (response: StreamSyncResponse) => {
+          if (!this.stream) {
+            resolve(err(new HubError("unavailable", "unexpected stream termination")));
+            return;
+          }
+          this.stream.off("data", process);
+          if (!response.getAllMessagesBySyncIds) {
+            if (response?.error) {
+              resolve(err(new HubError(response.error.errCode as HubErrorCode, { message: response.error.message })));
+              return;
+            }
+
+            this.stream.cancel();
+            this.stream = undefined;
+            this.usingRPC = true;
+            resolve(await this.getAllMessagesBySyncIds(request));
+          } else {
+            resolve(ok(response.getAllMessagesBySyncIds));
+          }
+        };
+        this.stream.on("data", process);
+      });
+
       this.stream.write(
         StreamSyncRequest.create({
           getAllMessagesBySyncIds: request,
         }),
       );
 
-      const response = this.stream.read();
-      if (!response || !response.getAllMessagesBySyncIds) {
-        if (response?.error) {
-          return err(new HubError(response.error.errCode as HubErrorCode, { message: response.error.message }));
-        }
-
-        this.usingRPC = true;
-        return await this.getAllMessagesBySyncIds(request, metadata);
-      } else {
-        return ok(response.getAllMessagesBySyncIds);
-      }
+      return await result;
     }
   }
 
@@ -263,23 +318,41 @@ export class FailoverStreamSyncClient {
     if (this.usingRPC || !this.stream) {
       return await this.rpcClient.getAllSyncIdsByPrefix(request, metadata ?? new Metadata(), rpcDeadline());
     } else {
+      const result = new Promise<HubResult<SyncIds>>((resolve) => {
+        if (!this.stream) {
+          resolve(err(new HubError("unavailable", "unexpected stream termination")));
+          return;
+        }
+        const process = async (response: StreamSyncResponse) => {
+          if (!this.stream) {
+            resolve(err(new HubError("unavailable", "unexpected stream termination")));
+            return;
+          }
+          this.stream.off("data", process);
+          if (!response.getAllSyncIdsByPrefix) {
+            if (response?.error) {
+              resolve(err(new HubError(response.error.errCode as HubErrorCode, { message: response.error.message })));
+              return;
+            }
+
+            this.stream.cancel();
+            this.stream = undefined;
+            this.usingRPC = true;
+            resolve(await this.getAllSyncIdsByPrefix(request));
+          } else {
+            resolve(ok(response.getAllSyncIdsByPrefix));
+          }
+        };
+        this.stream.on("data", process);
+      });
+
       this.stream.write(
         StreamSyncRequest.create({
           getAllSyncIdsByPrefix: request,
         }),
       );
 
-      const response = this.stream.read();
-      if (!response || !response.getAllSyncIdsByPrefix) {
-        if (response?.error) {
-          return err(new HubError(response.error.errCode as HubErrorCode, { message: response.error.message }));
-        }
-
-        this.usingRPC = true;
-        return await this.getAllSyncIdsByPrefix(request, metadata);
-      } else {
-        return ok(response.getAllSyncIdsByPrefix);
-      }
+      return await result;
     }
   }
 
@@ -287,23 +360,41 @@ export class FailoverStreamSyncClient {
     if (this.usingRPC || !this.stream) {
       return await this.rpcClient.getInfo(request, new Metadata(), rpcDeadline());
     } else {
+      const result = new Promise<HubResult<HubInfoResponse>>((resolve) => {
+        if (!this.stream) {
+          resolve(err(new HubError("unavailable", "unexpected stream termination")));
+          return;
+        }
+        const process = async (response: StreamSyncResponse) => {
+          if (!this.stream) {
+            resolve(err(new HubError("unavailable", "unexpected stream termination")));
+            return;
+          }
+          this.stream.off("data", process);
+          if (!response.getInfo) {
+            if (response?.error) {
+              resolve(err(new HubError(response.error.errCode as HubErrorCode, { message: response.error.message })));
+              return;
+            }
+
+            this.stream.cancel();
+            this.stream = undefined;
+            this.usingRPC = true;
+            resolve(await this.getInfo(request));
+          } else {
+            resolve(ok(response.getInfo));
+          }
+        };
+        this.stream.on("data", process);
+      });
+
       this.stream.write(
         StreamSyncRequest.create({
           getInfo: request,
         }),
       );
 
-      const response = this.stream.read();
-      if (!response || !response.getInfo) {
-        if (response?.error) {
-          return err(new HubError(response.error.errCode as HubErrorCode, { message: response.error.message }));
-        }
-
-        this.usingRPC = true;
-        return await this.getInfo(request);
-      } else {
-        return ok(response.getInfo);
-      }
+      return await result;
     }
   }
 
@@ -311,23 +402,41 @@ export class FailoverStreamSyncClient {
     if (this.usingRPC || !this.stream) {
       return await this.rpcClient.getOnChainEvents(request, new Metadata(), rpcDeadline());
     } else {
+      const result = new Promise<HubResult<OnChainEventResponse>>((resolve) => {
+        if (!this.stream) {
+          resolve(err(new HubError("unavailable", "unexpected stream termination")));
+          return;
+        }
+        const process = async (response: StreamSyncResponse) => {
+          if (!this.stream) {
+            resolve(err(new HubError("unavailable", "unexpected stream termination")));
+            return;
+          }
+          this.stream.off("data", process);
+          if (!response.getOnChainEvents) {
+            if (response?.error) {
+              resolve(err(new HubError(response.error.errCode as HubErrorCode, { message: response.error.message })));
+              return;
+            }
+
+            this.stream.cancel();
+            this.stream = undefined;
+            this.usingRPC = true;
+            resolve(await this.getOnChainEvents(request));
+          } else {
+            resolve(ok(response.getOnChainEvents));
+          }
+        };
+        this.stream.on("data", process);
+      });
+
       this.stream.write(
         StreamSyncRequest.create({
           getOnChainEvents: request,
         }),
       );
 
-      const response = this.stream.read();
-      if (!response || !response.getOnChainEvents) {
-        if (response?.error) {
-          return err(new HubError(response.error.errCode as HubErrorCode, { message: response.error.message }));
-        }
-
-        this.usingRPC = true;
-        return await this.getOnChainEvents(request);
-      } else {
-        return ok(response.getOnChainEvents);
-      }
+      return await result;
     }
   }
 
@@ -335,28 +444,48 @@ export class FailoverStreamSyncClient {
     if (this.usingRPC || !this.stream) {
       return await this.rpcClient.getOnChainSignersByFid(request, new Metadata(), rpcDeadline());
     } else {
+      const result = new Promise<HubResult<OnChainEventResponse>>((resolve) => {
+        if (!this.stream) {
+          resolve(err(new HubError("unavailable", "unexpected stream termination")));
+          return;
+        }
+        const process = async (response: StreamSyncResponse) => {
+          if (!this.stream) {
+            resolve(err(new HubError("unavailable", "unexpected stream termination")));
+            return;
+          }
+          this.stream.off("data", process);
+          if (!response.getOnChainSignersByFid) {
+            if (response?.error) {
+              resolve(err(new HubError(response.error.errCode as HubErrorCode, { message: response.error.message })));
+              return;
+            }
+
+            this.stream.cancel();
+            this.stream = undefined;
+            this.usingRPC = true;
+            resolve(await this.getOnChainSignersByFid(request));
+          } else {
+            resolve(ok(response.getOnChainSignersByFid));
+          }
+        };
+        this.stream.on("data", process);
+      });
+
       this.stream.write(
         StreamSyncRequest.create({
           getOnChainSignersByFid: request,
         }),
       );
 
-      const response = this.stream.read();
-      if (!response || !response.getOnChainSignersByFid) {
-        if (response?.error) {
-          return err(new HubError(response.error.errCode as HubErrorCode, { message: response.error.message }));
-        }
-
-        this.usingRPC = true;
-        return await this.getOnChainSignersByFid(request);
-      } else {
-        return ok(response.getOnChainSignersByFid);
-      }
+      return await result;
     }
   }
 
   public async close() {
-    this.stream?.end();
+    this.stream?.cancel();
+    this.stream = undefined;
+    this.usingRPC = true;
     this.rpcClient.close();
   }
 }
@@ -1152,7 +1281,6 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
 
     const startTimestamp = Date.now();
-
     this.curSync = new CurrentSyncStatus(peerId, rpcClient, secondaryRpcClients, startTimestamp);
     const syncTimeout = setTimeout(() => {
       this.curSync.interruptSync = true;

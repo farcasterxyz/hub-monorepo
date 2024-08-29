@@ -52,6 +52,8 @@ import {
   StreamFetchRequest,
   StreamFetchResponse,
   StreamError,
+  OnChainEventRequest,
+  FidRequest,
 } from "@farcaster/hub-nodejs";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import { APP_NICKNAME, APP_VERSION, HubInterface } from "../hubble.js";
@@ -67,7 +69,6 @@ import {
   BufferedStreamWriter,
   STREAM_MESSAGE_BUFFER_SIZE,
   SLOW_CLIENT_GRACE_PERIOD_MS,
-  BufferedDuplexStreamReaderWriter,
 } from "./bufferedStreamWriter.js";
 import { sleep } from "../utils/crypto.js";
 import { jumpConsistentHash } from "../utils/jumpConsistentHash.js";
@@ -82,7 +83,7 @@ import { rustErrorToHubError } from "../rustfunctions.js";
 import { handleUnaryCall, sendUnaryData, ServerDuplexStream, ServerUnaryCall } from "@grpc/grpc-js";
 
 const HUBEVENTS_READER_TIMEOUT = 1 * 60 * 60 * 1000; // 1 hour
-const STREAM_METHODS_TIMEOUT = 5 * 1000; // 5 seconds
+const STREAM_METHODS_TIMEOUT = 8 * 1000; // 2 seconds
 
 export const DEFAULT_SUBSCRIBE_PERIP_LIMIT = 4; // Max 4 subscriptions per IP
 export const DEFAULT_SUBSCRIBE_GLOBAL_LIMIT = 4096; // Max 4096 subscriptions globally
@@ -820,6 +821,59 @@ export default class Server {
     })();
   }
 
+  public async getOnChainSignersByFid(request: FidRequest) {
+    const { fid, pageSize, pageToken, reverse } = request;
+    return (
+      (await this.engine?.getOnChainSignersByFid(fid, {
+        pageSize,
+        pageToken,
+        reverse,
+      })) || err(new HubError("bad_request", "sync engine not available"))
+    );
+  }
+
+  public async getOnChainSignersByFidRPC(
+    call: ServerUnaryCall<FidRequest, OnChainEventResponse>,
+    callback: sendUnaryData<OnChainEventResponse>,
+  ) {
+    const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
+    log.debug({ method: "getOnChainSignersByFid", req: call.request }, `RPC call from ${peer}`);
+
+    const signersResult = await this.getOnChainSignersByFid(call.request);
+    signersResult?.match(
+      (page: OnChainEventResponse) => {
+        callback(null, page);
+      },
+      (err: HubError) => {
+        callback(toServiceError(err));
+      },
+    );
+  }
+
+  public async getOnChainEvents(request: OnChainEventRequest) {
+    return (
+      (await this.engine?.getOnChainEvents(request.eventType, request.fid)) ||
+      err(new HubError("bad_request", "sync engine not available"))
+    );
+  }
+
+  public getOnChainEventsRPC(
+    call: ServerUnaryCall<OnChainEventRequest, OnChainEventResponse>,
+    callback: sendUnaryData<OnChainEventResponse>,
+  ) {
+    const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
+    log.debug({ method: "getOnChainEvents", req: call.request }, `RPC call from ${peer}`);
+
+    (async () => {
+      const result = await this.getOnChainEvents(call.request);
+      if (result.isErr()) {
+        callback(toServiceError(result.error));
+      } else {
+        callback(null, result.value);
+      }
+    })();
+  }
+
   getImpl(): HubServiceServer {
     return this.impl;
   }
@@ -835,6 +889,8 @@ export default class Server {
       getAllMessagesBySyncIds: async (call, callback) => this.getAllMessagesBySyncIdsRPC(call, callback),
       getSyncMetadataByPrefix: async (call, callback) => this.getSyncMetadataByPrefixRPC(call, callback),
       getSyncSnapshotByPrefix: async (call, callback) => this.getSyncSnapshotByPrefixRPC(call, callback),
+      getOnChainSignersByFid: async (call, callback) => this.getOnChainSignersByFidRPC(call, callback),
+      getOnChainEvents: async (call, callback) => this.getOnChainEventsRPC(call, callback),
       submitMessage: async (call, callback) => {
         // Identify peer that is calling, if available. This is used for rate limiting.
         const peer = Result.fromThrowable(
@@ -1159,25 +1215,6 @@ export default class Server {
           },
         );
       },
-      getOnChainSignersByFid: async (call, callback) => {
-        const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getOnChainSignersByFid", req: call.request }, `RPC call from ${peer}`);
-
-        const { fid, pageSize, pageToken, reverse } = call.request;
-        const signersResult = await this.engine?.getOnChainSignersByFid(fid, {
-          pageSize,
-          pageToken,
-          reverse,
-        });
-        signersResult?.match(
-          (page: OnChainEventResponse) => {
-            callback(null, page);
-          },
-          (err: HubError) => {
-            callback(toServiceError(err));
-          },
-        );
-      },
       getLink: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getLink", req: call.request }, `RPC call from ${peer}`);
@@ -1256,18 +1293,6 @@ export default class Server {
         idRegistryEventResult?.match(
           (idRegistryEvent: OnChainEvent) => {
             callback(null, idRegistryEvent);
-          },
-          (err: HubError) => {
-            callback(toServiceError(err));
-          },
-        );
-      },
-      getOnChainEvents: async (call, callback) => {
-        const request = call.request;
-        const onChainEventsResult = await this.engine?.getOnChainEvents(request.eventType, request.fid);
-        onChainEventsResult?.match(
-          (onChainEvents: OnChainEventResponse) => {
-            callback(null, onChainEvents);
           },
           (err: HubError) => {
             callback(toServiceError(err));
@@ -1634,158 +1659,201 @@ export default class Server {
           destroyStream(stream, error);
         }, STREAM_METHODS_TIMEOUT);
 
-        const bufferedStreamWriter = new BufferedDuplexStreamReaderWriter(stream);
-        while (!bufferedStreamWriter.closed) {
-          const request = bufferedStreamWriter.readFromStream();
-          if (!request) {
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-            continue;
-          } else if (request.forceSync) {
-            const result = await this.forceSync(request.forceSync);
-            if (result.isErr()) {
-              bufferedStreamWriter.writeToStream(
-                StreamSyncResponse.create({
-                  error: StreamError.create({
-                    errCode: result.error.errCode,
-                    message: result.error.message,
-                    request: "forceSync",
+        await new Promise<void>((resolve) => {
+          stream.on("close", () => {
+            resolve();
+          });
+          stream.on("data", async (request) => {
+            if (request.forceSync) {
+              const result = await this.forceSync(request.forceSync);
+              if (result.isErr()) {
+                stream.write(
+                  StreamSyncResponse.create({
+                    error: StreamError.create({
+                      errCode: result.error.errCode,
+                      message: result.error.message,
+                      request: "forceSync",
+                    }),
                   }),
-                }),
-              );
-            } else {
-              bufferedStreamWriter.writeToStream(
-                StreamSyncResponse.create({
-                  forceSync: result.value,
-                }),
-              );
-            }
-          } else if (request.getAllMessagesBySyncIds) {
-            const result = await this.getAllMessagesBySyncIds(request.getAllMessagesBySyncIds);
-            if (result.isErr()) {
-              bufferedStreamWriter.writeToStream(
-                StreamSyncResponse.create({
-                  error: StreamError.create({
-                    errCode: result.error.errCode,
-                    message: result.error.message,
-                    request: "getAllMessagesBySyncIds",
+                );
+              } else {
+                stream.write(
+                  StreamSyncResponse.create({
+                    forceSync: result.value,
                   }),
-                }),
-              );
-            } else {
-              bufferedStreamWriter.writeToStream(
-                StreamSyncResponse.create({
-                  getAllMessagesBySyncIds: result.value,
-                }),
-              );
-            }
-          } else if (request.getAllSyncIdsByPrefix) {
-            const result = await this.getAllSyncIdsByPrefix(request.getAllSyncIdsByPrefix);
-            if (result.isErr()) {
-              bufferedStreamWriter.writeToStream(
-                StreamSyncResponse.create({
-                  error: StreamError.create({
-                    request: "getAllSyncIdsByPrefix",
+                );
+                timeout.refresh();
+              }
+            } else if (request.getAllMessagesBySyncIds) {
+              const result = await this.getAllMessagesBySyncIds(request.getAllMessagesBySyncIds);
+              if (result.isErr()) {
+                stream.write(
+                  StreamSyncResponse.create({
+                    error: StreamError.create({
+                      errCode: result.error.errCode,
+                      message: result.error.message,
+                      request: "getAllMessagesBySyncIds",
+                    }),
                   }),
-                }),
-              );
-            } else {
-              bufferedStreamWriter.writeToStream(
-                StreamSyncResponse.create({
-                  getAllSyncIdsByPrefix: result.value,
-                }),
-              );
-            }
-          } else if (request.getCurrentPeers) {
-            const result = await this.getCurrentPeers();
-            bufferedStreamWriter.writeToStream(
-              StreamSyncResponse.create({
-                getCurrentPeers: result,
-              }),
-            );
-          } else if (request.getInfo) {
-            const result = await this.getInfo(request.getInfo);
-            bufferedStreamWriter.writeToStream(
-              StreamSyncResponse.create({
-                getInfo: result,
-              }),
-            );
-          } else if (request.getSyncMetadataByPrefix) {
-            const result = await this.getSyncMetadataByPrefix(request.getSyncMetadataByPrefix);
-            if (result.isErr()) {
-              bufferedStreamWriter.writeToStream(
-                StreamSyncResponse.create({
-                  error: StreamError.create({
-                    request: "getSyncMetadataByPrefix",
+                );
+              } else {
+                stream.write(
+                  StreamSyncResponse.create({
+                    getAllMessagesBySyncIds: result.value,
                   }),
-                }),
-              );
-            } else {
-              bufferedStreamWriter.writeToStream(
-                StreamSyncResponse.create({
-                  getSyncMetadataByPrefix: result.value,
-                }),
-              );
-            }
-          } else if (request.getSyncSnapshotByPrefix) {
-            const result = await this.getSyncSnapshotByPrefix(request.getSyncSnapshotByPrefix);
-            if (result.isErr()) {
-              bufferedStreamWriter.writeToStream(
-                StreamSyncResponse.create({
-                  error: StreamError.create({
-                    errCode: result.error.errCode,
-                    message: result.error.message,
-                    request: "getSyncSnapshotByPrefix",
+                );
+                timeout.refresh();
+              }
+            } else if (request.getAllSyncIdsByPrefix) {
+              const result = await this.getAllSyncIdsByPrefix(request.getAllSyncIdsByPrefix);
+              if (result.isErr()) {
+                stream.write(
+                  StreamSyncResponse.create({
+                    error: StreamError.create({
+                      request: "getAllSyncIdsByPrefix",
+                    }),
                   }),
-                }),
-              );
-            } else {
-              bufferedStreamWriter.writeToStream(
-                StreamSyncResponse.create({
-                  getSyncSnapshotByPrefix: result.value,
-                }),
-              );
-            }
-          } else if (request.getSyncStatus) {
-            const result = await this.getSyncStatus(request.getSyncStatus.peerId);
-            if (result.isErr()) {
-              bufferedStreamWriter.writeToStream(
-                StreamSyncResponse.create({
-                  error: StreamError.create({
-                    errCode: result.error.errCode,
-                    message: result.error.message,
-                    request: "getSyncStatus",
+                );
+              } else {
+                stream.write(
+                  StreamSyncResponse.create({
+                    getAllSyncIdsByPrefix: result.value,
                   }),
+                );
+                timeout.refresh();
+              }
+            } else if (request.getCurrentPeers) {
+              const result = await this.getCurrentPeers();
+              stream.write(
+                StreamSyncResponse.create({
+                  getCurrentPeers: result,
                 }),
               );
-            } else {
-              bufferedStreamWriter.writeToStream(
+            } else if (request.getInfo) {
+              const result = await this.getInfo(request.getInfo);
+              stream.write(
                 StreamSyncResponse.create({
-                  getSyncStatus: result.value,
+                  getInfo: result,
                 }),
               );
-            }
-          } else if (request.stopSync) {
-            const result = await this.stopSync();
-            if (result.isErr()) {
-              bufferedStreamWriter.writeToStream(
-                StreamSyncResponse.create({
-                  error: StreamError.create({
-                    errCode: result.error.errCode,
-                    message: result.error.message,
-                    request: "stopSync",
+              timeout.refresh();
+            } else if (request.getOnChainEvents) {
+              const result = await this.getOnChainEvents(request.getOnChainEvents);
+              if (result.isErr()) {
+                stream.write(
+                  StreamSyncResponse.create({
+                    error: StreamError.create({
+                      request: "getOnChainEvents",
+                    }),
                   }),
-                }),
-              );
-            } else {
-              bufferedStreamWriter.writeToStream(
-                StreamSyncResponse.create({
-                  stopSync: result.value,
-                }),
-              );
+                );
+              } else {
+                stream.write(
+                  StreamSyncResponse.create({
+                    getOnChainEvents: result.value,
+                  }),
+                );
+                timeout.refresh();
+              }
+            } else if (request.getOnChainSignersByFid) {
+              const result = await this.getOnChainSignersByFid(request.getOnChainSignersByFid);
+              if (result.isErr()) {
+                stream.write(
+                  StreamSyncResponse.create({
+                    error: StreamError.create({
+                      request: "getOnChainSignersByFid",
+                    }),
+                  }),
+                );
+              } else {
+                stream.write(
+                  StreamSyncResponse.create({
+                    getOnChainSignersByFid: result.value,
+                  }),
+                );
+                timeout.refresh();
+              }
+            } else if (request.getSyncMetadataByPrefix) {
+              const result = await this.getSyncMetadataByPrefix(request.getSyncMetadataByPrefix);
+
+              if (result.isErr()) {
+                stream.write(
+                  StreamSyncResponse.create({
+                    error: StreamError.create({
+                      request: "getSyncMetadataByPrefix",
+                    }),
+                  }),
+                );
+              } else {
+                stream.write(
+                  StreamSyncResponse.create({
+                    getSyncMetadataByPrefix: result.value,
+                  }),
+                );
+                timeout.refresh();
+              }
+            } else if (request.getSyncSnapshotByPrefix) {
+              const result = await this.getSyncSnapshotByPrefix(request.getSyncSnapshotByPrefix);
+              if (result.isErr()) {
+                stream.write(
+                  StreamSyncResponse.create({
+                    error: StreamError.create({
+                      errCode: result.error.errCode,
+                      message: result.error.message,
+                      request: "getSyncSnapshotByPrefix",
+                    }),
+                  }),
+                );
+              } else {
+                stream.write(
+                  StreamSyncResponse.create({
+                    getSyncSnapshotByPrefix: result.value,
+                  }),
+                );
+                timeout.refresh();
+              }
+            } else if (request.getSyncStatus) {
+              const result = await this.getSyncStatus(request.getSyncStatus.peerId);
+              if (result.isErr()) {
+                stream.write(
+                  StreamSyncResponse.create({
+                    error: StreamError.create({
+                      errCode: result.error.errCode,
+                      message: result.error.message,
+                      request: "getSyncStatus",
+                    }),
+                  }),
+                );
+              } else {
+                stream.write(
+                  StreamSyncResponse.create({
+                    getSyncStatus: result.value,
+                  }),
+                );
+              }
+            } else if (request.stopSync) {
+              const result = await this.stopSync();
+              if (result.isErr()) {
+                stream.write(
+                  StreamSyncResponse.create({
+                    error: StreamError.create({
+                      errCode: result.error.errCode,
+                      message: result.error.message,
+                      request: "stopSync",
+                    }),
+                  }),
+                );
+              } else {
+                stream.write(
+                  StreamSyncResponse.create({
+                    stopSync: result.value,
+                  }),
+                );
+                timeout.refresh();
+              }
             }
-          }
-          timeout.refresh();
-        }
+          });
+        });
       },
       streamFetch: async (stream: ServerDuplexStream<StreamFetchRequest, StreamFetchResponse>) => {
         const timeout = setTimeout(async () => {
@@ -1795,114 +1863,111 @@ export default class Server {
           destroyStream(stream, error);
         }, STREAM_METHODS_TIMEOUT);
 
-        const bufferedStreamWriter = new BufferedDuplexStreamReaderWriter(stream);
-        while (!bufferedStreamWriter.closed) {
-          const request = bufferedStreamWriter.readFromStream();
-          if (!request) {
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-            continue;
-          }
+        await new Promise<void>((resolve) => {
+          stream.on("close", () => {
+            resolve();
+          });
+          stream.on("data", async (request) => {
+            const requestPayload =
+              request.castMessagesByFid ||
+              request.linkMessagesByFid ||
+              request.reactionMessagesByFid ||
+              request.userDataMessagesByFid ||
+              request.verificationMessagesByFid;
 
-          const requestPayload =
-            request.castMessagesByFid ||
-            request.linkMessagesByFid ||
-            request.reactionMessagesByFid ||
-            request.userDataMessagesByFid ||
-            request.verificationMessagesByFid;
-
-          if (!requestPayload) {
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-            continue;
-          }
-
-          const { fid, pageSize, pageToken, reverse, startTimestamp, stopTimestamp } = requestPayload;
-          let result: HubResult<MessagesPage<Message>> | undefined;
-          if (request.castMessagesByFid) {
-            result = await this.engine?.getAllCastMessagesByFid(
-              fid,
-              {
-                pageSize,
-                pageToken,
-                reverse,
-              },
-              startTimestamp,
-              stopTimestamp,
-            );
-          } else if (request.linkMessagesByFid) {
-            result = await this.engine?.getAllLinkMessagesByFid(
-              fid,
-              {
-                pageSize,
-                pageToken,
-                reverse,
-              },
-              startTimestamp,
-              stopTimestamp,
-            );
-            if (result?.isOk() && !result.value.nextPageToken) {
-              const additional = await this.engine?.getLinkCompactStateMessageByFid(fid);
-              if (additional?.isOk()) {
-                result.value.messages.push(...additional.value.messages);
-              }
+            if (!requestPayload) {
+              return;
             }
-          } else if (request.reactionMessagesByFid) {
-            result = await this.engine?.getAllReactionMessagesByFid(
-              fid,
-              {
-                pageSize,
-                pageToken,
-                reverse,
-              },
-              startTimestamp,
-              stopTimestamp,
-            );
-          } else if (request.userDataMessagesByFid) {
-            result = await this.engine?.getUserDataByFid(
-              fid,
-              {
-                pageSize,
-                pageToken,
-                reverse,
-              },
-              startTimestamp,
-              stopTimestamp,
-            );
-          } else if (request.verificationMessagesByFid) {
-            result = await this.engine?.getAllVerificationMessagesByFid(
-              fid,
-              {
-                pageSize,
-                pageToken,
-                reverse,
-              },
-              startTimestamp,
-              stopTimestamp,
-            );
-          }
 
-          result?.match(
-            (page: MessagesPage<Message>) => {
-              bufferedStreamWriter.writeToStream(
-                StreamFetchResponse.create({
-                  idempotencyKey: request.idempotencyKey,
-                  messages: messagesPageToResponse(page),
-                }),
+            const { fid, pageSize, pageToken, reverse, startTimestamp, stopTimestamp } = requestPayload;
+            let result: HubResult<MessagesPage<Message>> | undefined;
+            if (request.castMessagesByFid) {
+              result = await this.engine?.getAllCastMessagesByFid(
+                fid,
+                {
+                  pageSize,
+                  pageToken,
+                  reverse,
+                },
+                startTimestamp,
+                stopTimestamp,
               );
-            },
-            (err: HubError) => {
-              bufferedStreamWriter.writeToStream(
-                StreamFetchResponse.create({
-                  error: StreamError.create({
-                    errCode: err.errCode,
-                    message: err.message,
-                    request: "fetch",
+            } else if (request.linkMessagesByFid) {
+              result = await this.engine?.getAllLinkMessagesByFid(
+                fid,
+                {
+                  pageSize,
+                  pageToken,
+                  reverse,
+                },
+                startTimestamp,
+                stopTimestamp,
+              );
+              if (result?.isOk() && !result.value.nextPageToken) {
+                const additional = await this.engine?.getLinkCompactStateMessageByFid(fid);
+                if (additional?.isOk()) {
+                  result.value.messages.push(...additional.value.messages);
+                }
+              }
+            } else if (request.reactionMessagesByFid) {
+              result = await this.engine?.getAllReactionMessagesByFid(
+                fid,
+                {
+                  pageSize,
+                  pageToken,
+                  reverse,
+                },
+                startTimestamp,
+                stopTimestamp,
+              );
+            } else if (request.userDataMessagesByFid) {
+              result = await this.engine?.getUserDataByFid(
+                fid,
+                {
+                  pageSize,
+                  pageToken,
+                  reverse,
+                },
+                startTimestamp,
+                stopTimestamp,
+              );
+            } else if (request.verificationMessagesByFid) {
+              result = await this.engine?.getAllVerificationMessagesByFid(
+                fid,
+                {
+                  pageSize,
+                  pageToken,
+                  reverse,
+                },
+                startTimestamp,
+                stopTimestamp,
+              );
+            }
+
+            result?.match(
+              (page: MessagesPage<Message>) => {
+                stream.write(
+                  StreamFetchResponse.create({
+                    idempotencyKey: request.idempotencyKey,
+                    messages: messagesPageToResponse(page),
                   }),
-                }),
-              );
-            },
-          );
-          timeout.refresh();
-        }
+                );
+              },
+              (err: HubError) => {
+                stream.write(
+                  StreamFetchResponse.create({
+                    error: StreamError.create({
+                      errCode: err.errCode,
+                      message: err.message,
+                      request: "fetch",
+                    }),
+                  }),
+                );
+              },
+            );
+            timeout.refresh();
+          });
+        });
       },
     };
   }
