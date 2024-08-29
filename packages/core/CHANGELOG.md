@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.15.2
+
+### Patch Changes
+
+- 321658b7: support streaming for sync/reconciliation
+
 ## 0.15.1
 
 ### Patch Changes
