@@ -1,5 +1,13 @@
 # @farcaster/hub-web
 
+## 0.9.2
+
+### Patch Changes
+
+- 321658b7: support streaming for sync/reconciliation
+- Updated dependencies [321658b7]
+  - @farcaster/core@0.15.2
+
 ## 0.9.1
 
 ### Patch Changes
