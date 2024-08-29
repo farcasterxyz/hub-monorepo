@@ -4,6 +4,7 @@ export type {
   Client,
   ClientOptions,
   ClientReadableStream,
+  ClientDuplexStream,
   ClientUnaryCall,
   sendUnaryData,
   ServiceError,

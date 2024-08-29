@@ -94,7 +94,7 @@ service HubService {
   // @http-api: none
   rpc GetLinkCompactStateMessageByFid(FidRequest) returns (MessagesResponse);
 
-  // Sync Methods    
+  // Sync Methods
   rpc GetInfo(HubInfoRequest) returns (HubInfoResponse);
   rpc GetCurrentPeers(Empty) returns (ContactInfoResponse);
   // @http-api: none
@@ -111,7 +111,11 @@ service HubService {
   // @http-api: none
   rpc GetSyncMetadataByPrefix(TrieNodePrefix) returns (TrieNodeMetadataResponse);
   // @http-api: none
-  rpc GetSyncSnapshotByPrefix(TrieNodePrefix) returns (TrieNodeSnapshotResponse);  
+  rpc GetSyncSnapshotByPrefix(TrieNodePrefix) returns (TrieNodeSnapshotResponse);
+  // @http-api: none
+  rpc StreamSync(stream StreamSyncRequest) returns (stream StreamSyncResponse);
+  // @http-api: none
+  rpc StreamFetch(stream StreamFetchRequest) returns (stream StreamFetchResponse);
 }
 
 service AdminService {

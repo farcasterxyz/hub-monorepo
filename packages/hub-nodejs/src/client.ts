@@ -1,7 +1,14 @@
 import { AdminServiceClient, HubServiceClient } from "./generated/rpc";
 import * as grpc from "@grpc/grpc-js";
 import { Metadata } from "@grpc/grpc-js";
-import type { CallOptions, Client, ClientReadableStream, ClientUnaryCall, ServiceError } from "@grpc/grpc-js";
+import type {
+  CallOptions,
+  Client,
+  ClientDuplexStream,
+  ClientReadableStream,
+  ClientUnaryCall,
+  ServiceError,
+} from "@grpc/grpc-js";
 import { err, ok } from "neverthrow";
 import { HubError, HubErrorCode, HubResult } from "@farcaster/core";
 
@@ -32,6 +39,8 @@ type OriginalStream<T, U> = (
   options?: Partial<CallOptions>,
 ) => ClientReadableStream<U>;
 
+type OriginalDuplexStream<T, U> = (metadata?: Metadata, options?: Partial<CallOptions>) => ClientDuplexStream<T, U>;
+
 type PromisifiedUnaryCall<T, U> = (
   request: T,
   metadata?: Metadata,
@@ -44,8 +53,15 @@ type PromisifiedStream<T, U> = (
   options?: Partial<CallOptions>,
 ) => Promise<HubResult<ClientReadableStream<U>>>;
 
+type PromisifiedDuplexStream<T, U> = (
+  metadata?: Metadata,
+  options?: Partial<CallOptions>,
+) => Promise<HubResult<ClientDuplexStream<T, U>>>;
+
 type PromisifiedClient<C> = { $: C; close: () => void } & {
-  [prop in Exclude<keyof C, keyof Client>]: C[prop] extends OriginalStream<infer T, infer U>
+  [prop in Exclude<keyof C, keyof Client>]: C[prop] extends OriginalDuplexStream<infer T, infer U>
+    ? PromisifiedDuplexStream<T, U>
+    : C[prop] extends OriginalStream<infer T, infer U>
     ? PromisifiedStream<T, U>
     : C[prop] extends OriginalUnaryCall<infer T, infer U>
     ? PromisifiedUnaryCall<T, U>

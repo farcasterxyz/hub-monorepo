@@ -1,8 +1,10 @@
 import {
   bytesToHexString,
+  ClientDuplexStream,
   ContactInfoContentBody,
   FidRequest,
   getFarcasterTime,
+  getInsecureHubRpcClient,
   HubAsyncResult,
   HubError,
   HubResult,
@@ -26,9 +28,19 @@ import {
 import {
   bytesCompare,
   bytesStartsWith,
+  HubErrorCode,
+  HubInfoRequest,
+  HubInfoResponse,
   isIdRegisterOnChainEvent,
   MessageBundle,
+  MessagesResponse,
+  OnChainEventResponse,
+  StreamSyncRequest,
+  StreamSyncResponse,
+  SyncStatusRequest,
+  SyncStatusResponse,
   toFarcasterTime,
+  TrieNodeSnapshotResponse,
 } from "@farcaster/core";
 import { PeerId } from "@libp2p/interface";
 import { err, ok, Result, ResultAsync } from "neverthrow";
@@ -138,7 +150,7 @@ type DbStats = {
 
 type SecondaryRpcClient = {
   peerId: string;
-  rpcClient: HubRpcClient;
+  rpcClient: FailoverStreamSyncClient;
 };
 
 // The Status of the node's sync with the network.
@@ -152,6 +164,335 @@ type SyncStatus = {
   score: number;
 };
 
+export class FailoverStreamSyncClient {
+  usingRPC = false;
+
+  rpcClient: HubRpcClient;
+  stream?: ClientDuplexStream<StreamSyncRequest, StreamSyncResponse>;
+
+  constructor(rpcClient: HubRpcClient, useStreaming: boolean) {
+    this.rpcClient = rpcClient;
+    this.usingRPC = !useStreaming;
+    if (useStreaming) {
+      this.rpcClient.streamSync().then((result) => {
+        if (result.isErr()) {
+          log.warn("encountered error when attempting to establish sync for stream, failing over to RPC", result.error);
+          this.usingRPC = true;
+        } else {
+          this.stream = result.value;
+        }
+      });
+    }
+  }
+
+  public async getSyncSnapshotByPrefix(
+    request: TrieNodePrefix,
+    metadata?: Metadata,
+  ): Promise<HubResult<TrieNodeSnapshotResponse>> {
+    if (this.usingRPC || !this.stream) {
+      return await this.rpcClient.getSyncSnapshotByPrefix(request, metadata ?? new Metadata(), rpcDeadline());
+    } else {
+      const result = new Promise<HubResult<TrieNodeSnapshotResponse>>((resolve) => {
+        if (!this.stream) {
+          resolve(err(new HubError("unavailable", "unexpected stream termination")));
+          return;
+        }
+        const process = async (response: StreamSyncResponse) => {
+          if (!this.stream) {
+            resolve(err(new HubError("unavailable", "unexpected stream termination")));
+            return;
+          }
+          this.stream.off("data", process);
+          if (!response.getSyncSnapshotByPrefix) {
+            if (response?.error) {
+              resolve(err(new HubError(response.error.errCode as HubErrorCode, { message: response.error.message })));
+              return;
+            }
+
+            this.stream.cancel();
+            this.stream = undefined;
+            this.usingRPC = true;
+            resolve(await this.getSyncSnapshotByPrefix(request));
+          } else {
+            resolve(ok(response.getSyncSnapshotByPrefix));
+          }
+        };
+        this.stream.on("data", process);
+      });
+
+      this.stream.write(
+        StreamSyncRequest.create({
+          getSyncSnapshotByPrefix: request,
+        }),
+      );
+
+      return await result;
+    }
+  }
+
+  public async getSyncMetadataByPrefix(
+    request: TrieNodePrefix,
+    metadata?: Metadata,
+  ): Promise<HubResult<TrieNodeMetadataResponse>> {
+    if (this.usingRPC || !this.stream) {
+      return await this.rpcClient.getSyncMetadataByPrefix(request, metadata ?? new Metadata(), rpcDeadline());
+    } else {
+      const result = new Promise<HubResult<TrieNodeMetadataResponse>>((resolve) => {
+        if (!this.stream) {
+          resolve(err(new HubError("unavailable", "unexpected stream termination")));
+          return;
+        }
+        const process = async (response: StreamSyncResponse) => {
+          if (!this.stream) {
+            resolve(err(new HubError("unavailable", "unexpected stream termination")));
+            return;
+          }
+          this.stream.off("data", process);
+          if (!response.getSyncMetadataByPrefix) {
+            if (response?.error) {
+              resolve(err(new HubError(response.error.errCode as HubErrorCode, { message: response.error.message })));
+              return;
+            }
+
+            this.stream.cancel();
+            this.stream = undefined;
+            this.usingRPC = true;
+            resolve(await this.getSyncMetadataByPrefix(request));
+          } else {
+            resolve(ok(response.getSyncMetadataByPrefix));
+          }
+        };
+        this.stream.on("data", process);
+      });
+
+      this.stream.write(
+        StreamSyncRequest.create({
+          getSyncMetadataByPrefix: request,
+        }),
+      );
+
+      return await result;
+    }
+  }
+
+  public async getAllMessagesBySyncIds(request: SyncIds, metadata?: Metadata): Promise<HubResult<MessagesResponse>> {
+    if (this.usingRPC || !this.stream) {
+      return await this.rpcClient.getAllMessagesBySyncIds(request, metadata ?? new Metadata(), rpcDeadline());
+    } else {
+      const result = new Promise<HubResult<MessagesResponse>>((resolve) => {
+        if (!this.stream) {
+          resolve(err(new HubError("unavailable", "unexpected stream termination")));
+          return;
+        }
+        const process = async (response: StreamSyncResponse) => {
+          if (!this.stream) {
+            resolve(err(new HubError("unavailable", "unexpected stream termination")));
+            return;
+          }
+          this.stream.off("data", process);
+          if (!response.getAllMessagesBySyncIds) {
+            if (response?.error) {
+              resolve(err(new HubError(response.error.errCode as HubErrorCode, { message: response.error.message })));
+              return;
+            }
+
+            this.stream.cancel();
+            this.stream = undefined;
+            this.usingRPC = true;
+            resolve(await this.getAllMessagesBySyncIds(request));
+          } else {
+            resolve(ok(response.getAllMessagesBySyncIds));
+          }
+        };
+        this.stream.on("data", process);
+      });
+
+      this.stream.write(
+        StreamSyncRequest.create({
+          getAllMessagesBySyncIds: request,
+        }),
+      );
+
+      return await result;
+    }
+  }
+
+  public async getAllSyncIdsByPrefix(request: TrieNodePrefix, metadata?: Metadata): Promise<HubResult<SyncIds>> {
+    if (this.usingRPC || !this.stream) {
+      return await this.rpcClient.getAllSyncIdsByPrefix(request, metadata ?? new Metadata(), rpcDeadline());
+    } else {
+      const result = new Promise<HubResult<SyncIds>>((resolve) => {
+        if (!this.stream) {
+          resolve(err(new HubError("unavailable", "unexpected stream termination")));
+          return;
+        }
+        const process = async (response: StreamSyncResponse) => {
+          if (!this.stream) {
+            resolve(err(new HubError("unavailable", "unexpected stream termination")));
+            return;
+          }
+          this.stream.off("data", process);
+          if (!response.getAllSyncIdsByPrefix) {
+            if (response?.error) {
+              resolve(err(new HubError(response.error.errCode as HubErrorCode, { message: response.error.message })));
+              return;
+            }
+
+            this.stream.cancel();
+            this.stream = undefined;
+            this.usingRPC = true;
+            resolve(await this.getAllSyncIdsByPrefix(request));
+          } else {
+            resolve(ok(response.getAllSyncIdsByPrefix));
+          }
+        };
+        this.stream.on("data", process);
+      });
+
+      this.stream.write(
+        StreamSyncRequest.create({
+          getAllSyncIdsByPrefix: request,
+        }),
+      );
+
+      return await result;
+    }
+  }
+
+  public async getInfo(request: HubInfoRequest): Promise<HubResult<HubInfoResponse>> {
+    if (this.usingRPC || !this.stream) {
+      return await this.rpcClient.getInfo(request, new Metadata(), rpcDeadline());
+    } else {
+      const result = new Promise<HubResult<HubInfoResponse>>((resolve) => {
+        if (!this.stream) {
+          resolve(err(new HubError("unavailable", "unexpected stream termination")));
+          return;
+        }
+        const process = async (response: StreamSyncResponse) => {
+          if (!this.stream) {
+            resolve(err(new HubError("unavailable", "unexpected stream termination")));
+            return;
+          }
+          this.stream.off("data", process);
+          if (!response.getInfo) {
+            if (response?.error) {
+              resolve(err(new HubError(response.error.errCode as HubErrorCode, { message: response.error.message })));
+              return;
+            }
+
+            this.stream.cancel();
+            this.stream = undefined;
+            this.usingRPC = true;
+            resolve(await this.getInfo(request));
+          } else {
+            resolve(ok(response.getInfo));
+          }
+        };
+        this.stream.on("data", process);
+      });
+
+      this.stream.write(
+        StreamSyncRequest.create({
+          getInfo: request,
+        }),
+      );
+
+      return await result;
+    }
+  }
+
+  public async getOnChainEvents(request: OnChainEventRequest): Promise<HubResult<OnChainEventResponse>> {
+    if (this.usingRPC || !this.stream) {
+      return await this.rpcClient.getOnChainEvents(request, new Metadata(), rpcDeadline());
+    } else {
+      const result = new Promise<HubResult<OnChainEventResponse>>((resolve) => {
+        if (!this.stream) {
+          resolve(err(new HubError("unavailable", "unexpected stream termination")));
+          return;
+        }
+        const process = async (response: StreamSyncResponse) => {
+          if (!this.stream) {
+            resolve(err(new HubError("unavailable", "unexpected stream termination")));
+            return;
+          }
+          this.stream.off("data", process);
+          if (!response.getOnChainEvents) {
+            if (response?.error) {
+              resolve(err(new HubError(response.error.errCode as HubErrorCode, { message: response.error.message })));
+              return;
+            }
+
+            this.stream.cancel();
+            this.stream = undefined;
+            this.usingRPC = true;
+            resolve(await this.getOnChainEvents(request));
+          } else {
+            resolve(ok(response.getOnChainEvents));
+          }
+        };
+        this.stream.on("data", process);
+      });
+
+      this.stream.write(
+        StreamSyncRequest.create({
+          getOnChainEvents: request,
+        }),
+      );
+
+      return await result;
+    }
+  }
+
+  public async getOnChainSignersByFid(request: FidRequest): Promise<HubResult<OnChainEventResponse>> {
+    if (this.usingRPC || !this.stream) {
+      return await this.rpcClient.getOnChainSignersByFid(request, new Metadata(), rpcDeadline());
+    } else {
+      const result = new Promise<HubResult<OnChainEventResponse>>((resolve) => {
+        if (!this.stream) {
+          resolve(err(new HubError("unavailable", "unexpected stream termination")));
+          return;
+        }
+        const process = async (response: StreamSyncResponse) => {
+          if (!this.stream) {
+            resolve(err(new HubError("unavailable", "unexpected stream termination")));
+            return;
+          }
+          this.stream.off("data", process);
+          if (!response.getOnChainSignersByFid) {
+            if (response?.error) {
+              resolve(err(new HubError(response.error.errCode as HubErrorCode, { message: response.error.message })));
+              return;
+            }
+
+            this.stream.cancel();
+            this.stream = undefined;
+            this.usingRPC = true;
+            resolve(await this.getOnChainSignersByFid(request));
+          } else {
+            resolve(ok(response.getOnChainSignersByFid));
+          }
+        };
+        this.stream.on("data", process);
+      });
+
+      this.stream.write(
+        StreamSyncRequest.create({
+          getOnChainSignersByFid: request,
+        }),
+      );
+
+      return await result;
+    }
+  }
+
+  public async close() {
+    this.stream?.cancel();
+    this.stream = undefined;
+    this.usingRPC = true;
+    this.rpcClient.close();
+  }
+}
+
 // Status of the current (ongoing) sync.
 export class CurrentSyncStatus {
   isSyncing = false;
@@ -164,7 +505,7 @@ export class CurrentSyncStatus {
   seriousValidationFailures = 0;
   numParallelFetches = 0;
 
-  rpcClient: HubRpcClient | undefined;
+  rpcClient: FailoverStreamSyncClient | undefined;
   secondaryRpcClients: SecondaryRpcClient[] = [];
   nextSecondaryRpcClient = 0;
 
@@ -177,7 +518,7 @@ export class CurrentSyncStatus {
 
   constructor(
     peerId?: string,
-    rpcClient?: HubRpcClient,
+    rpcClient?: FailoverStreamSyncClient,
     secondaryRpcClients: SecondaryRpcClient[] = [],
     startTimestamp = 0,
   ) {
@@ -273,6 +614,9 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
   // Has the syncengine started yet?
   private _started = false;
 
+  // Enable/disable streaming client for sync
+  private _useStreaming = true;
+
   private _dbStats: DbStats = {
     approxSize: 0,
     numItems: 0,
@@ -287,6 +631,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     fnameEventsProvider?: FNameRegistryEventsProvider,
     profileSync = false,
     minSyncWindow?: number,
+    useStreaming?: boolean,
   ) {
     super();
 
@@ -298,6 +643,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     this._trie = new MerkleTrie(rocksDb);
     this._l2EventsProvider = l2EventsProvider;
     this._fnameEventsProvider = fnameEventsProvider;
+    this._useStreaming = useStreaming === undefined ? this._useStreaming : useStreaming;
 
     this.curSync = new CurrentSyncStatus();
 
@@ -710,8 +1056,8 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
 
     const updatedPeerIdString = peerContact.peerId.toString();
-    let rpcClient = await hub.getRPCClientForPeer(peerContact.peerId, peerContact.contactInfo);
-    if (!rpcClient) {
+    const rawRpcClient = await hub.getRPCClientForPeer(peerContact.peerId, peerContact.contactInfo);
+    if (!rawRpcClient) {
       log.warn("Diffsync: Failed to get RPC client for peer, skipping sync");
       // If we're unable to reach the peer, remove it from our contact list. We'll retry when it's added back by
       // the periodic ContactInfo gossip job.
@@ -723,6 +1069,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       }
       return;
     }
+    let rpcClient = new FailoverStreamSyncClient(rawRpcClient, this._useStreaming);
 
     // Fill in the rpcClients for the secondary contacts
     const secondaryRpcClients: SecondaryRpcClient[] = (
@@ -731,7 +1078,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           const rpcClient = await hub.getRPCClientForPeer(c.peerId, c.contactInfo);
           const info = await rpcClient?.getInfo({ dbStats: false }, new Metadata(), rpcDeadline());
           if (rpcClient && info && info.isOk()) {
-            return { peerId: c.peerId.toString(), rpcClient };
+            return {
+              peerId: c.peerId.toString(),
+              rpcClient: new FailoverStreamSyncClient(rpcClient, this._useStreaming),
+            };
           } else {
             return undefined;
           }
@@ -741,7 +1091,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
     // If a sync profile is enabled, wrap the rpcClient in a profiler
     if (this._syncProfiler) {
-      rpcClient = this._syncProfiler.profiledRpcClient(rpcClient);
+      rpcClient = new FailoverStreamSyncClient(this._syncProfiler.profiledRpcClient(rawRpcClient), this._useStreaming);
     }
 
     try {
@@ -750,9 +1100,8 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       const peerStateResult = await rpcClient.getSyncSnapshotByPrefix(
         TrieNodePrefix.create({ prefix: new Uint8Array() }),
         new Metadata(),
-        rpcDeadline(),
       );
-      const peerInfo = await rpcClient.getInfo({ dbStats: false }, new Metadata(), rpcDeadline());
+      const peerInfo = await rpcClient.getInfo({ dbStats: false });
 
       if (peerStateResult.isErr()) {
         log.warn(
@@ -860,17 +1209,17 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       return err(new HubError("bad_request", "Peer not found"));
     }
 
-    const rpcClient = await this._hub.getRPCClientForPeer(contactInfo.peerId, contactInfo.contactInfo);
-    if (!rpcClient) {
+    const rawRpcClient = await this._hub.getRPCClientForPeer(contactInfo.peerId, contactInfo.contactInfo);
+    if (!rawRpcClient) {
       return err(new HubError("bad_request", "Unreachable peer"));
     }
+    const rpcClient = new FailoverStreamSyncClient(rawRpcClient, this._useStreaming);
 
     log.info({ peerId }, "Force sync: Starting sync");
 
     const peerStateResult = await rpcClient.getSyncSnapshotByPrefix(
       TrieNodePrefix.create({ prefix: new Uint8Array() }),
       new Metadata(),
-      rpcDeadline(),
     );
 
     if (peerStateResult.isErr()) {
@@ -933,7 +1282,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
   async performSync(
     peerId: string,
-    rpcClient: HubRpcClient,
+    rpcClient: FailoverStreamSyncClient,
     doAudit = false,
     secondaryRpcClients: SecondaryRpcClient[] = [],
   ): Promise<MergeResult> {
@@ -943,7 +1292,6 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     }
 
     const startTimestamp = Date.now();
-
     this.curSync = new CurrentSyncStatus(peerId, rpcClient, secondaryRpcClients, startTimestamp);
     const syncTimeout = setTimeout(() => {
       this.curSync.interruptSync = true;
@@ -974,7 +1322,6 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       const theirNodeResult = await this.curSync.rpcClient.getSyncMetadataByPrefix(
         TrieNodePrefix.create({ prefix: new Uint8Array() }),
         new Metadata(),
-        rpcDeadline(),
       );
 
       if (theirNodeResult.isErr()) {
@@ -1020,7 +1367,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
   // We will get a few messages that we already have from this peer, to make sure that the peer is being honest
   // and is returning the correct messages. If the peer is not being honest, we will score them down.
-  async auditPeer(peerId: string, rpcClient: HubRpcClient) {
+  async auditPeer(peerId: string, rpcClient: FailoverStreamSyncClient) {
     // Start at the root node, and go down a random path
     let node = await this._trie.getTrieNodeMetadata(new Uint8Array());
     while (node && node.numMessages > 5) {
@@ -1044,7 +1391,6 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     const messagesResult = await rpcClient.getAllMessagesBySyncIds(
       SyncIds.create({ syncIds: syncIdBytes }),
       new Metadata(),
-      rpcDeadline(),
     );
 
     if (messagesResult.isErr()) {
@@ -1157,7 +1503,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     return new MergeResult(syncIds.length, promises.length, 0, syncIds.length - promises.length);
   }
 
-  public async fetchAndMergeMessages(syncIds: SyncId[], rpcClient: HubRpcClient): Promise<MergeResult> {
+  public async fetchAndMergeMessages(syncIds: SyncId[], rpcClient: FailoverStreamSyncClient): Promise<MergeResult> {
     if (syncIds.length === 0) {
       return new MergeResult(); // empty merge result
     }
@@ -1168,7 +1514,6 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     const messagesResult = await rpcClient.getAllMessagesBySyncIds(
       SyncIds.create({ syncIds: syncIds.map((s) => s.syncId()) }),
       new Metadata(),
-      rpcDeadline(),
     );
 
     statsd().timing("syncengine.peer.get_all_messages_by_syncids_ms", Date.now() - start);
@@ -1210,7 +1555,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     return messages.every((msg) => syncIdHashes.has(bytesToHexString(msg.hash).unwrapOr("0xUnknown")));
   }
 
-  public async mergeMessages(messages: Message[], rpcClient: HubRpcClient): Promise<MergeResult> {
+  public async mergeMessages(messages: Message[], rpcClient: FailoverStreamSyncClient): Promise<MergeResult> {
     const mergeResults: HubResult<number>[] = [];
     let deferredCount = 0;
     let errCount = 0;
@@ -1397,7 +1742,6 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
         const theirNodeResult = await this.curSync.rpcClient.getSyncMetadataByPrefix(
           TrieNodePrefix.create({ prefix: workItem.prefix }),
           new Metadata(),
-          rpcDeadline(),
         );
         statsd().timing("syncengine.peer.get_syncmetadata_by_prefix_ms", Date.now() - start);
 
@@ -1478,12 +1822,8 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     const start = Date.now();
 
     // Fetch the missing syncIds from the rpcClient.
-    const fetchMissingSyncIds = async (rpcClient: HubRpcClient) => {
-      return await rpcClient?.getAllSyncIdsByPrefix(
-        TrieNodePrefix.create({ prefix: workItem.prefix }),
-        new Metadata(),
-        rpcDeadline(),
-      );
+    const fetchMissingSyncIds = async (rpcClient: FailoverStreamSyncClient) => {
+      return await rpcClient?.getAllSyncIdsByPrefix(TrieNodePrefix.create({ prefix: workItem.prefix }), new Metadata());
     };
 
     const result = await fetchMissingSyncIds(rpcClient);
@@ -1553,7 +1893,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     await this.fetchMissingSyncIds(missingHashes, rpcClient);
   }
 
-  async fetchMissingSyncIds(missingIds: Uint8Array[], rpcClient: HubRpcClient) {
+  async fetchMissingSyncIds(missingIds: Uint8Array[], rpcClient: FailoverStreamSyncClient) {
     if (!rpcClient) {
       log.warn("RPC client is not set");
       return;
@@ -1716,7 +2056,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     });
   }
 
-  private async retryIdRegistryEvent(message: Message, rpcClient: HubRpcClient) {
+  private async retryIdRegistryEvent(message: Message, rpcClient: FailoverStreamSyncClient) {
     const fid = message.data?.fid;
     if (!fid) {
       log.error({ fid }, "Invalid fid while fetching custody event");
@@ -1725,8 +2065,6 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
 
     const l2CustodyEventResult = await rpcClient.getOnChainEvents(
       OnChainEventRequest.create({ fid, eventType: OnChainEventType.EVENT_TYPE_ID_REGISTER }),
-      new Metadata(),
-      rpcDeadline(),
     );
     if (l2CustodyEventResult.isOk() && l2CustodyEventResult.value.events[0]) {
       const custodyEventBlockNumber = l2CustodyEventResult.value.events[0].blockNumber;
@@ -1757,7 +2095,10 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     return true;
   }
 
-  private async syncSignersAndRetryMessage(message: Message, rpcClient: HubRpcClient): Promise<HubResult<number>> {
+  private async syncSignersAndRetryMessage(
+    message: Message,
+    rpcClient: FailoverStreamSyncClient,
+  ): Promise<HubResult<number>> {
     const fidRetryMessageQ = this.curSync.fidRetryMessageQ;
 
     const fid = message.data?.fid;
@@ -1782,11 +2123,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     // Probably not required to fetch the signer messages, but doing it here means
     // sync will complete in one round (prevents messages failing to merge due to missed or out of
     // order signer message)
-    const signerEvents = await rpcClient.getOnChainSignersByFid(
-      FidRequest.create({ fid }),
-      new Metadata(),
-      rpcDeadline(),
-    );
+    const signerEvents = await rpcClient.getOnChainSignersByFid(FidRequest.create({ fid }));
     if (signerEvents.isErr()) {
       return err(new HubError("unavailable.network_failure", "Failed to fetch signer events"));
     }

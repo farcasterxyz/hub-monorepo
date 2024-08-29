@@ -19,6 +19,7 @@ describe("networkConfig", () => {
     idRegistryV2Address: undefined,
     solanaVerificationsEnabled: undefined,
     bundleGossipPercent: undefined,
+    useStreaming: undefined,
   };
 
   test("no change", () => {
@@ -28,7 +29,17 @@ describe("networkConfig", () => {
       ...defaultNetworkConfig,
     };
 
-    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined, undefined);
+    const result = applyNetworkConfig(
+      networkConfig,
+      existingPeerIds,
+      [],
+      network,
+      [],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    );
     expect(result.allowedPeerIds).toEqual(["1", "2", "3"]);
     expect(result.shouldExit).toEqual(false);
   });
@@ -40,7 +51,17 @@ describe("networkConfig", () => {
       deniedPeers: [],
     };
 
-    const result = applyNetworkConfig(networkConfig, undefined, [], network, [], undefined, undefined, undefined);
+    const result = applyNetworkConfig(
+      networkConfig,
+      undefined,
+      [],
+      network,
+      [],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    );
     expect(result.allowedPeerIds).toEqual(undefined);
     expect(result.deniedPeerIds).toEqual([]);
     expect(result.shouldExit).toEqual(false);
@@ -56,7 +77,17 @@ describe("networkConfig", () => {
       solanaVerificationsEnabled: true,
     };
 
-    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined, undefined);
+    const result = applyNetworkConfig(
+      networkConfig,
+      existingPeerIds,
+      [],
+      network,
+      [],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    );
     expect(result.allowedPeerIds).toEqual(["1", "2", "3"]);
     expect(result.deniedPeerIds).toEqual([]);
     expect(result.shouldExit).toEqual(false);
@@ -72,7 +103,17 @@ describe("networkConfig", () => {
       deniedPeers: [],
     };
 
-    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined, undefined);
+    const result = applyNetworkConfig(
+      networkConfig,
+      existingPeerIds,
+      [],
+      network,
+      [],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    );
     expect(result.allowedPeerIds).toEqual(["1", "2", "3", "4", "5"]);
     expect(result.shouldExit).toEqual(false);
   });
@@ -87,7 +128,17 @@ describe("networkConfig", () => {
       minAppVersion: APP_VERSION,
     };
 
-    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined, undefined);
+    const result = applyNetworkConfig(
+      networkConfig,
+      existingPeerIds,
+      [],
+      network,
+      [],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    );
     expect(result.allowedPeerIds).toEqual(["1", "2", "3"]);
     expect(result.deniedPeerIds).toEqual(["4", "5"]);
     expect(result.shouldExit).toEqual(false);
@@ -102,7 +153,17 @@ describe("networkConfig", () => {
       deniedPeers: [],
     };
 
-    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined, undefined);
+    const result = applyNetworkConfig(
+      networkConfig,
+      existingPeerIds,
+      [],
+      network,
+      [],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    );
     expect(result.allowedPeerIds).toEqual(["1", "2", "3", "4"]);
     expect(result.shouldExit).toEqual(false);
   });
@@ -114,7 +175,17 @@ describe("networkConfig", () => {
       deniedPeers: ["1", "2", "3"],
     };
 
-    const result = applyNetworkConfig(networkConfig, undefined, [], network, [], undefined, undefined, undefined);
+    const result = applyNetworkConfig(
+      networkConfig,
+      undefined,
+      [],
+      network,
+      [],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    );
     expect(result.allowedPeerIds).toEqual(undefined);
     expect(result.deniedPeerIds).toEqual(["1", "2", "3"]);
     expect(result.shouldExit).toEqual(false);
@@ -130,7 +201,17 @@ describe("networkConfig", () => {
       deniedPeers: [],
     };
 
-    const result = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, undefined, undefined);
+    const result = applyNetworkConfig(
+      networkConfig,
+      existingPeerIds,
+      [],
+      network,
+      [],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    );
     expect(result.allowedPeerIds).toEqual(["1", "2", "3"]);
     expect(result.shouldExit).toEqual(false);
   });
@@ -143,7 +224,7 @@ describe("networkConfig", () => {
       minAppVersion: semver.inc(APP_VERSION, "patch") ?? "",
     };
 
-    const result = applyNetworkConfig(networkConfig, [], [], network, [], undefined, undefined, undefined);
+    const result = applyNetworkConfig(networkConfig, [], [], network, [], undefined, undefined, undefined, undefined);
     expect(result.shouldExit).toEqual(true);
 
     const prevVer = `${semver.major(APP_VERSION)}.${semver.minor(APP_VERSION)}.${semver.patch(APP_VERSION) - 1}`;
@@ -154,7 +235,7 @@ describe("networkConfig", () => {
       minAppVersion: prevVer,
     };
 
-    const result2 = applyNetworkConfig(networkConfig2, [], [], network, [], undefined, undefined, undefined);
+    const result2 = applyNetworkConfig(networkConfig2, [], [], network, [], undefined, undefined, undefined, undefined);
     expect(result2.shouldExit).toEqual(false);
   });
 
@@ -177,8 +258,19 @@ describe("networkConfig", () => {
       undefined,
       undefined,
       undefined,
+      undefined,
     );
-    const result2 = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], false, undefined, undefined);
+    const result2 = applyNetworkConfig(
+      networkConfig,
+      existingPeerIds,
+      [],
+      network,
+      [],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    );
     expect(result1.strictContactInfoValidation).toEqual(true);
     expect(result2.strictContactInfoValidation).toEqual(true);
     expect(result1.shouldExit).toEqual(false);
@@ -204,8 +296,19 @@ describe("networkConfig", () => {
       undefined,
       undefined,
       undefined,
+      undefined,
     );
-    const result2 = applyNetworkConfig(networkConfig, existingPeerIds, [], network, [], undefined, false, undefined);
+    const result2 = applyNetworkConfig(
+      networkConfig,
+      existingPeerIds,
+      [],
+      network,
+      [],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    );
     expect(result1.strictNoSign).toEqual(true);
     expect(result2.strictNoSign).toEqual(true);
     expect(result1.shouldExit).toEqual(false);

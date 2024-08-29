@@ -1,4 +1,5 @@
 import { ServerWritableStream, HubEvent, SubscribeRequest, HubError, HubResult } from "@farcaster/hub-nodejs";
+import { ServerDuplexStream } from "@grpc/grpc-js";
 import { err, ok } from "neverthrow";
 
 export const STREAM_DRAIN_TIMEOUT_MS = 10_000;

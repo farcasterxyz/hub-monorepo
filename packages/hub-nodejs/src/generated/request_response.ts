@@ -347,6 +347,56 @@ export interface ValidationResponse {
   message: Message | undefined;
 }
 
+export interface StreamSyncRequest {
+  getInfo?: HubInfoRequest | undefined;
+  getCurrentPeers?: Empty | undefined;
+  stopSync?: Empty | undefined;
+  forceSync?: SyncStatusRequest | undefined;
+  getSyncStatus?: SyncStatusRequest | undefined;
+  getAllSyncIdsByPrefix?: TrieNodePrefix | undefined;
+  getAllMessagesBySyncIds?: SyncIds | undefined;
+  getSyncMetadataByPrefix?: TrieNodePrefix | undefined;
+  getSyncSnapshotByPrefix?: TrieNodePrefix | undefined;
+  getOnChainEvents?: OnChainEventRequest | undefined;
+  getOnChainSignersByFid?: FidRequest | undefined;
+}
+
+export interface StreamError {
+  errCode: string;
+  message: string;
+  request: string;
+}
+
+export interface StreamSyncResponse {
+  getInfo?: HubInfoResponse | undefined;
+  getCurrentPeers?: ContactInfoResponse | undefined;
+  stopSync?: SyncStatusResponse | undefined;
+  forceSync?: SyncStatusResponse | undefined;
+  getSyncStatus?: SyncStatusResponse | undefined;
+  getAllSyncIdsByPrefix?: SyncIds | undefined;
+  getAllMessagesBySyncIds?: MessagesResponse | undefined;
+  getSyncMetadataByPrefix?: TrieNodeMetadataResponse | undefined;
+  getSyncSnapshotByPrefix?: TrieNodeSnapshotResponse | undefined;
+  getOnChainEvents?: OnChainEventResponse | undefined;
+  getOnChainSignersByFid?: OnChainEventResponse | undefined;
+  error?: StreamError | undefined;
+}
+
+export interface StreamFetchRequest {
+  idempotencyKey: string;
+  castMessagesByFid?: FidTimestampRequest | undefined;
+  reactionMessagesByFid?: FidTimestampRequest | undefined;
+  verificationMessagesByFid?: FidTimestampRequest | undefined;
+  userDataMessagesByFid?: FidTimestampRequest | undefined;
+  linkMessagesByFid?: FidTimestampRequest | undefined;
+}
+
+export interface StreamFetchResponse {
+  idempotencyKey: string;
+  messages?: MessagesResponse | undefined;
+  error?: StreamError | undefined;
+}
+
 function createBaseEmpty(): Empty {
   return {};
 }
@@ -3861,6 +3911,870 @@ export const ValidationResponse = {
     message.valid = object.valid ?? false;
     message.message = (object.message !== undefined && object.message !== null)
       ? Message.fromPartial(object.message)
+      : undefined;
+    return message;
+  },
+};
+
+function createBaseStreamSyncRequest(): StreamSyncRequest {
+  return {
+    getInfo: undefined,
+    getCurrentPeers: undefined,
+    stopSync: undefined,
+    forceSync: undefined,
+    getSyncStatus: undefined,
+    getAllSyncIdsByPrefix: undefined,
+    getAllMessagesBySyncIds: undefined,
+    getSyncMetadataByPrefix: undefined,
+    getSyncSnapshotByPrefix: undefined,
+    getOnChainEvents: undefined,
+    getOnChainSignersByFid: undefined,
+  };
+}
+
+export const StreamSyncRequest = {
+  encode(message: StreamSyncRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.getInfo !== undefined) {
+      HubInfoRequest.encode(message.getInfo, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.getCurrentPeers !== undefined) {
+      Empty.encode(message.getCurrentPeers, writer.uint32(18).fork()).ldelim();
+    }
+    if (message.stopSync !== undefined) {
+      Empty.encode(message.stopSync, writer.uint32(26).fork()).ldelim();
+    }
+    if (message.forceSync !== undefined) {
+      SyncStatusRequest.encode(message.forceSync, writer.uint32(34).fork()).ldelim();
+    }
+    if (message.getSyncStatus !== undefined) {
+      SyncStatusRequest.encode(message.getSyncStatus, writer.uint32(42).fork()).ldelim();
+    }
+    if (message.getAllSyncIdsByPrefix !== undefined) {
+      TrieNodePrefix.encode(message.getAllSyncIdsByPrefix, writer.uint32(50).fork()).ldelim();
+    }
+    if (message.getAllMessagesBySyncIds !== undefined) {
+      SyncIds.encode(message.getAllMessagesBySyncIds, writer.uint32(58).fork()).ldelim();
+    }
+    if (message.getSyncMetadataByPrefix !== undefined) {
+      TrieNodePrefix.encode(message.getSyncMetadataByPrefix, writer.uint32(66).fork()).ldelim();
+    }
+    if (message.getSyncSnapshotByPrefix !== undefined) {
+      TrieNodePrefix.encode(message.getSyncSnapshotByPrefix, writer.uint32(74).fork()).ldelim();
+    }
+    if (message.getOnChainEvents !== undefined) {
+      OnChainEventRequest.encode(message.getOnChainEvents, writer.uint32(82).fork()).ldelim();
+    }
+    if (message.getOnChainSignersByFid !== undefined) {
+      FidRequest.encode(message.getOnChainSignersByFid, writer.uint32(90).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): StreamSyncRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseStreamSyncRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.getInfo = HubInfoRequest.decode(reader, reader.uint32());
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.getCurrentPeers = Empty.decode(reader, reader.uint32());
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.stopSync = Empty.decode(reader, reader.uint32());
+          continue;
+        case 4:
+          if (tag != 34) {
+            break;
+          }
+
+          message.forceSync = SyncStatusRequest.decode(reader, reader.uint32());
+          continue;
+        case 5:
+          if (tag != 42) {
+            break;
+          }
+
+          message.getSyncStatus = SyncStatusRequest.decode(reader, reader.uint32());
+          continue;
+        case 6:
+          if (tag != 50) {
+            break;
+          }
+
+          message.getAllSyncIdsByPrefix = TrieNodePrefix.decode(reader, reader.uint32());
+          continue;
+        case 7:
+          if (tag != 58) {
+            break;
+          }
+
+          message.getAllMessagesBySyncIds = SyncIds.decode(reader, reader.uint32());
+          continue;
+        case 8:
+          if (tag != 66) {
+            break;
+          }
+
+          message.getSyncMetadataByPrefix = TrieNodePrefix.decode(reader, reader.uint32());
+          continue;
+        case 9:
+          if (tag != 74) {
+            break;
+          }
+
+          message.getSyncSnapshotByPrefix = TrieNodePrefix.decode(reader, reader.uint32());
+          continue;
+        case 10:
+          if (tag != 82) {
+            break;
+          }
+
+          message.getOnChainEvents = OnChainEventRequest.decode(reader, reader.uint32());
+          continue;
+        case 11:
+          if (tag != 90) {
+            break;
+          }
+
+          message.getOnChainSignersByFid = FidRequest.decode(reader, reader.uint32());
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): StreamSyncRequest {
+    return {
+      getInfo: isSet(object.getInfo) ? HubInfoRequest.fromJSON(object.getInfo) : undefined,
+      getCurrentPeers: isSet(object.getCurrentPeers) ? Empty.fromJSON(object.getCurrentPeers) : undefined,
+      stopSync: isSet(object.stopSync) ? Empty.fromJSON(object.stopSync) : undefined,
+      forceSync: isSet(object.forceSync) ? SyncStatusRequest.fromJSON(object.forceSync) : undefined,
+      getSyncStatus: isSet(object.getSyncStatus) ? SyncStatusRequest.fromJSON(object.getSyncStatus) : undefined,
+      getAllSyncIdsByPrefix: isSet(object.getAllSyncIdsByPrefix)
+        ? TrieNodePrefix.fromJSON(object.getAllSyncIdsByPrefix)
+        : undefined,
+      getAllMessagesBySyncIds: isSet(object.getAllMessagesBySyncIds)
+        ? SyncIds.fromJSON(object.getAllMessagesBySyncIds)
+        : undefined,
+      getSyncMetadataByPrefix: isSet(object.getSyncMetadataByPrefix)
+        ? TrieNodePrefix.fromJSON(object.getSyncMetadataByPrefix)
+        : undefined,
+      getSyncSnapshotByPrefix: isSet(object.getSyncSnapshotByPrefix)
+        ? TrieNodePrefix.fromJSON(object.getSyncSnapshotByPrefix)
+        : undefined,
+      getOnChainEvents: isSet(object.getOnChainEvents)
+        ? OnChainEventRequest.fromJSON(object.getOnChainEvents)
+        : undefined,
+      getOnChainSignersByFid: isSet(object.getOnChainSignersByFid)
+        ? FidRequest.fromJSON(object.getOnChainSignersByFid)
+        : undefined,
+    };
+  },
+
+  toJSON(message: StreamSyncRequest): unknown {
+    const obj: any = {};
+    message.getInfo !== undefined &&
+      (obj.getInfo = message.getInfo ? HubInfoRequest.toJSON(message.getInfo) : undefined);
+    message.getCurrentPeers !== undefined &&
+      (obj.getCurrentPeers = message.getCurrentPeers ? Empty.toJSON(message.getCurrentPeers) : undefined);
+    message.stopSync !== undefined && (obj.stopSync = message.stopSync ? Empty.toJSON(message.stopSync) : undefined);
+    message.forceSync !== undefined &&
+      (obj.forceSync = message.forceSync ? SyncStatusRequest.toJSON(message.forceSync) : undefined);
+    message.getSyncStatus !== undefined &&
+      (obj.getSyncStatus = message.getSyncStatus ? SyncStatusRequest.toJSON(message.getSyncStatus) : undefined);
+    message.getAllSyncIdsByPrefix !== undefined && (obj.getAllSyncIdsByPrefix = message.getAllSyncIdsByPrefix
+      ? TrieNodePrefix.toJSON(message.getAllSyncIdsByPrefix)
+      : undefined);
+    message.getAllMessagesBySyncIds !== undefined && (obj.getAllMessagesBySyncIds = message.getAllMessagesBySyncIds
+      ? SyncIds.toJSON(message.getAllMessagesBySyncIds)
+      : undefined);
+    message.getSyncMetadataByPrefix !== undefined && (obj.getSyncMetadataByPrefix = message.getSyncMetadataByPrefix
+      ? TrieNodePrefix.toJSON(message.getSyncMetadataByPrefix)
+      : undefined);
+    message.getSyncSnapshotByPrefix !== undefined && (obj.getSyncSnapshotByPrefix = message.getSyncSnapshotByPrefix
+      ? TrieNodePrefix.toJSON(message.getSyncSnapshotByPrefix)
+      : undefined);
+    message.getOnChainEvents !== undefined && (obj.getOnChainEvents = message.getOnChainEvents
+      ? OnChainEventRequest.toJSON(message.getOnChainEvents)
+      : undefined);
+    message.getOnChainSignersByFid !== undefined && (obj.getOnChainSignersByFid = message.getOnChainSignersByFid
+      ? FidRequest.toJSON(message.getOnChainSignersByFid)
+      : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<StreamSyncRequest>, I>>(base?: I): StreamSyncRequest {
+    return StreamSyncRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<StreamSyncRequest>, I>>(object: I): StreamSyncRequest {
+    const message = createBaseStreamSyncRequest();
+    message.getInfo = (object.getInfo !== undefined && object.getInfo !== null)
+      ? HubInfoRequest.fromPartial(object.getInfo)
+      : undefined;
+    message.getCurrentPeers = (object.getCurrentPeers !== undefined && object.getCurrentPeers !== null)
+      ? Empty.fromPartial(object.getCurrentPeers)
+      : undefined;
+    message.stopSync = (object.stopSync !== undefined && object.stopSync !== null)
+      ? Empty.fromPartial(object.stopSync)
+      : undefined;
+    message.forceSync = (object.forceSync !== undefined && object.forceSync !== null)
+      ? SyncStatusRequest.fromPartial(object.forceSync)
+      : undefined;
+    message.getSyncStatus = (object.getSyncStatus !== undefined && object.getSyncStatus !== null)
+      ? SyncStatusRequest.fromPartial(object.getSyncStatus)
+      : undefined;
+    message.getAllSyncIdsByPrefix =
+      (object.getAllSyncIdsByPrefix !== undefined && object.getAllSyncIdsByPrefix !== null)
+        ? TrieNodePrefix.fromPartial(object.getAllSyncIdsByPrefix)
+        : undefined;
+    message.getAllMessagesBySyncIds =
+      (object.getAllMessagesBySyncIds !== undefined && object.getAllMessagesBySyncIds !== null)
+        ? SyncIds.fromPartial(object.getAllMessagesBySyncIds)
+        : undefined;
+    message.getSyncMetadataByPrefix =
+      (object.getSyncMetadataByPrefix !== undefined && object.getSyncMetadataByPrefix !== null)
+        ? TrieNodePrefix.fromPartial(object.getSyncMetadataByPrefix)
+        : undefined;
+    message.getSyncSnapshotByPrefix =
+      (object.getSyncSnapshotByPrefix !== undefined && object.getSyncSnapshotByPrefix !== null)
+        ? TrieNodePrefix.fromPartial(object.getSyncSnapshotByPrefix)
+        : undefined;
+    message.getOnChainEvents = (object.getOnChainEvents !== undefined && object.getOnChainEvents !== null)
+      ? OnChainEventRequest.fromPartial(object.getOnChainEvents)
+      : undefined;
+    message.getOnChainSignersByFid =
+      (object.getOnChainSignersByFid !== undefined && object.getOnChainSignersByFid !== null)
+        ? FidRequest.fromPartial(object.getOnChainSignersByFid)
+        : undefined;
+    return message;
+  },
+};
+
+function createBaseStreamError(): StreamError {
+  return { errCode: "", message: "", request: "" };
+}
+
+export const StreamError = {
+  encode(message: StreamError, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.errCode !== "") {
+      writer.uint32(10).string(message.errCode);
+    }
+    if (message.message !== "") {
+      writer.uint32(18).string(message.message);
+    }
+    if (message.request !== "") {
+      writer.uint32(26).string(message.request);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): StreamError {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseStreamError();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.errCode = reader.string();
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.message = reader.string();
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.request = reader.string();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): StreamError {
+    return {
+      errCode: isSet(object.errCode) ? String(object.errCode) : "",
+      message: isSet(object.message) ? String(object.message) : "",
+      request: isSet(object.request) ? String(object.request) : "",
+    };
+  },
+
+  toJSON(message: StreamError): unknown {
+    const obj: any = {};
+    message.errCode !== undefined && (obj.errCode = message.errCode);
+    message.message !== undefined && (obj.message = message.message);
+    message.request !== undefined && (obj.request = message.request);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<StreamError>, I>>(base?: I): StreamError {
+    return StreamError.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<StreamError>, I>>(object: I): StreamError {
+    const message = createBaseStreamError();
+    message.errCode = object.errCode ?? "";
+    message.message = object.message ?? "";
+    message.request = object.request ?? "";
+    return message;
+  },
+};
+
+function createBaseStreamSyncResponse(): StreamSyncResponse {
+  return {
+    getInfo: undefined,
+    getCurrentPeers: undefined,
+    stopSync: undefined,
+    forceSync: undefined,
+    getSyncStatus: undefined,
+    getAllSyncIdsByPrefix: undefined,
+    getAllMessagesBySyncIds: undefined,
+    getSyncMetadataByPrefix: undefined,
+    getSyncSnapshotByPrefix: undefined,
+    getOnChainEvents: undefined,
+    getOnChainSignersByFid: undefined,
+    error: undefined,
+  };
+}
+
+export const StreamSyncResponse = {
+  encode(message: StreamSyncResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.getInfo !== undefined) {
+      HubInfoResponse.encode(message.getInfo, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.getCurrentPeers !== undefined) {
+      ContactInfoResponse.encode(message.getCurrentPeers, writer.uint32(18).fork()).ldelim();
+    }
+    if (message.stopSync !== undefined) {
+      SyncStatusResponse.encode(message.stopSync, writer.uint32(26).fork()).ldelim();
+    }
+    if (message.forceSync !== undefined) {
+      SyncStatusResponse.encode(message.forceSync, writer.uint32(34).fork()).ldelim();
+    }
+    if (message.getSyncStatus !== undefined) {
+      SyncStatusResponse.encode(message.getSyncStatus, writer.uint32(42).fork()).ldelim();
+    }
+    if (message.getAllSyncIdsByPrefix !== undefined) {
+      SyncIds.encode(message.getAllSyncIdsByPrefix, writer.uint32(50).fork()).ldelim();
+    }
+    if (message.getAllMessagesBySyncIds !== undefined) {
+      MessagesResponse.encode(message.getAllMessagesBySyncIds, writer.uint32(58).fork()).ldelim();
+    }
+    if (message.getSyncMetadataByPrefix !== undefined) {
+      TrieNodeMetadataResponse.encode(message.getSyncMetadataByPrefix, writer.uint32(66).fork()).ldelim();
+    }
+    if (message.getSyncSnapshotByPrefix !== undefined) {
+      TrieNodeSnapshotResponse.encode(message.getSyncSnapshotByPrefix, writer.uint32(74).fork()).ldelim();
+    }
+    if (message.getOnChainEvents !== undefined) {
+      OnChainEventResponse.encode(message.getOnChainEvents, writer.uint32(82).fork()).ldelim();
+    }
+    if (message.getOnChainSignersByFid !== undefined) {
+      OnChainEventResponse.encode(message.getOnChainSignersByFid, writer.uint32(90).fork()).ldelim();
+    }
+    if (message.error !== undefined) {
+      StreamError.encode(message.error, writer.uint32(98).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): StreamSyncResponse {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseStreamSyncResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.getInfo = HubInfoResponse.decode(reader, reader.uint32());
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.getCurrentPeers = ContactInfoResponse.decode(reader, reader.uint32());
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.stopSync = SyncStatusResponse.decode(reader, reader.uint32());
+          continue;
+        case 4:
+          if (tag != 34) {
+            break;
+          }
+
+          message.forceSync = SyncStatusResponse.decode(reader, reader.uint32());
+          continue;
+        case 5:
+          if (tag != 42) {
+            break;
+          }
+
+          message.getSyncStatus = SyncStatusResponse.decode(reader, reader.uint32());
+          continue;
+        case 6:
+          if (tag != 50) {
+            break;
+          }
+
+          message.getAllSyncIdsByPrefix = SyncIds.decode(reader, reader.uint32());
+          continue;
+        case 7:
+          if (tag != 58) {
+            break;
+          }
+
+          message.getAllMessagesBySyncIds = MessagesResponse.decode(reader, reader.uint32());
+          continue;
+        case 8:
+          if (tag != 66) {
+            break;
+          }
+
+          message.getSyncMetadataByPrefix = TrieNodeMetadataResponse.decode(reader, reader.uint32());
+          continue;
+        case 9:
+          if (tag != 74) {
+            break;
+          }
+
+          message.getSyncSnapshotByPrefix = TrieNodeSnapshotResponse.decode(reader, reader.uint32());
+          continue;
+        case 10:
+          if (tag != 82) {
+            break;
+          }
+
+          message.getOnChainEvents = OnChainEventResponse.decode(reader, reader.uint32());
+          continue;
+        case 11:
+          if (tag != 90) {
+            break;
+          }
+
+          message.getOnChainSignersByFid = OnChainEventResponse.decode(reader, reader.uint32());
+          continue;
+        case 12:
+          if (tag != 98) {
+            break;
+          }
+
+          message.error = StreamError.decode(reader, reader.uint32());
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): StreamSyncResponse {
+    return {
+      getInfo: isSet(object.getInfo) ? HubInfoResponse.fromJSON(object.getInfo) : undefined,
+      getCurrentPeers: isSet(object.getCurrentPeers) ? ContactInfoResponse.fromJSON(object.getCurrentPeers) : undefined,
+      stopSync: isSet(object.stopSync) ? SyncStatusResponse.fromJSON(object.stopSync) : undefined,
+      forceSync: isSet(object.forceSync) ? SyncStatusResponse.fromJSON(object.forceSync) : undefined,
+      getSyncStatus: isSet(object.getSyncStatus) ? SyncStatusResponse.fromJSON(object.getSyncStatus) : undefined,
+      getAllSyncIdsByPrefix: isSet(object.getAllSyncIdsByPrefix)
+        ? SyncIds.fromJSON(object.getAllSyncIdsByPrefix)
+        : undefined,
+      getAllMessagesBySyncIds: isSet(object.getAllMessagesBySyncIds)
+        ? MessagesResponse.fromJSON(object.getAllMessagesBySyncIds)
+        : undefined,
+      getSyncMetadataByPrefix: isSet(object.getSyncMetadataByPrefix)
+        ? TrieNodeMetadataResponse.fromJSON(object.getSyncMetadataByPrefix)
+        : undefined,
+      getSyncSnapshotByPrefix: isSet(object.getSyncSnapshotByPrefix)
+        ? TrieNodeSnapshotResponse.fromJSON(object.getSyncSnapshotByPrefix)
+        : undefined,
+      getOnChainEvents: isSet(object.getOnChainEvents)
+        ? OnChainEventResponse.fromJSON(object.getOnChainEvents)
+        : undefined,
+      getOnChainSignersByFid: isSet(object.getOnChainSignersByFid)
+        ? OnChainEventResponse.fromJSON(object.getOnChainSignersByFid)
+        : undefined,
+      error: isSet(object.error) ? StreamError.fromJSON(object.error) : undefined,
+    };
+  },
+
+  toJSON(message: StreamSyncResponse): unknown {
+    const obj: any = {};
+    message.getInfo !== undefined &&
+      (obj.getInfo = message.getInfo ? HubInfoResponse.toJSON(message.getInfo) : undefined);
+    message.getCurrentPeers !== undefined &&
+      (obj.getCurrentPeers = message.getCurrentPeers ? ContactInfoResponse.toJSON(message.getCurrentPeers) : undefined);
+    message.stopSync !== undefined &&
+      (obj.stopSync = message.stopSync ? SyncStatusResponse.toJSON(message.stopSync) : undefined);
+    message.forceSync !== undefined &&
+      (obj.forceSync = message.forceSync ? SyncStatusResponse.toJSON(message.forceSync) : undefined);
+    message.getSyncStatus !== undefined &&
+      (obj.getSyncStatus = message.getSyncStatus ? SyncStatusResponse.toJSON(message.getSyncStatus) : undefined);
+    message.getAllSyncIdsByPrefix !== undefined && (obj.getAllSyncIdsByPrefix = message.getAllSyncIdsByPrefix
+      ? SyncIds.toJSON(message.getAllSyncIdsByPrefix)
+      : undefined);
+    message.getAllMessagesBySyncIds !== undefined && (obj.getAllMessagesBySyncIds = message.getAllMessagesBySyncIds
+      ? MessagesResponse.toJSON(message.getAllMessagesBySyncIds)
+      : undefined);
+    message.getSyncMetadataByPrefix !== undefined && (obj.getSyncMetadataByPrefix = message.getSyncMetadataByPrefix
+      ? TrieNodeMetadataResponse.toJSON(message.getSyncMetadataByPrefix)
+      : undefined);
+    message.getSyncSnapshotByPrefix !== undefined && (obj.getSyncSnapshotByPrefix = message.getSyncSnapshotByPrefix
+      ? TrieNodeSnapshotResponse.toJSON(message.getSyncSnapshotByPrefix)
+      : undefined);
+    message.getOnChainEvents !== undefined && (obj.getOnChainEvents = message.getOnChainEvents
+      ? OnChainEventResponse.toJSON(message.getOnChainEvents)
+      : undefined);
+    message.getOnChainSignersByFid !== undefined && (obj.getOnChainSignersByFid = message.getOnChainSignersByFid
+      ? OnChainEventResponse.toJSON(message.getOnChainSignersByFid)
+      : undefined);
+    message.error !== undefined && (obj.error = message.error ? StreamError.toJSON(message.error) : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<StreamSyncResponse>, I>>(base?: I): StreamSyncResponse {
+    return StreamSyncResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<StreamSyncResponse>, I>>(object: I): StreamSyncResponse {
+    const message = createBaseStreamSyncResponse();
+    message.getInfo = (object.getInfo !== undefined && object.getInfo !== null)
+      ? HubInfoResponse.fromPartial(object.getInfo)
+      : undefined;
+    message.getCurrentPeers = (object.getCurrentPeers !== undefined && object.getCurrentPeers !== null)
+      ? ContactInfoResponse.fromPartial(object.getCurrentPeers)
+      : undefined;
+    message.stopSync = (object.stopSync !== undefined && object.stopSync !== null)
+      ? SyncStatusResponse.fromPartial(object.stopSync)
+      : undefined;
+    message.forceSync = (object.forceSync !== undefined && object.forceSync !== null)
+      ? SyncStatusResponse.fromPartial(object.forceSync)
+      : undefined;
+    message.getSyncStatus = (object.getSyncStatus !== undefined && object.getSyncStatus !== null)
+      ? SyncStatusResponse.fromPartial(object.getSyncStatus)
+      : undefined;
+    message.getAllSyncIdsByPrefix =
+      (object.getAllSyncIdsByPrefix !== undefined && object.getAllSyncIdsByPrefix !== null)
+        ? SyncIds.fromPartial(object.getAllSyncIdsByPrefix)
+        : undefined;
+    message.getAllMessagesBySyncIds =
+      (object.getAllMessagesBySyncIds !== undefined && object.getAllMessagesBySyncIds !== null)
+        ? MessagesResponse.fromPartial(object.getAllMessagesBySyncIds)
+        : undefined;
+    message.getSyncMetadataByPrefix =
+      (object.getSyncMetadataByPrefix !== undefined && object.getSyncMetadataByPrefix !== null)
+        ? TrieNodeMetadataResponse.fromPartial(object.getSyncMetadataByPrefix)
+        : undefined;
+    message.getSyncSnapshotByPrefix =
+      (object.getSyncSnapshotByPrefix !== undefined && object.getSyncSnapshotByPrefix !== null)
+        ? TrieNodeSnapshotResponse.fromPartial(object.getSyncSnapshotByPrefix)
+        : undefined;
+    message.getOnChainEvents = (object.getOnChainEvents !== undefined && object.getOnChainEvents !== null)
+      ? OnChainEventResponse.fromPartial(object.getOnChainEvents)
+      : undefined;
+    message.getOnChainSignersByFid =
+      (object.getOnChainSignersByFid !== undefined && object.getOnChainSignersByFid !== null)
+        ? OnChainEventResponse.fromPartial(object.getOnChainSignersByFid)
+        : undefined;
+    message.error = (object.error !== undefined && object.error !== null)
+      ? StreamError.fromPartial(object.error)
+      : undefined;
+    return message;
+  },
+};
+
+function createBaseStreamFetchRequest(): StreamFetchRequest {
+  return {
+    idempotencyKey: "",
+    castMessagesByFid: undefined,
+    reactionMessagesByFid: undefined,
+    verificationMessagesByFid: undefined,
+    userDataMessagesByFid: undefined,
+    linkMessagesByFid: undefined,
+  };
+}
+
+export const StreamFetchRequest = {
+  encode(message: StreamFetchRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.idempotencyKey !== "") {
+      writer.uint32(10).string(message.idempotencyKey);
+    }
+    if (message.castMessagesByFid !== undefined) {
+      FidTimestampRequest.encode(message.castMessagesByFid, writer.uint32(18).fork()).ldelim();
+    }
+    if (message.reactionMessagesByFid !== undefined) {
+      FidTimestampRequest.encode(message.reactionMessagesByFid, writer.uint32(26).fork()).ldelim();
+    }
+    if (message.verificationMessagesByFid !== undefined) {
+      FidTimestampRequest.encode(message.verificationMessagesByFid, writer.uint32(34).fork()).ldelim();
+    }
+    if (message.userDataMessagesByFid !== undefined) {
+      FidTimestampRequest.encode(message.userDataMessagesByFid, writer.uint32(42).fork()).ldelim();
+    }
+    if (message.linkMessagesByFid !== undefined) {
+      FidTimestampRequest.encode(message.linkMessagesByFid, writer.uint32(50).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): StreamFetchRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseStreamFetchRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.idempotencyKey = reader.string();
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.castMessagesByFid = FidTimestampRequest.decode(reader, reader.uint32());
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.reactionMessagesByFid = FidTimestampRequest.decode(reader, reader.uint32());
+          continue;
+        case 4:
+          if (tag != 34) {
+            break;
+          }
+
+          message.verificationMessagesByFid = FidTimestampRequest.decode(reader, reader.uint32());
+          continue;
+        case 5:
+          if (tag != 42) {
+            break;
+          }
+
+          message.userDataMessagesByFid = FidTimestampRequest.decode(reader, reader.uint32());
+          continue;
+        case 6:
+          if (tag != 50) {
+            break;
+          }
+
+          message.linkMessagesByFid = FidTimestampRequest.decode(reader, reader.uint32());
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): StreamFetchRequest {
+    return {
+      idempotencyKey: isSet(object.idempotencyKey) ? String(object.idempotencyKey) : "",
+      castMessagesByFid: isSet(object.castMessagesByFid)
+        ? FidTimestampRequest.fromJSON(object.castMessagesByFid)
+        : undefined,
+      reactionMessagesByFid: isSet(object.reactionMessagesByFid)
+        ? FidTimestampRequest.fromJSON(object.reactionMessagesByFid)
+        : undefined,
+      verificationMessagesByFid: isSet(object.verificationMessagesByFid)
+        ? FidTimestampRequest.fromJSON(object.verificationMessagesByFid)
+        : undefined,
+      userDataMessagesByFid: isSet(object.userDataMessagesByFid)
+        ? FidTimestampRequest.fromJSON(object.userDataMessagesByFid)
+        : undefined,
+      linkMessagesByFid: isSet(object.linkMessagesByFid)
+        ? FidTimestampRequest.fromJSON(object.linkMessagesByFid)
+        : undefined,
+    };
+  },
+
+  toJSON(message: StreamFetchRequest): unknown {
+    const obj: any = {};
+    message.idempotencyKey !== undefined && (obj.idempotencyKey = message.idempotencyKey);
+    message.castMessagesByFid !== undefined && (obj.castMessagesByFid = message.castMessagesByFid
+      ? FidTimestampRequest.toJSON(message.castMessagesByFid)
+      : undefined);
+    message.reactionMessagesByFid !== undefined && (obj.reactionMessagesByFid = message.reactionMessagesByFid
+      ? FidTimestampRequest.toJSON(message.reactionMessagesByFid)
+      : undefined);
+    message.verificationMessagesByFid !== undefined &&
+      (obj.verificationMessagesByFid = message.verificationMessagesByFid
+        ? FidTimestampRequest.toJSON(message.verificationMessagesByFid)
+        : undefined);
+    message.userDataMessagesByFid !== undefined && (obj.userDataMessagesByFid = message.userDataMessagesByFid
+      ? FidTimestampRequest.toJSON(message.userDataMessagesByFid)
+      : undefined);
+    message.linkMessagesByFid !== undefined && (obj.linkMessagesByFid = message.linkMessagesByFid
+      ? FidTimestampRequest.toJSON(message.linkMessagesByFid)
+      : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<StreamFetchRequest>, I>>(base?: I): StreamFetchRequest {
+    return StreamFetchRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<StreamFetchRequest>, I>>(object: I): StreamFetchRequest {
+    const message = createBaseStreamFetchRequest();
+    message.idempotencyKey = object.idempotencyKey ?? "";
+    message.castMessagesByFid = (object.castMessagesByFid !== undefined && object.castMessagesByFid !== null)
+      ? FidTimestampRequest.fromPartial(object.castMessagesByFid)
+      : undefined;
+    message.reactionMessagesByFid =
+      (object.reactionMessagesByFid !== undefined && object.reactionMessagesByFid !== null)
+        ? FidTimestampRequest.fromPartial(object.reactionMessagesByFid)
+        : undefined;
+    message.verificationMessagesByFid =
+      (object.verificationMessagesByFid !== undefined && object.verificationMessagesByFid !== null)
+        ? FidTimestampRequest.fromPartial(object.verificationMessagesByFid)
+        : undefined;
+    message.userDataMessagesByFid =
+      (object.userDataMessagesByFid !== undefined && object.userDataMessagesByFid !== null)
+        ? FidTimestampRequest.fromPartial(object.userDataMessagesByFid)
+        : undefined;
+    message.linkMessagesByFid = (object.linkMessagesByFid !== undefined && object.linkMessagesByFid !== null)
+      ? FidTimestampRequest.fromPartial(object.linkMessagesByFid)
+      : undefined;
+    return message;
+  },
+};
+
+function createBaseStreamFetchResponse(): StreamFetchResponse {
+  return { idempotencyKey: "", messages: undefined, error: undefined };
+}
+
+export const StreamFetchResponse = {
+  encode(message: StreamFetchResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.idempotencyKey !== "") {
+      writer.uint32(10).string(message.idempotencyKey);
+    }
+    if (message.messages !== undefined) {
+      MessagesResponse.encode(message.messages, writer.uint32(18).fork()).ldelim();
+    }
+    if (message.error !== undefined) {
+      StreamError.encode(message.error, writer.uint32(26).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): StreamFetchResponse {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseStreamFetchResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.idempotencyKey = reader.string();
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.messages = MessagesResponse.decode(reader, reader.uint32());
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.error = StreamError.decode(reader, reader.uint32());
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): StreamFetchResponse {
+    return {
+      idempotencyKey: isSet(object.idempotencyKey) ? String(object.idempotencyKey) : "",
+      messages: isSet(object.messages) ? MessagesResponse.fromJSON(object.messages) : undefined,
+      error: isSet(object.error) ? StreamError.fromJSON(object.error) : undefined,
+    };
+  },
+
+  toJSON(message: StreamFetchResponse): unknown {
+    const obj: any = {};
+    message.idempotencyKey !== undefined && (obj.idempotencyKey = message.idempotencyKey);
+    message.messages !== undefined &&
+      (obj.messages = message.messages ? MessagesResponse.toJSON(message.messages) : undefined);
+    message.error !== undefined && (obj.error = message.error ? StreamError.toJSON(message.error) : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<StreamFetchResponse>, I>>(base?: I): StreamFetchResponse {
+    return StreamFetchResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<StreamFetchResponse>, I>>(object: I): StreamFetchResponse {
+    const message = createBaseStreamFetchResponse();
+    message.idempotencyKey = object.idempotencyKey ?? "";
+    message.messages = (object.messages !== undefined && object.messages !== null)
+      ? MessagesResponse.fromPartial(object.messages)
+      : undefined;
+    message.error = (object.error !== undefined && object.error !== null)
+      ? StreamError.fromPartial(object.error)
       : undefined;
     return message;
   },

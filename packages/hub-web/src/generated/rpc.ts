@@ -29,6 +29,10 @@ import {
   ReactionsByTargetRequest,
   SignerRequest,
   StorageLimitsResponse,
+  StreamFetchRequest,
+  StreamFetchResponse,
+  StreamSyncRequest,
+  StreamSyncResponse,
   SubscribeRequest,
   SyncIds,
   SyncStatusRequest,
@@ -187,6 +191,16 @@ export interface HubService {
     request: DeepPartial<TrieNodePrefix>,
     metadata?: grpcWeb.grpc.Metadata,
   ): Promise<TrieNodeSnapshotResponse>;
+  /** @http-api: none */
+  streamSync(
+    request: Observable<DeepPartial<StreamSyncRequest>>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Observable<StreamSyncResponse>;
+  /** @http-api: none */
+  streamFetch(
+    request: Observable<DeepPartial<StreamFetchRequest>>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Observable<StreamFetchResponse>;
 }
 
 export class HubServiceClientImpl implements HubService {
@@ -237,6 +251,8 @@ export class HubServiceClientImpl implements HubService {
     this.getAllMessagesBySyncIds = this.getAllMessagesBySyncIds.bind(this);
     this.getSyncMetadataByPrefix = this.getSyncMetadataByPrefix.bind(this);
     this.getSyncSnapshotByPrefix = this.getSyncSnapshotByPrefix.bind(this);
+    this.streamSync = this.streamSync.bind(this);
+    this.streamFetch = this.streamFetch.bind(this);
   }
 
   submitMessage(request: DeepPartial<Message>, metadata?: grpcWeb.grpc.Metadata): Promise<Message> {
@@ -461,6 +477,20 @@ export class HubServiceClientImpl implements HubService {
     metadata?: grpcWeb.grpc.Metadata,
   ): Promise<TrieNodeSnapshotResponse> {
     return this.rpc.unary(HubServiceGetSyncSnapshotByPrefixDesc, TrieNodePrefix.fromPartial(request), metadata);
+  }
+
+  streamSync(
+    request: Observable<DeepPartial<StreamSyncRequest>>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Observable<StreamSyncResponse> {
+    throw new Error("ts-proto does not yet support client streaming!");
+  }
+
+  streamFetch(
+    request: Observable<DeepPartial<StreamFetchRequest>>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Observable<StreamFetchResponse> {
+    throw new Error("ts-proto does not yet support client streaming!");
   }
 }
 
