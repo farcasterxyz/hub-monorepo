@@ -5,6 +5,7 @@ import {
   CallOptions,
   Factories,
   FidRequest,
+  HubError,
   HubEvent,
   HubEventType,
   HubRpcClient,
@@ -26,7 +27,7 @@ import {
   MessageState,
   MessageReconciliation,
 } from "./shuttle";
-import { ok } from "neverthrow";
+import { err, ok } from "neverthrow";
 import { bytesToHex } from "./utils";
 
 let db: DB;
@@ -436,6 +437,9 @@ describe("shuttle", () => {
 
     // It's a hack, but mockito is not handling this well:
     const mockRPCClient = {
+      streamFetch: (metadata?: Metadata, options?: Partial<CallOptions>) => {
+        return err(new HubError("unavailable", "unavailable"));
+      },
       getAllLinkMessagesByFid: async (_request: FidRequest, _metadata: Metadata, _options: Partial<CallOptions>) => {
         return ok(
           MessagesResponse.create({
@@ -536,6 +540,9 @@ describe("shuttle", () => {
 
     // It's a hack, but mockito is not handling this well:
     const mockRPCClient = {
+      streamFetch: (metadata?: Metadata, options?: Partial<CallOptions>) => {
+        return err(new HubError("unavailable", "unavailable"));
+      },
       getAllLinkMessagesByFid: async (_request: FidRequest, _metadata: Metadata, _options: Partial<CallOptions>) => {
         return ok(
           MessagesResponse.create({
