@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.6.1
+
+### Patch Changes
+
+- 78342c3d: feat: switch shuttle to use stream fetch
+
 ## 0.6.0
 
 ### Minor Changes
