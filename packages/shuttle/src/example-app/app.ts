@@ -22,9 +22,14 @@ import {
   isCastAddMessage,
   isCastRemoveMessage,
   isIdRegisterOnChainEvent,
+  isLinkAddMessage,
+  isLinkRemoveMessage,
   isMergeOnChainHubEvent,
   isSignerOnChainEvent,
   isStorageRentOnChainEvent,
+  isUserDataAddMessage,
+  isVerificationAddAddressMessage,
+  isVerificationRemoveMessage,
   Message,
 } from "@farcaster/hub-nodejs";
 import { log } from "./log";
@@ -189,6 +194,64 @@ export class App implements MessageHandler {
         .set({ deletedAt: farcasterTimeToDate(message.data.timestamp) || new Date() })
         .where("hash", "=", message.hash)
         .execute();
+    }
+
+    const isLinkMessage = isLinkAddMessage(message) || isLinkRemoveMessage(message);
+    if (isLinkMessage) {
+      if (state === "created") {
+        await appDB
+          .insertInto("links")
+          .values({
+            fid: message.data.fid,
+            hash: message.hash,
+            target_fid: message.data.linkBody?.targetFid || null,
+            type: message.data.linkBody?.type || "",
+            timestamp: farcasterTimeToDate(message.data.timestamp) || new Date(),
+          })
+          .execute();
+      } else if (state === "deleted") {
+        await appDB
+          .updateTable("links")
+          .set({ deletedAt: farcasterTimeToDate(message.data.timestamp) || new Date() })
+          .where("hash", "=", message.hash)
+          .execute();
+      }
+    }
+
+    const isVerificationMessage = isVerificationAddAddressMessage(message) || isVerificationRemoveMessage(message);
+    if (isVerificationMessage) {
+      if (state === "created") {
+        await appDB
+          .insertInto("verifications")
+          .values({
+            fid: message.data.fid,
+            hash: message.hash,
+            claim: message.data.verificationAddAddressBody || {},
+            timestamp: farcasterTimeToDate(message.data.timestamp) || new Date(),
+          })
+          .execute();
+      } else if (state === "deleted") {
+        await appDB
+          .updateTable("verifications")
+          .set({ deletedAt: farcasterTimeToDate(message.data.timestamp) || new Date() })
+          .where("hash", "=", message.hash)
+          .execute();
+      }
+    }
+
+    const isUserDataMessage = isUserDataAddMessage(message);
+    if (isUserDataMessage) {
+      if (state === "created") {
+        await appDB
+          .insertInto("user_data")
+          .values({
+            fid: message.data.fid,
+            hash: message.hash,
+            type: message.data.userDataBody?.type || null,
+            timestamp: farcasterTimeToDate(message.data.timestamp) || new Date(),
+          })
+          .execute();
+      }
     }
 
     const messageDesc = wasMissed ? `missed message (${operation})` : `message (${operation})`;
