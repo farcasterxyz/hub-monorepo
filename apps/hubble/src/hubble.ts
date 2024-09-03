@@ -1942,6 +1942,7 @@ export class Hub implements HubInterface {
             `source:${source}`,
           ];
           infoLogs.push(`[${parts.join("|")}]`);
+          statsd().increment("submit_message.success", 1, { message_type: type, source: source ?? "unknown-source" });
         },
         (e) => {
           const parts = [
@@ -1974,7 +1975,6 @@ export class Hub implements HubInterface {
     // Convert the merge results to an Array of HubResults with the key
     const finalResults: HubResult<number>[] = [];
     const finalFailures = new Map<string, number>();
-    const totalTimeMilis = Date.now() - start;
     let success = 0;
     for (let i = 0; i < allResults.size; i++) {
       const result = allResults.get(i) as HubResult<number>;
@@ -1986,10 +1986,10 @@ export class Hub implements HubInterface {
         finalFailures.set(errCode, count + 1);
       }
       finalResults.push(result);
-
-      // Register one metric event per message that was merged
-      statsd().timing("hub.merge_message", totalTimeMilis / allResults.size);
     }
+
+    const totalTimeMilis = Date.now() - start;
+    statsd().timing("hub.merge_message", totalTimeMilis / finalResults.length);
 
     // When submitting a messageBundle via RPC, we want to gossip it to other nodes
     if (success > 0 && source === "rpc") {
@@ -2033,6 +2033,8 @@ export class Hub implements HubInterface {
 
     mergeResult.match(
       (eventId) => {
+        statsd().increment("submit_message.success", 1, { message_type: type, source: source ?? "unknown-source" });
+
         if (this.options.logIndividualMessages) {
           const logData = {
             eventId,
