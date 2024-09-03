@@ -1974,6 +1974,7 @@ export class Hub implements HubInterface {
     // Convert the merge results to an Array of HubResults with the key
     const finalResults: HubResult<number>[] = [];
     const finalFailures = new Map<string, number>();
+    const totalTimeMilis = Date.now() - start;
     let success = 0;
     for (let i = 0; i < allResults.size; i++) {
       const result = allResults.get(i) as HubResult<number>;
@@ -1985,10 +1986,10 @@ export class Hub implements HubInterface {
         finalFailures.set(errCode, count + 1);
       }
       finalResults.push(result);
-    }
 
-    const totalTimeMilis = Date.now() - start;
-    statsd().timing("hub.merge_message", totalTimeMilis / finalResults.length);
+      // Register one metric event per message that was merged
+      statsd().timing("hub.merge_message", totalTimeMilis / allResults.size);
+    }
 
     // When submitting a messageBundle via RPC, we want to gossip it to other nodes
     if (success > 0 && source === "rpc") {
