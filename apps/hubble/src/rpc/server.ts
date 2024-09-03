@@ -1653,8 +1653,6 @@ export default class Server {
       },
       streamSync: async (stream: ServerDuplexStream<StreamSyncRequest, StreamSyncResponse>) => {
         const timeout = setTimeout(async () => {
-          logger.warn({ timeout: STREAM_METHODS_TIMEOUT }, "stream sync: timeout, stopping stream");
-
           const error = new HubError("unavailable.network_failure", "stream timeout");
           destroyStream(stream, error);
         }, STREAM_METHODS_TIMEOUT);
@@ -1857,8 +1855,6 @@ export default class Server {
       },
       streamFetch: async (stream: ServerDuplexStream<StreamFetchRequest, StreamFetchResponse>) => {
         const timeout = setTimeout(async () => {
-          logger.warn({ timeout: STREAM_METHODS_TIMEOUT }, "stream fetch: timeout, stopping stream");
-
           const error = new HubError("unavailable.network_failure", "stream timeout");
           destroyStream(stream, error);
         }, STREAM_METHODS_TIMEOUT);

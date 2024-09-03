@@ -316,14 +316,16 @@ Used to subscribe to real-time event updates from the Farcaster Hub
 
 ## 11. Sync Service
 
-| Method Name             | Request Type      | Response Type            | Description                                            |
-| ----------------------- | ----------------- | ------------------------ | ------------------------------------------------------ |
-| GetInfo                 | HubInfoRequest    | HubInfoResponse          | Returns metadata about the hub's state.                |
-| GetSyncStatus           | SyncStatusRequest | SyncStatusResponse       | Returns the hub's sync status.  |
-| GetAllSyncIdsByPrefix   | TrieNodePrefix    | SyncIds                  | TBD |
-| GetAllMessagesBySyncIds | SyncIds           | MessagesResponse         | TBD |
-| GetSyncMetadataByPrefix | TrieNodePrefix    | TrieNodeMetadataResponse | TBD |
-| GetSyncSnapshotByPrefix | TrieNodePrefix    | TrieNodeSnapshotResponse | TBD |
+| Method Name             | Request Type              | Response Type              | Description                                                     |
+| ----------------------- | ------------------------- | -------------------------- | --------------------------------------------------------------- |
+| GetInfo                 | HubInfoRequest            | HubInfoResponse            | Returns metadata about the hub's state.                         |
+| GetSyncStatus           | SyncStatusRequest         | SyncStatusResponse         | Returns the hub's sync status.                                  |
+| GetAllSyncIdsByPrefix   | TrieNodePrefix            | SyncIds                    | TBD                                                             |
+| GetAllMessagesBySyncIds | SyncIds                   | MessagesResponse           | TBD                                                             |
+| GetSyncMetadataByPrefix | TrieNodePrefix            | TrieNodeMetadataResponse   | TBD                                                             |
+| GetSyncSnapshotByPrefix | TrieNodePrefix            | TrieNodeSnapshotResponse   | TBD                                                             |
+| StreamSync              | stream StreamSyncRequest  | stream StreamSyncResponse  | Enables sync related operations over a constant stream.         |
+| StreamFetch             | stream StreamFetchRequest | stream StreamFetchResponse | Enables reconciliation fetch operations over a constant stream. |
 
 ### HubInfoRequest
 
@@ -405,6 +407,67 @@ Response Types for the Sync RPC Methods
 | num_messages | [uint64](#uint64) |  |  |
 | num_fid_events | [uint64](#uint64) |  |  |
 | num_fname_events | [uint64](#uint64) |  |  |
+
+### StreamError
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| errCode | [string](#string) |  |  |
+| message | [string](#string) |  |  |
+| request | [string](#string) |  |  |
+
+### StreamFetchRequest
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| idempotency_key | [string](#string) |  |  |
+| cast_messages_by_fid | [FidTimestampRequest](#FidTimestampRequest) |  |  |
+| reaction_messages_by_fid | [FidTimestampRequest](#FidTimestampRequest) |  |  |
+| verification_messages_by_fid | [FidTimestampRequest](#FidTimestampRequest) |  |  |
+| user_data_messages_by_fid | [FidTimestampRequest](#FidTimestampRequest) |  |  |
+| link_messages_by_fid | [FidTimestampRequest](#FidTimestampRequest) |  |  |
+
+### StreamFetchResponse
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| idempotency_key | [string](#string) |  |  |
+| messages | [MessagesResponse](#MessagesResponse) |  |  |
+| error | [StreamError](#StreamError) |  |  |
+
+### StreamSyncRequest
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| get_info | [HubInfoRequest](#HubInfoRequest) |  |  |
+| get_current_peers | [Empty](#Empty) |  |  |
+| stop_sync | [Empty](#Empty) |  |  |
+| force_sync | [SyncStatusRequest](#SyncStatusRequest) |  |  |
+| get_sync_status | [SyncStatusRequest](#SyncStatusRequest) |  |  |
+| get_all_sync_ids_by_prefix | [TrieNodePrefix](#TrieNodePrefix) |  |  |
+| get_all_messages_by_sync_ids | [SyncIds](#SyncIds) |  |  |
+| get_sync_metadata_by_prefix | [TrieNodePrefix](#TrieNodePrefix) |  |  |
+| get_sync_snapshot_by_prefix | [TrieNodePrefix](#TrieNodePrefix) |  |  |
+| get_on_chain_events | [OnChainEventRequest](#OnChainEventRequest) |  |  |
+| get_on_chain_signers_by_fid | [FidRequest](#FidRequest) |  |  |
+
+### StreamSyncResponse
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| get_info | [HubInfoResponse](#HubInfoResponse) |  |  |
+| get_current_peers | [ContactInfoResponse](#ContactInfoResponse) |  |  |
+| stop_sync | [SyncStatusResponse](#SyncStatusResponse) |  |  |
+| force_sync | [SyncStatusResponse](#SyncStatusResponse) |  |  |
+| get_sync_status | [SyncStatusResponse](#SyncStatusResponse) |  |  |
+| get_all_sync_ids_by_prefix | [SyncIds](#SyncIds) |  |  |
+| get_all_messages_by_sync_ids | [MessagesResponse](#MessagesResponse) |  |  |
+| get_sync_metadata_by_prefix | [TrieNodeMetadataResponse](#TrieNodeMetadataResponse) |  |  |
+| get_sync_snapshot_by_prefix | [TrieNodeSnapshotResponse](#TrieNodeSnapshotResponse) |  |  |
+| get_on_chain_events | [OnChainEventResponse](#OnChainEventResponse) |  |  |
+| get_on_chain_signers_by_fid | [OnChainEventResponse](#OnChainEventResponse) |  |  |
+| error | [StreamError](#StreamError) |  |  |
+
 
 ## 12. Storage Service
 
