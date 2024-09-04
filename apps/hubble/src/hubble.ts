@@ -1942,6 +1942,7 @@ export class Hub implements HubInterface {
             `source:${source}`,
           ];
           infoLogs.push(`[${parts.join("|")}]`);
+          statsd().increment("submit_message.success", 1, { message_type: type, source: source ?? "unknown-source" });
         },
         (e) => {
           const parts = [
@@ -2032,6 +2033,8 @@ export class Hub implements HubInterface {
 
     mergeResult.match(
       (eventId) => {
+        statsd().increment("submit_message.success", 1, { message_type: type, source: source ?? "unknown-source" });
+
         if (this.options.logIndividualMessages) {
           const logData = {
             eventId,
