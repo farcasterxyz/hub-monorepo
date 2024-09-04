@@ -1,6 +1,6 @@
 # Hubble
 
-Hubble is an implementation of a [Farcaster Hub](https://docs.farcaster.xyz/hubble/hubble) written in Typescript and Rust. 
+[Hubble](https://github.com/farcasterxyz/hub-monorepo) is an implementation of a [Farcaster Hub](https://docs.farcaster.xyz/hubble/hubble) written in [Typescript](https://www.typescriptlang.org/) and [Rust](https://www.rust-lang.org/).
 
 ## Get Started
 
