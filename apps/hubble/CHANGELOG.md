@@ -1,5 +1,15 @@
 # @farcaster/hubble
 
+## 1.15.0
+
+### Minor Changes
+
+- feat: Release protocol version 2024.9.4
+
+### Patch Changes
+
+- 8aaae2aa: remove superfluous warn log
+
 ## 1.14.5
 
 ### Patch Changes
