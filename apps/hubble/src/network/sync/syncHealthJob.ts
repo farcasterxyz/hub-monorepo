@@ -4,7 +4,9 @@ import SyncEngine from "./syncEngine.js";
 import { RpcMetadataRetriever, SyncEngineMetadataRetriever, SyncHealthProbe } from "../../utils/syncHealth.js";
 import { HubInterface } from "hubble.js";
 import { peerIdFromString } from "@libp2p/peer-id";
-import { bytesToHexString, HubResult, Message, UserDataType } from "@farcaster/hub-nodejs";
+import { bytesToHexString, Message, UserDataType } from "@farcaster/hub-nodejs";
+import { Result } from "neverthrow";
+import { SubmitError } from "../../utils/syncHealth.js";
 
 const log = logger.child({
   component: "SyncHealth",
@@ -60,7 +62,7 @@ export class MeasureSyncHealthJobScheduler {
     return peers;
   }
 
-  processSumbitResults(results: HubResult<Message>[], peerId: string) {
+  processSumbitResults(results: Result<Message, SubmitError>[], peerId: string) {
     let numSuccesses = 0;
     let numErrors = 0;
     for (const result of results) {
@@ -80,7 +82,12 @@ export class MeasureSyncHealthJobScheduler {
 
         numSuccesses += 1;
       } else {
-        log.info({ errMessage: result.error.message, peerId }, "Failed to submit message via SyncHealth");
+        const hashString = bytesToHexString(result.error.originalMessage.hash);
+        const hash = hashString.isOk() ? hashString.value : "unable to show hash";
+        log.info(
+          { errMessage: result.error.hubError.message, peerId, hash },
+          "Failed to submit message via SyncHealth",
+        );
 
         numErrors += 1;
       }
