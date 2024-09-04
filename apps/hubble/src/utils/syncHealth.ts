@@ -21,11 +21,12 @@ import { appendFile } from "fs/promises";
 import { addressInfoFromGossip, addressInfoToString } from "./p2p.js";
 
 import { SyncId, timestampToPaddedTimestampPrefix } from "../network/sync/syncId.js";
-import { err, ok } from "neverthrow";
+import { err, ok, Result } from "neverthrow";
 import { MAX_VALUES_RETURNED_PER_SYNC_ID_REQUEST, toTrieNodeMetadataResponse } from "../rpc/server.js";
 import SyncEngine from "../network/sync/syncEngine.js";
 import { HubInterface } from "hubble.js";
 
+export type SubmitError = { hubError: HubError; originalMessage: Message };
 class SyncHealthMessageStats {
   primaryNumMessages: number;
   peerNumMessages: number;
@@ -46,8 +47,8 @@ class SyncHealthMessageStats {
 
 class Stats {
   syncHealthMessageStats: SyncHealthMessageStats;
-  resultsUploadingToPeer: HubResult<Message>[];
-  resultsUploadingToPrimary: HubResult<Message>[];
+  resultsUploadingToPeer: Result<Message, SubmitError>[];
+  resultsUploadingToPrimary: Result<Message, SubmitError>[];
   primary: string;
   peer: string;
   startTime: Date;
@@ -59,8 +60,8 @@ class Stats {
     primary: string,
     peer: string,
     syncHealthMessageStats: SyncHealthMessageStats,
-    resultsUploadingToPeer: HubResult<Message>[],
-    resultsUploadingToPrimary: HubResult<Message>[],
+    resultsUploadingToPeer: Result<Message, SubmitError>[],
+    resultsUploadingToPrimary: Result<Message, SubmitError>[],
   ) {
     this.startTime = startTime;
     this.stopTime = stopTime;
@@ -88,7 +89,7 @@ class Stats {
     const errorReasons = new Set();
     for (const error of this.errorResults(who)) {
       if (error.isErr()) {
-        errorReasons.add(error.error.message);
+        errorReasons.add(error.error.hubError.message);
       }
     }
     return [...errorReasons];
@@ -505,7 +506,10 @@ export class SyncHealthProbe {
     const results = [];
     for (const message of messages.value.messages) {
       const result = await metadataRetrieverMissingMessages.submitMessage(message);
-      results.push(result);
+      const augmentedResult = result.mapErr((err) => {
+        return { hubError: err, originalMessage: message };
+      });
+      results.push(augmentedResult);
     }
 
     return ok(results);
