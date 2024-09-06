@@ -822,7 +822,7 @@ export class Hub implements HubInterface {
     this.validateOrRevokeMessagesJobScheduler.start();
 
     const randomMinute = Math.floor(Math.random() * 15);
-    this.gossipContactInfoJobScheduler.start(`${randomMinute}/15 * * * *`); // Random minute every 30 minutes
+    this.gossipContactInfoJobScheduler.start(`${randomMinute}-59/15 * * * *`); // Weird syntax but required by cron, random minute every 15 minutes
     this.checkIncomingPortsJobScheduler.start();
     this.measureSyncHealthJobScheduler.start();
 
