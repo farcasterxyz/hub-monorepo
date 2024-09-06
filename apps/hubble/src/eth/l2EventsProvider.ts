@@ -737,6 +737,65 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
     );
   }
 
+  async getCommonFilterArgs(fromBlock?: number, toBlock?: number, fid?: number) {
+    let fromBlockBigInt;
+    if (fromBlock) {
+      fromBlockBigInt = BigInt(fromBlock);
+    }
+
+    let toBlockBigInt;
+    if (toBlock) {
+      toBlockBigInt = BigInt(toBlock);
+    }
+
+    return {
+      fromBlock: fromBlockBigInt,
+      toBlock: toBlockBigInt,
+      args: {
+        fid,
+      },
+      strict: true,
+    };
+  }
+
+  // TODO(aditi): Make sure we don't make multiple requests for a single fid
+  // TODO(aditi): Add a timeout
+  async getStorageEvents(fromBlock?: number, toBlock?: number, fid?: number) {
+    const storageLogsPromise = this.getContractEvents({
+      ...this.getCommonFilterArgs(fromBlock, toBlock, fid),
+      address: this.storageRegistryAddress,
+      abi: StorageRegistry.abi,
+    });
+
+    await this.processStorageEvents(
+      (await storageLogsPromise) as WatchContractEventOnLogsParameter<typeof StorageRegistry.abi>,
+    );
+  }
+
+  async getIdRegistryEvents(fromBlock?: number, toBlock?: number, fid?: number) {
+    const idV2LogsPromise = this.getContractEvents({
+      ...this.getCommonFilterArgs(fromBlock, toBlock, fid),
+      address: this.idRegistryV2Address,
+      abi: IdRegistry.abi,
+    });
+
+    await this.processIdRegistryV2Events(
+      (await idV2LogsPromise) as WatchContractEventOnLogsParameter<typeof IdRegistry.abi>,
+    );
+  }
+
+  async getKeyRegistryEvents(fromBlock?: number, toBlock?: number, fid?: number) {
+    const keyV2LogsPromise = this.getContractEvents({
+      ...this.getCommonFilterArgs(),
+      address: this.keyRegistryV2Address,
+      abi: KeyRegistry.abi,
+    });
+
+    await this.processKeyRegistryEventsV2(
+      (await keyV2LogsPromise) as WatchContractEventOnLogsParameter<typeof KeyRegistry.abi>,
+    );
+  }
+
   /**
    * Sync old Storage events that may have happened before hub was started. We'll put them all
    * in the sync queue to be processed later, to make sure we don't process any unconfirmed events.
@@ -791,39 +850,9 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
       progressBar?.update(Math.max(nextFromBlock - fromBlock - 1, 0));
       statsd().increment("l2events.blocks", Math.min(toBlock, nextToBlock - nextFromBlock));
 
-      const storageLogsPromise = this.getContractEvents({
-        address: this.storageRegistryAddress,
-        abi: StorageRegistry.abi,
-        fromBlock: BigInt(nextFromBlock),
-        toBlock: BigInt(nextToBlock),
-        strict: true,
-      });
-
-      const idV2LogsPromise = this.getContractEvents({
-        address: this.idRegistryV2Address,
-        abi: IdRegistry.abi,
-        fromBlock: BigInt(nextFromBlock),
-        toBlock: BigInt(nextToBlock),
-        strict: true,
-      });
-
-      const keyV2LogsPromise = this.getContractEvents({
-        address: this.keyRegistryV2Address,
-        abi: KeyRegistry.abi,
-        fromBlock: BigInt(nextFromBlock),
-        toBlock: BigInt(nextToBlock),
-        strict: true,
-      });
-
-      await this.processStorageEvents(
-        (await storageLogsPromise) as WatchContractEventOnLogsParameter<typeof StorageRegistry.abi>,
-      );
-      await this.processIdRegistryV2Events(
-        (await idV2LogsPromise) as WatchContractEventOnLogsParameter<typeof IdRegistry.abi>,
-      );
-      await this.processKeyRegistryEventsV2(
-        (await keyV2LogsPromise) as WatchContractEventOnLogsParameter<typeof KeyRegistry.abi>,
-      );
+      await this.getStorageEvents(nextFromBlock, nextToBlock);
+      await this.getIdRegistryEvents(nextFromBlock, nextToBlock);
+      await this.getKeyRegistryEvents(nextFromBlock, nextToBlock);
 
       // Write out all the cached blocks first
       await this.writeCachedBlocks(toBlock);

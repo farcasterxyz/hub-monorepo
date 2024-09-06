@@ -77,6 +77,7 @@ import { RateLimiterAbstract, RateLimiterMemory } from "rate-limiter-flexible";
 import { TypedEmitter } from "tiny-typed-emitter";
 import { FNameRegistryEventsProvider } from "../../eth/fnameRegistryEventsProvider.js";
 import { statsd } from "../../utils/statsd.js";
+import { L2EventsProvider } from "eth/l2EventsProvider.js";
 
 export const NUM_VALIDATION_WORKERS = 2;
 
@@ -126,6 +127,7 @@ class Engine extends TypedEmitter<EngineEvents> {
   private _publicClient: PublicClient | undefined;
   private _l2PublicClient: PublicClient | undefined;
   private _fNameRegistryEventsProvider: FNameRegistryEventsProvider | undefined;
+  private _l2EventsProvider: L2EventsProvider | undefined;
 
   private _linkStore: LinkStore;
   private _reactionStore: ReactionStore;
@@ -157,6 +159,7 @@ class Engine extends TypedEmitter<EngineEvents> {
     publicClient?: PublicClient,
     l2PublicClient?: PublicClient,
     fNameRegistryEventsProvider?: FNameRegistryEventsProvider,
+    l2EventsProvider?: L2EventsProvider,
   ) {
     super();
     this._db = db;
@@ -164,6 +167,7 @@ class Engine extends TypedEmitter<EngineEvents> {
     this._publicClient = publicClient;
     this._l2PublicClient = l2PublicClient;
     this._fNameRegistryEventsProvider = fNameRegistryEventsProvider;
+    this._l2EventsProvider = l2EventsProvider;
 
     this.eventHandler = eventHandler ?? new StoreEventHandler(db);
 
@@ -304,7 +308,7 @@ class Engine extends TypedEmitter<EngineEvents> {
         const totalUnits = storageSlot.value.legacy_units + storageSlot.value.units;
 
         if (totalUnits === 0) {
-          mergeResults.set(i, err(new HubError("bad_request.prunable", "no storage")));
+          mergeResults.set(i, err(new HubError("bad_request.no_storage", "no storage")));
           return;
         }
 
@@ -331,6 +335,21 @@ class Engine extends TypedEmitter<EngineEvents> {
       const limiter = validatedMessages[j]?.limiter;
       if (result.isOk() && limiter) {
         consumeRateLimitByKey(`${fid}`, limiter);
+      }
+      if (result.isErr()) {
+        // Try to request on chain event if it's missing
+        // TODO(aditi): Do we just want to request all? If missing one likely to be missing all?
+        if (result.error.errCode === "bad_request.no_storage") {
+          // TODO(aditi): Add timeout
+          // TODO(aditi): Do we want a start and stop?
+          await this._l2EventsProvider?.getStorageEvents(undefined, undefined, fid);
+        }
+        if (result.error.errCode === "bad_request.missing_signer") {
+          await this._l2EventsProvider?.getKeyRegistryEvents(undefined, undefined, fid);
+        }
+        if (result.error.errCode === "bad_request.missing_fid") {
+          await this._l2EventsProvider?.getIdRegistryEvents(undefined, undefined, fid);
+        }
       }
       mergeResults.set(validatedMessages[j]?.i as number, result);
     }
@@ -1217,7 +1236,7 @@ class Engine extends TypedEmitter<EngineEvents> {
     }
 
     if (!custodyAddress) {
-      return err(new HubError("bad_request.validation_failure", `unknown fid: ${message.data.fid}`));
+      return err(new HubError("bad_request.missing_fid", `unknown fid: ${message.data.fid}`));
     }
 
     // 4. Check that the signer is valid
@@ -1231,7 +1250,7 @@ class Engine extends TypedEmitter<EngineEvents> {
       return hex.andThen((signerHex) => {
         return err(
           new HubError(
-            "bad_request.validation_failure",
+            "bad_request.missing_signer",
             `invalid signer: signer ${signerHex} not found for fid ${message.data?.fid}`,
           ),
         );
