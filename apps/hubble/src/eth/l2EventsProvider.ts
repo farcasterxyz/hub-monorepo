@@ -71,6 +71,12 @@ export class OptimismConstants {
 
 const RENT_EXPIRY_IN_SECONDS = 365 * 24 * 60 * 60; // One year
 
+type EventSpecificArgs = {
+  eventKind: "Storage" | "KeyRegistry" | "IdRegistry";
+  eventName: string;
+  fid: number;
+};
+
 /**
  * Class that follows the Optimism chain to handle on-chain events from the Storage Registry contract.
  */
@@ -87,6 +93,7 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
 
   private _onChainEventsByBlock: Map<number, Array<OnChainEvent>>;
   private _retryDedupMap: Map<number, boolean>;
+  private _fidRetryDedupMap: Map<number, boolean>;
   private _blockTimestampsCache: Map<string, number>;
 
   private _lastBlockNumber: number;
@@ -160,6 +167,7 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
     // numConfirmations blocks have been mined.
     this._onChainEventsByBlock = new Map();
     this._retryDedupMap = new Map();
+    this._fidRetryDedupMap = new Map();
     this._blockTimestampsCache = new Map();
 
     this.setAddresses(storageRegistryAddress, keyRegistryV2Address, idRegistryV2Address);
@@ -661,6 +669,20 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
     }
   }
 
+  public async retryEventsForFid(fid: number) {
+    if (this._fidRetryDedupMap.has(fid)) {
+      return;
+    }
+
+    // Let's never remove. No need to retry same fid many times.
+    this._fidRetryDedupMap.set(fid, true);
+
+    try {
+      // The viem API requires an event kind if you want to provide filters by indexed arguments
+      await this.syncHistoricalEvents(0, this._lastBlockNumber, 100, { eventKind: "Storage", eventName: "Rent", fid });
+    } catch {}
+  }
+
   private setAddresses(
     storageRegistryAddress: `0x${string}`,
     keyRegistryV2Address: `0x${string}`,
@@ -737,22 +759,28 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
     );
   }
 
-  async getCommonFilterArgs(fromBlock?: number, toBlock?: number, fid?: number) {
+  getCommonFilterArgs(fromBlock?: number, toBlock?: number, eventSpecificArgs?: EventSpecificArgs) {
     let fromBlockBigInt;
-    if (fromBlock) {
+    if (fromBlock !== undefined) {
       fromBlockBigInt = BigInt(fromBlock);
     }
 
     let toBlockBigInt;
-    if (toBlock) {
+    if (toBlock !== undefined) {
       toBlockBigInt = BigInt(toBlock);
+    }
+
+    let fidBigInt;
+    if (eventSpecificArgs !== undefined) {
+      fidBigInt = BigInt(eventSpecificArgs.fid);
     }
 
     return {
       fromBlock: fromBlockBigInt,
       toBlock: toBlockBigInt,
+      eventName: eventSpecificArgs?.eventName,
       args: {
-        fid,
+        fid: fidBigInt,
       },
       strict: true,
     };
@@ -760,21 +788,21 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
 
   // TODO(aditi): Make sure we don't make multiple requests for a single fid
   // TODO(aditi): Add a timeout
-  async getStorageEvents(fromBlock?: number, toBlock?: number, fid?: number) {
-    const storageLogsPromise = this.getContractEvents({
-      ...this.getCommonFilterArgs(fromBlock, toBlock, fid),
+  async getStorageEvents(fromBlock?: number, toBlock?: number, eventSpecificArgs?: EventSpecificArgs) {
+    const realParams = {
+      ...this.getCommonFilterArgs(fromBlock, toBlock, eventSpecificArgs),
       address: this.storageRegistryAddress,
       abi: StorageRegistry.abi,
-    });
-
+    };
+    const storageLogsPromise = this.getContractEvents(realParams);
     await this.processStorageEvents(
       (await storageLogsPromise) as WatchContractEventOnLogsParameter<typeof StorageRegistry.abi>,
     );
   }
 
-  async getIdRegistryEvents(fromBlock?: number, toBlock?: number, fid?: number) {
+  async getIdRegistryEvents(fromBlock?: number, toBlock?: number, eventSpecificArgs?: EventSpecificArgs) {
     const idV2LogsPromise = this.getContractEvents({
-      ...this.getCommonFilterArgs(fromBlock, toBlock, fid),
+      ...this.getCommonFilterArgs(fromBlock, toBlock, eventSpecificArgs),
       address: this.idRegistryV2Address,
       abi: IdRegistry.abi,
     });
@@ -784,9 +812,9 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
     );
   }
 
-  async getKeyRegistryEvents(fromBlock?: number, toBlock?: number, fid?: number) {
+  async getKeyRegistryEvents(fromBlock?: number, toBlock?: number, eventSpecificArgs?: EventSpecificArgs) {
     const keyV2LogsPromise = this.getContractEvents({
-      ...this.getCommonFilterArgs(),
+      ...this.getCommonFilterArgs(fromBlock, toBlock, eventSpecificArgs),
       address: this.keyRegistryV2Address,
       abi: KeyRegistry.abi,
     });
@@ -800,7 +828,12 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
    * Sync old Storage events that may have happened before hub was started. We'll put them all
    * in the sync queue to be processed later, to make sure we don't process any unconfirmed events.
    */
-  private async syncHistoricalEvents(fromBlock: number, toBlock: number, batchSize: number) {
+  private async syncHistoricalEvents(
+    fromBlock: number,
+    toBlock: number,
+    batchSize: number,
+    byEventKind?: EventSpecificArgs,
+  ) {
     if (!this.idRegistryV2Address || !this.keyRegistryV2Address || !this.storageRegistryAddress) {
       return;
     }
@@ -850,9 +883,21 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
       progressBar?.update(Math.max(nextFromBlock - fromBlock - 1, 0));
       statsd().increment("l2events.blocks", Math.min(toBlock, nextToBlock - nextFromBlock));
 
-      await this.getStorageEvents(nextFromBlock, nextToBlock);
-      await this.getIdRegistryEvents(nextFromBlock, nextToBlock);
-      await this.getKeyRegistryEvents(nextFromBlock, nextToBlock);
+      if (byEventKind) {
+        if (byEventKind.eventKind === "Storage") {
+          await this.getStorageEvents(nextFromBlock, nextToBlock, byEventKind);
+        }
+        if (byEventKind.eventKind === "IdRegistry") {
+          await this.getIdRegistryEvents(nextFromBlock, nextToBlock, byEventKind);
+        }
+        if (byEventKind.eventKind === "KeyRegistry") {
+          await this.getKeyRegistryEvents(nextFromBlock, nextToBlock, byEventKind);
+        }
+      } else {
+        await this.getStorageEvents(nextFromBlock, nextToBlock);
+        await this.getIdRegistryEvents(nextFromBlock, nextToBlock);
+        await this.getKeyRegistryEvents(nextFromBlock, nextToBlock);
+      }
 
       // Write out all the cached blocks first
       await this.writeCachedBlocks(toBlock);

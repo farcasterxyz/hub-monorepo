@@ -185,6 +185,7 @@ class OnChainEventStore {
     if (result.isErr()) {
       throw result.error;
     }
+
     return result.value;
   }
 

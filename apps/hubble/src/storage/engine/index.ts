@@ -339,16 +339,14 @@ class Engine extends TypedEmitter<EngineEvents> {
       if (result.isErr()) {
         // Try to request on chain event if it's missing
         // TODO(aditi): Do we just want to request all? If missing one likely to be missing all?
-        if (result.error.errCode === "bad_request.no_storage") {
+        if (
+          result.error.errCode === "bad_request.no_storage" ||
+          "bad_request.missing_signer" ||
+          "bad_request.missing_fid"
+        ) {
           // TODO(aditi): Add timeout
           // TODO(aditi): Do we want a start and stop?
-          await this._l2EventsProvider?.getStorageEvents(undefined, undefined, fid);
-        }
-        if (result.error.errCode === "bad_request.missing_signer") {
-          await this._l2EventsProvider?.getKeyRegistryEvents(undefined, undefined, fid);
-        }
-        if (result.error.errCode === "bad_request.missing_fid") {
-          await this._l2EventsProvider?.getIdRegistryEvents(undefined, undefined, fid);
+          await this._l2EventsProvider?.retryEventsForFid(fid);
         }
       }
       mergeResults.set(validatedMessages[j]?.i as number, result);

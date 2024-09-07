@@ -7,8 +7,15 @@ import { deployStorageRegistry, publicClient, testClient, walletClientWithAccoun
 import { accounts } from "../test/constants.js";
 import { sleep } from "../utils/crypto.js";
 import { L2EventsProvider, OptimismConstants } from "./l2EventsProvider.js";
-import { Transport } from "viem";
-import { getBlockNumber, mine, simulateContract, waitForTransactionReceipt, writeContract } from "viem/actions";
+import { CreateContractEventFilterParameters, Transport } from "viem";
+import {
+  createContractEventFilter,
+  getBlockNumber,
+  mine,
+  simulateContract,
+  waitForTransactionReceipt,
+  writeContract,
+} from "viem/actions";
 import OnChainEventStore from "../storage/stores/onChainEventStore.js";
 import StoreEventHandler from "../storage/stores/storeEventHandler.js";
 
@@ -196,6 +203,46 @@ describe("process events", () => {
       expect(events.length).toEqual(1);
       expect(events[0]?.fid).toEqual(1);
       expect(events[0]?.storageRentEventBody?.units).toEqual(1);
+    },
+    TEST_TIMEOUT_LONG,
+  );
+
+  // TODO(aditi): Impl and add tests for key registry and id registry
+  test(
+    "retry by fid",
+    async () => {
+      const rentSim = await simulateContract(publicClient, {
+        address: storageRegistryAddress,
+        abi: StorageRegistry.abi,
+        functionName: "credit",
+        account: accounts[0].address,
+        args: [BigInt(1), BigInt(1)],
+      });
+
+      const rentHash = await writeContract(walletClientWithAccount, rentSim.request);
+      const rentTrx = await waitForTransactionReceipt(publicClient, { hash: rentHash });
+      await sleep(1000); // allow time for the rent event to be polled for
+      await mine(testClient, { blocks: L2EventsProvider.numConfirmations });
+      await waitForBlock(Number(rentTrx.blockNumber) + L2EventsProvider.numConfirmations);
+
+      const events1 = await onChainEventStore.getOnChainEvents(OnChainEventType.EVENT_TYPE_STORAGE_RENT, 1);
+      expect(events1.length).toEqual(1);
+      expect(events1[0]?.fid).toEqual(1);
+      expect(events1[0]?.storageRentEventBody?.units).toEqual(1);
+
+      await OnChainEventStore.clearEvents(db);
+      const events2 = await onChainEventStore.getOnChainEvents(OnChainEventType.EVENT_TYPE_STORAGE_RENT, 1);
+
+      expect(events2.length).toEqual(0);
+
+      await l2EventsProvider.retryEventsForFid(1);
+      await sleep(1000); // allow time for the rent event to be polled for
+
+      const events3 = await onChainEventStore.getOnChainEvents(OnChainEventType.EVENT_TYPE_STORAGE_RENT, 1);
+
+      expect(events3.length).toEqual(1);
+      expect(events3[0]?.fid).toEqual(1);
+      expect(events3[0]?.storageRentEventBody?.units).toEqual(1);
     },
     TEST_TIMEOUT_LONG,
   );
