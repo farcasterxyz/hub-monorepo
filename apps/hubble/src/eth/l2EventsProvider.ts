@@ -674,13 +674,32 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
       return;
     }
 
-    // Let's never remove. No need to retry same fid many times.
+    // Let's never remove. No need to retry same fid many times. If we allow retrying multiple times, we need to rate limit.
     this._fidRetryDedupMap.set(fid, true);
 
     try {
       // The viem API requires an event kind if you want to provide filters by indexed arguments
-      await this.syncHistoricalEvents(0, this._lastBlockNumber, 100, { eventKind: "Storage", eventName: "Rent", fid });
-    } catch {}
+      // TODO(aditi): Do we want batching?
+      await this.syncHistoricalEvents(0, this._lastBlockNumber, this._lastBlockNumber, {
+        eventKind: "Storage",
+        eventName: "Rent",
+        fid,
+      });
+      // TODO(aditi): Do we want to do more event types
+      await this.syncHistoricalEvents(0, this._lastBlockNumber, this._lastBlockNumber, {
+        eventKind: "IdRegistry",
+        eventName: "Register",
+        fid,
+      });
+      // TODO(aditi): Do we want to do more event types
+      await this.syncHistoricalEvents(0, this._lastBlockNumber, this._lastBlockNumber, {
+        eventKind: "KeyRegistry",
+        eventName: "Add",
+        fid,
+      });
+    } catch (e) {
+      log.error(e, `Error retrying events for fid ${fid}`);
+    }
   }
 
   private setAddresses(
