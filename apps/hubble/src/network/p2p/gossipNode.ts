@@ -77,7 +77,7 @@ export interface NodeOptions {
   /** A list of peerIds that are not allowed to connect to this node */
   deniedPeerIdStrs?: string[] | undefined;
   /** A list of addresses the node directly peers with, provided in MultiAddr format */
-  directPeers?: AddrInfo[] | undefined;
+  directPeers?: string[] | undefined;
   /** Override peer scoring. Useful for tests */
   scoreThresholds?: Partial<PeerScoreThresholds>;
   /** A list of PeerIds that will bypass application-specific peer scoring and return the cap. */

@@ -305,7 +305,7 @@ export interface HubOptions {
   pruneEventsJobCron?: string;
 
   /** A list of addresses the node directly peers with, provided in MultiAddr format */
-  directPeers?: AddrInfo[];
+  directPeers?: string[];
 
   /** If set, snapshot sync is disabled */
   disableSnapshotSync?: boolean;
