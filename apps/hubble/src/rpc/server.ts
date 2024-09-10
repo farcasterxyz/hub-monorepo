@@ -87,7 +87,7 @@ const STREAM_METHODS_TIMEOUT = 8 * 1000; // 2 seconds
 
 export const DEFAULT_SUBSCRIBE_PERIP_LIMIT = 4; // Max 4 subscriptions per IP
 export const DEFAULT_SUBSCRIBE_GLOBAL_LIMIT = 4096; // Max 4096 subscriptions globally
-const MAX_EVENT_STREAM_SHARDS = 10;
+const MAX_EVENT_STREAM_SHARDS = 50;
 export const DEFAULT_SERVER_INTERNET_ADDRESS_IPV4 = "0.0.0.0";
 export const MAX_VALUES_RETURNED_PER_SYNC_ID_REQUEST = 1024; // getAllSyncIdsByPrefix returns a max of 1024 sync ids in one response. This value is mirrored in [addon/src/trie/trie_node.rs], make sure to change it in both places.
 
