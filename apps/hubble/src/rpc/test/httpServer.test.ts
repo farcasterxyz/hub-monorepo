@@ -273,7 +273,7 @@ describe("httpServer", () => {
         const response = (e as any).response;
 
         expect(response.status).toBe(400);
-        expect(response.data.errCode).toEqual("bad_request.validation_failure");
+        expect(response.data.errCode).toEqual("bad_request.unknown_fid");
         expect(response.data.details).toMatch("unknown fid");
       }
       expect(errored).toBeTruthy();

@@ -67,7 +67,13 @@ const fNameProvider = new FNameRegistryEventsProvider(
   } as any,
   false,
 );
-engine = new Engine(db, network, undefined, publicClient, undefined, fNameProvider);
+
+// biome-ignore lint/suspicious/noExplicitAny: mock used only in tests
+const l2EventsProvider = jest.fn() as any;
+l2EventsProvider.retryEventsForFid = jest.fn();
+const retryEventsForFidMock = l2EventsProvider.retryEventsForFid;
+
+engine = new Engine(db, network, undefined, publicClient, undefined, fNameProvider, l2EventsProvider);
 
 const fid = Factories.Fid.build();
 const fname = Factories.Fname.build();
@@ -656,7 +662,7 @@ describe("mergeMessage", () => {
       await engine.mergeOnChainEvent(Factories.SignerOnChainEvent.build({ fid }));
 
       const result = await engine.mergeMessage(reactionAdd);
-      expect(result).toMatchObject(err({ errCode: "bad_request.validation_failure" }));
+      expect(result).toMatchObject(err({ errCode: "bad_request.unknown_signer" }));
       expect(result._unsafeUnwrapErr().message).toMatch("invalid signer");
     });
 
@@ -666,7 +672,7 @@ describe("mergeMessage", () => {
       await engine.mergeOnChainEvent(Factories.SignerOnChainEvent.build({ fid }));
 
       const result = await engine.mergeMessage(linkAdd);
-      expect(result).toMatchObject(err({ errCode: "bad_request.validation_failure" }));
+      expect(result).toMatchObject(err({ errCode: "bad_request.unknown_signer" }));
       expect(result._unsafeUnwrapErr().message).toMatch("invalid signer");
     });
   });
@@ -677,7 +683,7 @@ describe("mergeMessage", () => {
     afterEach(async () => {
       const result = await engine.mergeMessage(message);
       const err = result._unsafeUnwrapErr();
-      expect(err.errCode).toEqual("bad_request.validation_failure");
+      expect(err.errCode).toEqual("bad_request.unknown_fid");
       expect(err.message).toMatch("unknown fid");
     });
 
@@ -1098,7 +1104,8 @@ describe("mergeMessages", () => {
     expect(results.size).toBe(3);
 
     expect(results.get(0)).toBeInstanceOf(Ok);
-    expect(results.get(1)).toMatchObject(err({ errCode: "bad_request.validation_failure" }));
+    expect(results.get(1)).toMatchObject(err({ errCode: "bad_request.unknown_fid" }));
+    expect(retryEventsForFidMock).toHaveBeenLastCalledWith(0);
     expect(results.get(2)).toBeInstanceOf(Ok);
 
     const fid2 = Factories.Fid.build();
@@ -1123,14 +1130,16 @@ describe("mergeMessages", () => {
     expect(results.size).toBe(2);
 
     expect(results.get(0)).toBeInstanceOf(Ok);
-    expect(results.get(1)).toMatchObject(err({ errCode: "bad_request.validation_failure" }));
+    expect(results.get(1)).toMatchObject(err({ errCode: "bad_request.unknown_fid" }));
+    expect(retryEventsForFidMock).toHaveBeenLastCalledWith(fid2);
 
     // Add custody address, but adding without signer is invalid
     await engine.mergeOnChainEvent(custodyEvent2);
     results = await engine.mergeMessages([castAdd2, linkAdd]);
     expect(results.size).toBe(2);
 
-    expect(results.get(0)).toMatchObject(err({ errCode: "bad_request.validation_failure" }));
+    expect(results.get(0)).toMatchObject(err({ errCode: "bad_request.unknown_signer" }));
+    expect(retryEventsForFidMock).toHaveBeenLastCalledWith(fid2);
     expect(results.get(1)).toBeInstanceOf(Ok);
 
     // Add signer address, but adding without storage is invalid
@@ -1139,7 +1148,8 @@ describe("mergeMessages", () => {
     expect(results.size).toBe(2);
 
     expect(results.get(0)).toBeInstanceOf(Ok);
-    expect(results.get(1)).toMatchObject(err({ errCode: "bad_request.prunable" }));
+    expect(results.get(1)).toMatchObject(err({ errCode: "bad_request.no_storage" }));
+    expect(retryEventsForFidMock).toHaveBeenLastCalledWith(fid2);
 
     // Add the storage event, and now it should merge
     await engine.mergeOnChainEvent(storageEvent2);

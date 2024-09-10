@@ -70,9 +70,9 @@ export class OptimismConstants {
 }
 
 const RENT_EXPIRY_IN_SECONDS = 365 * 24 * 60 * 60; // One year
+const FID_RETRY_DEDUP_LOOKBACK_MS = 60 * 60 * 1000; // One hour
 
 type EventSpecificArgs = {
-  eventKind: "Storage" | "KeyRegistry" | "IdRegistry";
   eventName: string;
   fid: number;
 };
@@ -168,6 +168,11 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
     this._onChainEventsByBlock = new Map();
     this._retryDedupMap = new Map();
     this._fidRetryDedupMap = new Map();
+    // Clear the map periodically to avoid memory bloat.
+    setInterval(() => {
+      this._fidRetryDedupMap.clear();
+    }, FID_RETRY_DEDUP_LOOKBACK_MS);
+
     this._blockTimestampsCache = new Map();
 
     this.setAddresses(storageRegistryAddress, keyRegistryV2Address, idRegistryV2Address);
@@ -669,36 +674,51 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
     }
   }
 
+  private getEventSpecificArgs(fid: number) {
+    return {
+      StorageRegistry: [{ eventName: "Rent", fid }],
+      IdRegistry: [
+        { eventName: "Register", fid },
+        { eventName: "Transfer", fid },
+      ],
+      KeyRegistry: [
+        { eventName: "Add", fid },
+        { eventName: "Remove", fid },
+      ],
+    };
+  }
+
   public async retryEventsForFid(fid: number) {
     if (this._fidRetryDedupMap.has(fid)) {
       return;
     }
 
-    // Let's never remove. No need to retry same fid many times. If we allow retrying multiple times, we need to rate limit.
     this._fidRetryDedupMap.set(fid, true);
 
+    log.info(
+      { fid, startBlock: this._firstBlock, stopBlock: this._lastBlockNumber, chunkSize: this._chunkSize },
+      `Attempting to retryEventsForFid ${fid}`,
+    );
+    statsd().increment("l2events.retriesByFid.attempts", 1, { fid: fid.toString() });
+
+    // Let's not remove. No need to retry same fid many times. If we allow retrying multiple times, we need to rate limit. The map will get cleared periodically to prevent memory bloat.
     try {
-      // The viem API requires an event kind if you want to provide filters by indexed arguments
-      // TODO(aditi): Do we want batching?
-      await this.syncHistoricalEvents(0, this._lastBlockNumber, this._lastBlockNumber, {
-        eventKind: "Storage",
-        eventName: "Rent",
-        fid,
-      });
-      // TODO(aditi): Do we want to do more event types
-      await this.syncHistoricalEvents(0, this._lastBlockNumber, this._lastBlockNumber, {
-        eventKind: "IdRegistry",
-        eventName: "Register",
-        fid,
-      });
-      // TODO(aditi): Do we want to do more event types
-      await this.syncHistoricalEvents(0, this._lastBlockNumber, this._lastBlockNumber, {
-        eventKind: "KeyRegistry",
-        eventName: "Add",
-        fid,
-      });
+      // The viem API requires an event kind if you want to provide filters by indexed arguments-- this is why we're making multiple calls to syncHistoricalEvents and prioritizing the most common event types.
+      const eventSpecificArgs = this.getEventSpecificArgs(fid);
+
+      // The batch sizes are artificially large-- this batch size is internally enforced and we essentially want to eliminate batches given that we don't expct a lot of results from these queries.
+      await this.syncHistoricalEvents(
+        this._firstBlock,
+        this._lastBlockNumber,
+        this._lastBlockNumber,
+        eventSpecificArgs,
+      );
+
+      log.info({ fid }, `Finished retryEventsForFid ${fid}`);
+      statsd().increment("l2events.retriesByFid.successes", 1, { fid: fid.toString() });
     } catch (e) {
-      log.error(e, `Error retrying events for fid ${fid}`);
+      log.error(e, `Error in retryEventsForFid ${fid}`);
+      statsd().increment("l2events.retriesByFid.errors", 1, { fid: fid.toString() });
     }
   }
 
@@ -789,30 +809,30 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
       toBlockBigInt = BigInt(toBlock);
     }
 
-    let fidBigInt;
-    if (eventSpecificArgs !== undefined) {
-      fidBigInt = BigInt(eventSpecificArgs.fid);
-    }
-
     return {
       fromBlock: fromBlockBigInt,
       toBlock: toBlockBigInt,
       eventName: eventSpecificArgs?.eventName,
-      args: {
-        fid: fidBigInt,
-      },
       strict: true,
     };
   }
 
-  // TODO(aditi): Make sure we don't make multiple requests for a single fid
-  // TODO(aditi): Add a timeout
+  getEventSpecificFid(eventSpecificArgs?: EventSpecificArgs) {
+    if (eventSpecificArgs !== undefined) {
+      return BigInt(eventSpecificArgs.fid);
+    }
+
+    return undefined;
+  }
+
   async getStorageEvents(fromBlock?: number, toBlock?: number, eventSpecificArgs?: EventSpecificArgs) {
     const realParams = {
       ...this.getCommonFilterArgs(fromBlock, toBlock, eventSpecificArgs),
       address: this.storageRegistryAddress,
       abi: StorageRegistry.abi,
+      args: { fid: this.getEventSpecificFid(eventSpecificArgs) },
     };
+
     const storageLogsPromise = this.getContractEvents(realParams);
     await this.processStorageEvents(
       (await storageLogsPromise) as WatchContractEventOnLogsParameter<typeof StorageRegistry.abi>,
@@ -824,6 +844,9 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
       ...this.getCommonFilterArgs(fromBlock, toBlock, eventSpecificArgs),
       address: this.idRegistryV2Address,
       abi: IdRegistry.abi,
+      args: {
+        id: this.getEventSpecificFid(eventSpecificArgs) /* The fid parameter is named "id" in the IdRegistry events */,
+      },
     });
 
     await this.processIdRegistryV2Events(
@@ -836,6 +859,7 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
       ...this.getCommonFilterArgs(fromBlock, toBlock, eventSpecificArgs),
       address: this.keyRegistryV2Address,
       abi: KeyRegistry.abi,
+      args: { fid: this.getEventSpecificFid(eventSpecificArgs) },
     });
 
     await this.processKeyRegistryEventsV2(
@@ -850,8 +874,12 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
   private async syncHistoricalEvents(
     fromBlock: number,
     toBlock: number,
-    batchSize: number,
-    byEventKind?: EventSpecificArgs,
+    batchSize: number, // This batch size is enforced by us internally, not by the RPC provider
+    byEventKind?: {
+      StorageRegistry: EventSpecificArgs[];
+      IdRegistry: EventSpecificArgs[];
+      KeyRegistry: EventSpecificArgs[];
+    },
   ) {
     if (!this.idRegistryV2Address || !this.keyRegistryV2Address || !this.storageRegistryAddress) {
       return;
@@ -903,14 +931,16 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
       statsd().increment("l2events.blocks", Math.min(toBlock, nextToBlock - nextFromBlock));
 
       if (byEventKind) {
-        if (byEventKind.eventKind === "Storage") {
-          await this.getStorageEvents(nextFromBlock, nextToBlock, byEventKind);
+        for (const storageEventSpecific of byEventKind.StorageRegistry) {
+          await this.getStorageEvents(nextFromBlock, nextToBlock, storageEventSpecific);
         }
-        if (byEventKind.eventKind === "IdRegistry") {
-          await this.getIdRegistryEvents(nextFromBlock, nextToBlock, byEventKind);
+
+        for (const idRegistryEventSpecific of byEventKind.IdRegistry) {
+          await this.getIdRegistryEvents(nextFromBlock, nextToBlock, idRegistryEventSpecific);
         }
-        if (byEventKind.eventKind === "KeyRegistry") {
-          await this.getKeyRegistryEvents(nextFromBlock, nextToBlock, byEventKind);
+
+        for (const keyRegistryEventSpecific of byEventKind.KeyRegistry) {
+          await this.getKeyRegistryEvents(nextFromBlock, nextToBlock, keyRegistryEventSpecific);
         }
       } else {
         await this.getStorageEvents(nextFromBlock, nextToBlock);

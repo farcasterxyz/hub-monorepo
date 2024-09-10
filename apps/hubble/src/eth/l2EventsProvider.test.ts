@@ -200,7 +200,6 @@ describe("process events", () => {
     TEST_TIMEOUT_LONG,
   );
 
-  // TODO(aditi): It's pretty high overhead to set up tests with the id registry and key registry -- need to deploy contracts (need bytecode). Testing via the storage contract tests most of the meaningful logic.
   test(
     "retry by fid",
     async () => {

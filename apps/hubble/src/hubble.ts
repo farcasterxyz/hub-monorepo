@@ -471,6 +471,7 @@ export class Hub implements HubInterface {
       mainnetClient,
       opClient as PublicClient,
       this.fNameRegistryEventsProvider,
+      this.l2RegistryProvider,
     );
 
     const profileSync = options.profileSync ?? false;
