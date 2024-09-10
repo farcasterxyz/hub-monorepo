@@ -1,5 +1,12 @@
 # @farcaster/hubble
 
+## 1.15.1
+
+### Patch Changes
+
+- 1943a027: chore: adjust announcement interval for contact info
+- ec80ff3b: fix: direct peering data needs to be processed by the worker due to obscure node behavior
+
 ## 1.15.0
 
 ### Minor Changes
