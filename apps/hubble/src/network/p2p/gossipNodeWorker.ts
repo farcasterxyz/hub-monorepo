@@ -1,5 +1,6 @@
 import { parentPort, workerData } from "worker_threads";
-import { peerIdFromBytes } from "@libp2p/peer-id";
+import { peerIdFromBytes, peerIdFromString } from "@libp2p/peer-id";
+import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
 import { autoNAT } from "@libp2p/autonat";
 import { identify } from "@libp2p/identify";
 import { ping } from "@libp2p/ping";
@@ -35,7 +36,7 @@ import {
   Message,
   toFarcasterTime,
 } from "@farcaster/hub-nodejs";
-import { addressInfoFromParts, checkNodeAddrs, ipMultiAddrStrFromAddressInfo } from "../../utils/p2p.js";
+import { addressInfoFromParts, checkNodeAddrs, ipMultiAddrStrFromAddressInfo, parseAddress } from "../../utils/p2p.js";
 import { createLibp2p, Libp2p } from "libp2p";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import { GossipSub, gossipsub, GossipsubEvents } from "@chainsafe/libp2p-gossipsub";
@@ -159,11 +160,37 @@ export class LibP2PNode {
       ? parseInt(process.env["GOSSIPSUB_SOCKET_TIMEOUT"])
       : 30000;
 
+    const directPeers = options.directPeers
+      ?.map((a) => parseAddress(a))
+      .map((a) => {
+        if (a.isErr()) {
+          logger.warn(
+            { errorCode: a.error.errCode, message: a.error.message },
+            "Couldn't parse direct peer address, ignoring",
+          );
+        } else if (!a.value.getPeerId()) {
+          logger.warn(
+            { errorCode: "unavailable", message: "peer id missing from direct peer" },
+            "Direct peer missing peer id, ignoring",
+          );
+        }
+
+        return a;
+      })
+      .filter((a) => a.isOk() && a.value.getPeerId())
+      .map((a) => a._unsafeUnwrap())
+      .map((a) => {
+        return {
+          id: peerIdFromString(a.getPeerId() ?? ""),
+          addrs: [a],
+        } as AddrInfo;
+      });
+
     const gossip = gossipsub({
       allowPublishToZeroTopicPeers: true,
       asyncValidation: true, // Do not forward messages until we've merged it (prevents forwarding known bad messages)
       canRelayMessage: true,
-      directPeers: options.directPeers || [],
+      directPeers: directPeers || [],
       emitSelf: false,
       fallbackToFloodsub: fallbackToFloodsub,
       floodPublish: floodPublish,

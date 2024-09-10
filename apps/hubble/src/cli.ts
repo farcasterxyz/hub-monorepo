@@ -1,8 +1,6 @@
 import { FarcasterNetwork, farcasterNetworkFromJSON } from "@farcaster/hub-nodejs";
-import { peerIdFromString } from "@libp2p/peer-id";
 import { Ed25519PeerId, PeerId, RSAPeerId, Secp256k1PeerId } from "@libp2p/interface";
 import { createEd25519PeerId, createFromProtobuf, exportToProtobuf } from "@libp2p/peer-id-factory";
-import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
 import { Command } from "commander";
 import fs, { existsSync } from "fs";
 import { mkdir, readFile, writeFile } from "fs/promises";
@@ -481,32 +479,7 @@ app
       );
     }
 
-    const directPeers = ((cliOptions.directPeers ?? hubConfig.directPeers ?? []) as string[])
-      .map((a) => parseAddress(a))
-      .map((a) => {
-        if (a.isErr()) {
-          logger.warn(
-            { errorCode: a.error.errCode, message: a.error.message },
-            "Couldn't parse direct peer address, ignoring",
-          );
-        } else if (a.value.getPeerId()) {
-          logger.warn(
-            { errorCode: "unavailable", message: "peer id missing from direct peer" },
-            "Direct peer missing peer id, ignoring",
-          );
-        }
-
-        return a;
-      })
-      .filter((a) => a.isOk() && a.value.getPeerId())
-      .map((a) => a._unsafeUnwrap())
-      .map((a) => {
-        return {
-          id: peerIdFromString(a.getPeerId() ?? ""),
-          addrs: [a],
-        } as AddrInfo;
-      });
-
+    const directPeers = (cliOptions.directPeers ?? hubConfig.directPeers ?? []) as string[];
     const rebuildSyncTrie = cliOptions.rebuildSyncTrie ?? hubConfig.rebuildSyncTrie ?? false;
     const profileSync = cliOptions.profileSync ?? hubConfig.profileSync ?? false;
 
