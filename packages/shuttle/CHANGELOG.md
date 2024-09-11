@@ -1,5 +1,12 @@
 # @farcaster/hub-shuttle
 
+## 0.6.2
+
+### Patch Changes
+
+- 4e897e9a: chore: add more metrics to HubSubscriber
+- b7a0f402: chore: add event kind and stale/not stale tags to event processing metrics
+
 ## 0.6.1
 
 ### Patch Changes
