@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.6.3
+
+### Patch Changes
+
+- f6ba2b09: chore: add metric for events processed with event type tag
+
 ## 0.6.2
 
 ### Patch Changes
