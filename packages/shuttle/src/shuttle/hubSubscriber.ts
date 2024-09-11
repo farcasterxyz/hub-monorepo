@@ -7,6 +7,7 @@ import { sleep } from "../utils";
 import { RedisClient } from "./redis";
 import { HubClient } from "./hub";
 import { ProcessResult } from "./index";
+import { statsd } from "../statsd";
 
 interface HubEventsEmitter {
   onError: (error: Error, stopped: boolean) => void;
@@ -183,6 +184,7 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
   private redis: RedisClient;
   public readonly streamKey: string;
   public readonly redisKey: string;
+  private readonly shardKey: string;
   private eventsToAdd: [HubEvent, Buffer][];
   public eventBatchSize = 100;
   private eventBatchLastFlushedAt = 0;
@@ -212,6 +214,7 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
     this.eventsToAdd = [];
     this.beforeProcess = options?.beforeProcess;
     this.afterProcess = options?.afterProcess;
+    this.shardKey = shardKey;
   }
 
   public override async getLastEventId(): Promise<number | undefined> {
@@ -234,6 +237,7 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
       this.eventBatchBytes >= this.maxBatchBytesBeforeForceFlush ||
       Date.now() - this.eventBatchLastFlushedAt > this.maxTimeBetweenBatchFlushes
     ) {
+      const startTime = Date.now();
       // Empties the current batch
       const eventBatch = this.eventsToAdd.splice(0, this.eventsToAdd.length);
       const events = eventBatch.map(([evt, _evtBytes]) => evt);
@@ -261,6 +265,16 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
       if (this.afterProcess) {
         await this.afterProcess.call(this, eventToWriteBatch, eventBytesToWriteBatch);
       }
+
+      const processTime = Date.now() - startTime;
+
+      statsd.gauge("hub.event.subscriber.last_batch_size", events.length, { source: this.shardKey });
+
+      statsd.timing("hub.event.subscriber.process_time.per_event", processTime / events.length, {
+        source: this.shardKey,
+      });
+
+      statsd.timing("hub.event.subscriber.process_time.per_batch", processTime, { source: this.shardKey });
     }
 
     return true;
