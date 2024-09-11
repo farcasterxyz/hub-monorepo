@@ -313,6 +313,7 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
           eventChunk = eventChunk.filter((_evt, idx) => !preprocessResult[idx]?.skipped);
         }
 
+        const whenReceived = "current";
         await inBatchesOf(eventChunk, this.messageProcessingConcurrency, async (batchedEvents) => {
           const eventIdsProcessed: string[] = [];
           const eventIdsSkipped: string[] = [];
@@ -324,6 +325,7 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
                   statsd.timing("hub.event.stream.dequeue_delay", dequeueDelay, {
                     hub: this.hub.host,
                     source: this.shardKey,
+                    whenReceived,
                   });
 
                   const startTime = Date.now();
@@ -333,6 +335,7 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
                     hub: this.hub.host,
                     source: this.shardKey,
                     hubEventType: hubEvent.type.toString(),
+                    whenReceived,
                   });
 
                   if (result.isErr()) {
@@ -355,6 +358,7 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
                       hub: this.hub.host,
                       source: this.shardKey,
                       hubEventType: hubEvent.type.toString(),
+                      whenReceived,
                     });
                   }
                 } catch (e: unknown) {
@@ -371,11 +375,13 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
             statsd.timing("hub.event.stream.ack_time", Date.now() - startTime, {
               hub: this.hub.host,
               source: this.shardKey,
+              whenReceived,
             });
 
             statsd.increment("hub.event.stream.ack", eventIdsProcessed.length, {
               hub: this.hub.host,
               source: this.shardKey,
+              whenReceived,
             });
 
             if (this.afterProcess) {
@@ -421,6 +427,7 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
 
     await inBatchesOf(events, this.messageProcessingConcurrency, async (batchedEvents) => {
       const eventIdsProcessed: string[] = [];
+      const whenReceived = "stale";
       await Promise.allSettled(
         batchedEvents.map((event) =>
           (async (streamEvent) => {
@@ -430,19 +437,23 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
                 source: this.shardKey,
               });
 
+              const hubEvent = HubEvent.decode(streamEvent.data);
+
               const dequeueDelay = Date.now() - Number(streamEvent.id.split("-")[0]);
               statsd.timing("hub.event.stream.dequeue_delay", dequeueDelay, {
                 hub: this.hub.host,
                 source: this.shardKey,
+                whenReceived,
               });
 
               const startTime = Date.now();
-              const hubEvent = HubEvent.decode(streamEvent.data);
               const result = await onEvent(hubEvent);
               const processingTime = Date.now() - startTime;
               statsd.timing("hub.event.stream.time", processingTime, {
                 hub: this.hub.host,
                 source: this.shardKey,
+                hubEventType: hubEvent.type.toString(),
+                whenReceived,
               });
               if (result.isErr()) throw result.error;
 
@@ -451,6 +462,8 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
               statsd.timing("hub.event.stream.e2e_time", Date.now() - extractEventTimestamp(hubEvent.id), {
                 hub: this.hub.host,
                 source: this.shardKey,
+                hubEventType: hubEvent.type.toString(),
+                whenReceived,
               });
             } catch (e: unknown) {
               statsd.increment("hub.event.stream.errors", { hub: this.hub.host, source: this.shardKey });
@@ -468,11 +481,13 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
         statsd.timing("hub.event.stream.ack_time", Date.now() - startTime, {
           hub: this.hub.host,
           source: this.shardKey,
+          whenReceived,
         });
 
         statsd.increment("hub.event.stream.ack", eventIdsProcessed.length, {
           hub: this.hub.host,
           source: this.shardKey,
+          whenReceived,
         });
         statsd.increment("hub.event.stream.stale.processed", eventIdsProcessed.length, {
           hub: this.hub.host,
