@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.6.2
+
+### Patch Changes
+
+- 4e897e9a: chore: add more metrics to HubSubscriber
+
 ## 0.6.1
 
 ### Patch Changes
