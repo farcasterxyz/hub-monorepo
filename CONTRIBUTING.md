@@ -290,7 +290,7 @@ are at all unsure about how to proceed, please reach out to Varun ([Github](http
 5. Publish changes by running `yarn changeset publish`
 6. Fetch and update tags with `git fetch origin --tags && yarn changeset tag && git tag -f @latest`
 7. Delete the biome tags `git tag -d biome-config-custom@0.0.1`
-8. Push tags with `git push upstream HEAD --tags -f`
+8. Push tags with `git push origin HEAD --tags -f`
 9. If docker build does not start `git push upstream --delete @farcaster/hubble@<version> && git push upstream --tags @farcaster/hubble@<version>` to re-trigger it.
 10. Create a GitHub Release for Hubble, copying over the changelog and marking it as the latest.
 11. If this is a non-patch change, create an NFT for the release.
