@@ -321,6 +321,12 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
             batchedEvents.map(([id, hubEvt, evtBytes]) =>
               (async (streamId, hubEvent, eventBytes) => {
                 try {
+                  statsd.increment("hub.event.stream.current.attempts", 1, {
+                    hub: this.hub.host,
+                    source: this.shardKey,
+                    hubEventType: hubEvent.type.toString(),
+                  });
+
                   const dequeueDelay = Date.now() - Number(streamId.split("-")[0]);
                   statsd.timing("hub.event.stream.dequeue_delay", dequeueDelay, {
                     hub: this.hub.host,
@@ -432,12 +438,12 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
         batchedEvents.map((event) =>
           (async (streamEvent) => {
             try {
+              const hubEvent = HubEvent.decode(streamEvent.data);
               statsd.increment("hub.event.stream.stale.attempts", 1, {
                 hub: this.hub.host,
                 source: this.shardKey,
+                hubEventType: hubEvent.type.toString(),
               });
-
-              const hubEvent = HubEvent.decode(streamEvent.data);
 
               const dequeueDelay = Date.now() - Number(streamEvent.id.split("-")[0]);
               statsd.timing("hub.event.stream.dequeue_delay", dequeueDelay, {
