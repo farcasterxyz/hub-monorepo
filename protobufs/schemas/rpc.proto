@@ -93,6 +93,8 @@ service HubService {
   rpc GetAllLinkMessagesByFid(FidTimestampRequest) returns (MessagesResponse);
   // @http-api: none
   rpc GetLinkCompactStateMessageByFid(FidRequest) returns (MessagesResponse);
+  // @http-api: none
+  rpc SubmitBulkMessages(SubmitBulkMessagesRequest) returns (SubmitBulkMessagesResponse);
 
   // Sync Methods
   rpc GetInfo(HubInfoRequest) returns (HubInfoResponse);

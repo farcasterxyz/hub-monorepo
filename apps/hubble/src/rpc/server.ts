@@ -54,6 +54,11 @@ import {
   StreamError,
   OnChainEventRequest,
   FidRequest,
+  getFarcasterTime,
+  MessageBundle,
+  SubmitBulkMessagesResponse,
+  BulkMessageResponse,
+  MessageError,
 } from "@farcaster/hub-nodejs";
 import { err, ok, Result, ResultAsync } from "neverthrow";
 import { APP_NICKNAME, APP_VERSION, HubInterface } from "../hubble.js";
@@ -70,7 +75,7 @@ import {
   STREAM_MESSAGE_BUFFER_SIZE,
   SLOW_CLIENT_GRACE_PERIOD_MS,
 } from "./bufferedStreamWriter.js";
-import { sleep } from "../utils/crypto.js";
+import { blake3Truncate160, sleep } from "../utils/crypto.js";
 import { jumpConsistentHash } from "../utils/jumpConsistentHash.js";
 import { SUBMIT_MESSAGE_RATE_LIMIT, rateLimitByIp } from "../utils/rateLimits.js";
 import { statsd } from "../utils/statsd.js";
@@ -925,6 +930,70 @@ export default class Server {
           (err: HubError) => {
             callback(toServiceError(err));
           },
+        );
+      },
+      submitBulkMessages: async (call, callback) => {
+        // Identify peer that is calling, if available. This is used for rate limiting.
+        const peer = Result.fromThrowable(
+          () => call.getPeer(),
+          (e) => e,
+        )().unwrapOr("unavailable");
+
+        // Check for rate limits
+        const rateLimitResult = await rateLimitByIp(peer, this.submitMessageRateLimiter);
+        if (rateLimitResult.isErr()) {
+          logger.warn({ peer }, "submitBulkMessages rate limited");
+          callback(toServiceError(new HubError("unavailable", "API rate limit exceeded")));
+          return;
+        }
+
+        // Authentication
+        const authResult = authenticateUser(call.metadata, this.rpcUsers);
+        if (authResult.isErr()) {
+          logger.warn({ errMsg: authResult.error.message }, "gRPC submitBulkMessages failed");
+          callback(
+            toServiceError(new HubError("unauthenticated", `gRPC authentication failed: ${authResult.error.message}`)),
+          );
+          return;
+        }
+
+        const submissionTime = getFarcasterTime();
+        if (submissionTime.isErr()) {
+          callback(toServiceError(submissionTime.error));
+          return;
+        }
+
+        const { messages } = call.request;
+        const allHashes = Buffer.concat(messages.map((message) => message.hash ?? new Uint8Array()));
+        const bundleHash = blake3Truncate160(allHashes);
+
+        const messageBundle = MessageBundle.create({
+          messages: messages,
+          hash: bundleHash,
+        });
+        const result = await this.hub?.submitMessageBundle(submissionTime.value, messageBundle, "rpc");
+        callback(
+          null,
+          SubmitBulkMessagesResponse.create({
+            messages: result?.map((m, i) =>
+              m.match(
+                () => {
+                  return BulkMessageResponse.create({
+                    message: messages[i],
+                  });
+                },
+                (err: HubError) => {
+                  return BulkMessageResponse.create({
+                    messageError: MessageError.create({
+                      hash: messages[i]?.hash ?? new Uint8Array([]),
+                      errCode: err.errCode,
+                      message: err.message,
+                    }),
+                  });
+                },
+              ),
+            ),
+          }),
         );
       },
       validateMessage: async (call, callback) => {

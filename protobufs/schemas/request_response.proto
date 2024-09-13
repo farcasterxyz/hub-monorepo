@@ -273,6 +273,27 @@ message ValidationResponse {
   Message message = 2;
 }
 
+message SubmitBulkMessagesRequest {
+  repeated Message messages = 1;
+}
+
+message MessageError {
+  bytes hash = 1;
+  string errCode = 2;
+  string message = 3;
+}
+
+message BulkMessageResponse {
+  oneof response {
+    Message message = 1;
+    MessageError message_error = 2;
+  }
+}
+
+message SubmitBulkMessagesResponse {
+  repeated BulkMessageResponse messages = 1;
+}
+
 message StreamSyncRequest {
   oneof request {
     HubInfoRequest get_info = 1;

@@ -45,6 +45,8 @@ import {
   StreamFetchResponse,
   StreamSyncRequest,
   StreamSyncResponse,
+  SubmitBulkMessagesRequest,
+  SubmitBulkMessagesResponse,
   SubscribeRequest,
   SyncIds,
   SyncStatusRequest,
@@ -421,6 +423,18 @@ export const HubServiceService = {
     responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
+  /** @http-api: none */
+  submitBulkMessages: {
+    path: "/HubService/SubmitBulkMessages",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: SubmitBulkMessagesRequest) =>
+      Buffer.from(SubmitBulkMessagesRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => SubmitBulkMessagesRequest.decode(value),
+    responseSerialize: (value: SubmitBulkMessagesResponse) =>
+      Buffer.from(SubmitBulkMessagesResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => SubmitBulkMessagesResponse.decode(value),
+  },
   /** Sync Methods */
   getInfo: {
     path: "/HubService/GetInfo",
@@ -624,6 +638,8 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   getAllLinkMessagesByFid: handleUnaryCall<FidTimestampRequest, MessagesResponse>;
   /** @http-api: none */
   getLinkCompactStateMessageByFid: handleUnaryCall<FidRequest, MessagesResponse>;
+  /** @http-api: none */
+  submitBulkMessages: handleUnaryCall<SubmitBulkMessagesRequest, SubmitBulkMessagesResponse>;
   /** Sync Methods */
   getInfo: handleUnaryCall<HubInfoRequest, HubInfoResponse>;
   getCurrentPeers: handleUnaryCall<Empty, ContactInfoResponse>;
@@ -1191,6 +1207,22 @@ export interface HubServiceClient extends Client {
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  /** @http-api: none */
+  submitBulkMessages(
+    request: SubmitBulkMessagesRequest,
+    callback: (error: ServiceError | null, response: SubmitBulkMessagesResponse) => void,
+  ): ClientUnaryCall;
+  submitBulkMessages(
+    request: SubmitBulkMessagesRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: SubmitBulkMessagesResponse) => void,
+  ): ClientUnaryCall;
+  submitBulkMessages(
+    request: SubmitBulkMessagesRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: SubmitBulkMessagesResponse) => void,
   ): ClientUnaryCall;
   /** Sync Methods */
   getInfo(

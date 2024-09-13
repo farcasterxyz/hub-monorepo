@@ -33,6 +33,8 @@ import {
   StreamFetchResponse,
   StreamSyncRequest,
   StreamSyncResponse,
+  SubmitBulkMessagesRequest,
+  SubmitBulkMessagesResponse,
   SubscribeRequest,
   SyncIds,
   SyncStatusRequest,
@@ -165,6 +167,11 @@ export interface HubService {
     request: DeepPartial<FidRequest>,
     metadata?: grpcWeb.grpc.Metadata,
   ): Promise<MessagesResponse>;
+  /** @http-api: none */
+  submitBulkMessages(
+    request: DeepPartial<SubmitBulkMessagesRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<SubmitBulkMessagesResponse>;
   /** Sync Methods */
   getInfo(request: DeepPartial<HubInfoRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<HubInfoResponse>;
   getCurrentPeers(request: DeepPartial<Empty>, metadata?: grpcWeb.grpc.Metadata): Promise<ContactInfoResponse>;
@@ -242,6 +249,7 @@ export class HubServiceClientImpl implements HubService {
     this.getAllUserDataMessagesByFid = this.getAllUserDataMessagesByFid.bind(this);
     this.getAllLinkMessagesByFid = this.getAllLinkMessagesByFid.bind(this);
     this.getLinkCompactStateMessageByFid = this.getLinkCompactStateMessageByFid.bind(this);
+    this.submitBulkMessages = this.submitBulkMessages.bind(this);
     this.getInfo = this.getInfo.bind(this);
     this.getCurrentPeers = this.getCurrentPeers.bind(this);
     this.stopSync = this.stopSync.bind(this);
@@ -435,6 +443,13 @@ export class HubServiceClientImpl implements HubService {
     metadata?: grpcWeb.grpc.Metadata,
   ): Promise<MessagesResponse> {
     return this.rpc.unary(HubServiceGetLinkCompactStateMessageByFidDesc, FidRequest.fromPartial(request), metadata);
+  }
+
+  submitBulkMessages(
+    request: DeepPartial<SubmitBulkMessagesRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<SubmitBulkMessagesResponse> {
+    return this.rpc.unary(HubServiceSubmitBulkMessagesDesc, SubmitBulkMessagesRequest.fromPartial(request), metadata);
   }
 
   getInfo(request: DeepPartial<HubInfoRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<HubInfoResponse> {
@@ -1268,6 +1283,29 @@ export const HubServiceGetLinkCompactStateMessageByFidDesc: UnaryMethodDefinitio
   responseType: {
     deserializeBinary(data: Uint8Array) {
       const value = MessagesResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceSubmitBulkMessagesDesc: UnaryMethodDefinitionish = {
+  methodName: "SubmitBulkMessages",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return SubmitBulkMessagesRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = SubmitBulkMessagesResponse.decode(data);
       return {
         ...value,
         toObject() {
