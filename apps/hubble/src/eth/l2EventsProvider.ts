@@ -313,6 +313,7 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
       // Handling: use try-catch + log since errors are expected and not important to surface
       try {
         if (event.eventName === "Rent") {
+          statsd().increment("l2events.events_processed", { kind: "storage:rent" });
           // Fix when viem fixes https://github.com/wagmi-dev/viem/issues/938
           const rentEvent = event as Log<
             bigint,
@@ -379,6 +380,7 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
       // Handling: use try-catch + log since errors are expected and not important to surface
       try {
         if (event.eventName === "Add") {
+          statsd().increment("l2events.events_processed", { kind: "key-registry:add" });
           const addEvent = event as Log<
             bigint,
             number,
@@ -406,6 +408,7 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
             signerEventBody,
           );
         } else if (event.eventName === "Remove") {
+          statsd().increment("l2events.events_processed", { kind: "key-registry:remove" });
           const removeEvent = event as Log<
             bigint,
             number,
@@ -430,6 +433,7 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
             signerEventBody,
           );
         } else if (event.eventName === "AdminReset") {
+          statsd().increment("l2events.events_processed", { kind: "key-registry:admin-reset" });
           const resetEvent = event as Log<
             bigint,
             number,
@@ -454,6 +458,7 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
             signerEventBody,
           );
         } else if (event.eventName === "Migrated") {
+          statsd().increment("l2events.events_processed", { kind: "key-registry:migrated" });
           const migratedEvent = event as Log<
             bigint,
             number,
@@ -506,6 +511,7 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
       // Handling: use try-catch + log since errors are expected and not important to surface
       try {
         if (event.eventName === "Register") {
+          statsd().increment("l2events.events_processed", { kind: "id-registry:register" });
           const registerEvent = event as Log<
             bigint,
             number,
@@ -533,6 +539,7 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
             idRegisterEventBody,
           );
         } else if (event.eventName === "Transfer") {
+          statsd().increment("l2events.events_processed", { kind: "id-registry:transfer" });
           const transferEvent = event as Log<
             bigint,
             number,
@@ -560,6 +567,7 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
             idRegisterEventBody,
           );
         } else if (event.eventName === "ChangeRecoveryAddress") {
+          statsd().increment("l2events.events_processed", { kind: "id-registry:change-recovery-address" });
           const transferEvent = event as Log<
             bigint,
             number,
@@ -928,9 +936,9 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
         `syncing events (${formatPercentage((nextFromBlock - fromBlock) / totalBlocks)})`,
       );
       progressBar?.update(Math.max(nextFromBlock - fromBlock - 1, 0));
-      statsd().increment("l2events.blocks", Math.min(toBlock, nextToBlock - nextFromBlock));
 
       if (byEventKind) {
+        // If there are event-specific filters, we don't count the blocks here. The filters mean we don't necessarily consume all the blocks in the provided range. Instead, look at "l2events.events_processed" for an accurate metric.
         for (const storageEventSpecific of byEventKind.StorageRegistry) {
           await this.getStorageEvents(nextFromBlock, nextToBlock, storageEventSpecific);
         }
@@ -943,6 +951,7 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
           await this.getKeyRegistryEvents(nextFromBlock, nextToBlock, keyRegistryEventSpecific);
         }
       } else {
+        statsd().increment("l2events.blocks", Math.min(toBlock, nextToBlock - nextFromBlock));
         await this.getStorageEvents(nextFromBlock, nextToBlock);
         await this.getIdRegistryEvents(nextFromBlock, nextToBlock);
         await this.getKeyRegistryEvents(nextFromBlock, nextToBlock);
