@@ -105,7 +105,7 @@ describe("submitMessage", () => {
   test("fails without signer", async () => {
     const result = await client.submitMessage(castAdd);
     const err = result._unsafeUnwrapErr();
-    expect(err.errCode).toEqual("bad_request.validation_failure");
+    expect(err.errCode).toEqual("bad_request.unknown_fid");
     expect(err.message).toMatch("unknown fid");
   });
 });
@@ -134,12 +134,12 @@ describe("validateMessage", () => {
   test("fails without signer", async () => {
     const castResult = await client.submitMessage(castAdd);
     const castErr = castResult._unsafeUnwrapErr();
-    expect(castErr.errCode).toEqual("bad_request.validation_failure");
+    expect(castErr.errCode).toEqual("bad_request.unknown_fid");
     expect(castErr.message).toMatch("unknown fid");
 
     const frameResult = await client.submitMessage(frameAction);
     const frameErr = frameResult._unsafeUnwrapErr();
-    expect(frameErr.errCode).toEqual("bad_request.validation_failure");
+    expect(frameErr.errCode).toEqual("bad_request.unknown_fid");
     expect(frameErr.message).toMatch("unknown fid");
   });
 });

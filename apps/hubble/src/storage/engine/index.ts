@@ -77,6 +77,7 @@ import { RateLimiterAbstract, RateLimiterMemory } from "rate-limiter-flexible";
 import { TypedEmitter } from "tiny-typed-emitter";
 import { FNameRegistryEventsProvider } from "../../eth/fnameRegistryEventsProvider.js";
 import { statsd } from "../../utils/statsd.js";
+import { L2EventsProvider } from "eth/l2EventsProvider.js";
 
 export const NUM_VALIDATION_WORKERS = 2;
 
@@ -126,6 +127,7 @@ class Engine extends TypedEmitter<EngineEvents> {
   private _publicClient: PublicClient | undefined;
   private _l2PublicClient: PublicClient | undefined;
   private _fNameRegistryEventsProvider: FNameRegistryEventsProvider | undefined;
+  private _l2EventsProvider: L2EventsProvider | undefined;
 
   private _linkStore: LinkStore;
   private _reactionStore: ReactionStore;
@@ -157,6 +159,7 @@ class Engine extends TypedEmitter<EngineEvents> {
     publicClient?: PublicClient,
     l2PublicClient?: PublicClient,
     fNameRegistryEventsProvider?: FNameRegistryEventsProvider,
+    l2EventsProvider?: L2EventsProvider,
   ) {
     super();
     this._db = db;
@@ -164,6 +167,7 @@ class Engine extends TypedEmitter<EngineEvents> {
     this._publicClient = publicClient;
     this._l2PublicClient = l2PublicClient;
     this._fNameRegistryEventsProvider = fNameRegistryEventsProvider;
+    this._l2EventsProvider = l2EventsProvider;
 
     this.eventHandler = eventHandler ?? new StoreEventHandler(db);
 
@@ -279,6 +283,33 @@ class Engine extends TypedEmitter<EngineEvents> {
     }
   }
 
+  async computeMergeResult(message: Message, i: number) {
+    const fid = message.data?.fid ?? 0;
+    const validatedMessage = await this.validateMessage(message);
+    if (validatedMessage.isErr()) {
+      return err(validatedMessage.error);
+    }
+
+    const storageSlot = await this.eventHandler.getCurrentStorageSlotForFid(fid);
+    if (storageSlot.isErr()) {
+      return err(storageSlot.error);
+    }
+
+    const totalUnits = storageSlot.value.legacy_units + storageSlot.value.units;
+    if (totalUnits === 0) {
+      return err(new HubError("bad_request.no_storage", "no storage"));
+    }
+
+    const limiter = getRateLimiterForTotalMessages(totalUnits * this._totalPruneSize);
+    const isRateLimited = await isRateLimitedByKey(`${fid}`, limiter);
+    if (isRateLimited) {
+      log.warn({ fid }, "rate limit exceeded for FID");
+      return err(new HubError("unavailable", `rate limit exceeded for FID ${fid}`));
+    }
+
+    return ok({ i, fid, limiter, message });
+  }
+
   async mergeMessages(messages: Message[]): Promise<Map<number, HubResult<number>>> {
     const mergeResults: Map<number, HubResult<number>> = new Map();
     const validatedMessages: IndexedMessage[] = [];
@@ -286,38 +317,24 @@ class Engine extends TypedEmitter<EngineEvents> {
     // Validate all messages first
     await Promise.all(
       messages.map(async (message, i) => {
-        const validatedMessage = await this.validateMessage(message);
-        if (validatedMessage.isErr()) {
-          mergeResults.set(i, err(validatedMessage.error));
-          return;
-        }
-
         // Extract the FID that this message was signed by
-        const fid = message.data?.fid ?? 0;
-        const storageSlot = await this.eventHandler.getCurrentStorageSlotForFid(fid);
-
-        if (storageSlot.isErr()) {
-          mergeResults.set(i, err(storageSlot.error));
-          return;
-        }
-
-        const totalUnits = storageSlot.value.legacy_units + storageSlot.value.units;
-
-        if (totalUnits === 0) {
-          mergeResults.set(i, err(new HubError("bad_request.prunable", "no storage")));
-          return;
-        }
-
         // We rate limit the number of messages that can be merged per FID
-        const limiter = getRateLimiterForTotalMessages(totalUnits * this._totalPruneSize);
-        const isRateLimited = await isRateLimitedByKey(`${fid}`, limiter);
-        if (isRateLimited) {
-          log.warn({ fid }, "rate limit exceeded for FID");
-          mergeResults.set(i, err(new HubError("unavailable", `rate limit exceeded for FID ${fid}`)));
-          return;
+        const result = await this.computeMergeResult(message, i);
+        if (result.isErr()) {
+          mergeResults.set(i, result);
+          // Try to request on chain event if it's missing
+          if (
+            result.error.errCode === "bad_request.no_storage" ||
+            "bad_request.unknown_signer" ||
+            "bad_request.missing_fid"
+          ) {
+            const fid = message.data?.fid ?? 0;
+            // Don't await because we don't want to block hubs from processing new messages.
+            this._l2EventsProvider?.retryEventsForFid(fid);
+          }
+        } else {
+          validatedMessages.push(result.value);
         }
-
-        validatedMessages.push({ i, fid, limiter, message });
       }),
     );
 
@@ -1217,7 +1234,7 @@ class Engine extends TypedEmitter<EngineEvents> {
     }
 
     if (!custodyAddress) {
-      return err(new HubError("bad_request.validation_failure", `unknown fid: ${message.data.fid}`));
+      return err(new HubError("bad_request.unknown_fid", `unknown fid: ${message.data.fid}`));
     }
 
     // 4. Check that the signer is valid
@@ -1231,7 +1248,7 @@ class Engine extends TypedEmitter<EngineEvents> {
       return hex.andThen((signerHex) => {
         return err(
           new HubError(
-            "bad_request.validation_failure",
+            "bad_request.unknown_signer",
             `invalid signer: signer ${signerHex} not found for fid ${message.data?.fid}`,
           ),
         );

@@ -199,4 +199,52 @@ describe("process events", () => {
     },
     TEST_TIMEOUT_LONG,
   );
+
+  test(
+    "retry by fid",
+    async () => {
+      const rentSim = await simulateContract(publicClient, {
+        address: storageRegistryAddress,
+        abi: StorageRegistry.abi,
+        functionName: "credit",
+        account: accounts[0].address,
+        args: [BigInt(1), BigInt(1)],
+      });
+
+      // Set up the storage rent event
+      const rentHash = await writeContract(walletClientWithAccount, rentSim.request);
+      const rentTrx = await waitForTransactionReceipt(publicClient, { hash: rentHash });
+      await sleep(1000); // allow time for the rent event to be polled for
+      await mine(testClient, { blocks: L2EventsProvider.numConfirmations });
+      await waitForBlock(Number(rentTrx.blockNumber) + L2EventsProvider.numConfirmations);
+
+      const events1 = await onChainEventStore.getOnChainEvents(OnChainEventType.EVENT_TYPE_STORAGE_RENT, 1);
+      expect(events1.length).toEqual(1);
+      expect(events1[0]?.fid).toEqual(1);
+      expect(events1[0]?.storageRentEventBody?.units).toEqual(1);
+
+      const clearAndRetryForFid = async () => {
+        // Clear on chain events and show that they get re-ingested when retrying by fid
+        await OnChainEventStore.clearEvents(db);
+        const events = await onChainEventStore.getOnChainEvents(OnChainEventType.EVENT_TYPE_STORAGE_RENT, 1);
+
+        expect(events.length).toEqual(0);
+
+        await l2EventsProvider.retryEventsForFid(1);
+        await sleep(1000); // allow time for the rent event to be polled for
+        return await onChainEventStore.getOnChainEvents(OnChainEventType.EVENT_TYPE_STORAGE_RENT, 1);
+      };
+
+      const events2 = await clearAndRetryForFid();
+
+      expect(events2.length).toEqual(1);
+      expect(events2[0]?.fid).toEqual(1);
+      expect(events2[0]?.storageRentEventBody?.units).toEqual(1);
+
+      // After retrying once, we don't retry again
+      const events3 = await clearAndRetryForFid();
+      expect(events3.length).toEqual(0);
+    },
+    TEST_TIMEOUT_LONG,
+  );
 });

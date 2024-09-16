@@ -70,6 +70,12 @@ export class OptimismConstants {
 }
 
 const RENT_EXPIRY_IN_SECONDS = 365 * 24 * 60 * 60; // One year
+const FID_RETRY_DEDUP_LOOKBACK_MS = 60 * 60 * 1000; // One hour
+
+type EventSpecificArgs = {
+  eventName: string;
+  fid: number;
+};
 
 /**
  * Class that follows the Optimism chain to handle on-chain events from the Storage Registry contract.
@@ -87,6 +93,7 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
 
   private _onChainEventsByBlock: Map<number, Array<OnChainEvent>>;
   private _retryDedupMap: Map<number, boolean>;
+  private _fidRetryDedupMap: Map<number, boolean>;
   private _blockTimestampsCache: Map<string, number>;
 
   private _lastBlockNumber: number;
@@ -160,6 +167,12 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
     // numConfirmations blocks have been mined.
     this._onChainEventsByBlock = new Map();
     this._retryDedupMap = new Map();
+    this._fidRetryDedupMap = new Map();
+    // Clear the map periodically to avoid memory bloat.
+    setInterval(() => {
+      this._fidRetryDedupMap.clear();
+    }, FID_RETRY_DEDUP_LOOKBACK_MS);
+
     this._blockTimestampsCache = new Map();
 
     this.setAddresses(storageRegistryAddress, keyRegistryV2Address, idRegistryV2Address);
@@ -300,6 +313,7 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
       // Handling: use try-catch + log since errors are expected and not important to surface
       try {
         if (event.eventName === "Rent") {
+          statsd().increment("l2events.events_processed", { kind: "storage:rent" });
           // Fix when viem fixes https://github.com/wagmi-dev/viem/issues/938
           const rentEvent = event as Log<
             bigint,
@@ -366,6 +380,7 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
       // Handling: use try-catch + log since errors are expected and not important to surface
       try {
         if (event.eventName === "Add") {
+          statsd().increment("l2events.events_processed", { kind: "key-registry:add" });
           const addEvent = event as Log<
             bigint,
             number,
@@ -393,6 +408,7 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
             signerEventBody,
           );
         } else if (event.eventName === "Remove") {
+          statsd().increment("l2events.events_processed", { kind: "key-registry:remove" });
           const removeEvent = event as Log<
             bigint,
             number,
@@ -417,6 +433,7 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
             signerEventBody,
           );
         } else if (event.eventName === "AdminReset") {
+          statsd().increment("l2events.events_processed", { kind: "key-registry:admin-reset" });
           const resetEvent = event as Log<
             bigint,
             number,
@@ -441,6 +458,7 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
             signerEventBody,
           );
         } else if (event.eventName === "Migrated") {
+          statsd().increment("l2events.events_processed", { kind: "key-registry:migrated" });
           const migratedEvent = event as Log<
             bigint,
             number,
@@ -493,6 +511,7 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
       // Handling: use try-catch + log since errors are expected and not important to surface
       try {
         if (event.eventName === "Register") {
+          statsd().increment("l2events.events_processed", { kind: "id-registry:register" });
           const registerEvent = event as Log<
             bigint,
             number,
@@ -520,6 +539,7 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
             idRegisterEventBody,
           );
         } else if (event.eventName === "Transfer") {
+          statsd().increment("l2events.events_processed", { kind: "id-registry:transfer" });
           const transferEvent = event as Log<
             bigint,
             number,
@@ -547,6 +567,7 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
             idRegisterEventBody,
           );
         } else if (event.eventName === "ChangeRecoveryAddress") {
+          statsd().increment("l2events.events_processed", { kind: "id-registry:change-recovery-address" });
           const transferEvent = event as Log<
             bigint,
             number,
@@ -661,6 +682,54 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
     }
   }
 
+  private getEventSpecificArgs(fid: number) {
+    return {
+      StorageRegistry: [{ eventName: "Rent", fid }],
+      IdRegistry: [
+        { eventName: "Register", fid },
+        { eventName: "Transfer", fid },
+      ],
+      KeyRegistry: [
+        { eventName: "Add", fid },
+        { eventName: "Remove", fid },
+      ],
+    };
+  }
+
+  public async retryEventsForFid(fid: number) {
+    if (this._fidRetryDedupMap.has(fid)) {
+      return;
+    }
+
+    this._fidRetryDedupMap.set(fid, true);
+
+    log.info(
+      { fid, startBlock: this._firstBlock, stopBlock: this._lastBlockNumber, chunkSize: this._chunkSize },
+      `Attempting to retryEventsForFid ${fid}`,
+    );
+    statsd().increment("l2events.retriesByFid.attempts", 1, { fid: fid.toString() });
+
+    // Let's not remove. No need to retry same fid many times. If we allow retrying multiple times, we need to rate limit. The map will get cleared periodically to prevent memory bloat.
+    try {
+      // The viem API requires an event kind if you want to provide filters by indexed arguments-- this is why we're making multiple calls to syncHistoricalEvents and prioritizing the most common event types.
+      const eventSpecificArgs = this.getEventSpecificArgs(fid);
+
+      // The batch sizes are artificially large-- this batch size is internally enforced and we essentially want to eliminate batches given that we don't expct a lot of results from these queries.
+      await this.syncHistoricalEvents(
+        this._firstBlock,
+        this._lastBlockNumber,
+        this._lastBlockNumber,
+        eventSpecificArgs,
+      );
+
+      log.info({ fid }, `Finished retryEventsForFid ${fid}`);
+      statsd().increment("l2events.retriesByFid.successes", 1, { fid: fid.toString() });
+    } catch (e) {
+      log.error(e, `Error in retryEventsForFid ${fid}`);
+      statsd().increment("l2events.retriesByFid.errors", 1, { fid: fid.toString() });
+    }
+  }
+
   private setAddresses(
     storageRegistryAddress: `0x${string}`,
     keyRegistryV2Address: `0x${string}`,
@@ -737,11 +806,89 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
     );
   }
 
+  getCommonFilterArgs(fromBlock?: number, toBlock?: number, eventSpecificArgs?: EventSpecificArgs) {
+    let fromBlockBigInt;
+    if (fromBlock !== undefined) {
+      fromBlockBigInt = BigInt(fromBlock);
+    }
+
+    let toBlockBigInt;
+    if (toBlock !== undefined) {
+      toBlockBigInt = BigInt(toBlock);
+    }
+
+    return {
+      fromBlock: fromBlockBigInt,
+      toBlock: toBlockBigInt,
+      eventName: eventSpecificArgs?.eventName,
+      strict: true,
+    };
+  }
+
+  getEventSpecificFid(eventSpecificArgs?: EventSpecificArgs) {
+    if (eventSpecificArgs !== undefined) {
+      return BigInt(eventSpecificArgs.fid);
+    }
+
+    return undefined;
+  }
+
+  async getStorageEvents(fromBlock?: number, toBlock?: number, eventSpecificArgs?: EventSpecificArgs) {
+    const realParams = {
+      ...this.getCommonFilterArgs(fromBlock, toBlock, eventSpecificArgs),
+      address: this.storageRegistryAddress,
+      abi: StorageRegistry.abi,
+      args: { fid: this.getEventSpecificFid(eventSpecificArgs) },
+    };
+
+    const storageLogsPromise = this.getContractEvents(realParams);
+    await this.processStorageEvents(
+      (await storageLogsPromise) as WatchContractEventOnLogsParameter<typeof StorageRegistry.abi>,
+    );
+  }
+
+  async getIdRegistryEvents(fromBlock?: number, toBlock?: number, eventSpecificArgs?: EventSpecificArgs) {
+    const idV2LogsPromise = this.getContractEvents({
+      ...this.getCommonFilterArgs(fromBlock, toBlock, eventSpecificArgs),
+      address: this.idRegistryV2Address,
+      abi: IdRegistry.abi,
+      args: {
+        id: this.getEventSpecificFid(eventSpecificArgs) /* The fid parameter is named "id" in the IdRegistry events */,
+      },
+    });
+
+    await this.processIdRegistryV2Events(
+      (await idV2LogsPromise) as WatchContractEventOnLogsParameter<typeof IdRegistry.abi>,
+    );
+  }
+
+  async getKeyRegistryEvents(fromBlock?: number, toBlock?: number, eventSpecificArgs?: EventSpecificArgs) {
+    const keyV2LogsPromise = this.getContractEvents({
+      ...this.getCommonFilterArgs(fromBlock, toBlock, eventSpecificArgs),
+      address: this.keyRegistryV2Address,
+      abi: KeyRegistry.abi,
+      args: { fid: this.getEventSpecificFid(eventSpecificArgs) },
+    });
+
+    await this.processKeyRegistryEventsV2(
+      (await keyV2LogsPromise) as WatchContractEventOnLogsParameter<typeof KeyRegistry.abi>,
+    );
+  }
+
   /**
    * Sync old Storage events that may have happened before hub was started. We'll put them all
    * in the sync queue to be processed later, to make sure we don't process any unconfirmed events.
    */
-  private async syncHistoricalEvents(fromBlock: number, toBlock: number, batchSize: number) {
+  private async syncHistoricalEvents(
+    fromBlock: number,
+    toBlock: number,
+    batchSize: number, // This batch size is enforced by us internally, not by the RPC provider
+    byEventKind?: {
+      StorageRegistry: EventSpecificArgs[];
+      IdRegistry: EventSpecificArgs[];
+      KeyRegistry: EventSpecificArgs[];
+    },
+  ) {
     if (!this.idRegistryV2Address || !this.keyRegistryV2Address || !this.storageRegistryAddress) {
       return;
     }
@@ -789,41 +936,26 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
         `syncing events (${formatPercentage((nextFromBlock - fromBlock) / totalBlocks)})`,
       );
       progressBar?.update(Math.max(nextFromBlock - fromBlock - 1, 0));
-      statsd().increment("l2events.blocks", Math.min(toBlock, nextToBlock - nextFromBlock));
 
-      const storageLogsPromise = this.getContractEvents({
-        address: this.storageRegistryAddress,
-        abi: StorageRegistry.abi,
-        fromBlock: BigInt(nextFromBlock),
-        toBlock: BigInt(nextToBlock),
-        strict: true,
-      });
+      if (byEventKind) {
+        // If there are event-specific filters, we don't count the blocks here. The filters mean we don't necessarily consume all the blocks in the provided range. Instead, look at "l2events.events_processed" for an accurate metric.
+        for (const storageEventSpecific of byEventKind.StorageRegistry) {
+          await this.getStorageEvents(nextFromBlock, nextToBlock, storageEventSpecific);
+        }
 
-      const idV2LogsPromise = this.getContractEvents({
-        address: this.idRegistryV2Address,
-        abi: IdRegistry.abi,
-        fromBlock: BigInt(nextFromBlock),
-        toBlock: BigInt(nextToBlock),
-        strict: true,
-      });
+        for (const idRegistryEventSpecific of byEventKind.IdRegistry) {
+          await this.getIdRegistryEvents(nextFromBlock, nextToBlock, idRegistryEventSpecific);
+        }
 
-      const keyV2LogsPromise = this.getContractEvents({
-        address: this.keyRegistryV2Address,
-        abi: KeyRegistry.abi,
-        fromBlock: BigInt(nextFromBlock),
-        toBlock: BigInt(nextToBlock),
-        strict: true,
-      });
-
-      await this.processStorageEvents(
-        (await storageLogsPromise) as WatchContractEventOnLogsParameter<typeof StorageRegistry.abi>,
-      );
-      await this.processIdRegistryV2Events(
-        (await idV2LogsPromise) as WatchContractEventOnLogsParameter<typeof IdRegistry.abi>,
-      );
-      await this.processKeyRegistryEventsV2(
-        (await keyV2LogsPromise) as WatchContractEventOnLogsParameter<typeof KeyRegistry.abi>,
-      );
+        for (const keyRegistryEventSpecific of byEventKind.KeyRegistry) {
+          await this.getKeyRegistryEvents(nextFromBlock, nextToBlock, keyRegistryEventSpecific);
+        }
+      } else {
+        statsd().increment("l2events.blocks", Math.min(toBlock, nextToBlock - nextFromBlock));
+        await this.getStorageEvents(nextFromBlock, nextToBlock);
+        await this.getIdRegistryEvents(nextFromBlock, nextToBlock);
+        await this.getKeyRegistryEvents(nextFromBlock, nextToBlock);
+      }
 
       // Write out all the cached blocks first
       await this.writeCachedBlocks(toBlock);

@@ -69,9 +69,12 @@ export type HubErrorCode =
   | "bad_request.parse_failure"
   | "bad_request.invalid_param"
   | "bad_request.validation_failure"
+  | "bad_request.unknown_signer"
   | "bad_request.duplicate"
   | "bad_request.conflict"
   | "bad_request.prunable"
+  | "bad_request.no_storage"
+  | "bad_request.unknown_fid"
   /* The requested resource could not be found */
   | "not_found"
   /* The request could not be completed because the operation is not executable */
