@@ -58,8 +58,8 @@ describe("syncFromDb", () => {
       for (let i = 0; i < fidUsage.usage.storage; i++) {
         const storageRentEvent = Factories.StorageRentOnChainEvent.build({
           fid: fidUsage.fid,
+          blockTimestamp: Date.now() / 1000,
           storageRentEventBody: Factories.StorageRentEventBody.build({
-            expiry: getFarcasterTime()._unsafeUnwrap() + 365 * 24 * 60 * 60 - i,
             units: 2,
           }),
         });
@@ -81,8 +81,8 @@ describe("syncFromDb", () => {
         ok(fidUsage.usage.userData),
       );
       const slot = (await cache.getCurrentStorageSlotForFid(fidUsage.fid))._unsafeUnwrap();
-      expect(slot.legacy_units).toEqual(4);
-      expect(slot.units).toEqual(0);
+      expect(slot.units).toEqual(4);
+      expect(slot.legacy_units).toEqual(0);
     }
   });
 });
