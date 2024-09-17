@@ -683,7 +683,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       statsd().gauge("merkle_trie.merge_q", this._syncTrieQ);
       const result = await ResultAsync.fromPromise(this.addOnChainEvent(onChainEvent), (e) => e);
       if (result.isErr()) {
-        log.error({ err: result.error }, "Failed to add on-chain event to sync trie");
+        log.error({ err: result.error }, "Failed to add onchain event to sync trie");
       }
       this._syncTrieQ -= 1;
 
@@ -798,7 +798,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       if (!(await this.trie.exists(syncId))) {
         const result = await ResultAsync.fromPromise(this._trie.insert(syncId), (e) => e);
         if (result.isErr()) {
-          log.error({ err: result.error }, "Failed to add on-chain event to sync trie");
+          log.error({ err: result.error }, "Failed to add onchain event to sync trie");
         }
       }
     });

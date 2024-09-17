@@ -672,7 +672,7 @@ paths:
     get:
       tags:
         - OnChainEvents
-      summary: Get an on chain ID Registry Event for a given Address
+      summary: Get an onchain ID Registry Event for a given Address
       operationId: GetOnChainIdRegistrationByAddress
       parameters:
         - name: address
@@ -695,7 +695,7 @@ paths:
     get:
       tags:
         - OnChainEvents
-      summary: Get a list of on-chain events provided by an FID
+      summary: Get a list of onchain events provided by an FID
       operationId: ListOnChainEventsByFid
       parameters:
         - name: fid

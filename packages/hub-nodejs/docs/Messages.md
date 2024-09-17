@@ -4,7 +4,7 @@ A Farcaster Message represents an action taken by a user.
 
 Messages are atomic updates that add or remove content from the network. For example, a user can make a new cast by generating a `CastAdd` message and remove it with a `CastRemove` message. See the [protocol spec](https://github.com/farcasterxyz/protocol#3-delta-graph) for more information on how messages work.
 
-Messages are [protobufs](https://protobuf.dev/) which are converted by @farcaster/hub-nodejs into the Typescript types documented below. Each message is signed by a key pair that is provably controlled by the user. Some messages must be signed by the Ethereum address that controls the user's fid on-chain while other messages must be signed by an EdDSA key pair known as a Signer, which is authorized to act on behalf of the Ethereum address. The protocol specification defines the message types as:
+Messages are [protobufs](https://protobuf.dev/) which are converted by @farcaster/hub-nodejs into the Typescript types documented below. Each message is signed by a key pair that is provably controlled by the user. Some messages must be signed by the Ethereum address that controls the user's fid onchain while other messages must be signed by an EdDSA key pair known as a Signer, which is authorized to act on behalf of the Ethereum address. The protocol specification defines the message types as:
 
 | Message                   | Action                                                              |
 | ------------------------- | ------------------------------------------------------------------- |

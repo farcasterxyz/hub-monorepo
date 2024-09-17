@@ -12,7 +12,7 @@ async function submitMessage() {
   const fid = 2;
 
   // The signer of the message. This is used to sign the message, and can be obtained by creating
-  // an on-chain signer on behalf of the user.
+  // an onchain signer on behalf of the user.
   // TODO: Replace with your own signer
   const signer = Factories.Ed25519Signer.build();
 

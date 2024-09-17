@@ -83,7 +83,7 @@ export const makeVerificationAddressClaim = (
 };
 
 export const recreateSolanaClaimMessage = (claim: VerificationAddressClaimSolana, pubkey: Uint8Array): Buffer => {
-  // We're using a simple ascii string instead of the full off-chain signing spec because this provides better compatibility with wallet libraries
+  // We're using a simple ascii string instead of the full offchain signing spec because this provides better compatibility with wallet libraries
   const messageContent = `fid: ${claim.fid} address: ${claim.address} network: ${claim.network} blockHash: ${claim.blockHash} protocol: ${claim.protocol}`;
   return Buffer.from(utf8StringToBytes(messageContent)._unsafeUnwrap());
 };

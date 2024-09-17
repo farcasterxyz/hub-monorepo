@@ -78,7 +78,7 @@ type EventSpecificArgs = {
 };
 
 /**
- * Class that follows the Optimism chain to handle on-chain events from the Storage Registry contract.
+ * Class that follows the Optimism chain to handle onchain events from the Storage Registry contract.
  */
 export class L2EventsProvider<chain extends Chain = Chain, transport extends Transport = Transport> {
   private _hub: HubInterface;
