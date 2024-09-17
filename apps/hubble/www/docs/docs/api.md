@@ -270,6 +270,34 @@ Used to subscribe to real-time event updates from the Farcaster Hub
 | Method Name   | Request Type | Response Type | Description                  |
 | ------------- | ------------ | ------------- | ---------------------------- |
 | SubmitMessage | Message      | Message       | Submits a Message to the Hub |
+| SubmitBulkMessages | [SubmitBulkMessagesRequest](#SubmitBulkMessagesRequest) | [SubmitBulkMessagesResponse](#SubmitBulkMessagesResponse) | Submits several Messages to the Hub |
+
+### SubmitBulkMessagesRequest
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| messages | [Message](#Message) | repeated |  |
+
+### MessageError
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| hash | [bytes](#bytes) |  |  |
+| errCode | [string](#string) |  |  |
+| message | [string](#string) |  |  |
+
+### BulkMessageResponse
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| message | [Message](#Message) |  |  |
+| message_error | [MessageError](#MessageError) |  |  |
+
+### SubmitBulkMessagesResponse
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| messages | [BulkMessageResponse](#BulkMessageResponse) | repeated |  |
 
 ## 10. Username Proofs Service
 
