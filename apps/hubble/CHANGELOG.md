@@ -1,5 +1,14 @@
 # @farcaster/hubble
 
+## 1.15.2
+
+### Patch Changes
+
+- f084daa1: feat: request missing on chain events on related submit message errors
+- e5a86114: feat: support bulk message writing rpcs
+- Updated dependencies [e5a86114]
+  - @farcaster/hub-nodejs@0.12.3
+
 ## 1.15.1
 
 ### Patch Changes
