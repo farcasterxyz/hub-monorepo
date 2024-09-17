@@ -1,5 +1,12 @@
 # @farcaster/core
 
+## 0.15.3
+
+### Patch Changes
+
+- f084daa1: feat: request missing on chain events on related submit message errors
+- e5a86114: feat: support bulk message writing rpcs
+
 ## 0.15.2
 
 ### Patch Changes

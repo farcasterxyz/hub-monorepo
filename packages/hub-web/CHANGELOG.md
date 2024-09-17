@@ -1,5 +1,14 @@
 # @farcaster/hub-web
 
+## 0.9.3
+
+### Patch Changes
+
+- e5a86114: feat: support bulk message writing rpcs
+- Updated dependencies [f084daa1]
+- Updated dependencies [e5a86114]
+  - @farcaster/core@0.15.3
+
 ## 0.9.2
 
 ### Patch Changes
