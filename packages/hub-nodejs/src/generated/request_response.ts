@@ -347,6 +347,25 @@ export interface ValidationResponse {
   message: Message | undefined;
 }
 
+export interface SubmitBulkMessagesRequest {
+  messages: Message[];
+}
+
+export interface MessageError {
+  hash: Uint8Array;
+  errCode: string;
+  message: string;
+}
+
+export interface BulkMessageResponse {
+  message?: Message | undefined;
+  messageError?: MessageError | undefined;
+}
+
+export interface SubmitBulkMessagesResponse {
+  messages: BulkMessageResponse[];
+}
+
 export interface StreamSyncRequest {
   getInfo?: HubInfoRequest | undefined;
   getCurrentPeers?: Empty | undefined;
@@ -3912,6 +3931,289 @@ export const ValidationResponse = {
     message.message = (object.message !== undefined && object.message !== null)
       ? Message.fromPartial(object.message)
       : undefined;
+    return message;
+  },
+};
+
+function createBaseSubmitBulkMessagesRequest(): SubmitBulkMessagesRequest {
+  return { messages: [] };
+}
+
+export const SubmitBulkMessagesRequest = {
+  encode(message: SubmitBulkMessagesRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    for (const v of message.messages) {
+      Message.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): SubmitBulkMessagesRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSubmitBulkMessagesRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.messages.push(Message.decode(reader, reader.uint32()));
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SubmitBulkMessagesRequest {
+    return { messages: Array.isArray(object?.messages) ? object.messages.map((e: any) => Message.fromJSON(e)) : [] };
+  },
+
+  toJSON(message: SubmitBulkMessagesRequest): unknown {
+    const obj: any = {};
+    if (message.messages) {
+      obj.messages = message.messages.map((e) => e ? Message.toJSON(e) : undefined);
+    } else {
+      obj.messages = [];
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<SubmitBulkMessagesRequest>, I>>(base?: I): SubmitBulkMessagesRequest {
+    return SubmitBulkMessagesRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<SubmitBulkMessagesRequest>, I>>(object: I): SubmitBulkMessagesRequest {
+    const message = createBaseSubmitBulkMessagesRequest();
+    message.messages = object.messages?.map((e) => Message.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBaseMessageError(): MessageError {
+  return { hash: new Uint8Array(), errCode: "", message: "" };
+}
+
+export const MessageError = {
+  encode(message: MessageError, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.hash.length !== 0) {
+      writer.uint32(10).bytes(message.hash);
+    }
+    if (message.errCode !== "") {
+      writer.uint32(18).string(message.errCode);
+    }
+    if (message.message !== "") {
+      writer.uint32(26).string(message.message);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): MessageError {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseMessageError();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.hash = reader.bytes();
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.errCode = reader.string();
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.message = reader.string();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): MessageError {
+    return {
+      hash: isSet(object.hash) ? bytesFromBase64(object.hash) : new Uint8Array(),
+      errCode: isSet(object.errCode) ? String(object.errCode) : "",
+      message: isSet(object.message) ? String(object.message) : "",
+    };
+  },
+
+  toJSON(message: MessageError): unknown {
+    const obj: any = {};
+    message.hash !== undefined &&
+      (obj.hash = base64FromBytes(message.hash !== undefined ? message.hash : new Uint8Array()));
+    message.errCode !== undefined && (obj.errCode = message.errCode);
+    message.message !== undefined && (obj.message = message.message);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MessageError>, I>>(base?: I): MessageError {
+    return MessageError.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<MessageError>, I>>(object: I): MessageError {
+    const message = createBaseMessageError();
+    message.hash = object.hash ?? new Uint8Array();
+    message.errCode = object.errCode ?? "";
+    message.message = object.message ?? "";
+    return message;
+  },
+};
+
+function createBaseBulkMessageResponse(): BulkMessageResponse {
+  return { message: undefined, messageError: undefined };
+}
+
+export const BulkMessageResponse = {
+  encode(message: BulkMessageResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.message !== undefined) {
+      Message.encode(message.message, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.messageError !== undefined) {
+      MessageError.encode(message.messageError, writer.uint32(18).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): BulkMessageResponse {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseBulkMessageResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.message = Message.decode(reader, reader.uint32());
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.messageError = MessageError.decode(reader, reader.uint32());
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): BulkMessageResponse {
+    return {
+      message: isSet(object.message) ? Message.fromJSON(object.message) : undefined,
+      messageError: isSet(object.messageError) ? MessageError.fromJSON(object.messageError) : undefined,
+    };
+  },
+
+  toJSON(message: BulkMessageResponse): unknown {
+    const obj: any = {};
+    message.message !== undefined && (obj.message = message.message ? Message.toJSON(message.message) : undefined);
+    message.messageError !== undefined &&
+      (obj.messageError = message.messageError ? MessageError.toJSON(message.messageError) : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<BulkMessageResponse>, I>>(base?: I): BulkMessageResponse {
+    return BulkMessageResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<BulkMessageResponse>, I>>(object: I): BulkMessageResponse {
+    const message = createBaseBulkMessageResponse();
+    message.message = (object.message !== undefined && object.message !== null)
+      ? Message.fromPartial(object.message)
+      : undefined;
+    message.messageError = (object.messageError !== undefined && object.messageError !== null)
+      ? MessageError.fromPartial(object.messageError)
+      : undefined;
+    return message;
+  },
+};
+
+function createBaseSubmitBulkMessagesResponse(): SubmitBulkMessagesResponse {
+  return { messages: [] };
+}
+
+export const SubmitBulkMessagesResponse = {
+  encode(message: SubmitBulkMessagesResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    for (const v of message.messages) {
+      BulkMessageResponse.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): SubmitBulkMessagesResponse {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSubmitBulkMessagesResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.messages.push(BulkMessageResponse.decode(reader, reader.uint32()));
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SubmitBulkMessagesResponse {
+    return {
+      messages: Array.isArray(object?.messages) ? object.messages.map((e: any) => BulkMessageResponse.fromJSON(e)) : [],
+    };
+  },
+
+  toJSON(message: SubmitBulkMessagesResponse): unknown {
+    const obj: any = {};
+    if (message.messages) {
+      obj.messages = message.messages.map((e) => e ? BulkMessageResponse.toJSON(e) : undefined);
+    } else {
+      obj.messages = [];
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<SubmitBulkMessagesResponse>, I>>(base?: I): SubmitBulkMessagesResponse {
+    return SubmitBulkMessagesResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<SubmitBulkMessagesResponse>, I>>(object: I): SubmitBulkMessagesResponse {
+    const message = createBaseSubmitBulkMessagesResponse();
+    message.messages = object.messages?.map((e) => BulkMessageResponse.fromPartial(e)) || [];
     return message;
   },
 };
