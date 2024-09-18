@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.6.4
+
+### Patch Changes
+
+- 2de0697e: chore: upgrade hub-nodejs dependency so interfaces align
+
 ## 0.6.3
 
 ### Patch Changes
