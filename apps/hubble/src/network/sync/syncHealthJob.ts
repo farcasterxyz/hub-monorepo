@@ -62,7 +62,7 @@ export class MeasureSyncHealthJobScheduler {
     return peers;
   }
 
-  processSumbitResults(results: Result<Message, SubmitError>[], peerId: string) {
+  processSumbitResults(results: Result<Message, SubmitError>[], peerId: string, startTime: number, stopTime: number) {
     let numSuccesses = 0;
     let numErrors = 0;
     for (const result of results) {
@@ -75,7 +75,15 @@ export class MeasureSyncHealthJobScheduler {
 
         log.info(
           {
-            msgDetails: { type, fid: result.value.data?.fid, timestamp: result.value.data?.timestamp, hash, peerId },
+            msgDetails: {
+              type,
+              fid: result.value.data?.fid,
+              timestamp: result.value.data?.timestamp,
+              hash,
+              peerId,
+            },
+            startTime,
+            stopTime,
           },
           "Successfully submitted message via SyncHealth",
         );
@@ -85,7 +93,7 @@ export class MeasureSyncHealthJobScheduler {
         const hashString = bytesToHexString(result.error.originalMessage.hash);
         const hash = hashString.isOk() ? hashString.value : "unable to show hash";
         log.info(
-          { errMessage: result.error.hubError.message, peerId, hash },
+          { errMessage: result.error.hubError.message, peerId, hash, startTime, stopTime },
           "Failed to submit message via SyncHealth",
         );
 
@@ -153,8 +161,10 @@ export class MeasureSyncHealthJobScheduler {
           theirNumMessages: syncHealthMessageStats.value.peerNumMessages,
           syncHealth: syncHealthMessageStats.value.computeDiff(),
           syncHealthPercentage: syncHealthMessageStats.value.computeDiffPercentage(),
-          resultsPushingToUs: this.processSumbitResults(resultsPushingToUs.value, peerId),
+          resultsPushingToUs: this.processSumbitResults(resultsPushingToUs.value, peerId, startTime, stopTime),
           peerId,
+          startTime,
+          stopTime,
         },
         "Computed SyncHealth stats for peer",
       );
