@@ -179,7 +179,7 @@ export class ValidateOrRevokeMessagesJobScheduler {
       if (signers.isErr()) {
         log.error(
           { errCode: signers.error.errCode },
-          `error getting on-chain signers for FID ${fid}: ${signers.error.message}`,
+          `error getting onchain signers for FID ${fid}: ${signers.error.message}`,
         );
         return err(signers.error);
       }

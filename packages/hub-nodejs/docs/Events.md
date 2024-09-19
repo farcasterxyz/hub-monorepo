@@ -1,7 +1,7 @@
 # Events
 
 - [Hub Events](#hub-events)
-- [On-Chain Events](#on-chain-events)
+- [Onchain Events](#onchain-events)
 
 ## Hub Events
 
@@ -58,13 +58,13 @@ Emit when an NameRegistryEvent is merged into the Hub.
 | type              | [`HubEventType`](#hubeventtype) | Always set to `MERGE_NAME_REGISTRY_EVENT` |
 | nameRegistryEvent | `NameRegistryEvent`             | The message that was merged               |
 
-## On-Chain Events
+## Onchain Events
 
 Emitted by contracts whenever the ownership of fids or fnames changes.
 
 ### IdRegistryEvent
 
-Emit when an on-chain event occurs in the IdRegistry which registers or transfers an fid.
+Emit when an onchain event occurs in the IdRegistry which registers or transfers an fid.
 
 | Name            | Type                        | Description                                              |
 | --------------- | --------------------------- | -------------------------------------------------------- |
@@ -79,7 +79,7 @@ Emit when an on-chain event occurs in the IdRegistry which registers or transfer
 
 ### NameRegistryEvent
 
-Emit when an on-chain event occurs in the NameRegistry which registers, transfers or renews an fname.
+Emit when an onchain event occurs in the NameRegistry which registers, transfers or renews an fname.
 
 | Name            | Type                                              | Description                                              |
 | --------------- | ------------------------------------------------- | -------------------------------------------------------- |

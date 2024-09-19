@@ -4,7 +4,7 @@ A Client established a connection with a Farcaster Hub which can be used to send
 with the IP address and gRPC port of the Hub. Once connected, a Client instance can:
 
 - Query for messages by user or type.
-- Query for on-chain Farcaster Contracts state.
+- Query for onchain Farcaster Contracts state.
 - Subscribe to changes by type.
 - Upload new messages.
 
@@ -1093,7 +1093,7 @@ client.$.waitForReady(Date.now() + 5000, async (e) => {
 
 ### getNameRegistryEvent
 
-Returns the on-chain event most recently associated with changing an fname's ownership.
+Returns the onchain event most recently associated with changing an fname's ownership.
 
 #### Usage
 
