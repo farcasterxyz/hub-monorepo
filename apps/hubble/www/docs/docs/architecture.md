@@ -15,9 +15,9 @@ CRDT sets are implemented to meet the specification in the Farcaster protocol. T
 
 ### P2P Engine
 
-Hubble connects to other peers over a GossipSub network established using [LibP2P](https://github.com/libp2p/libp2p). Messages merged into the Storage Engine are immediately gossiped to all of is peers.
+Hubble connects to other peers over a GossipSub network established using [LibP2P](https://github.com/libp2p/libp2p). Messages merged into the Storage Engine are immediately gossiped to all of its peers.
 
-Hubble will only peer with trusted peers and employ a simple network topology during beta. It peers only with known instances which must be configured at startup. In later releases, the network topology will be modified to operate closer to a trustless mesh.
+Hubble will only peer with trusted peers and employ a simple network topology during beta. It peers only with known instances, which must be configured at startup. In later releases, the network topology will be modified to operate closer to a trustless mesh.
 
 ### Sync Engine
 
