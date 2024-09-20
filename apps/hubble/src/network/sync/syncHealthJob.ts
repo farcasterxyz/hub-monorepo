@@ -4,7 +4,7 @@ import SyncEngine from "./syncEngine.js";
 import { RpcMetadataRetriever, SyncEngineMetadataRetriever, SyncHealthProbe } from "../../utils/syncHealth.js";
 import { HubInterface } from "hubble.js";
 import { peerIdFromString } from "@libp2p/peer-id";
-import { bytesToHexString, Message, UserDataType } from "@farcaster/hub-nodejs";
+import { bytesToHexString, fromFarcasterTime, Message, UserDataType } from "@farcaster/hub-nodejs";
 import { Result } from "neverthrow";
 import { SubmitError } from "../../utils/syncHealth.js";
 
@@ -62,6 +62,19 @@ export class MeasureSyncHealthJobScheduler {
     return peers;
   }
 
+  unixTimesstampFromMessage(message: Message) {
+    const msgTimestamp = message.data?.timestamp;
+    if (msgTimestamp) {
+      const msgUnixTimestamp = fromFarcasterTime(msgTimestamp);
+      if (msgUnixTimestamp.isErr()) {
+        return undefined;
+      } else {
+        return msgUnixTimestamp.value;
+      }
+    }
+    return undefined;
+  }
+
   processSumbitResults(results: Result<Message, SubmitError>[], peerId: string, startTime: number, stopTime: number) {
     let numSuccesses = 0;
     let numErrors = 0;
@@ -78,7 +91,7 @@ export class MeasureSyncHealthJobScheduler {
             msgDetails: {
               type,
               fid: result.value.data?.fid,
-              timestamp: result.value.data?.timestamp,
+              timestamp: this.unixTimesstampFromMessage(result.value),
               hash,
               peerId,
             },
@@ -93,7 +106,17 @@ export class MeasureSyncHealthJobScheduler {
         const hashString = bytesToHexString(result.error.originalMessage.hash);
         const hash = hashString.isOk() ? hashString.value : "unable to show hash";
         log.info(
-          { errMessage: result.error.hubError.message, peerId, hash, startTime, stopTime },
+          {
+            errMessage: result.error.hubError.message,
+            peerId,
+            startTime,
+            stopTime,
+            msgDetails: {
+              fid: result.error.originalMessage.data?.fid,
+              timestamp: this.unixTimesstampFromMessage(result.error.originalMessage),
+              hash,
+            },
+          },
           "Failed to submit message via SyncHealth",
         );
 
