@@ -1,5 +1,13 @@
 # @farcaster/hubble
 
+## 1.15.3
+
+### Patch Changes
+
+- 5504e057: feat: add missing messages to sync trie via sync health job
+- 7206e8c5: chore: add more log tags to sync health job
+- 3b1d12ff: chore: add more log tags to sync health errors with message details
+
 ## 1.15.2
 
 ### Patch Changes
