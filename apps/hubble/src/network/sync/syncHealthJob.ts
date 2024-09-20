@@ -62,7 +62,7 @@ export class MeasureSyncHealthJobScheduler {
     return peers;
   }
 
-  unixTimesstampFromMessage(message: Message) {
+  unixTimestampFromMessage(message: Message) {
     const msgTimestamp = message.data?.timestamp;
     if (msgTimestamp) {
       const msgUnixTimestamp = fromFarcasterTime(msgTimestamp);
@@ -91,7 +91,7 @@ export class MeasureSyncHealthJobScheduler {
             msgDetails: {
               type,
               fid: result.value.data?.fid,
-              timestamp: this.unixTimesstampFromMessage(result.value),
+              timestamp: this.unixTimestampFromMessage(result.value),
               hash,
               peerId,
             },
@@ -113,7 +113,7 @@ export class MeasureSyncHealthJobScheduler {
             stopTime,
             msgDetails: {
               fid: result.error.originalMessage.data?.fid,
-              timestamp: this.unixTimesstampFromMessage(result.error.originalMessage),
+              timestamp: this.unixTimestampFromMessage(result.error.originalMessage),
               hash,
             },
           },
