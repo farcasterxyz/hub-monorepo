@@ -156,6 +156,7 @@ export interface HubInterface {
   getHubState(): HubAsyncResult<HubState>;
   putHubState(hubState: HubState): HubAsyncResult<void>;
   gossipContactInfo(): HubAsyncResult<void>;
+  getHubRpcClient(address: string, options?: Partial<ClientOptions>): Promise<HubRpcClient | undefined>;
   getRPCClientForPeer(
     peerId: PeerId,
     peer: ContactInfoContentBody,
@@ -1697,7 +1698,7 @@ export class Hub implements HubInterface {
   /** Since we don't know if the peer is using SSL or not, we'll attempt to get the SSL version,
    *  and fall back to the non-SSL version
    */
-  private async getHubRpcClient(address: string, options?: Partial<ClientOptions>): Promise<HubRpcClient> {
+  public async getHubRpcClient(address: string, options?: Partial<ClientOptions>): Promise<HubRpcClient> {
     return new Promise((resolve) => {
       try {
         const sslClientResult = getSSLHubRpcClient(address, options);

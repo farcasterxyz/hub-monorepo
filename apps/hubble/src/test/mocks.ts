@@ -1,4 +1,5 @@
 import {
+  ClientOptions,
   FarcasterNetwork,
   HubAsyncResult,
   HubError,
@@ -107,6 +108,10 @@ export class MockHub implements HubInterface {
   }
 
   async getRPCClientForPeer(_peerId: PeerId, _peer: ContactInfoContent): Promise<HubRpcClient | undefined> {
+    return undefined;
+  }
+
+  async getHubRpcClient(_address: string, _options?: Partial<ClientOptions>): Promise<HubRpcClient | undefined> {
     return undefined;
   }
 
