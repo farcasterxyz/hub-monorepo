@@ -1680,6 +1680,7 @@ export class Hub implements HubInterface {
     const result = this.syncEngine.addContactInfoForPeerId(peerId, message, CONTACT_INFO_UPDATE_THRESHOLD_MS);
     if (result.isOk() && !this.performedFirstSync) {
       // Sync with the first peer so we are upto date on startup.
+      log.info({ peerInfo: message }, "Performing first sync");
       this.performedFirstSync = true;
       setTimeout(async () => {
         await ResultAsync.fromPromise(this.syncEngine.diffSyncIfRequired(this), (e) => e);
