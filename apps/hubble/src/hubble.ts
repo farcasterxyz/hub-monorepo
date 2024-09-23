@@ -142,6 +142,7 @@ const ALLOWED_CLOCK_SKEW_SECONDS = 60 * 10; // 10 minutes
 export interface HubInterface {
   engine: Engine;
   identity: string;
+  performedFirstSync: boolean;
   hubOperatorFid?: number;
   submitMessage(message: Message, source?: HubSubmitSource): HubAsyncResult<number>;
   submitMessageBundle(
@@ -380,7 +381,6 @@ export class Hub implements HubInterface {
   private allowlistedImmunePeers: string[] | undefined;
   private strictContactInfoValidation: boolean;
   private strictNoSign: boolean;
-  private performedFirstSync = false;
 
   private pruneMessagesJobScheduler: PruneMessagesJobScheduler;
   private periodSyncJobScheduler: PeriodicSyncJobScheduler;
@@ -399,6 +399,7 @@ export class Hub implements HubInterface {
   engine: Engine;
   fNameRegistryEventsProvider: FNameRegistryEventsProvider;
   l2RegistryProvider: L2EventsProvider;
+  performedFirstSync = false;
 
   constructor(options: HubOptions) {
     this.options = options;

@@ -176,6 +176,11 @@ export class MeasureSyncHealthJobScheduler {
   }
 
   async doJobs() {
+    if (!this._hub.performedFirstSync) {
+      log.info("Skipping SyncHealth job because we haven't performed our first sync yet");
+      return;
+    }
+
     log.info({}, "Starting compute SyncHealth job");
 
     const startTime = Date.now() - this._startSecondsAgo * 1000;

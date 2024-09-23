@@ -37,6 +37,7 @@ export class MockHub implements HubInterface {
   public engine: Engine;
   public gossipNode: GossipNode | undefined;
   public gossipCount = 0;
+  public performedFirstSync = false;
 
   constructor(db: RocksDB, engine?: Engine, gossipNode?: GossipNode) {
     this.db = db;
