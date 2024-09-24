@@ -1,4 +1,5 @@
 import {
+  ClientOptions,
   FarcasterNetwork,
   HubAsyncResult,
   HubError,
@@ -36,6 +37,7 @@ export class MockHub implements HubInterface {
   public engine: Engine;
   public gossipNode: GossipNode | undefined;
   public gossipCount = 0;
+  public performedFirstSync = false;
 
   constructor(db: RocksDB, engine?: Engine, gossipNode?: GossipNode) {
     this.db = db;
@@ -107,6 +109,10 @@ export class MockHub implements HubInterface {
   }
 
   async getRPCClientForPeer(_peerId: PeerId, _peer: ContactInfoContent): Promise<HubRpcClient | undefined> {
+    return undefined;
+  }
+
+  async getHubRpcClient(_address: string, _options?: Partial<ClientOptions>): Promise<HubRpcClient | undefined> {
     return undefined;
   }
 

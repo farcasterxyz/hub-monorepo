@@ -15,6 +15,13 @@ const log = logger.child({
 
 type SchedulerStatus = "started" | "stopped";
 
+enum PeerIdentifierKind {
+  PeerId = 0,
+  AddrInfo = 1,
+}
+
+type PeerIdentifier = { kind: PeerIdentifierKind; identifier: string };
+
 export class MeasureSyncHealthJobScheduler {
   private _cronTask?: cron.ScheduledTask;
   private _metadataRetriever: SyncEngineMetadataRetriever;
@@ -22,7 +29,7 @@ export class MeasureSyncHealthJobScheduler {
   private _startSecondsAgo = 60 * 65;
   private _spanSeconds = 60 * 60;
   private _hub: HubInterface;
-  private _peersInScope: string[];
+  private _peersInScope: PeerIdentifier[];
 
   constructor(syncEngine: SyncEngine, hub: HubInterface) {
     this._metadataRetriever = new SyncEngineMetadataRetriever(hub, syncEngine);
@@ -48,19 +55,33 @@ export class MeasureSyncHealthJobScheduler {
     return this._cronTask ? "started" : "stopped";
   }
 
+  peerAddrInfosInScope() {}
+
   peersInScope() {
-    const peers = process.env["SYNC_HEALTH_PEER_IDS"]?.split(",") ?? [];
+    const peerIds = process.env["SYNC_HEALTH_PEER_IDS"]?.split(",") ?? [];
 
     for (const multiaddr of this._hub.bootstrapAddrs()) {
       const peerId = multiaddr.getPeerId();
       if (!peerId) {
         log.info({ multiaddr }, "Couldn't get peerid for multiaddr");
       } else {
-        peers.push(peerId);
+        peerIds.push(peerId);
       }
     }
 
-    return peers;
+    const peerIdentifiers = peerIds.map((peerId) => {
+      return {
+        kind: PeerIdentifierKind.PeerId,
+        identifier: peerId,
+      };
+    });
+
+    const addrInfos =
+      process.env["SYNC_HEALTH_ADDR_INFOS"]?.split(",").map((addrInfo) => {
+        return { kind: PeerIdentifierKind.AddrInfo, identifier: addrInfo };
+      }) ?? [];
+
+    return [...peerIdentifiers, ...addrInfos];
   }
 
   unixTimestampFromMessage(message: Message) {
@@ -139,24 +160,37 @@ export class MeasureSyncHealthJobScheduler {
     return { numSuccesses, numErrors, numAlreadyMerged };
   }
 
+  async getRpcClient(peer: PeerIdentifier) {
+    if (peer.kind === PeerIdentifierKind.PeerId) {
+      const contactInfo = this._metadataRetriever._syncEngine.getContactInfoForPeerId(peer.identifier);
+
+      if (!contactInfo) {
+        log.info({ peerId: peer.identifier }, "Couldn't get contact info for peer");
+        return undefined;
+      }
+
+      return this._hub.getRPCClientForPeer(peerIdFromString(peer.identifier), contactInfo.contactInfo);
+    } else {
+      return this._hub.getHubRpcClient(peer.identifier);
+    }
+  }
+
   async doJobs() {
+    if (!this._hub.performedFirstSync) {
+      log.info("Skipping SyncHealth job because we haven't performed our first sync yet");
+      return;
+    }
+
     log.info({}, "Starting compute SyncHealth job");
 
     const startTime = Date.now() - this._startSecondsAgo * 1000;
     const stopTime = startTime + this._spanSeconds * 1000;
 
-    for (const peerId of this._peersInScope) {
-      const contactInfo = this._metadataRetriever._syncEngine.getContactInfoForPeerId(peerId);
-
-      if (!contactInfo) {
-        log.info({ peerId }, "Couldn't get contact info, skipping peer");
-        continue;
-      }
-
-      const rpcClient = await this._hub.getRPCClientForPeer(peerIdFromString(peerId), contactInfo.contactInfo);
+    for (const peer of this._peersInScope) {
+      const rpcClient = await this.getRpcClient(peer);
 
       if (rpcClient === undefined) {
-        log.info({ peerId, contactInfo }, "Couldn't get rpc client, skipping peer");
+        log.info({ peerId: peer.identifier }, "Couldn't get rpc client, skipping peer");
         continue;
       }
 
@@ -171,7 +205,7 @@ export class MeasureSyncHealthJobScheduler {
 
       if (syncHealthMessageStats.isErr()) {
         log.info(
-          { peerId, err: syncHealthMessageStats.error, contactInfo },
+          { peerId: peer.identifier, err: syncHealthMessageStats.error },
           `Error computing SyncHealth: ${syncHealthMessageStats.error}`,
         );
         continue;
@@ -185,13 +219,18 @@ export class MeasureSyncHealthJobScheduler {
 
       if (resultsPushingToUs.isErr()) {
         log.info(
-          { peerId, err: resultsPushingToUs.error },
+          { peerId: peer.identifier, err: resultsPushingToUs.error },
           `Error pushing new messages to ourself ${resultsPushingToUs.error}`,
         );
         continue;
       }
 
-      const processedResults = await this.processSumbitResults(resultsPushingToUs.value, peerId, startTime, stopTime);
+      const processedResults = await this.processSumbitResults(
+        resultsPushingToUs.value,
+        peer.identifier,
+        startTime,
+        stopTime,
+      );
 
       log.info(
         {
@@ -200,7 +239,7 @@ export class MeasureSyncHealthJobScheduler {
           syncHealth: syncHealthMessageStats.value.computeDiff(),
           syncHealthPercentage: syncHealthMessageStats.value.computeDiffPercentage(),
           resultsPushingToUs: processedResults,
-          peerId,
+          peerId: peer.identifier,
           startTime,
           stopTime,
         },

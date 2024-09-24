@@ -142,6 +142,7 @@ const ALLOWED_CLOCK_SKEW_SECONDS = 60 * 10; // 10 minutes
 export interface HubInterface {
   engine: Engine;
   identity: string;
+  performedFirstSync: boolean;
   hubOperatorFid?: number;
   submitMessage(message: Message, source?: HubSubmitSource): HubAsyncResult<number>;
   submitMessageBundle(
@@ -156,6 +157,7 @@ export interface HubInterface {
   getHubState(): HubAsyncResult<HubState>;
   putHubState(hubState: HubState): HubAsyncResult<void>;
   gossipContactInfo(): HubAsyncResult<void>;
+  getHubRpcClient(address: string, options?: Partial<ClientOptions>): Promise<HubRpcClient | undefined>;
   getRPCClientForPeer(
     peerId: PeerId,
     peer: ContactInfoContentBody,
@@ -379,7 +381,6 @@ export class Hub implements HubInterface {
   private allowlistedImmunePeers: string[] | undefined;
   private strictContactInfoValidation: boolean;
   private strictNoSign: boolean;
-  private performedFirstSync = false;
 
   private pruneMessagesJobScheduler: PruneMessagesJobScheduler;
   private periodSyncJobScheduler: PeriodicSyncJobScheduler;
@@ -398,6 +399,7 @@ export class Hub implements HubInterface {
   engine: Engine;
   fNameRegistryEventsProvider: FNameRegistryEventsProvider;
   l2RegistryProvider: L2EventsProvider;
+  performedFirstSync = false;
 
   constructor(options: HubOptions) {
     this.options = options;
@@ -1678,6 +1680,7 @@ export class Hub implements HubInterface {
     const result = this.syncEngine.addContactInfoForPeerId(peerId, message, CONTACT_INFO_UPDATE_THRESHOLD_MS);
     if (result.isOk() && !this.performedFirstSync) {
       // Sync with the first peer so we are upto date on startup.
+      log.info({ peerInfo: message }, "Performing first sync");
       this.performedFirstSync = true;
       setTimeout(async () => {
         await ResultAsync.fromPromise(this.syncEngine.diffSyncIfRequired(this), (e) => e);
@@ -1697,7 +1700,7 @@ export class Hub implements HubInterface {
   /** Since we don't know if the peer is using SSL or not, we'll attempt to get the SSL version,
    *  and fall back to the non-SSL version
    */
-  private async getHubRpcClient(address: string, options?: Partial<ClientOptions>): Promise<HubRpcClient> {
+  public async getHubRpcClient(address: string, options?: Partial<ClientOptions>): Promise<HubRpcClient> {
     return new Promise((resolve) => {
       try {
         const sslClientResult = getSSLHubRpcClient(address, options);
