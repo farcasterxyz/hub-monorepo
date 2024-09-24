@@ -1,5 +1,11 @@
 # @farcaster/hubble
 
+## 1.15.4
+
+### Patch Changes
+
+- 40094001: feat: add the ability to provide peers ip address/port to sync health job
+
 ## 1.15.3
 
 ### Patch Changes
