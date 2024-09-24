@@ -97,6 +97,7 @@ enum UserDataType {
   USER_DATA_TYPE_BIO = 3; // Bio for the user
   USER_DATA_TYPE_URL = 5; // URL of the user
   USER_DATA_TYPE_USERNAME = 6; // Preferred Name for the user
+  USER_DATA_TYPE_LOCATION = 7; // Current location for the user
 }
 
 message Embed {
