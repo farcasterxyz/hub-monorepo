@@ -35,6 +35,13 @@ describe("test rate limits", () => {
     }
   });
 
+  test("don't rate limit local requests", async () => {
+    for (let i = 0; i < 100; i++) {
+      const result = await rateLimitByIp("127.0.0.1:3000", Limit10PerSecond);
+      expect(result.isOk()).toBeTruthy();
+    }
+  });
+
   test("test rate limiting via consumeRateLimit/isRateLimited", async () => {
     // 10 Requests should be fine
     for (let i = 0; i < 10; i++) {

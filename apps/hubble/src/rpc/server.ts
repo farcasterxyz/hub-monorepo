@@ -903,7 +903,6 @@ export default class Server {
           (e) => e,
         )().unwrapOr("unavailable");
 
-        // Check for rate limits
         const rateLimitResult = await rateLimitByIp(peer, this.submitMessageRateLimiter);
         if (rateLimitResult.isErr()) {
           logger.warn({ peer }, "submitMessage rate limited");
