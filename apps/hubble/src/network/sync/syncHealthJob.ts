@@ -181,7 +181,7 @@ export class MeasureSyncHealthJobScheduler {
       const contactInfo = this._metadataRetriever._syncEngine.getContactInfoForPeerId(peer.identifier);
 
       if (!contactInfo) {
-        return undefined;
+        return "Missing contact info";
       }
 
       const rpcAddress = contactInfo.contactInfo.rpcAddress;
@@ -193,11 +193,11 @@ export class MeasureSyncHealthJobScheduler {
         }
 
         return addressInfoToString(addressInfo.value);
+      } else {
+        return "No rpc address on contact info";
       }
-
-      return contactInfo;
     } else {
-      return undefined;
+      return peer.identifier;
     }
   }
 
