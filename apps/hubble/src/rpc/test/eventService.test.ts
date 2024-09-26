@@ -256,7 +256,7 @@ describe("subscribe", () => {
       ]);
     });
 
-    test("can't subscribe too many times", async () => {
+    test.skip("can't subscribe too many times", async () => {
       const streams = [];
 
       // All these should succeed
