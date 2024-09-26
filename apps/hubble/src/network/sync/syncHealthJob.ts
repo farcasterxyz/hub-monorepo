@@ -184,18 +184,7 @@ export class MeasureSyncHealthJobScheduler {
         return "Missing contact info";
       }
 
-      const rpcAddress = contactInfo.contactInfo.rpcAddress;
-      if (rpcAddress) {
-        const addressInfo = addressInfoFromGossip(rpcAddress);
-
-        if (addressInfo.isErr()) {
-          return undefined;
-        }
-
-        return addressInfoToString(addressInfo.value);
-      } else {
-        return "No rpc address on contact info";
-      }
+      return contactInfo;
     } else {
       return peer.identifier;
     }
@@ -235,8 +224,9 @@ export class MeasureSyncHealthJobScheduler {
           {
             peerId: peer.identifier,
             err: syncHealthMessageStats.error,
+            contactInfo,
           },
-          `Error computing SyncHealth: ${syncHealthMessageStats.error}. Contact info: ${contactInfo}`,
+          `Error computing SyncHealth: ${syncHealthMessageStats.error}.`,
         );
         continue;
       }
