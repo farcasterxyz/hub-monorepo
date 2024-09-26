@@ -8,6 +8,8 @@ import { bytesToHexString, fromFarcasterTime, Message, UserDataType } from "@far
 import { Result } from "neverthrow";
 import { SubmitError } from "../../utils/syncHealth.js";
 import { SyncId } from "./syncId.js";
+import { addressInfoFromGossip, addressInfoToString } from "utils/p2p.js";
+import { rpc } from "viem/utils";
 
 const log = logger.child({
   component: "SyncHealth",
@@ -181,6 +183,17 @@ export class MeasureSyncHealthJobScheduler {
 
       if (!contactInfo) {
         return undefined;
+      }
+
+      const rpcAddress = contactInfo.contactInfo.rpcAddress;
+      if (rpcAddress) {
+        const addressInfo = addressInfoFromGossip(rpcAddress);
+
+        if (addressInfo.isErr()) {
+          return undefined;
+        }
+
+        return addressInfoToString(addressInfo.value);
       }
 
       return contactInfo;
