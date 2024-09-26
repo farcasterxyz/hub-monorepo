@@ -103,7 +103,7 @@ All changes that involve features or bugfixes should be accompanied by tests, an
 - Tests should use [factories](https://github.com/thoughtbot/fishery) instead of stubs wherever possible.
 - Critical code paths should have 100% test coverage, which you can check in the Coveralls CI.
 
-### 3.2 Writing Docs
+### 3.2. Writing Docs
 
 If your PR has changes to gRPC or protobuf files, you must update the [public documentation website](./apps/hubble/www/). See the [Protobuf README](./protobufs/README.md) for instructions on how to auto-gen the documentation.
 
@@ -134,7 +134,7 @@ We also enforce the following rules during code reviews:
 
 ---
 
-Always return `HubResult<T>` instead of throwing if the function can fail
+Always return `HubResult<T>` instead of throwing if the function can fail.
 
 ```ts
 // incorrect usage
@@ -183,7 +183,7 @@ const result = safeJsonStringify(json);
 
 ---
 
-Prefer `result.match` to handle `HubResult` since it is explicit about how all branches are handled
+Prefer `result.match` to handle `HubResult` since it is explicit about how all branches are handled.
 
 ```ts
 const result = computationThatMightFail().match(
@@ -194,7 +194,7 @@ const result = computationThatMightFail().match(
 
 ---
 
-Only use `isErr()` in cases where you want to short-circuit early on failure and refactoring is unwieldy or not performant
+Only use `isErr()` in cases where you want to short-circuit early on failure and refactoring is unwieldy or not performant.
 
 ```ts
 public something(): HubResult<number> {
@@ -210,7 +210,7 @@ public something(): HubResult<number> {
 
 ---
 
-Use `_unsafeUnwrap()` and `_unsafeUnwrapErr()` in tests to assert results
+Use `_unsafeUnwrap()` and `_unsafeUnwrapErr()` in tests to assert results.
 
 ```ts
 // when expecting an error
@@ -221,7 +221,7 @@ expect(error.message).toMatch('invalid AddressInfo family');
 
 ---
 
-Prefer `combine` and `combineWithAllErrors` when operating on multiple results
+Prefer `combine` and `combineWithAllErrors` when operating on multiple results.
 
 ```ts
 const results = await Promise.all(things.map((thing) => foo(thing)));
@@ -246,8 +246,8 @@ if (combinedResults.isErr()) {
 All submissions must be opened as a Pull Request and reviewed and approved by a project member. The CI build process
 will ensure that all tests pass and that all linters have been run correctly. In addition, you should ensure that:
 
-- The PR titles _must_ follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/#summary) specification
-- Commit titles _should_ follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/#summary) specification
+- The PR titles _must_ follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/#summary) specification.
+- Commit titles _should_ follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/#summary) specification.
 
 As an example, a good PR title would look like this:
 
@@ -272,25 +272,25 @@ All PRs with meaningful changes should have a [changeset](https://github.com/cha
 description of the modifications being made to each package. Changesets are automatically converted into a changelog
 when the repo manager runs a release process.
 
-1. Run `yarn changeset` to start the process
-2. Select the packages being modified with the space key
-3. Select minor version if breaking change or patch otherwise, since we haven't release 1.0 yet
+1. Run `yarn changeset` to start the process.
+2. Select the packages being modified with the space key.
+3. Select minor version if breaking change or patch otherwise, since we haven't release 1.0 yet.
 4. Commit the generated files into your branch.
 
-### 3.6 Releasing Versions
+### 3.6. Releasing Versions
 
 Permission to publish to the @farcaster organization in NPM is necessary. This is a non-reversible process so if you
-are at all unsure about how to proceed, please reach out to Varun ([Github](https://github.com/varunsrin) | [Warpcast](https://warpcast.com/v))
+are at all unsure about how to proceed, please reach out to Varun ([Github](https://github.com/varunsrin) | [Warpcast](https://warpcast.com/v)).
 
-1. Checkout a new branch and run `yarn changeset version`
-2. Review CHANGELOG.md and confirm that it is accurate
-3. Check that `package.json` was bumped correctly
-3. If the protocol version changes, bump `FARCASTER_VERSIONS_SCHEDULE` and  `FARCASTER_VERSION`
-4. Create commit, merge to main, check out commit on main and run `yarn build`
-5. Publish changes by running `yarn changeset publish`
-6. Fetch and update tags with `git fetch origin --tags && yarn changeset tag && git tag -f @latest`
-7. Delete the biome tags `git tag -d biome-config-custom@0.0.1`
-8. Push tags with `git push origin HEAD --tags -f`
+1. Checkout a new branch and run `yarn changeset version`.
+2. Review CHANGELOG.md and confirm that it is accurate.
+3. Check that `package.json` was bumped correctly.
+3. If the protocol version changes, bump `FARCASTER_VERSIONS_SCHEDULE` and  `FARCASTER_VERSION`.
+4. Create commit, merge to main, check out commit on main and run `yarn build`.
+5. Publish changes by running `yarn changeset publish`.
+6. Fetch and update tags with `git fetch origin --tags && yarn changeset tag && git tag -f @latest`.
+7. Delete the biome tags `git tag -d biome-config-custom@0.0.1`.
+8. Push tags with `git push origin HEAD --tags -f`.
 9. If docker build does not start `git push upstream --delete @farcaster/hubble@<version> && git push upstream --tags @farcaster/hubble@<version>` to re-trigger it.
 10. Create a GitHub Release for Hubble, copying over the changelog and marking it as the latest.
 11. If this is a non-patch change, create an NFT for the release.
