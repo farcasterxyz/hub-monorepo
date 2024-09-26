@@ -8,7 +8,7 @@ import { bytesToHexString, fromFarcasterTime, Message, UserDataType } from "@far
 import { Result } from "neverthrow";
 import { SubmitError } from "../../utils/syncHealth.js";
 import { SyncId } from "./syncId.js";
-import { addressInfoFromGossip, addressInfoToString } from "utils/p2p.js";
+import { addressInfoFromGossip, addressInfoToString } from "../../utils/p2p.js";
 
 const log = logger.child({
   component: "SyncHealth",
