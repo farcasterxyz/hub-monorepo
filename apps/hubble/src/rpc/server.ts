@@ -319,7 +319,7 @@ class IpConnectionLimiter {
     const ip = extractIPAddress(peerString) ?? "unknown";
 
     const connections = this.ipConnections.get(ip) ?? 0;
-    if (connections >= this.perIpLimit) {
+    if (ip !== "127.0.0.1" && ip !== "::1" && connections >= this.perIpLimit) {
       return err(new Error(`Too many connections from this IP: ${ip}`));
     }
 

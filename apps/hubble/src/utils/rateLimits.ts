@@ -31,7 +31,7 @@ export const rateLimitByIp = async (ip: string, limiter: RateLimiterAbstract): H
   const ipPart = ip.split(":")[0] ?? "";
 
   // Ignore local loopback traffic
-  if (ipPart === "127.0.0.1") {
+  if (ipPart === "127.0.0.1" || ipPart === "::1") {
     return ok(true);
   }
 
