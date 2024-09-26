@@ -184,7 +184,7 @@ export class MeasureSyncHealthJobScheduler {
         return "Missing contact info";
       }
 
-      return contactInfo;
+      return contactInfo.contactInfo;
     } else {
       return peer.identifier;
     }
