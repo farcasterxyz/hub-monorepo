@@ -181,23 +181,12 @@ export class MeasureSyncHealthJobScheduler {
       const contactInfo = this._metadataRetriever._syncEngine.getContactInfoForPeerId(peer.identifier);
 
       if (!contactInfo) {
-        return undefined;
+        return "Missing contact info";
       }
 
-      const rpcAddress = contactInfo.contactInfo.rpcAddress;
-      if (rpcAddress) {
-        const addressInfo = addressInfoFromGossip(rpcAddress);
-
-        if (addressInfo.isErr()) {
-          return undefined;
-        }
-
-        return addressInfoToString(addressInfo.value);
-      }
-
-      return contactInfo;
+      return contactInfo.contactInfo;
     } else {
-      return undefined;
+      return peer.identifier;
     }
   }
 
@@ -235,8 +224,9 @@ export class MeasureSyncHealthJobScheduler {
           {
             peerId: peer.identifier,
             err: syncHealthMessageStats.error,
+            contactInfo,
           },
-          `Error computing SyncHealth: ${syncHealthMessageStats.error}. Contact info: ${contactInfo}`,
+          `Error computing SyncHealth: ${syncHealthMessageStats.error}.`,
         );
         continue;
       }
