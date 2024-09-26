@@ -9,7 +9,6 @@ import { Result } from "neverthrow";
 import { SubmitError } from "../../utils/syncHealth.js";
 import { SyncId } from "./syncId.js";
 import { addressInfoFromGossip, addressInfoToString } from "utils/p2p.js";
-import { rpc } from "viem/utils";
 
 const log = logger.child({
   component: "SyncHealth",
