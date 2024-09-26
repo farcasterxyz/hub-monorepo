@@ -175,6 +175,20 @@ export class MeasureSyncHealthJobScheduler {
     }
   }
 
+  contactInfoForLogs(peer: PeerIdentifier) {
+    if (peer.kind === PeerIdentifierKind.PeerId) {
+      const contactInfo = this._metadataRetriever._syncEngine.getContactInfoForPeerId(peer.identifier);
+
+      if (!contactInfo) {
+        return undefined;
+      }
+
+      return contactInfo;
+    } else {
+      return undefined;
+    }
+  }
+
   async doJobs() {
     if (!this._hub.performedFirstSync) {
       log.info("Skipping SyncHealth job because we haven't performed our first sync yet");
@@ -204,9 +218,13 @@ export class MeasureSyncHealthJobScheduler {
       );
 
       if (syncHealthMessageStats.isErr()) {
+        const contactInfo = this.contactInfoForLogs(peer);
         log.info(
-          { peerId: peer.identifier, err: syncHealthMessageStats.error },
-          `Error computing SyncHealth: ${syncHealthMessageStats.error}`,
+          {
+            peerId: peer.identifier,
+            err: syncHealthMessageStats.error,
+          },
+          `Error computing SyncHealth: ${syncHealthMessageStats.error}. Contact info: ${contactInfo}`,
         );
         continue;
       }
