@@ -57,7 +57,7 @@ Then, from the root folder run:
 
 NOTE: Running `yarn test` currently fails due to an environment issue with shuttle. you can still run `yarn test` successfully from all the other repositories.
 
-### 2.2. Signing Commits
+### 2.2 Signing Commits
 
 All commits need to be signed with a GPG key. This adds a second factor of authentication that proves that it came from
 you, and not someone who managed to compromise your GitHub account. You can enable signing by following these steps:
@@ -79,7 +79,7 @@ max-cache-ttl 100000000
 
 5. Commit all changes with your usual git commands and you should see a `Verified` badge near your commits
 
-### 2.3. Navigating the Monorepo
+### 2.3 Navigating the Monorepo
 
 The repository is a monorepo with a primary application in the `/apps/` folder that imports several packages `/packages/`. It is written primarily in Typescript and uses Yarn to orchestrate tasks and [TurboRepo](https://turbo.build/) as its build system. Some performance intensive code is written in Rust and compiled with Cargo.
 
@@ -94,7 +94,7 @@ TurboRepo uses a local cache which can be disabled by adding the `--force` optio
 
 When proposing a change, make sure that you've followed all of these steps before you ask for a review.
 
-### 3.1. Writing Tests
+### 3.1 Writing Tests
 
 All changes that involve features or bugfixes should be accompanied by tests, and remember that:
 
@@ -118,7 +118,7 @@ All PRs should have supporting documentation that makes reviewing and understand
 - Add a `Safety: ..` comment explaining every use of `as`.
 - Prefer active, present-tense doing form (e.g. `Gets the connection`) over other forms (e.g. `Connection is obtained`, `Get the connection`, `We get the connection`, `will get a connection`)
 
-### 3.3. Handling Errors
+### 3.3 Handling Errors
 
 Errors are not handled using `throw` and `try / catch` as is common with Javascript programs. This pattern makes it hard for people to reason about whether methods are safe which leads to incomplete test coverage, unexpected errors and less safety. Instead we use a more functional approach to dealing with errors. See [this issue](https://github.com/farcasterxyz/hub/issues/213) for the rationale behind this approach.
 
@@ -241,7 +241,7 @@ if (combinedResults.isErr()) {
 
 ---
 
-### 3.4. Creating the PR
+### 3.4 Creating the PR
 
 All submissions must be opened as a Pull Request and reviewed and approved by a project member. The CI build process
 will ensure that all tests pass and that all linters have been run correctly. In addition, you should ensure that:
@@ -266,7 +266,7 @@ types would not pass verification in our Signer Sets
 
 Make sure that all your files are formatted correctly. We use `biome` to format TypeScript files and `rustfmt` for the Rust files. To auto-format all the files run `yarn lint` to format all source files.
 
-### 3.5. Adding Changesets
+### 3.5 Adding Changesets
 
 All PRs with meaningful changes should have a [changeset](https://github.com/changesets/changesets) which is a short
 description of the modifications being made to each package. Changesets are automatically converted into a changelog
