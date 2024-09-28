@@ -125,6 +125,7 @@ app
   .option("-g, --gossip-port <port>", `Port to use for gossip (default: ${DEFAULT_GOSSIP_PORT})`)
   .option("-r, --rpc-port <port>", `Port to use for gRPC  (default: ${DEFAULT_RPC_PORT})`)
   .option("-h, --http-api-port <port>", `Port to use for HTTP API (default: ${DEFAULT_HTTP_API_PORT})`)
+  .option("--announce-rpc-port <port>", `Port to announce the gRPC API is reachable via (default: ${DEFAULT_RPC_PORT})`)
   .option("--http-cors-origin <origin>", "CORS origin for HTTP API (default: *)")
   .option("--ip <ip-address>", 'IP address to listen on (default: "127.0.0.1")')
   .option("--announce-ip <ip-address>", "Public IP address announced to peers (default: fetched with external service)")
@@ -527,6 +528,12 @@ app
       allowedPeers: cliOptions.allowedPeers ?? hubConfig.allowedPeers,
       deniedPeers: cliOptions.deniedPeers ?? hubConfig.deniedPeers,
       rpcPort: cliOptions.rpcPort ?? hubConfig.rpcPort ?? DEFAULT_RPC_PORT,
+      announceRpcPort:
+        cliOptions.announceRpcPort ??
+        hubConfig.announceRpcPort ??
+        cliOptions.rpcPort ??
+        hubConfig.rpcPort ??
+        DEFAULT_RPC_PORT,
       httpApiPort: cliOptions.httpApiPort ?? hubConfig.httpApiPort ?? DEFAULT_HTTP_API_PORT,
       httpCorsOrigin: cliOptions.httpCorsOrigin ?? hubConfig.httpCorsOrigin ?? "*",
       rpcAuth,

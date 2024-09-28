@@ -201,8 +201,11 @@ export interface HubOptions {
   /** Port for libp2p to listen for gossip */
   gossipPort?: number;
 
-  /** Port for the RPC Client */
+  /** Port for the RPC Server */
   rpcPort?: number;
+
+  /** Announced port for the RPC Server. Useful if using a reverse proxy */
+  announceRpcPort?: number;
 
   /** Port for the HTTP API Server */
   httpApiPort?: number;
@@ -1248,7 +1251,7 @@ export class Hub implements HubInterface {
     const family = nodeMultiAddr?.nodeAddress().family;
     const announceIp = this.options.announceIp ?? nodeMultiAddr?.nodeAddress().address;
     const gossipPort = nodeMultiAddr?.nodeAddress().port;
-    const rpcPort = this.rpcServer.address?.map((addr: AddressInfo) => addr.port).unwrapOr(0);
+    const rpcPort = this.options.announceRpcPort;
 
     const gossipAddressContactInfo = GossipAddressInfo.create({
       address: announceIp,
