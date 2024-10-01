@@ -110,6 +110,61 @@ export const validateMessageHash = (hash?: Uint8Array): HubResult<Uint8Array> =>
   return ok(hash);
 };
 
+const validateLatitudeLongitude = (value: string) => {
+  const [_, decimals] = value.split(".");
+  if (decimals?.length !== 2) {
+    return err(new HubError("bad_request.validation_failure", "Wrong precision for latitude/longitude"));
+  }
+
+  return ok(value);
+};
+
+export const validateUserLocation = (location: string) => {
+  if (!location.startsWith("geo:")) {
+    return err(new HubError("bad_request.validation_failure", "Invalid Geo URI"));
+  }
+
+  const geoString = location.substring(4);
+
+  // Split on the semicolon to handle any optional parameters
+  const [coords, ...params] = geoString.split(";");
+
+  if (params.length > 0) {
+    return err(new HubError("bad_request.validation_failure", "Extra parameters in Geo URI not supported"));
+  }
+
+  if (coords === undefined) {
+    return err(new HubError("bad_request.validation_failure", "Invalid Geo URI. No coordinates provided"));
+  }
+
+  // Split the coordinates (latitude, longitude, altitude)
+  const coordParts = coords.split(",");
+
+  if (coordParts === undefined || coordParts.length < 2) {
+    return err(new HubError("bad_request.validation_failure", "Invalid coordinates in Geo URI"));
+  }
+
+  if (coordParts[0] === undefined) {
+    return err(new HubError("bad_request.validation_failure", "Geo URI missing latitude"));
+  }
+
+  const latitude = validateLatitudeLongitude(coordParts[0]);
+  if (latitude.isErr()) {
+    return err(latitude.error);
+  }
+
+  if (coordParts[1] === undefined) {
+    return err(new HubError("bad_request.validation_failure", "Geo URI missing longitude"));
+  }
+
+  const longitude = validateLatitudeLongitude(coordParts[1]);
+  if (longitude.isErr()) {
+    return err(longitude.error);
+  }
+
+  return ok(location);
+};
+
 export const validateCastId = (castId?: protobufs.CastId): HubResult<protobufs.CastId> => {
   if (!castId) {
     return err(new HubError("bad_request.validation_failure", "castId is missing"));
