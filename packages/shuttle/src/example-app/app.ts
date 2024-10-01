@@ -220,7 +220,7 @@ export class App implements MessageHandler {
         fid,
         async (message, missingInDb, prunedInDb, revokedInDb) => {
           if (missingInDb) {
-            await HubEventProcessor.handleMissingMessage(this.db, message, this);
+            await HubEventProcessor.handleMissingMessage(this.db, message, this, false);
           } else if (prunedInDb || revokedInDb) {
             const messageDesc = prunedInDb ? "pruned" : revokedInDb ? "revoked" : "existing";
             log.info(`Reconciled ${messageDesc} message ${bytesToHexString(message.hash)._unsafeUnwrap()}`);
@@ -228,7 +228,7 @@ export class App implements MessageHandler {
         },
         async (message, missingInHub) => {
           if (missingInHub) {
-            log.info(`Message ${bytesToHexString(message.hash)._unsafeUnwrap()} is missing in the hub`);
+            await HubEventProcessor.handleMissingMessage(this.db, Message.decode(message.raw), this, missingInHub);
           }
         },
       );
