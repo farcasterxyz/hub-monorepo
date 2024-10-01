@@ -1971,10 +1971,10 @@ export class Hub implements HubInterface {
       );
     }
     if (infoLogs.length > 0) {
-      log.info(infoLogs, "successful submit messages");
+      log.info({ peerId, messages: infoLogs }, "successful submit messages");
     }
     if (errorLogs.length > 0) {
-      log.error(errorLogs, "failed submit messages");
+      log.error({ peerId, messages: errorLogs }, "failed submit messages");
     }
 
     // Convert the merge results to an Array of HubResults with the key
