@@ -497,14 +497,21 @@ export class SyncHealthProbe {
       return ok([]);
     }
 
-    const messages = await metadataRetrieverWithMessages.getAllMessagesBySyncIds(missingSyncIds);
+    const allMessages = [];
+    for (let i = 0; i < missingSyncIds.length; i += this._maxValuesReturnedPerSyncIdRequest) {
+      const messages = await metadataRetrieverWithMessages.getAllMessagesBySyncIds(
+        missingSyncIds.slice(i, i + this._maxValuesReturnedPerSyncIdRequest),
+      );
 
-    if (messages.isErr()) {
-      return err(messages.error);
+      if (messages.isErr()) {
+        return err(messages.error);
+      }
+
+      allMessages.push(...messages.value.messages);
     }
 
     const results = [];
-    for (const message of messages.value.messages) {
+    for (const message of allMessages) {
       const result = await metadataRetrieverMissingMessages.submitMessage(message);
       const augmentedResult = result.mapErr((err) => {
         return { hubError: err, originalMessage: message };
