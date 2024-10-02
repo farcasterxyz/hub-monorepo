@@ -719,6 +719,10 @@ export default class Server {
   }
 
   public async getAllMessagesBySyncIds(request: SyncIds) {
+    if (request.syncIds.length > MAX_VALUES_RETURNED_PER_SYNC_ID_REQUEST) {
+      return err(new HubError("bad_request.validation_failure", "Too many sync ids provided"));
+    }
+
     const syncIds = request.syncIds.map((syncId) => SyncId.fromBytes(syncId));
     const messagesResult = await this.syncEngine?.getAllMessagesBySyncIds(syncIds);
     if (messagesResult?.isErr()) {
