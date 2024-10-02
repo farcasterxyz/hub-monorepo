@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.15.4
+
+### Patch Changes
+
+- a8736e1d: re-introducing faker dependency
+
 ## 0.15.3
 
 ### Patch Changes

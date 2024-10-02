@@ -1,6 +1,6 @@
 {
   "name": "@farcaster/core",
-  "version": "0.15.3",
+  "version": "0.15.4",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -26,7 +26,6 @@
     "neverthrow": "^6.0.0",
     "@faker-js/faker": "^7.6.0",
     "viem": "^2.17.4"
-
   },
   "scripts": {
     "build": "tsup --config tsup.config.ts",
