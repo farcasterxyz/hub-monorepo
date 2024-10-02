@@ -1,5 +1,13 @@
 # @farcaster/hub-shuttle
 
+## 0.6.5
+
+### Patch Changes
+
+- 64084968: feat(shuttle): Support deleting messages on DB that are missing on hub
+- 8dfe9843: fix: restore start/stop times for reconcileMessagesForFid
+  - @farcaster/hub-nodejs@0.12.4
+
 ## 0.6.4
 
 ### Patch Changes
