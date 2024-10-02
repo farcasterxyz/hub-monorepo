@@ -531,9 +531,10 @@ export default class Server {
   public getInfoRPC(call: ServerUnaryCall<HubInfoRequest, HubInfoResponse>, callback: sendUnaryData<HubInfoResponse>) {
     (async () => {
       const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-      log.debug({ method: "getInfo", req: call?.request || { dbStats: false } }, `RPC call from ${peer}`);
+      log.info({ method: "getInfo", req: call?.request || { dbStats: false } }, `RPC call from ${peer} started`);
 
       const info = await this.getInfo(call?.request || { dbStats: false });
+      log.info({ method: "getInfo", req: call?.request || { dbStats: false } }, `RPC call from ${peer} complete`);
 
       callback(null, info);
     })();
@@ -557,9 +558,11 @@ export default class Server {
   public stopSyncRPC(call: ServerUnaryCall<Empty, SyncStatusResponse>, callback: sendUnaryData<SyncStatusResponse>) {
     (async () => {
       const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-      log.debug({ method: "stopSync", req: call.request }, `RPC call from ${peer}`);
+      log.info({ method: "stopSync", req: call.request }, `RPC call from ${peer} started`);
 
       const result = await this.stopSync();
+
+      log.info({ method: "stopSync", req: call.request }, `RPC call from ${peer} complete`);
       if (result.isErr()) {
         callback(toServiceError(result.error));
       } else {
@@ -603,9 +606,12 @@ export default class Server {
   ) {
     (async () => {
       const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-      log.debug({ method: "forceSync", req: call.request }, `RPC call from ${peer}`);
+      log.info({ method: "forceSync", req: call.request }, `RPC call from ${peer} started`);
 
       const result = await this.forceSync(call.request);
+
+      log.info({ method: "forceSync", req: call.request }, `RPC call from ${peer} complete`);
+
       if (result.isErr()) {
         callback(toServiceError(result.error));
       } else {
@@ -631,9 +637,12 @@ export default class Server {
   ) {
     (async () => {
       const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-      log.debug({ method: "getCurrentPeers", req: call.request }, `RPC call from ${peer}`);
+      log.info({ method: "getCurrentPeers", req: call.request }, `RPC call from ${peer} started`);
 
       const result = this.getCurrentPeers();
+
+      log.info({ method: "getCurrentPeers", req: call.request }, `RPC call from ${peer} complete`);
+
       callback(null, result);
     })();
   }
@@ -687,10 +696,12 @@ export default class Server {
   ) {
     (async () => {
       const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-      log.debug({ method: "getSyncStatus", req: call.request }, `RPC call from ${peer}`);
+      log.info({ method: "getSyncStatus", req: call.request }, `RPC call from ${peer} started`);
 
       const peerId = call.request.peerId;
       const result = await this.getSyncStatus(peerId);
+
+      log.info({ method: "getSyncStatus", req: call.request }, `RPC call from ${peer} complete`);
       if (result.isErr()) {
         callback(toServiceError(result.error));
       } else {
@@ -706,10 +717,12 @@ export default class Server {
 
   public getAllSyncIdsByPrefixRPC(call: ServerUnaryCall<TrieNodePrefix, SyncIds>, callback: sendUnaryData<SyncIds>) {
     const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-    log.debug({ method: "getAllSyncIdsByPrefix", req: call.request }, `RPC call from ${peer}`);
+    log.info({ method: "getAllSyncIdsByPrefix", req: call.request }, `RPC call from ${peer} started`);
 
     (async () => {
       const result = await this.getAllSyncIdsByPrefix(call.request);
+
+      log.info({ method: "getAllSyncIdsByPrefix", req: call.request }, `RPC call from ${peer} complete`);
       if (result.isErr()) {
         callback(toServiceError(result.error));
       } else {
@@ -754,9 +767,11 @@ export default class Server {
     callback: sendUnaryData<MessagesResponse>,
   ) {
     const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-    log.debug({ method: "getAllMessagesBySyncIds", req: call.request }, `RPC call from ${peer}`);
+    log.info({ method: "getAllMessagesBySyncIds", req: call.request }, `RPC call from ${peer} started`);
 
     const result = await this.getAllMessagesBySyncIds(call.request);
+
+    log.info({ method: "getAllMessagesBySyncIds", req: call.request }, `RPC call from ${peer} complete`);
     if (result.isErr()) {
       callback(toServiceError(result.error));
     } else {
@@ -774,10 +789,12 @@ export default class Server {
     callback: sendUnaryData<TrieNodeMetadataResponse>,
   ) {
     const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-    log.debug({ method: "getSyncMetadataByPrefix", req: call.request }, `RPC call from ${peer}`);
+    log.info({ method: "getSyncMetadataByPrefix", req: call.request }, `RPC call from ${peer} started`);
 
     (async () => {
       const result = await this.getSyncMetadataByPrefix(call.request);
+
+      log.info({ method: "getSyncMetadataByPrefix", req: call.request }, `RPC call from ${peer} complete`);
       if (result.isErr()) {
         callback(toServiceError(result.error));
       } else {
@@ -809,7 +826,7 @@ export default class Server {
     callback: sendUnaryData<TrieNodeSnapshotResponse>,
   ) {
     const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-    log.debug({ method: "getSyncSnapshotByPrefix", req: call.request }, `RPC call from ${peer}`);
+    log.info({ method: "getSyncSnapshotByPrefix", req: call.request }, `RPC call from ${peer} started`);
 
     // If someone is asking for our sync snapshot, that means we're getting incoming
     // connections
@@ -818,6 +835,8 @@ export default class Server {
 
     (async () => {
       const result = await this.getSyncSnapshotByPrefix(call.request);
+
+      log.info({ method: "getSyncSnapshotByPrefix", req: call.request }, `RPC call from ${peer} complete`);
       if (result.isErr()) {
         callback(toServiceError(result.error));
       } else {
@@ -842,9 +861,11 @@ export default class Server {
     callback: sendUnaryData<OnChainEventResponse>,
   ) {
     const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-    log.debug({ method: "getOnChainSignersByFid", req: call.request }, `RPC call from ${peer}`);
+    log.info({ method: "getOnChainSignersByFid", req: call.request }, `RPC call from ${peer} started`);
 
     const signersResult = await this.getOnChainSignersByFid(call.request);
+
+    log.info({ method: "getOnChainSignersByFid", req: call.request }, `RPC call from ${peer} complete`);
     signersResult?.match(
       (page: OnChainEventResponse) => {
         callback(null, page);
@@ -867,10 +888,11 @@ export default class Server {
     callback: sendUnaryData<OnChainEventResponse>,
   ) {
     const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-    log.debug({ method: "getOnChainEvents", req: call.request }, `RPC call from ${peer}`);
+    log.info({ method: "getOnChainEvents", req: call.request }, `RPC call from ${peer} started`);
 
     (async () => {
       const result = await this.getOnChainEvents(call.request);
+      log.info({ method: "getOnChainEvents", req: call.request }, `RPC call from ${peer} complete`);
       if (result.isErr()) {
         callback(toServiceError(result.error));
       } else {
