@@ -350,6 +350,7 @@ class IpConnectionLimiter {
 }
 
 export function destroyStream<T, R>(stream: ServerWritableStream<T, R> | ServerDuplexStream<T, R>, error: Error) {
+  log.error({ destroyStreamError: error }, "Destroying stream from server side");
   stream.emit("error", error);
   stream.end();
 }
@@ -447,7 +448,7 @@ export default class Server {
     return new Promise((resolve, reject) => {
       this.grpcServer.bindAsync(`${ip}:${port}`, ServerCredentials.createInsecure(), (err, port) => {
         if (err) {
-          logger.error({ component: "gRPC Server", err }, "Failed to start gRPC Server. Is the port already in use?");
+          log.error({ component: "gRPC Server", err }, "Failed to start gRPC Server. Is the port already in use?");
           reject(err);
         } else {
           this.grpcServer.start();
@@ -455,7 +456,7 @@ export default class Server {
           this.listenIp = ip;
           this.port = port;
 
-          logger.info({ component: "gRPC Server", address: this.address }, "Starting gRPC Server");
+          log.info({ component: "gRPC Server", address: this.address }, "Starting gRPC Server");
           resolve(port);
         }
       });
@@ -927,7 +928,7 @@ export default class Server {
 
         const rateLimitResult = await rateLimitByIp(peer, this.submitMessageRateLimiter);
         if (rateLimitResult.isErr()) {
-          logger.warn({ peer }, "submitMessage rate limited");
+          log.warn({ peer }, "submitMessage rate limited");
           callback(toServiceError(new HubError("unavailable", "API rate limit exceeded")));
           return;
         }
@@ -935,7 +936,7 @@ export default class Server {
         // Authentication
         const authResult = authenticateUser(call.metadata, this.rpcUsers);
         if (authResult.isErr()) {
-          logger.warn({ errMsg: authResult.error.message }, "gRPC submitMessage failed");
+          log.warn({ errMsg: authResult.error.message }, "gRPC submitMessage failed");
           callback(
             toServiceError(new HubError("unauthenticated", `gRPC authentication failed: ${authResult.error.message}`)),
           );
@@ -963,7 +964,7 @@ export default class Server {
         // Check for rate limits
         const rateLimitResult = await rateLimitByIp(peer, this.submitMessageRateLimiter);
         if (rateLimitResult.isErr()) {
-          logger.warn({ peer }, "submitBulkMessages rate limited");
+          log.warn({ peer }, "submitBulkMessages rate limited");
           callback(toServiceError(new HubError("unavailable", "API rate limit exceeded")));
           return;
         }
@@ -971,7 +972,7 @@ export default class Server {
         // Authentication
         const authResult = authenticateUser(call.metadata, this.rpcUsers);
         if (authResult.isErr()) {
-          logger.warn({ errMsg: authResult.error.message }, "gRPC submitBulkMessages failed");
+          log.warn({ errMsg: authResult.error.message }, "gRPC submitBulkMessages failed");
           callback(
             toServiceError(new HubError("unauthenticated", `gRPC authentication failed: ${authResult.error.message}`)),
           );
@@ -1705,6 +1706,10 @@ export default class Server {
         if (this.engine && request.fromId !== undefined && request.fromId >= 0) {
           const eventsIteratorOpts = this.engine.eventHandler.getEventsIteratorOpts({ fromId: request.fromId });
           if (eventsIteratorOpts.isErr()) {
+            log.error(
+              { r: request, eventIteratorOptsError: eventsIteratorOpts.error },
+              "Error getting events iterator, destroying stream",
+            );
             destroyStream(stream, eventsIteratorOpts.error);
             return;
           }
@@ -1713,7 +1718,7 @@ export default class Server {
           // This is to prevent a situation where we're writing to the stream, but the client
           // is not reading it.
           const timeout = setTimeout(async () => {
-            logger.warn(
+            log.warn(
               { timeout: HUBEVENTS_READER_TIMEOUT, peer: stream.getPeer() },
               "HubEvents subscribe: timeout, stopping stream",
             );
@@ -1743,7 +1748,7 @@ export default class Server {
               const writeResult = bufferedStreamWriter.writeToStream(event);
 
               if (writeResult.isErr()) {
-                logger.warn(
+                log.warn(
                   { err: writeResult.error },
                   `subscribe: failed to write to stream while returning events ${request.fromId}`,
                 );
@@ -1763,7 +1768,7 @@ export default class Server {
                   // more than 1G, so we're writing a lot of data to the stream, but the client is not reading it.
                   // We'll destroy the stream.
                   const error = new HubError("unavailable.network_failure", "stream memory usage too much");
-                  logger.error({ errCode: error.errCode }, error.message);
+                  log.error({ errCode: error.errCode }, error.message);
                   destroyStream(stream, error);
 
                   return true;
