@@ -1031,11 +1031,13 @@ export default class Server {
       },
       getCast: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getCast", req: call.request }, `RPC call from ${peer}`);
+        log.info({ method: "getCast", req: call.request }, `RPC call from ${peer} started`);
 
         const request = call.request;
 
         const castAddResult = await this.engine?.getCast(request.fid, request.hash);
+
+        log.info({ method: "getCast", req: call.request }, `RPC call from ${peer} complete`);
         castAddResult?.match(
           (castAdd: CastAddMessage) => {
             callback(null, castAdd);
@@ -1047,7 +1049,7 @@ export default class Server {
       },
       getCastsByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getCastsByFid", req: call.request }, `RPC call from ${peer}`);
+        log.info({ method: "getCastsByFid", req: call.request }, `RPC call from ${peer} started`);
 
         const { fid, pageSize, pageToken, reverse } = call.request;
 
@@ -1056,6 +1058,9 @@ export default class Server {
           pageToken,
           reverse,
         });
+
+        log.info({ method: "getCastsByFid", req: call.request }, `RPC call from ${peer} complete`);
+
         castsResult?.match(
           (page: MessagesPage<CastAddMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1067,7 +1072,7 @@ export default class Server {
       },
       getCastsByParent: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getCastsByParent", req: call.request }, `RPC call from ${peer}`);
+        log.info({ method: "getCastsByParent", req: call.request }, `RPC call from ${peer} complete`);
 
         const { parentCastId, parentUrl, pageSize, pageToken, reverse } = call.request;
 
@@ -1083,6 +1088,9 @@ export default class Server {
           pageToken,
           reverse,
         });
+
+        log.info({ method: "getCastsByParent", req: call.request }, `RPC call from ${peer} complete`);
+
         castsResult?.match(
           (page: MessagesPage<CastAddMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1094,11 +1102,14 @@ export default class Server {
       },
       getCastsByMention: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getCastsByMention", req: call.request }, `RPC call from ${peer}`);
+        log.info({ method: "getCastsByMention", req: call.request }, `RPC call from ${peer} started`);
 
         const { fid, pageSize, pageToken, reverse } = call.request;
 
         const castsResult = await this.engine?.getCastsByMention(fid, { pageSize, pageToken, reverse });
+
+        log.info({ method: "getCastsByMention", req: call.request }, `RPC call from ${peer} complete`);
+
         castsResult?.match(
           (page: MessagesPage<CastAddMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1110,7 +1121,7 @@ export default class Server {
       },
       getReaction: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getReaction", req: call.request }, `RPC call from ${peer}`);
+        log.info({ method: "getReaction", req: call.request }, `RPC call from ${peer} started`);
 
         const request = call.request;
 
@@ -1119,6 +1130,8 @@ export default class Server {
           request.reactionType,
           request.targetCastId ?? request.targetUrl ?? "",
         );
+
+        log.info({ method: "getReaction", req: call.request }, `RPC call from ${peer} complete`);
         reactionResult?.match(
           (reaction: ReactionAddMessage) => {
             callback(null, reaction);
@@ -1130,7 +1143,7 @@ export default class Server {
       },
       getReactionsByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getReactionsByFid", req: call.request }, `RPC call from ${peer}`);
+        log.info({ method: "getReactionsByFid", req: call.request }, `RPC call from ${peer}`);
 
         const { fid, reactionType, pageSize, pageToken, reverse } = call.request;
         const reactionsResult = await this.engine?.getReactionsByFid(fid, reactionType, {
@@ -1138,6 +1151,8 @@ export default class Server {
           pageToken,
           reverse,
         });
+
+        log.info({ method: "getReactionsByFid", req: call.request }, `RPC call from ${peer} complete`);
         reactionsResult?.match(
           (page: MessagesPage<ReactionAddMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1149,7 +1164,7 @@ export default class Server {
       },
       getReactionsByCast: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getReactionsByCast", req: call.request }, `RPC call from ${peer}`);
+        log.info({ method: "getReactionsByCast", req: call.request }, `RPC call from ${peer}`);
 
         const { targetCastId, reactionType, pageSize, pageToken, reverse } = call.request;
         const reactionsResult = await this.engine?.getReactionsByTarget(targetCastId ?? CastId.create(), reactionType, {
@@ -1157,6 +1172,8 @@ export default class Server {
           pageToken,
           reverse,
         });
+
+        log.info({ method: "getReactionsByCast", req: call.request }, `RPC call from ${peer} complete`);
         reactionsResult?.match(
           (page: MessagesPage<ReactionAddMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1168,7 +1185,7 @@ export default class Server {
       },
       getReactionsByTarget: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getReactionsByTarget", req: call.request }, `RPC call from ${peer}`);
+        log.info({ method: "getReactionsByTarget", req: call.request }, `RPC call from ${peer}`);
 
         const { targetCastId, targetUrl, reactionType, pageSize, pageToken, reverse } = call.request;
         const reactionsResult = await this.engine?.getReactionsByTarget(targetCastId ?? targetUrl ?? "", reactionType, {
@@ -1176,6 +1193,8 @@ export default class Server {
           pageToken,
           reverse,
         });
+
+        log.info({ method: "getReactionsByTarget", req: call.request }, `RPC call from ${peer} complete`);
         reactionsResult?.match(
           (page: MessagesPage<ReactionAddMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1187,11 +1206,13 @@ export default class Server {
       },
       getUserData: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getUserData", req: call.request }, `RPC call from ${peer}`);
+        log.info({ method: "getUserData", req: call.request }, `RPC call from ${peer} started`);
 
         const request = call.request;
 
         const userDataResult = await this.engine?.getUserData(request.fid, request.userDataType);
+
+        log.info({ method: "getUserData", req: call.request }, `RPC call from ${peer} complete`);
         userDataResult?.match(
           (userData: UserDataAddMessage) => {
             callback(null, userData);
@@ -1203,7 +1224,7 @@ export default class Server {
       },
       getUserDataByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getUserDataByFid", req: call.request }, `RPC call from ${peer}`);
+        log.info({ method: "getUserDataByFid", req: call.request }, `RPC call from ${peer} started`);
 
         const { fid, pageSize, pageToken, reverse } = call.request;
 
@@ -1212,6 +1233,8 @@ export default class Server {
           pageToken,
           reverse,
         });
+
+        log.info({ method: "getUserDataByFid", req: call.request }, `RPC call from ${peer} complete`);
         userDataResult?.match(
           (page: MessagesPage<UserDataAddMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1223,11 +1246,13 @@ export default class Server {
       },
       getUsernameProof: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getUsernameProof", req: call.request }, `RPC call from ${peer}`);
+        log.info({ method: "getUsernameProof", req: call.request }, `RPC call from ${peer} started`);
 
         const request = call.request;
 
         const usernameProofResult = await this.engine?.getUserNameProof(request.name);
+
+        log.info({ method: "getUsernameProof", req: call.request }, `RPC call from ${peer} complete`);
         usernameProofResult?.match(
           (usernameProof: UserNameProof) => {
             callback(null, usernameProof);
@@ -1239,11 +1264,13 @@ export default class Server {
       },
       getUserNameProofsByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getUserNameProofsByFid", req: call.request }, `RPC call from ${peer}`);
+        log.info({ method: "getUserNameProofsByFid", req: call.request }, `RPC call from ${peer} started`);
 
         const request = call.request;
 
         const usernameProofResult = await this.engine?.getUserNameProofsByFid(request.fid);
+
+        log.info({ method: "getUserNameProofsByFid", req: call.request }, `RPC call from ${peer} complete`);
         usernameProofResult?.match(
           (usernameProofs: UserNameProof[]) => {
             callback(null, UsernameProofsResponse.create({ proofs: usernameProofs }));
@@ -1255,11 +1282,13 @@ export default class Server {
       },
       getVerification: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getVerification", req: call.request }, `RPC call from ${peer}`);
+        log.info({ method: "getVerification", req: call.request }, `RPC call from ${peer} started`);
 
         const request = call.request;
 
         const verificationResult = await this.engine?.getVerification(request.fid, request.address);
+
+        log.info({ method: "getVerification", req: call.request }, `RPC call from ${peer} complete`);
         verificationResult?.match(
           (verification: VerificationAddAddressMessage) => {
             callback(null, verification);
@@ -1271,7 +1300,7 @@ export default class Server {
       },
       getVerificationsByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getVerificationsByFid", req: call.request }, `RPC call from ${peer}`);
+        log.info({ method: "getVerificationsByFid", req: call.request }, `RPC call from ${peer} started`);
 
         const { fid, pageSize, pageToken, reverse } = call.request;
 
@@ -1280,6 +1309,8 @@ export default class Server {
           pageToken,
           reverse,
         });
+
+        log.info({ method: "getVerificationsByFid", req: call.request }, `RPC call from ${peer} complete`);
         verificationsResult?.match(
           (page: MessagesPage<VerificationAddAddressMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1291,11 +1322,13 @@ export default class Server {
       },
       getOnChainSigner: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getOnChainSigner", req: call.request }, `RPC call from ${peer}`);
+        log.info({ method: "getOnChainSigner", req: call.request }, `RPC call from ${peer} started`);
 
         const request = call.request;
 
         const signerResult = await this.engine?.getActiveSigner(request.fid, request.signer);
+
+        log.info({ method: "getOnChainSigner", req: call.request }, `RPC call from ${peer} complete`);
         signerResult?.match(
           (signer: SignerOnChainEvent) => {
             callback(null, signer);
@@ -1307,11 +1340,13 @@ export default class Server {
       },
       getLink: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getLink", req: call.request }, `RPC call from ${peer}`);
+        log.info({ method: "getLink", req: call.request }, `RPC call from ${peer} started`);
 
         const request = call.request;
 
         const linkResult = await this.engine?.getLink(request.fid, request.linkType, request.targetFid ?? 0);
+
+        log.info({ method: "getLink", req: call.request }, `RPC call from ${peer} complete`);
         linkResult?.match(
           (link: LinkAddMessage) => {
             callback(null, link);
@@ -1323,7 +1358,7 @@ export default class Server {
       },
       getLinksByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getLinksByFid", req: call.request }, `RPC call from ${peer}`);
+        log.info({ method: "getLinksByFid", req: call.request }, `RPC call from ${peer} started`);
 
         const { fid, linkType, pageSize, pageToken, reverse } = call.request;
         const linksResult = await this.engine?.getLinksByFid(fid, linkType, {
@@ -1331,6 +1366,8 @@ export default class Server {
           pageToken,
           reverse,
         });
+
+        log.info({ method: "getLinksByFid", req: call.request }, `RPC call from ${peer} complete`);
         linksResult?.match(
           (page: MessagesPage<LinkAddMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1342,7 +1379,7 @@ export default class Server {
       },
       getLinksByTarget: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getLinksByTarget", req: call.request }, `RPC call from ${peer}`);
+        log.info({ method: "getLinksByTarget", req: call.request }, `RPC call from ${peer} started`);
 
         const { targetFid, linkType, pageSize, pageToken, reverse } = call.request;
         const linksResult = await this.engine?.getLinksByTarget(targetFid ?? 0, linkType, {
@@ -1350,6 +1387,8 @@ export default class Server {
           pageToken,
           reverse,
         });
+
+        log.info({ method: "getLinksByTarget", req: call.request }, `RPC call from ${peer} complete`);
         linksResult?.match(
           (page: MessagesPage<LinkAddMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1361,10 +1400,12 @@ export default class Server {
       },
       getIdRegistryOnChainEvent: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getIdRegistryOnChainEvent", req: call.request }, `RPC call from ${peer}`);
+        log.info({ method: "getIdRegistryOnChainEvent", req: call.request }, `RPC call from ${peer} started`);
 
         const request = call.request;
         const idRegistryEventResult = await this.engine?.getIdRegistryOnChainEvent(request.fid);
+
+        log.info({ method: "getIdRegistryOnChainEvent", req: call.request }, `RPC call from ${peer} complete`);
         idRegistryEventResult?.match(
           (idRegistryEvent: OnChainEvent) => {
             callback(null, idRegistryEvent);
@@ -1376,10 +1417,12 @@ export default class Server {
       },
       getIdRegistryOnChainEventByAddress: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getIdRegistryOnChainEventByAddress", req: call.request }, `RPC call from ${peer}`);
+        log.info({ method: "getIdRegistryOnChainEventByAddress", req: call.request }, `RPC call from ${peer} started`);
 
         const request = call.request;
         const idRegistryEventResult = await this.engine?.getIdRegistryOnChainEventByAddress(request.address);
+
+        log.info({ method: "getIdRegistryOnChainEventByAddress", req: call.request }, `RPC call from ${peer} complete`);
         idRegistryEventResult?.match(
           (idRegistryEvent: OnChainEvent) => {
             callback(null, idRegistryEvent);
@@ -1390,8 +1433,13 @@ export default class Server {
         );
       },
       getCurrentStorageLimitsByFid: async (call, callback) => {
+        const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
+        log.info({ method: "getCurrentStorageLimitsByFid", req: call.request }, `RPC call from ${peer} started`);
+
         const request = call.request;
         const storageLimitsResult = await this.engine?.getCurrentStorageLimitsByFid(request.fid);
+
+        log.info({ method: "getCurrentStorageLimitsByFid", req: call.request }, `RPC call from ${peer} complete`);
         storageLimitsResult?.match(
           (storageLimits: StorageLimitsResponse) => {
             callback(null, storageLimits);
@@ -1403,7 +1451,7 @@ export default class Server {
       },
       getFids: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getFids", req: call.request }, `RPC call from ${peer}`);
+        log.info({ method: "getFids", req: call.request }, `RPC call from ${peer} started`);
 
         const { pageSize, pageToken, reverse } = call.request;
 
@@ -1412,6 +1460,7 @@ export default class Server {
           pageToken,
           reverse,
         });
+        log.info({ method: "getFids", req: call.request }, `RPC call from ${peer} complete`);
         result?.match(
           (page: { fids: number[]; nextPageToken: Uint8Array | undefined }) => {
             callback(null, FidsResponse.create(page));
@@ -1423,7 +1472,7 @@ export default class Server {
       },
       getAllCastMessagesByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getAllCastMessagesByFid", req: call.request }, `RPC call from ${peer}`);
+        log.info({ method: "getAllCastMessagesByFid", req: call.request }, `RPC call from ${peer} started`);
 
         const { fid, pageSize, pageToken, reverse, startTimestamp, stopTimestamp } = call.request;
         const result = await this.engine?.getAllCastMessagesByFid(
@@ -1436,6 +1485,7 @@ export default class Server {
           startTimestamp,
           stopTimestamp,
         );
+        log.info({ method: "getAllCastMessagesByFid", req: call.request }, `RPC call from ${peer} complete`);
         result?.match(
           (page: MessagesPage<CastAddMessage | CastRemoveMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1447,7 +1497,7 @@ export default class Server {
       },
       getAllReactionMessagesByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getAllReactionMessagesByFid", req: call.request }, `RPC call from ${peer}`);
+        log.info({ method: "getAllReactionMessagesByFid", req: call.request }, `RPC call from ${peer} started`);
 
         const { fid, pageSize, pageToken, reverse, startTimestamp, stopTimestamp } = call.request;
         const result = await this.engine?.getAllReactionMessagesByFid(
@@ -1460,6 +1510,7 @@ export default class Server {
           startTimestamp,
           stopTimestamp,
         );
+        log.info({ method: "getAllReactionMessagesByFid", req: call.request }, `RPC call from ${peer} complete`);
         result?.match(
           (page: MessagesPage<ReactionAddMessage | ReactionRemoveMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1471,7 +1522,7 @@ export default class Server {
       },
       getAllVerificationMessagesByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getAllVerificationMessagesByFid", req: call.request }, `RPC call from ${peer}`);
+        log.info({ method: "getAllVerificationMessagesByFid", req: call.request }, `RPC call from ${peer} started`);
 
         const { fid, pageSize, pageToken, reverse, startTimestamp, stopTimestamp } = call.request;
         const result = await this.engine?.getAllVerificationMessagesByFid(
@@ -1484,6 +1535,8 @@ export default class Server {
           startTimestamp,
           stopTimestamp,
         );
+
+        log.info({ method: "getAllVerificationMessagesByFid", req: call.request }, `RPC call from ${peer} complete`);
         result?.match(
           (page: MessagesPage<VerificationAddAddressMessage | VerificationRemoveMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1495,7 +1548,7 @@ export default class Server {
       },
       getAllUserDataMessagesByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getAllUserDataMessagesByFid", req: call.request }, `RPC call from ${peer}`);
+        log.info({ method: "getAllUserDataMessagesByFid", req: call.request }, `RPC call from ${peer} started`);
 
         const { fid, pageSize, pageToken, reverse, startTimestamp, stopTimestamp } = call.request;
         const result = await this.engine?.getUserDataByFid(
@@ -1508,6 +1561,8 @@ export default class Server {
           startTimestamp,
           stopTimestamp,
         );
+
+        log.info({ method: "getAllUserDataMessagesByFid", req: call.request }, `RPC call from ${peer} complete`);
         result?.match(
           (page: MessagesPage<UserDataAddMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1519,7 +1574,7 @@ export default class Server {
       },
       getAllLinkMessagesByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getAllLinkMessagesByFid", req: call.request }, `RPC call from ${peer}`);
+        log.info({ method: "getAllLinkMessagesByFid", req: call.request }, `RPC call from ${peer} started`);
 
         const { fid, pageSize, pageToken, reverse, startTimestamp, stopTimestamp } = call.request;
         const result = await this.engine?.getAllLinkMessagesByFid(
@@ -1532,6 +1587,8 @@ export default class Server {
           startTimestamp,
           stopTimestamp,
         );
+
+        log.info({ method: "getAllLinkMessagesByFid", req: call.request }, `RPC call from ${peer} complete`);
         result?.match(
           (page: MessagesPage<LinkAddMessage | LinkRemoveMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1543,7 +1600,7 @@ export default class Server {
       },
       getLinkCompactStateMessageByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getLinkCompactStateMessageByFid", req: call.request }, `RPC call from ${peer}`);
+        log.info({ method: "getLinkCompactStateMessageByFid", req: call.request }, `RPC call from ${peer} started`);
 
         const { fid, pageSize, pageToken, reverse } = call.request;
         const result = await this.engine?.getLinkCompactStateMessageByFid(fid, {
@@ -1551,6 +1608,8 @@ export default class Server {
           pageToken,
           reverse,
         });
+
+        log.info({ method: "getLinkCompactStateMessageByFid", req: call.request }, `RPC call from ${peer} complete`);
         result?.match(
           (page: MessagesPage<LinkCompactStateMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1562,9 +1621,10 @@ export default class Server {
       },
       getEvent: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.debug({ method: "getEvent", req: call.request }, `RPC call from ${peer}`);
+        log.info({ method: "getEvent", req: call.request }, `RPC call from ${peer} started`);
 
         const result = await this.engine?.getEvent(call.request.id);
+        log.info({ method: "getEvent", req: call.request }, `RPC call from ${peer} complete`);
         result?.match(
           (event: HubEvent) => callback(null, event),
           (err: HubError) => callback(toServiceError(err)),
@@ -1638,7 +1698,7 @@ export default class Server {
 
           this.subscribeIpLimiter.removeConnection(peer);
 
-          log.info({ peer }, "subscribe: stream closed");
+          log.info({ r: request, peer }, "subscribe: stream closed");
         });
 
         // If the user wants to start from a specific event, we'll start from there first
