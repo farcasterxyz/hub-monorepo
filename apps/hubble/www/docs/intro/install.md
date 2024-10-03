@@ -1,15 +1,15 @@
 # Installation
 
-We recommend running Hubble on an always-on server that has [Docker](https://docs.docker.com/desktop/install/linux-install/) installed. 
+We recommend running Hubble on an always-on server that has [Docker](https://docs.docker.com/desktop/install/linux-install/) installed.
 
 ## Requirements
 
-Hubble can be installed in 30 minutes, and a full sync can take 1-2 hours to complete. You'll need a machine that has: 
+Hubble can be installed in 30 minutes, and a full sync can take 1-2 hours to complete. You'll need a machine that has:
 
 - 16 GB of RAM
 - 4 CPU cores or vCPUs
-- 200 GB of free storage
-- A public IP address with ports 2282 - 2285 exposed
+- 300 GB of free storage
+- A public IP address with ports 2282 & 2283 exposed (port 2281 is optional)
 
 See [tutorials](./tutorials.html) for instructions on how to set up cloud providers to run Hubble.
 
@@ -18,7 +18,7 @@ You will need RPC endpoints for Ethereum nodes on L2 OP Mainnet, L1 Mainnet and 
 
 ## Install via Script
 
-The install script is the simplest way to set up Hubble. 
+The install script is the simplest way to set up Hubble.
 
 ```bash
 curl -sSL https://download.thehubble.xyz/bootstrap.sh | bash
@@ -72,9 +72,9 @@ HUB_OPERATOR_FID=your-fid
 
 ```bash
 docker compose up hubble -d
-``` 
+```
 
-Docker compose will start a Hubble container that exposes ports for networking and writes data to `.hub` and `.rocks` directories. Hubble will now sync with the contracts and other hubble instances to download all messages on the network. 
+Docker compose will start a Hubble container that exposes ports for networking and writes data to `.hub` and `.rocks` directories. Hubble will now sync with the contracts and other hubble instances to download all messages on the network.
 
 7. To view the status of the sync and hubble, follow the logs
 
@@ -86,7 +86,7 @@ docker compose logs -f hubble
 
 ### Upgrading Hubble
 
-Navigate to `apps/hubble` in hub-monorepo and run: 
+Navigate to `apps/hubble` in hub-monorepo and run:
 
 ```bash
 git fetch --tags --force && git checkout @latest  # Checkout to the latest release
@@ -95,7 +95,7 @@ docker compose stop && docker compose up -d --force-recreate --pull always  # St
 
 ## Installing from source
 
-Hubble can also be built and run directly from source without Docker. 
+Hubble can also be built and run directly from source without Docker.
 
 #### Installing Dependencies
 
@@ -112,7 +112,7 @@ First, ensure that the following are installed globally on your machine:
 - `cd hub-monorepo` to enter the directory
 - `yarn install` to install dependencies
 - `yarn build` to build Hubble and its dependencies
-- `yarn test` to ensure that the test suite runs correctly. If integration tests fail, run `docker compose up redis postgres` and retry. 
+- `yarn test` to ensure that the test suite runs correctly. If integration tests fail, run `docker compose up redis postgres` and retry.
 
 #### Running Hubble
 To run the Hubble commands, go to the Hubble app (`cd apps/hubble`) and run the `yarn` commands.
@@ -127,7 +127,7 @@ To upgrade hubble, find the latest [release tag](https://github.com/farcasterxyz
 
 ```bash
 git fetch --tags # to fetch the latest tags
-git checkout @farcaster/hubble@latest # Or use a specific version. 
+git checkout @farcaster/hubble@latest # Or use a specific version.
 yarn install && yarn build # in the root folder
 ```
 
@@ -151,7 +151,7 @@ docker compose exec hubble /bin/sh
 
 - If upgrading from 1.3.3 or below, please set `ETH_MAINNET_RPC_URL=your-ETH-mainnet-RPC-URL` (if using docker) or provide the `--eth-mainnet-rpc-url` flag (if not using docker)
 
-- If you're changing your Hub from one network to another, you'll need to delete your database contents: 
+- If you're changing your Hub from one network to another, you'll need to delete your database contents:
 
 ```bash
 docker compose stop && docker compose run --rm hubble yarn dbreset

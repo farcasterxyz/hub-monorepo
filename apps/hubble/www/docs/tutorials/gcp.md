@@ -1,7 +1,7 @@
 # Run a Hubble on GCP
 
 ## Intro
-This is a step-by-step guide to setting up Hubble on GCP. 
+This is a step-by-step guide to setting up Hubble on GCP.
 It usually takes less than 30 minutes to complete the whole process.
 
 ### Requirements
@@ -26,7 +26,7 @@ Execute the below commands in the cloud shell:
 nano main.tf
 </code></pre>
 
-Now paste the content of below into your main.tf \ 
+Now paste the content of below into your main.tf \
 Replace "$YOUR_PROJECT_ID" with your personal ID.
 
 <figure><img src="../assets/images/gcp_project_id.png" /></figure>
@@ -48,7 +48,7 @@ resource "google_compute_instance" "farcaster-hub-vm" {
   boot_disk {
     initialize_params {
       image = "ubuntu-2004-focal-v20231213"  # Ubuntu 20.04 LTS image URL
-      size = 200  # 200 GB disk size
+      size = 300  # 300 GB disk size
     }
   }
 
@@ -69,7 +69,7 @@ resource "google_compute_instance" "farcaster-hub-vm" {
 resource "google_compute_firewall" "farcaster-p2p-ports" {
   name    = "farcaster-p2p-ports"
   network = "default"
-  
+
   # allow incoming traffic for ports 2282-2285
   allow {
     protocol = "tcp"
