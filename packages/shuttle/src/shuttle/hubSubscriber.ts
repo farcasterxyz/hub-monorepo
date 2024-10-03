@@ -1,6 +1,6 @@
 import { ClientReadableStream, HubEvent, HubEventType, HubResult, HubRpcClient } from "@farcaster/hub-nodejs";
 import { err, ok, Result } from "neverthrow";
-import { Logger } from "../log";
+import { Logger, log } from "../log";
 import { TypedEmitter } from "tiny-typed-emitter";
 import { EventStreamConnection } from "./eventStream";
 import { sleep } from "../utils";
@@ -58,7 +58,7 @@ export class BaseHubSubscriber extends HubSubscriber {
   constructor(
     label: string,
     hubClient: HubRpcClient,
-    log: Logger,
+    customLog?: Logger,
     eventTypes?: HubEventType[],
     totalShards?: number,
     shardIndex?: number,
@@ -66,7 +66,13 @@ export class BaseHubSubscriber extends HubSubscriber {
     super();
     this.label = label;
     this.hubClient = hubClient;
-    this.log = log;
+
+    if (customLog === undefined) {
+      this.log = log;
+    } else {
+      this.log = customLog;
+    }
+
     this.totalShards = totalShards;
     this.shardIndex = shardIndex;
     this.eventTypes = eventTypes || DEFAULT_EVENT_TYPES;
