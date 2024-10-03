@@ -623,16 +623,17 @@ export const printSyncHealth = async (
   username?: string,
   password?: string,
 ) => {
-  const startTime = parseTime(startTimeOfDay);
-  const stopTime = parseTime(stopTimeOfDay);
+  // const startTime = parseTime(startTimeOfDay);
+  // const stopTime = parseTime(stopTimeOfDay);
 
-  if (startTime === undefined || stopTime === undefined) {
-    console.log("Unable to parse time, must specify as HH:MM:SS");
-    return;
-  }
+  // if (startTime === undefined || stopTime === undefined) {
+  //   console.log("Unable to parse time, must specify as HH:MM:SS");
+  //   return;
+  // }
 
-  console.log("Start time", startTime, "Stop time", stopTimeOfDay, stopTime);
-
+  // console.log("Start time", startTime, "Stop time", stopTimeOfDay, stopTime);
+  const startTime = new Date(1727905500441);
+  const stopTime = new Date(1727906100441);
   const primaryRpcClient = getSSLHubRpcClient(primaryNode);
 
   primaryRpcClient.$.waitForReady(Date.now() + RPC_TIMEOUT_SECONDS * 1000, async (err) => {
@@ -693,39 +694,17 @@ export const printSyncHealth = async (
 
           if (outfile) {
             let aggregateStats;
-            if (score !== 0) {
-              console.log("Investigating diff");
-              const resultToPeer = await syncHealthProbe.tryPushingDivergingSyncIds(startTime, stopTime, "ToPeer");
+            // if (score !== 0) {
+            console.log("Investigating diff");
+            const resultToPeer = await syncHealthProbe.tryPushingDivergingSyncIds(startTime, stopTime, "ToPeer");
 
-              const resultFromPeer = await syncHealthProbe.tryPushingDivergingSyncIds(startTime, stopTime, "FromPeer");
+            const resultFromPeer = await syncHealthProbe.tryPushingDivergingSyncIds(startTime, stopTime, "FromPeer");
 
-              if (resultToPeer.isErr() || resultFromPeer.isErr()) {
-                const resultToPeerSummary = resultToPeer.isOk() ? "ok" : resultToPeer.error;
-                const resultFromPeerSummary = resultFromPeer.isOk() ? "ok" : resultFromPeer.error;
+            if (resultToPeer.isErr() || resultFromPeer.isErr()) {
+              const resultToPeerSummary = resultToPeer.isOk() ? "ok" : resultToPeer.error;
+              const resultFromPeerSummary = resultFromPeer.isOk() ? "ok" : resultFromPeer.error;
 
-                console.log("Error investigating diff", resultToPeerSummary, resultFromPeerSummary);
-                // Report the stats anyway, but with no investigation results
-                aggregateStats = new Stats(
-                  startTime,
-                  stopTime,
-                  primaryNode,
-                  peer.hostAndPort,
-                  syncHealthStats.value,
-                  [],
-                  [],
-                );
-              } else {
-                aggregateStats = new Stats(
-                  startTime,
-                  stopTime,
-                  primaryNode,
-                  peer.hostAndPort,
-                  syncHealthStats.value,
-                  resultToPeer.value,
-                  resultFromPeer.value,
-                );
-              }
-            } else {
+              console.log("Error investigating diff", resultToPeerSummary, resultFromPeerSummary);
               // Report the stats anyway, but with no investigation results
               aggregateStats = new Stats(
                 startTime,
@@ -736,7 +715,29 @@ export const printSyncHealth = async (
                 [],
                 [],
               );
+            } else {
+              aggregateStats = new Stats(
+                startTime,
+                stopTime,
+                primaryNode,
+                peer.hostAndPort,
+                syncHealthStats.value,
+                resultToPeer.value,
+                resultFromPeer.value,
+              );
             }
+            // } else {
+            //   // Report the stats anyway, but with no investigation results
+            //   aggregateStats = new Stats(
+            //     startTime,
+            //     stopTime,
+            //     primaryNode,
+            //     peer.hostAndPort,
+            //     syncHealthStats.value,
+            //     [],
+            //     [],
+            //   );
+            // }
 
             // The data is valuable, let's just wait to write it. Note, data is appended to any existing file.
             await appendFile(outfile, aggregateStats.serializedSummary());
