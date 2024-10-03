@@ -25,6 +25,7 @@ import { err, ok, Result } from "neverthrow";
 import { MAX_VALUES_RETURNED_PER_SYNC_ID_REQUEST, toTrieNodeMetadataResponse } from "../rpc/server.js";
 import SyncEngine from "../network/sync/syncEngine.js";
 import { HubInterface } from "hubble.js";
+import { logger } from "./logger.js";
 
 export type SubmitError = { hubError: HubError; originalMessage: Message };
 class SyncHealthMessageStats {
@@ -187,6 +188,7 @@ export class SyncEngineMetadataRetriever implements MetadataRetriever {
   }
 
   getMetadata = async (prefix: Buffer): Promise<HubResult<TrieNodeMetadataResponse>> => {
+    logger.info({ prefix: bytesToHexString(prefix) }, "SyncHealth: getMetadata for prefix");
     const result = await this._syncEngine.getTrieNodeMetadata(prefix);
     if (result) {
       return ok(toTrieNodeMetadataResponse(result));
@@ -197,7 +199,15 @@ export class SyncEngineMetadataRetriever implements MetadataRetriever {
   };
 
   getAllSyncIdsByPrefix = async (prefix: Buffer) => {
+    logger.info({ prefix: bytesToHexString(prefix) }, "SyncHealth: getAllSyncIdsByPrefix for prefix");
     const result = await this._syncEngine.getAllSyncIdsByPrefix(prefix);
+    logger.info(
+      {
+        prefix: bytesToHexString(prefix),
+        count: result.length,
+      },
+      "SyncHealth: getAllSyncIdsByPrefix for prefix result",
+    );
     return ok(SyncIds.create({ syncIds: result }));
   };
 
@@ -208,6 +218,7 @@ export class SyncEngineMetadataRetriever implements MetadataRetriever {
   };
 
   getAllMessagesBySyncIds = async (syncIds: Uint8Array[]) => {
+    logger.info({ count: syncIds.length }, "SyncHealth: getAllMessagesBySyncIds for ids");
     const syncIdsParsed = syncIds.map((syncId) => SyncId.fromBytes(syncId));
     const messagesResult = await this._syncEngine.getAllMessagesBySyncIds(syncIdsParsed);
     if (messagesResult.isErr()) {
