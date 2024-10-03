@@ -850,6 +850,14 @@ export class Hub implements HubInterface {
     // This way, when starting up, we'll know if the previous shutdown was clean or not.
     await this.writeHubCleanShutdown(false, HubShutdownReason.UNKNOWN);
 
+    const obs = new PerformanceObserver((list) => {
+      const entries = list.getEntries();
+      entries.forEach((entry) => {
+        logger.info(`GC Trace ${entry.entryType} ${entry.name}: ${entry.duration}ms`);
+      });
+    });
+    obs.observe({ entryTypes: ["gc"], buffered: true });
+
     // Set up a timer to log the memory usage every minute
     setInterval(() => {
       const memoryData = process.memoryUsage();
