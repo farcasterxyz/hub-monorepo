@@ -156,6 +156,7 @@ export class RpcMetadataRetriever implements MetadataRetriever {
   }
 
   getMetadata = async (prefix: Buffer): Promise<HubResult<TrieNodeMetadataResponse>> => {
+    logger.info({ prefix: bytesToHexString(prefix) }, "SyncHealth: getMetadata for prefix from peer");
     return this._rpcClient.getSyncMetadataByPrefix(TrieNodePrefix.create({ prefix }), new Metadata(), {
       deadline: Date.now() + RPC_TIMEOUT_SECONDS * 1000,
     });
@@ -170,11 +171,25 @@ export class RpcMetadataRetriever implements MetadataRetriever {
   };
 
   getAllSyncIdsByPrefix = async (prefix: Buffer) => {
-    return this._rpcClient.getAllSyncIdsByPrefix(TrieNodePrefix.create({ prefix }));
+    logger.info({ prefix: bytesToHexString(prefix) }, "SyncHealth: Started getAllSyncIdsByPrefix for prefix from peer");
+    const result = await this._rpcClient.getAllSyncIdsByPrefix(TrieNodePrefix.create({ prefix }));
+    const resultLength = result.isErr() ? 0 : result.value.syncIds.length;
+    logger.info(
+      {
+        prefix: bytesToHexString(prefix),
+        count: resultLength,
+      },
+      "SyncHealth: getAllSyncIdsByPrefix for prefix result from self",
+    );
+    return result;
   };
 
   getAllMessagesBySyncIds = async (syncIds: Uint8Array[]) => {
-    return this._rpcClient.getAllMessagesBySyncIds(SyncIds.create({ syncIds }));
+    logger.info({ count: syncIds.length }, "SyncHealth: Started getAllMessagesBySyncIds for ids from peer");
+    const result = await this._rpcClient.getAllMessagesBySyncIds(SyncIds.create({ syncIds }));
+    const messagesCount = result.isErr() ? 0 : result.value.messages.length;
+    logger.info({ messagesCount }, "SyncHealth: Finished getAllMessagesBySyncIds for ids from peer");
+    return result;
   };
 }
 
@@ -188,7 +203,7 @@ export class SyncEngineMetadataRetriever implements MetadataRetriever {
   }
 
   getMetadata = async (prefix: Buffer): Promise<HubResult<TrieNodeMetadataResponse>> => {
-    logger.info({ prefix: bytesToHexString(prefix) }, "SyncHealth: getMetadata for prefix");
+    logger.info({ prefix: bytesToHexString(prefix) }, "SyncHealth: getMetadata for prefix from self");
     const result = await this._syncEngine.getTrieNodeMetadata(prefix);
     if (result) {
       return ok(toTrieNodeMetadataResponse(result));
@@ -199,14 +214,14 @@ export class SyncEngineMetadataRetriever implements MetadataRetriever {
   };
 
   getAllSyncIdsByPrefix = async (prefix: Buffer) => {
-    logger.info({ prefix: bytesToHexString(prefix) }, "SyncHealth: getAllSyncIdsByPrefix for prefix");
+    logger.info({ prefix: bytesToHexString(prefix) }, "SyncHealth: Started getAllSyncIdsByPrefix for prefix from self");
     const result = await this._syncEngine.getAllSyncIdsByPrefix(prefix);
     logger.info(
       {
         prefix: bytesToHexString(prefix),
         count: result.length,
       },
-      "SyncHealth: getAllSyncIdsByPrefix for prefix result",
+      "SyncHealth: Finished getAllSyncIdsByPrefix for prefix result from self",
     );
     return ok(SyncIds.create({ syncIds: result }));
   };
@@ -218,7 +233,7 @@ export class SyncEngineMetadataRetriever implements MetadataRetriever {
   };
 
   getAllMessagesBySyncIds = async (syncIds: Uint8Array[]) => {
-    logger.info({ count: syncIds.length }, "SyncHealth: getAllMessagesBySyncIds for ids");
+    logger.info({ count: syncIds.length }, "SyncHealth: Started getAllMessagesBySyncIds for ids from self");
     const syncIdsParsed = syncIds.map((syncId) => SyncId.fromBytes(syncId));
     const messagesResult = await this._syncEngine.getAllMessagesBySyncIds(syncIdsParsed);
     if (messagesResult.isErr()) {
@@ -227,6 +242,11 @@ export class SyncEngineMetadataRetriever implements MetadataRetriever {
 
     const filteredMessages = messagesResult.value.filter(
       (message) => message.data !== undefined && message.hash.length > 0,
+    );
+
+    logger.info(
+      { messagesCount: messagesResult.value.length },
+      "SyncHealth: Finished getAllMessagesBySyncIds for ids from self",
     );
 
     return ok(MessagesResponse.create({ messages: filteredMessages }));

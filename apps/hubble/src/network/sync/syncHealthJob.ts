@@ -217,6 +217,11 @@ export class MeasureSyncHealthJobScheduler {
       const interval = 10 * 60 * 1000; // 10 minutes in milliseconds
       for (let chunkStartTime = startTime; chunkStartTime < stopTime; chunkStartTime += interval) {
         const chunkStopTime = Math.min(chunkStartTime + interval, stopTime);
+        log.info(
+          { peerId: peer.identifier, startTime: chunkStartTime, stopTime: chunkStopTime },
+          "Starting to compute sync health for peer",
+        );
+
         const syncHealthMessageStats = await syncHealthProbe.computeSyncHealthMessageStats(
           new Date(chunkStartTime),
           new Date(chunkStopTime),
