@@ -213,68 +213,60 @@ export class MeasureSyncHealthJobScheduler {
 
       const syncHealthProbe = new SyncHealthProbe(this._metadataRetriever, peerMetadataRetriever);
 
-      // Split the start and stop time into 10 minute intervals, so we don't have to process too many messages at once
-      const interval = 10 * 60 * 1000; // 10 minutes in milliseconds
-      for (let chunkStartTime = startTime; chunkStartTime < stopTime; chunkStartTime += interval) {
-        const chunkStopTime = Math.min(chunkStartTime + interval, stopTime);
-        log.info(
-          { peerId: peer.identifier, startTime: chunkStartTime, stopTime: chunkStopTime },
-          "Starting to compute sync health for peer",
-        );
+      log.info({ peerId: peer.identifier, startTime, stopTime }, "Starting to compute sync health for peer");
 
-        const syncHealthMessageStats = await syncHealthProbe.computeSyncHealthMessageStats(
-          new Date(chunkStartTime),
-          new Date(chunkStopTime),
-        );
+      const syncHealthMessageStats = await syncHealthProbe.computeSyncHealthMessageStats(
+        new Date(startTime),
+        new Date(stopTime),
+      );
 
-        if (syncHealthMessageStats.isErr()) {
-          const contactInfo = this.contactInfoForLogs(peer);
-          log.info(
-            {
-              peerId: peer.identifier,
-              err: syncHealthMessageStats.error,
-              contactInfo,
-            },
-            `Error computing SyncHealth: ${syncHealthMessageStats.error}.`,
-          );
-          continue;
-        }
-
-        const resultsPushingToUs = await syncHealthProbe.tryPushingDivergingSyncIds(
-          new Date(chunkStartTime),
-          new Date(chunkStopTime),
-          "FromPeer",
-        );
-
-        if (resultsPushingToUs.isErr()) {
-          log.info(
-            { peerId: peer.identifier, err: resultsPushingToUs.error },
-            `Error pushing new messages to ourself ${resultsPushingToUs.error}`,
-          );
-          continue;
-        }
-
-        const processedResults = await this.processSumbitResults(
-          resultsPushingToUs.value,
-          peer.identifier,
-          chunkStartTime,
-          chunkStopTime,
-        );
-
+      if (syncHealthMessageStats.isErr()) {
+        const contactInfo = this.contactInfoForLogs(peer);
         log.info(
           {
-            ourNumMessages: syncHealthMessageStats.value.primaryNumMessages,
-            theirNumMessages: syncHealthMessageStats.value.peerNumMessages,
-            syncHealth: syncHealthMessageStats.value.computeDiff(),
-            syncHealthPercentage: syncHealthMessageStats.value.computeDiffPercentage(),
-            resultsPushingToUs: processedResults,
             peerId: peer.identifier,
-            startTime: chunkStartTime,
-            stopTime: chunkStopTime,
+            err: syncHealthMessageStats.error,
+            contactInfo,
           },
-          "Computed SyncHealth stats for peer",
+          `Error computing SyncHealth: ${syncHealthMessageStats.error}.`,
         );
+        continue;
       }
+
+      const resultsPushingToUs = await syncHealthProbe.tryPushingDivergingSyncIds(
+        new Date(startTime),
+        new Date(stopTime),
+        "FromPeer",
+      );
+
+      if (resultsPushingToUs.isErr()) {
+        log.info(
+          { peerId: peer.identifier, err: resultsPushingToUs.error },
+          `Error pushing new messages to ourself ${resultsPushingToUs.error}`,
+        );
+        continue;
+      }
+
+      const processedResults = await this.processSumbitResults(
+        resultsPushingToUs.value,
+        peer.identifier,
+        startTime,
+        stopTime,
+      );
+
+      log.info(
+        {
+          ourNumMessages: syncHealthMessageStats.value.primaryNumMessages,
+          theirNumMessages: syncHealthMessageStats.value.peerNumMessages,
+          syncHealth: syncHealthMessageStats.value.computeDiff(),
+          syncHealthPercentage: syncHealthMessageStats.value.computeDiffPercentage(),
+          resultsPushingToUs: processedResults,
+          peerId: peer.identifier,
+          startTime,
+          stopTime,
+        },
+        "Computed SyncHealth stats for peer",
+      );
     }
   }
 }
