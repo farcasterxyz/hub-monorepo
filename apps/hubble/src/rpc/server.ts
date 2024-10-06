@@ -1833,6 +1833,8 @@ export default class Server {
           });
           stream.on("data", async (request) => {
             if (request.forceSync) {
+              log.info({ method: "streamSync", req: request }, "RPC call started");
+
               const result = await this.forceSync(request.forceSync);
               if (result.isErr()) {
                 stream.write(
@@ -2020,6 +2022,8 @@ export default class Server {
                 timeout.refresh();
               }
             }
+
+            log.info({ method: "streamSync", req: request }, "RPC call completed");
           });
         });
       },
@@ -2034,6 +2038,7 @@ export default class Server {
             resolve();
           });
           stream.on("data", async (request) => {
+            log.info({ method: "streamFetch", req: request }, "RPC call started");
             const requestPayload =
               request.castMessagesByFid ||
               request.linkMessagesByFid ||
@@ -2132,6 +2137,7 @@ export default class Server {
               },
             );
             timeout.refresh();
+            log.info({ method: "streamFetch", req: request }, "RPC call completed");
           });
         });
       },
