@@ -98,6 +98,7 @@ import { diagnosticReporter } from "./utils/diagnosticReport.js";
 import { startupCheck, StartupCheckStatus } from "./utils/startupCheck.js";
 import { AddressInfo } from "node:net";
 import { MeasureSyncHealthJobScheduler } from "./network/sync/syncHealthJob.js";
+import { MAX_BUNDLE_SIZE } from "./network/p2p/bundleCreator.js";
 
 export type HubSubmitSource =
   | "gossip"
@@ -1864,6 +1865,16 @@ export class Hub implements HubInterface {
       // Since we're rejecting the full bundle, return an error for each message
       return messageBundle.messages.map(() =>
         err(new HubError("unavailable.storage_failure", "Sync trie queue is full")),
+      );
+    }
+
+    if (messageBundle.messages.length > MAX_BUNDLE_SIZE) {
+      log.warn(
+        { bundleSize: messageBundle.messages.length, maxBundleSize: MAX_BUNDLE_SIZE },
+        "submitMessageBundle rejected: Message bundle is too large",
+      );
+      return messageBundle.messages.map(() =>
+        err(new HubError("bad_request.invalid_param", "Message bundle is too large")),
       );
     }
 
