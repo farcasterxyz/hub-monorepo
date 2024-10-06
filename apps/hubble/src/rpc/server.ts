@@ -86,6 +86,7 @@ import axios from "axios";
 import { fidFromEvent } from "../storage/stores/storeEventHandler.js";
 import { rustErrorToHubError } from "../rustfunctions.js";
 import { handleUnaryCall, sendUnaryData, ServerDuplexStream, ServerUnaryCall } from "@grpc/grpc-js";
+import { MAX_BUNDLE_SIZE } from "../network/p2p/bundleCreator.js";
 
 const HUBEVENTS_READER_TIMEOUT = 1 * 60 * 60 * 1000; // 1 hour
 const STREAM_METHODS_TIMEOUT = 8 * 1000; // 2 seconds
@@ -956,6 +957,16 @@ export default class Server {
           logger.warn({ errMsg: authResult.error.message }, "gRPC submitBulkMessages failed");
           callback(
             toServiceError(new HubError("unauthenticated", `gRPC authentication failed: ${authResult.error.message}`)),
+          );
+          return;
+        }
+
+        if (call.request.messages.length > MAX_BUNDLE_SIZE) {
+          logger.warn({ total: call.request.messages.length }, "gRPC submitBulkMessages received too many messages");
+          callback(
+            toServiceError(
+              new HubError("bad_request.validation_failure", `Too many messages. Max is ${MAX_BUNDLE_SIZE}`),
+            ),
           );
           return;
         }

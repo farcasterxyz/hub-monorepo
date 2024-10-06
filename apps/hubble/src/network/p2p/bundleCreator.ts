@@ -2,7 +2,7 @@ import { Message, MessageBundle } from "@farcaster/hub-nodejs";
 import { GossipPublishResult, LibP2PNode } from "./gossipNodeWorker.js";
 import { blake3Truncate160 } from "../../utils/crypto.js";
 
-const MAX_BUNDLE_SIZE = 256;
+export const MAX_BUNDLE_SIZE = 256;
 const DEFAULT_BUNDLE_TIME_MS = 1000;
 
 export class BundleCreator {
