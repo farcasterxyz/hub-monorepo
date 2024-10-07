@@ -997,15 +997,15 @@ export default class Server {
           return;
         }
 
-        if (call.request.messages.length > MAX_BUNDLE_SIZE) {
-          logger.warn({ total: call.request.messages.length }, "gRPC submitBulkMessages received too many messages");
-          callback(
-            toServiceError(
-              new HubError("bad_request.validation_failure", `Too many messages. Max is ${MAX_BUNDLE_SIZE}`),
-            ),
-          );
-          return;
-        }
+        // if (call.request.messages.length > MAX_BUNDLE_SIZE) {
+        //   logger.warn({ total: call.request.messages.length }, "gRPC submitBulkMessages received too many messages");
+        //   callback(
+        //     toServiceError(
+        //       new HubError("bad_request.validation_failure", `Too many messages. Max is ${MAX_BUNDLE_SIZE}`),
+        //     ),
+        //   );
+        //   return;
+        // }
 
         const submissionTime = getFarcasterTime();
         if (submissionTime.isErr()) {
