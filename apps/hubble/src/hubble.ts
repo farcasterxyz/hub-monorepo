@@ -796,34 +796,34 @@ export class Hub implements HubInterface {
       await this.adminServer.start(this.options.adminServerHost ?? "127.0.0.1");
     }
 
-    await this.l2RegistryProvider.start();
-    await this.fNameRegistryEventsProvider.start();
+    // await this.l2RegistryProvider.start();
+    // await this.fNameRegistryEventsProvider.start();
 
-    const peerId = this.options.peerId
-      ? exportToProtobuf(this.options.peerId as RSAPeerId | Ed25519PeerId | Secp256k1PeerId)
-      : undefined;
+    // const peerId = this.options.peerId
+    //   ? exportToProtobuf(this.options.peerId as RSAPeerId | Ed25519PeerId | Secp256k1PeerId)
+    //   : undefined;
 
-    // Start the Gossip node
-    await this.gossipNode.start(this.bootstrapAddrs(), {
-      peerId,
-      ipMultiAddr: this.options.ipMultiAddr,
-      announceIp: this.options.announceIp,
-      gossipPort: this.options.gossipPort,
-      allowedPeerIdStrs: this.allowedPeerIds,
-      deniedPeerIdStrs: this.deniedPeerIds,
-      directPeers: this.options.directPeers,
-      allowlistedImmunePeers: this.options.allowlistedImmunePeers,
-      applicationScoreCap: this.options.applicationScoreCap,
-      strictNoSign: this.strictNoSign,
-      connectToDbPeers: this.options.connectToDbPeers,
-      statsdParams: this.options.statsdParams,
-    });
+    // // Start the Gossip node
+    // await this.gossipNode.start(this.bootstrapAddrs(), {
+    //   peerId,
+    //   ipMultiAddr: this.options.ipMultiAddr,
+    //   announceIp: this.options.announceIp,
+    //   gossipPort: this.options.gossipPort,
+    //   allowedPeerIdStrs: this.allowedPeerIds,
+    //   deniedPeerIdStrs: this.deniedPeerIds,
+    //   directPeers: this.options.directPeers,
+    //   allowlistedImmunePeers: this.options.allowlistedImmunePeers,
+    //   applicationScoreCap: this.options.applicationScoreCap,
+    //   strictNoSign: this.strictNoSign,
+    //   connectToDbPeers: this.options.connectToDbPeers,
+    //   statsdParams: this.options.statsdParams,
+    // });
 
     await this.registerEventHandlers();
 
     // Start cron tasks
     this.pruneMessagesJobScheduler.start(this.options.pruneMessagesJobCron);
-    this.periodSyncJobScheduler.start();
+    // this.periodSyncJobScheduler.start();
     this.pruneEventsJobScheduler.start(this.options.pruneEventsJobCron);
     this.checkFarcasterVersionJobScheduler.start();
     this.validateOrRevokeMessagesJobScheduler.start();
@@ -831,7 +831,7 @@ export class Hub implements HubInterface {
     const randomMinute = Math.floor(Math.random() * 15);
     this.gossipContactInfoJobScheduler.start(`${randomMinute}-59/15 * * * *`); // Weird syntax but required by cron, random minute every 15 minutes
     this.checkIncomingPortsJobScheduler.start();
-    this.measureSyncHealthJobScheduler.start();
+    // this.measureSyncHealthJobScheduler.start();
 
     // Mainnet only jobs
     if (this.options.network === FarcasterNetwork.MAINNET) {
