@@ -938,7 +938,6 @@ export default class Server {
           () => call.getPeer(),
           (e) => e,
         )().unwrapOr("unavailable");
-        log.info({ method: "submitMessage", req: call.request }, `RPC call from ${peer} started`);
         statsd().increment("rpc.open_request_count", { method: "submitMessage" });
 
         const rateLimitResult = await rateLimitByIp(peer, this.submitMessageRateLimiter);
@@ -961,7 +960,6 @@ export default class Server {
         const message = call.request;
         const result = await this.hub?.submitMessage(message, "rpc");
 
-        log.info({ method: "submitMessage", req: call.request }, `RPC call from ${peer} completed`);
         statsd().decrement("rpc.open_request_count", { method: "submitMessage" });
 
         result?.match(
@@ -979,7 +977,6 @@ export default class Server {
           () => call.getPeer(),
           (e) => e,
         )().unwrapOr("unavailable");
-        log.info({ method: "submitBulkMessages", req: call.request }, `RPC call from ${peer} started`);
         statsd().increment("rpc.open_request_count", { method: "submitBulkMessages" });
 
         // Check for rate limits
@@ -1026,7 +1023,6 @@ export default class Server {
         });
         const result = await this.hub?.submitMessageBundle(submissionTime.value, messageBundle, "rpc");
 
-        log.info({ method: "submitBulkMessages", req: call.request }, `RPC call from ${peer} completed`);
         statsd().decrement("rpc.open_request_count", { method: "submitBulkMessages" });
 
         callback(
@@ -1054,14 +1050,11 @@ export default class Server {
         );
       },
       validateMessage: async (call, callback) => {
-        const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
-        log.info({ method: "validateMessage", req: call.request }, `RPC call from ${peer} started`);
         statsd().increment("rpc.open_request_count", { method: "validateMessage" });
 
         const message = call.request;
         const result = await this.hub?.validateMessage(message);
 
-        log.info({ method: "validateMessage", req: call.request }, `RPC call from ${peer} completed`);
         statsd().decrement("rpc.open_request_count", { method: "validateMessage" });
         result?.match(
           (message: Message) => {
