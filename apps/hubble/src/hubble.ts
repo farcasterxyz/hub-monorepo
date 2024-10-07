@@ -1868,15 +1868,15 @@ export class Hub implements HubInterface {
       );
     }
 
-    if (messageBundle.messages.length > MAX_BUNDLE_SIZE) {
-      log.warn(
-        { bundleSize: messageBundle.messages.length, maxBundleSize: MAX_BUNDLE_SIZE },
-        "submitMessageBundle rejected: Message bundle is too large",
-      );
-      return messageBundle.messages.map(() =>
-        err(new HubError("bad_request.invalid_param", "Message bundle is too large")),
-      );
-    }
+    // if (messageBundle.messages.length > MAX_BUNDLE_SIZE) {
+    //   log.warn(
+    //     { bundleSize: messageBundle.messages.length, maxBundleSize: MAX_BUNDLE_SIZE },
+    //     "submitMessageBundle rejected: Message bundle is too large",
+    //   );
+    //   return messageBundle.messages.map(() =>
+    //     err(new HubError("bad_request.invalid_param", "Message bundle is too large")),
+    //   );
+    // }
 
     const start = Date.now();
     const allResults: Map<number, HubResult<number>> = new Map();
