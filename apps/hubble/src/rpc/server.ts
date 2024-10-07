@@ -1713,7 +1713,7 @@ export default class Server {
 
         if (allowed.isOk() || authorized) {
           log.info({ r: request, peer }, "subscribe: starting stream");
-          statsd().decrement("rpc.open_request_count", { method: "subscribe" });
+          statsd().increment("rpc.open_request_count", { method: "subscribe" });
         } else {
           log.info({ r: request, peer, err: allowed.error.message }, "subscribe: rejected stream");
           destroyStream(stream, allowed.error);
