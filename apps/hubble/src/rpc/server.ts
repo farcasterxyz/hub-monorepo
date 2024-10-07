@@ -1713,6 +1713,7 @@ export default class Server {
 
         if (allowed.isOk() || authorized) {
           log.info({ r: request, peer }, "subscribe: starting stream");
+          statsd().decrement("rpc.open_request_count", { method: "subscribe" });
         } else {
           log.info({ r: request, peer, err: allowed.error.message }, "subscribe: rejected stream");
           destroyStream(stream, allowed.error);
@@ -1763,6 +1764,7 @@ export default class Server {
           this.subscribeIpLimiter.removeConnection(peer);
 
           log.info({ peer }, "subscribe: stream closed");
+          statsd().decrement("rpc.open_request_count", { method: "subscribe" });
         });
 
         // If the user wants to start from a specific event, we'll start from there first
