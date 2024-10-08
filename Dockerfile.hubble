@@ -94,10 +94,11 @@ COPY --from=app / /
 USER node
 EXPOSE 2282
 EXPOSE 2283
+EXPOSE 9229
 WORKDIR /home/node/app/apps/hubble
 
 # Run using pm2 as supervisor for faster recoveries on failure
 COPY --chown=node:node ./apps/hubble/pm2.config.cjs ./pm2.config.cjs
-ENV NODE_ARGS="--max-old-space-size=8192"
+ENV NODE_ARGS="--max-old-space-size=8192 --inspect"
 ENV HUBBLE_ARGS="start --network 1"
 CMD ["npx", "pm2-runtime", "start", "pm2.config.cjs"]
