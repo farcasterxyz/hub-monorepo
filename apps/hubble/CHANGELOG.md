@@ -1,5 +1,12 @@
 # @farcaster/hubble
 
+## 1.15.6
+
+### Patch Changes
+
+- c2c409fb: chore: add metrics for grpc server
+- 1ca66d8c: fix: Limit message bundle size
+
 ## 1.15.5
 
 ### Patch Changes
