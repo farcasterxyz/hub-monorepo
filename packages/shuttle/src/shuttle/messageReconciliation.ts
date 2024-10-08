@@ -181,26 +181,36 @@ export class MessageReconciliation {
   ) {
     const id = randomUUID();
     const result = new Promise<HubResult<MessagesResponse>>((resolve) => {
+      // Do not allow hanging unresponsive connections to linger:
+      const cancel = setTimeout(() => resolve(err(new HubError("unavailable", "server timeout"))), 5000);
+
       if (!this.stream) {
-        resolve(fallback());
+        fallback()
+          .then((result) => resolve(result))
+          .finally(() => clearTimeout(cancel));
         return;
       }
       const process = async (response: StreamFetchResponse) => {
         if (!this.stream) {
+          clearTimeout(cancel);
           resolve(err(new HubError("unavailable", "unexpected stream termination")));
           return;
         }
         this.stream.off("data", process);
         if (response.idempotencyKey !== id || !response.messages) {
           if (response?.error) {
+            clearTimeout(cancel);
             resolve(err(new HubError(response.error.errCode as HubErrorCode, { message: response.error.message })));
             return;
           }
 
           this.stream.cancel();
           this.stream = undefined;
-          resolve(fallback());
+          fallback()
+            .then((result) => resolve(result))
+            .finally(() => clearTimeout(cancel));
         } else {
+          clearTimeout(cancel);
           resolve(ok(response.messages));
         }
       };
