@@ -651,6 +651,148 @@ describe("shuttle", () => {
     expect(messagesInDb.length).toBe(2);
   });
 
+  test("reconciler lets unresponsive server requests terminate in error", async () => {
+    const startTimestamp = getFarcasterTime()._unsafeUnwrap();
+
+    const linkAddMessage = await Factories.LinkAddMessage.create(
+      { data: { timestamp: startTimestamp } },
+      { transient: { signer } },
+    );
+
+    const castAddMessage = await Factories.CastAddMessage.create({
+      data: { timestamp: startTimestamp - 1, fid: linkAddMessage.data.fid },
+    });
+
+    const verificationAddMessage = await Factories.CastAddMessage.create({
+      data: { timestamp: startTimestamp - 2, fid: linkAddMessage.data.fid },
+    });
+
+    await subscriber.processHubEvent(
+      HubEvent.create({
+        id: 1,
+        type: HubEventType.MERGE_MESSAGE,
+        mergeMessageBody: { message: verificationAddMessage },
+      }),
+    );
+    await subscriber.processHubEvent(
+      HubEvent.create({
+        id: 2,
+        type: HubEventType.MERGE_MESSAGE,
+        mergeMessageBody: { message: castAddMessage },
+      }),
+    );
+    await subscriber.processHubEvent(
+      HubEvent.create({
+        id: 3,
+        type: HubEventType.MERGE_MESSAGE,
+        mergeMessageBody: { message: linkAddMessage },
+      }),
+    );
+
+    // It's a hack, but mockito is not handling this well:
+    const mockRPCClient = {
+      streamFetch: (metadata?: Metadata, options?: Partial<CallOptions>) => {
+        return err(new HubError("unavailable", "unavailable"));
+      },
+      getAllLinkMessagesByFid: async (_request: FidRequest, _metadata: Metadata, _options: Partial<CallOptions>) => {
+        return ok(
+          MessagesResponse.create({
+            messages: [linkAddMessage],
+            nextPageToken: undefined,
+          }),
+        );
+      },
+      getAllCastMessagesByFid: async (_request: FidRequest, _metadata: Metadata, _options: Partial<CallOptions>) => {
+        // force wait for 2 seconds to trigger failure
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        return ok(
+          MessagesResponse.create({
+            messages: [
+              /* Pretend this message is missing from the hub */
+            ],
+            nextPageToken: undefined,
+          }),
+        );
+      },
+      getAllVerificationMessagesByFid: async (
+        _request: FidRequest,
+        _metadata: Metadata,
+        _options: Partial<CallOptions>,
+      ) => {
+        return ok(
+          MessagesResponse.create({
+            messages: [],
+            nextPageToken: undefined,
+          }),
+        );
+      },
+      getAllReactionMessagesByFid: async (
+        _request: FidRequest,
+        _metadata: Metadata,
+        _options: Partial<CallOptions>,
+      ) => {
+        return ok(
+          MessagesResponse.create({
+            messages: [],
+            nextPageToken: undefined,
+          }),
+        );
+      },
+      getLinkCompactStateMessageByFid: async (
+        _request: FidRequest,
+        _metadata: Metadata,
+        _options: Partial<CallOptions>,
+      ) => {
+        // force wait for 2 seconds to trigger failure
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        return ok(
+          MessagesResponse.create({
+            messages: [],
+            nextPageToken: undefined,
+          }),
+        );
+      },
+      getAllUserDataMessagesByFid: async (
+        _request: FidRequest,
+        _metadata: Metadata,
+        _options: Partial<CallOptions>,
+      ) => {
+        return ok(
+          MessagesResponse.create({
+            messages: [],
+            nextPageToken: undefined,
+          }),
+        );
+      },
+    };
+
+    // Only include 2 of the 3 messages in the time window
+    const reconciler = new MessageReconciliation(mockRPCClient as unknown as HubRpcClient, db, log);
+    const messagesOnHub: Message[] = [];
+    const messagesInDb: {
+      hash: Uint8Array;
+      prunedAt: Date | null;
+      revokedAt: Date | null;
+      fid: number;
+      type: MessageType;
+      raw: Uint8Array;
+      signer: Uint8Array;
+    }[] = [];
+    await expect(
+      reconciler.reconcileMessagesForFid(
+        linkAddMessage.data.fid,
+        async (msg, _missing, _pruned, _revoked) => {
+          messagesOnHub.push(msg);
+        },
+        async (dbMsg, _missing) => {
+          messagesInDb.push(dbMsg);
+        },
+        startTimestamp - 1,
+        startTimestamp,
+      ),
+    ).rejects.toThrow();
+  }, 15000); // Need to make sure this is long enough to handle the timeout termination
+
   test("marks messages as pruned", async () => {
     const addMessage = await Factories.ReactionAddMessage.create({}, { transient: { signer } });
     subscriber.addMessageCallback((msg, operation, state, isNew, wasMissed) => {
