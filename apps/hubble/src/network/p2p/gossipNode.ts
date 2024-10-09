@@ -204,6 +204,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     const workerPath = new URL("../../../build/network/p2p/gossipNodeWorker.js", import.meta.url);
     this._nodeWorker = new Worker(workerPath, {
       workerData: { network: this._network },
+      execArgv: ["--inspect"],
     });
     // Loggers start off buffered, and they are "flushed" when the startup checks and progress
     // bars finish. This is to avoid logging to the console before the progress bars are set up

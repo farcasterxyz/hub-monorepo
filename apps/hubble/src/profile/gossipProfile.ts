@@ -57,7 +57,7 @@ export async function profileGossipServer(nodeConfig = "3:10") {
 
   const workers: Worker[] = [];
   for (let i = 0; i < numWorkers; i++) {
-    workers.push(new Worker(workerPath, { workerData: { numNodes } }));
+    workers.push(new Worker(workerPath, { workerData: { numNodes }, execArgv: ["--inspect"] }));
   }
 
   const pendingWorkerCalls = new Map<number, { resolve: (value: ProfileWorkerResponse) => void }>();
