@@ -227,7 +227,7 @@ class Engine extends TypedEmitter<EngineEvents> {
           for (let i = 0; i < NUM_VALIDATION_WORKERS; i++) {
             const validationWorker = new Worker(workerPath, {
               workerData,
-              execArgv: [`--inspect=0.0.0.0:${9231 + i}`],
+              execArgv: [`--inspect-port=${9231 + i}`],
             });
             validationWorker.on("message", validationWorkerHandler);
             log.info({ workerPath }, "created validation worker thread");
