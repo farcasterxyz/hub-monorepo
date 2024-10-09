@@ -32,7 +32,7 @@ if (!isMainThread) {
     if (port === undefined) {
       console.log("missing port");
     } else {
-      inspector.open(parseInt(port));
+      inspector.open(parseInt(port), "0.0.0.0");
     }
   }
 }
