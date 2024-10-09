@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.6.7
+
+### Patch Changes
+
+- d06fbda8: fix: handle timed out connections from hub event subscriber
+
 ## 0.6.6
 
 ### Patch Changes
