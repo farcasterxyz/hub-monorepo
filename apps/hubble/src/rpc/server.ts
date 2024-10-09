@@ -533,11 +533,11 @@ export default class Server {
     (async () => {
       const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
       log.debug({ method: "getInfo", req: call?.request || { dbStats: false } }, `RPC call from ${peer}`);
-      statsd().increment("rpc.open_request_count", { method: "getInfo" });
+      statsd().increment("rpc.open_request_count", { method: "getInfo", peer: call.getPeer() });
 
       const info = await this.getInfo(call?.request || { dbStats: false });
 
-      statsd().decrement("rpc.open_request_count", { method: "getInfo" });
+      statsd().decrement("rpc.open_request_count", { method: "getInfo", peer: call.getPeer() });
       callback(null, info);
     })();
   }
@@ -561,11 +561,11 @@ export default class Server {
     (async () => {
       const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
       log.debug({ method: "stopSync", req: call.request }, `RPC call from ${peer}`);
-      statsd().increment("rpc.open_request_count", { method: "stopSync" });
+      statsd().increment("rpc.open_request_count", { method: "stopSync", peer: call.getPeer() });
 
       const result = await this.stopSync();
 
-      statsd().decrement("rpc.open_request_count", { method: "stopSync" });
+      statsd().decrement("rpc.open_request_count", { method: "stopSync", peer: call.getPeer() });
       if (result.isErr()) {
         callback(toServiceError(result.error));
       } else {
@@ -610,11 +610,11 @@ export default class Server {
     (async () => {
       const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
       log.debug({ method: "forceSync", req: call.request }, `RPC call from ${peer}`);
-      statsd().increment("rpc.open_request_count", { method: "forceSync" });
+      statsd().increment("rpc.open_request_count", { method: "forceSync", peer: call.getPeer() });
 
       const result = await this.forceSync(call.request);
 
-      statsd().decrement("rpc.open_request_count", { method: "forceSync" });
+      statsd().decrement("rpc.open_request_count", { method: "forceSync", peer: call.getPeer() });
       if (result.isErr()) {
         callback(toServiceError(result.error));
       } else {
@@ -641,11 +641,11 @@ export default class Server {
     (async () => {
       const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
       log.debug({ method: "getCurrentPeers", req: call.request }, `RPC call from ${peer}`);
-      statsd().increment("rpc.open_request_count", { method: "getCurrentPeers" });
+      statsd().increment("rpc.open_request_count", { method: "getCurrentPeers", peer: call.getPeer() });
 
       const result = this.getCurrentPeers();
 
-      statsd().decrement("rpc.open_request_count", { method: "getCurrentPeers" });
+      statsd().decrement("rpc.open_request_count", { method: "getCurrentPeers", peer: call.getPeer() });
 
       callback(null, result);
     })();
@@ -701,12 +701,12 @@ export default class Server {
     (async () => {
       const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
       log.debug({ method: "getSyncStatus", req: call.request }, `RPC call from ${peer}`);
-      statsd().increment("rpc.open_request_count", { method: "getSyncStatus" });
+      statsd().increment("rpc.open_request_count", { method: "getSyncStatus", peer: call.getPeer() });
 
       const peerId = call.request.peerId;
       const result = await this.getSyncStatus(peerId);
 
-      statsd().decrement("rpc.open_request_count", { method: "getSyncStatus" });
+      statsd().decrement("rpc.open_request_count", { method: "getSyncStatus", peer: call.getPeer() });
       if (result.isErr()) {
         callback(toServiceError(result.error));
       } else {
@@ -723,12 +723,12 @@ export default class Server {
   public getAllSyncIdsByPrefixRPC(call: ServerUnaryCall<TrieNodePrefix, SyncIds>, callback: sendUnaryData<SyncIds>) {
     const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
     log.debug({ method: "getAllSyncIdsByPrefix", req: call.request }, `RPC call from ${peer}`);
-    statsd().increment("rpc.open_request_count", { method: "getAllSyncIdsByPrefix" });
+    statsd().increment("rpc.open_request_count", { method: "getAllSyncIdsByPrefix", peer: call.getPeer() });
 
     (async () => {
       const result = await this.getAllSyncIdsByPrefix(call.request);
 
-      statsd().decrement("rpc.open_request_count", { method: "getAllSyncIdsByPrefix" });
+      statsd().decrement("rpc.open_request_count", { method: "getAllSyncIdsByPrefix", peer: call.getPeer() });
       if (result.isErr()) {
         callback(toServiceError(result.error));
       } else {
@@ -778,11 +778,11 @@ export default class Server {
   ) {
     const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
     log.debug({ method: "getAllMessagesBySyncIds", req: call.request }, `RPC call from ${peer}`);
-    statsd().increment("rpc.open_request_count", { method: "getAllMessagesBySyncIds" });
+    statsd().increment("rpc.open_request_count", { method: "getAllMessagesBySyncIds", peer: call.getPeer() });
 
     const result = await this.getAllMessagesBySyncIds(call.request);
 
-    statsd().decrement("rpc.open_request_count", { method: "getAllMessagesBySyncIds" });
+    statsd().decrement("rpc.open_request_count", { method: "getAllMessagesBySyncIds", peer: call.getPeer() });
     if (result.isErr()) {
       callback(toServiceError(result.error));
     } else {
@@ -801,11 +801,11 @@ export default class Server {
   ) {
     const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
     log.debug({ method: "getSyncMetadataByPrefix", req: call.request }, `RPC call from ${peer}`);
-    statsd().increment("rpc.open_request_count", { method: "getSyncMetadataByPrefix" });
+    statsd().increment("rpc.open_request_count", { method: "getSyncMetadataByPrefix", peer: call.getPeer() });
 
     (async () => {
       const result = await this.getSyncMetadataByPrefix(call.request);
-      statsd().decrement("rpc.open_request_count", { method: "getSyncMetadataByPrefix" });
+      statsd().decrement("rpc.open_request_count", { method: "getSyncMetadataByPrefix", peer: call.getPeer() });
 
       if (result.isErr()) {
         callback(toServiceError(result.error));
@@ -839,7 +839,7 @@ export default class Server {
   ) {
     const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
     log.debug({ method: "getSyncSnapshotByPrefix", req: call.request }, `RPC call from ${peer}`);
-    statsd().increment("rpc.open_request_count", { method: "getSyncSnapshotByPrefix" });
+    statsd().increment("rpc.open_request_count", { method: "getSyncSnapshotByPrefix", peer: call.getPeer() });
 
     // If someone is asking for our sync snapshot, that means we're getting incoming
     // connections
@@ -848,7 +848,7 @@ export default class Server {
 
     (async () => {
       const result = await this.getSyncSnapshotByPrefix(call.request);
-      statsd().decrement("rpc.open_request_count", { method: "getSyncSnapshotByPrefix" });
+      statsd().decrement("rpc.open_request_count", { method: "getSyncSnapshotByPrefix", peer: call.getPeer() });
       if (result.isErr()) {
         callback(toServiceError(result.error));
       } else {
@@ -874,11 +874,11 @@ export default class Server {
   ) {
     const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
     log.debug({ method: "getOnChainSignersByFid", req: call.request }, `RPC call from ${peer}`);
-    statsd().increment("rpc.open_request_count", { method: "getOnChainSignersByFid" });
+    statsd().increment("rpc.open_request_count", { method: "getOnChainSignersByFid", peer: call.getPeer() });
 
     const signersResult = await this.getOnChainSignersByFid(call.request);
 
-    statsd().decrement("rpc.open_request_count", { method: "getOnChainSignersByFid" });
+    statsd().decrement("rpc.open_request_count", { method: "getOnChainSignersByFid", peer: call.getPeer() });
     signersResult?.match(
       (page: OnChainEventResponse) => {
         callback(null, page);
@@ -902,11 +902,11 @@ export default class Server {
   ) {
     const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
     log.debug({ method: "getOnChainEvents", req: call.request }, `RPC call from ${peer}`);
-    statsd().increment("rpc.open_request_count", { method: "getOnChainEvents" });
+    statsd().increment("rpc.open_request_count", { method: "getOnChainEvents", peer: call.getPeer() });
 
     (async () => {
       const result = await this.getOnChainEvents(call.request);
-      statsd().decrement("rpc.open_request_count", { method: "getOnChainEvents" });
+      statsd().decrement("rpc.open_request_count", { method: "getOnChainEvents", peer: call.getPeer() });
       if (result.isErr()) {
         callback(toServiceError(result.error));
       } else {
@@ -938,7 +938,7 @@ export default class Server {
           () => call.getPeer(),
           (e) => e,
         )().unwrapOr("unavailable");
-        statsd().increment("rpc.open_request_count", { method: "submitMessage" });
+        statsd().increment("rpc.open_request_count", { method: "submitMessage", peer: call.getPeer() });
 
         const rateLimitResult = await rateLimitByIp(peer, this.submitMessageRateLimiter);
         if (rateLimitResult.isErr()) {
@@ -960,7 +960,7 @@ export default class Server {
         const message = call.request;
         const result = await this.hub?.submitMessage(message, "rpc");
 
-        statsd().decrement("rpc.open_request_count", { method: "submitMessage" });
+        statsd().decrement("rpc.open_request_count", { method: "submitMessage", peer: call.getPeer() });
 
         result?.match(
           () => {
@@ -977,7 +977,7 @@ export default class Server {
           () => call.getPeer(),
           (e) => e,
         )().unwrapOr("unavailable");
-        statsd().increment("rpc.open_request_count", { method: "submitBulkMessages" });
+        statsd().increment("rpc.open_request_count", { method: "submitBulkMessages", peer: call.getPeer() });
 
         // Check for rate limits
         const rateLimitResult = await rateLimitByIp(peer, this.submitMessageRateLimiter);
@@ -1023,7 +1023,7 @@ export default class Server {
         });
         const result = await this.hub?.submitMessageBundle(submissionTime.value, messageBundle, "rpc");
 
-        statsd().decrement("rpc.open_request_count", { method: "submitBulkMessages" });
+        statsd().decrement("rpc.open_request_count", { method: "submitBulkMessages", peer: call.getPeer() });
 
         callback(
           null,
@@ -1050,12 +1050,12 @@ export default class Server {
         );
       },
       validateMessage: async (call, callback) => {
-        statsd().increment("rpc.open_request_count", { method: "validateMessage" });
+        statsd().increment("rpc.open_request_count", { method: "validateMessage", peer: call.getPeer() });
 
         const message = call.request;
         const result = await this.hub?.validateMessage(message);
 
-        statsd().decrement("rpc.open_request_count", { method: "validateMessage" });
+        statsd().decrement("rpc.open_request_count", { method: "validateMessage", peer: call.getPeer() });
         result?.match(
           (message: Message) => {
             callback(null, ValidationResponse.create({ valid: true, message }));
@@ -1068,12 +1068,12 @@ export default class Server {
       getCast: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getCast", req: call.request }, `RPC call from ${peer}`);
-        statsd().increment("rpc.open_request_count", { method: "getCast" });
+        statsd().increment("rpc.open_request_count", { method: "getCast", peer: call.getPeer() });
 
         const request = call.request;
 
         const castAddResult = await this.engine?.getCast(request.fid, request.hash);
-        statsd().decrement("rpc.open_request_count", { method: "getCast" });
+        statsd().decrement("rpc.open_request_count", { method: "getCast", peer: call.getPeer() });
 
         castAddResult?.match(
           (castAdd: CastAddMessage) => {
@@ -1087,7 +1087,7 @@ export default class Server {
       getCastsByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getCastsByFid", req: call.request }, `RPC call from ${peer}`);
-        statsd().increment("rpc.open_request_count", { method: "getCastsByFid" });
+        statsd().increment("rpc.open_request_count", { method: "getCastsByFid", peer: call.getPeer() });
 
         const { fid, pageSize, pageToken, reverse } = call.request;
 
@@ -1097,7 +1097,7 @@ export default class Server {
           reverse,
         });
 
-        statsd().decrement("rpc.open_request_count", { method: "getCastsByFid" });
+        statsd().decrement("rpc.open_request_count", { method: "getCastsByFid", peer: call.getPeer() });
         castsResult?.match(
           (page: MessagesPage<CastAddMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1110,7 +1110,7 @@ export default class Server {
       getCastsByParent: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getCastsByParent", req: call.request }, `RPC call from ${peer}`);
-        statsd().increment("rpc.open_request_count", { method: "getCastsByParent" });
+        statsd().increment("rpc.open_request_count", { method: "getCastsByParent", peer: call.getPeer() });
 
         const { parentCastId, parentUrl, pageSize, pageToken, reverse } = call.request;
 
@@ -1127,7 +1127,7 @@ export default class Server {
           reverse,
         });
 
-        statsd().decrement("rpc.open_request_count", { method: "getCastsByParent" });
+        statsd().decrement("rpc.open_request_count", { method: "getCastsByParent", peer: call.getPeer() });
         castsResult?.match(
           (page: MessagesPage<CastAddMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1140,13 +1140,13 @@ export default class Server {
       getCastsByMention: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getCastsByMention", req: call.request }, `RPC call from ${peer}`);
-        statsd().increment("rpc.open_request_count", { method: "getCastsByMention" });
+        statsd().increment("rpc.open_request_count", { method: "getCastsByMention", peer: call.getPeer() });
 
         const { fid, pageSize, pageToken, reverse } = call.request;
 
         const castsResult = await this.engine?.getCastsByMention(fid, { pageSize, pageToken, reverse });
 
-        statsd().decrement("rpc.open_request_count", { method: "getCastsByMention" });
+        statsd().decrement("rpc.open_request_count", { method: "getCastsByMention", peer: call.getPeer() });
         castsResult?.match(
           (page: MessagesPage<CastAddMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1159,7 +1159,7 @@ export default class Server {
       getReaction: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getReaction", req: call.request }, `RPC call from ${peer}`);
-        statsd().increment("rpc.open_request_count", { method: "getReaction" });
+        statsd().increment("rpc.open_request_count", { method: "getReaction", peer: call.getPeer() });
 
         const request = call.request;
 
@@ -1168,7 +1168,7 @@ export default class Server {
           request.reactionType,
           request.targetCastId ?? request.targetUrl ?? "",
         );
-        statsd().decrement("rpc.open_request_count", { method: "getReaction" });
+        statsd().decrement("rpc.open_request_count", { method: "getReaction", peer: call.getPeer() });
 
         reactionResult?.match(
           (reaction: ReactionAddMessage) => {
@@ -1182,7 +1182,7 @@ export default class Server {
       getReactionsByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getReactionsByFid", req: call.request }, `RPC call from ${peer}`);
-        statsd().increment("rpc.open_request_count", { method: "getReactionsByFid" });
+        statsd().increment("rpc.open_request_count", { method: "getReactionsByFid", peer: call.getPeer() });
 
         const { fid, reactionType, pageSize, pageToken, reverse } = call.request;
         const reactionsResult = await this.engine?.getReactionsByFid(fid, reactionType, {
@@ -1191,7 +1191,7 @@ export default class Server {
           reverse,
         });
 
-        statsd().decrement("rpc.open_request_count", { method: "getReactionsByFid" });
+        statsd().decrement("rpc.open_request_count", { method: "getReactionsByFid", peer: call.getPeer() });
         reactionsResult?.match(
           (page: MessagesPage<ReactionAddMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1204,7 +1204,7 @@ export default class Server {
       getReactionsByCast: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getReactionsByCast", req: call.request }, `RPC call from ${peer}`);
-        statsd().increment("rpc.open_request_count", { method: "getReactionsByCast" });
+        statsd().increment("rpc.open_request_count", { method: "getReactionsByCast", peer: call.getPeer() });
 
         const { targetCastId, reactionType, pageSize, pageToken, reverse } = call.request;
         const reactionsResult = await this.engine?.getReactionsByTarget(targetCastId ?? CastId.create(), reactionType, {
@@ -1212,7 +1212,7 @@ export default class Server {
           pageToken,
           reverse,
         });
-        statsd().decrement("rpc.open_request_count", { method: "getReactionsByCast" });
+        statsd().decrement("rpc.open_request_count", { method: "getReactionsByCast", peer: call.getPeer() });
 
         reactionsResult?.match(
           (page: MessagesPage<ReactionAddMessage>) => {
@@ -1226,7 +1226,7 @@ export default class Server {
       getReactionsByTarget: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getReactionsByTarget", req: call.request }, `RPC call from ${peer}`);
-        statsd().increment("rpc.open_request_count", { method: "getReactionsByTarget" });
+        statsd().increment("rpc.open_request_count", { method: "getReactionsByTarget", peer: call.getPeer() });
 
         const { targetCastId, targetUrl, reactionType, pageSize, pageToken, reverse } = call.request;
         const reactionsResult = await this.engine?.getReactionsByTarget(targetCastId ?? targetUrl ?? "", reactionType, {
@@ -1235,7 +1235,7 @@ export default class Server {
           reverse,
         });
 
-        statsd().decrement("rpc.open_request_count", { method: "getReactionsByTarget" });
+        statsd().decrement("rpc.open_request_count", { method: "getReactionsByTarget", peer: call.getPeer() });
         reactionsResult?.match(
           (page: MessagesPage<ReactionAddMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1248,13 +1248,13 @@ export default class Server {
       getUserData: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getUserData", req: call.request }, `RPC call from ${peer}`);
-        statsd().increment("rpc.open_request_count", { method: "getUserData" });
+        statsd().increment("rpc.open_request_count", { method: "getUserData", peer: call.getPeer() });
 
         const request = call.request;
 
         const userDataResult = await this.engine?.getUserData(request.fid, request.userDataType);
 
-        statsd().decrement("rpc.open_request_count", { method: "getUserData" });
+        statsd().decrement("rpc.open_request_count", { method: "getUserData", peer: call.getPeer() });
         userDataResult?.match(
           (userData: UserDataAddMessage) => {
             callback(null, userData);
@@ -1267,7 +1267,7 @@ export default class Server {
       getUserDataByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getUserDataByFid", req: call.request }, `RPC call from ${peer}`);
-        statsd().increment("rpc.open_request_count", { method: "getUserDataByFid" });
+        statsd().increment("rpc.open_request_count", { method: "getUserDataByFid", peer: call.getPeer() });
 
         const { fid, pageSize, pageToken, reverse } = call.request;
 
@@ -1277,7 +1277,7 @@ export default class Server {
           reverse,
         });
 
-        statsd().decrement("rpc.open_request_count", { method: "getUserDataByFid" });
+        statsd().decrement("rpc.open_request_count", { method: "getUserDataByFid", peer: call.getPeer() });
         userDataResult?.match(
           (page: MessagesPage<UserDataAddMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1290,13 +1290,13 @@ export default class Server {
       getUsernameProof: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getUsernameProof", req: call.request }, `RPC call from ${peer}`);
-        statsd().increment("rpc.open_request_count", { method: "getUsernameProof" });
+        statsd().increment("rpc.open_request_count", { method: "getUsernameProof", peer: call.getPeer() });
 
         const request = call.request;
 
         const usernameProofResult = await this.engine?.getUserNameProof(request.name);
 
-        statsd().decrement("rpc.open_request_count", { method: "getUsernameProof" });
+        statsd().decrement("rpc.open_request_count", { method: "getUsernameProof", peer: call.getPeer() });
         usernameProofResult?.match(
           (usernameProof: UserNameProof) => {
             callback(null, usernameProof);
@@ -1309,13 +1309,13 @@ export default class Server {
       getUserNameProofsByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getUserNameProofsByFid", req: call.request }, `RPC call from ${peer}`);
-        statsd().increment("rpc.open_request_count", { method: "getUserNameProofsByFid" });
+        statsd().increment("rpc.open_request_count", { method: "getUserNameProofsByFid", peer: call.getPeer() });
 
         const request = call.request;
 
         const usernameProofResult = await this.engine?.getUserNameProofsByFid(request.fid);
 
-        statsd().decrement("rpc.open_request_count", { method: "getUserNameProofsByFid" });
+        statsd().decrement("rpc.open_request_count", { method: "getUserNameProofsByFid", peer: call.getPeer() });
         usernameProofResult?.match(
           (usernameProofs: UserNameProof[]) => {
             callback(null, UsernameProofsResponse.create({ proofs: usernameProofs }));
@@ -1328,13 +1328,13 @@ export default class Server {
       getVerification: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getVerification", req: call.request }, `RPC call from ${peer}`);
-        statsd().increment("rpc.open_request_count", { method: "getVerification" });
+        statsd().increment("rpc.open_request_count", { method: "getVerification", peer: call.getPeer() });
 
         const request = call.request;
 
         const verificationResult = await this.engine?.getVerification(request.fid, request.address);
 
-        statsd().decrement("rpc.open_request_count", { method: "getVerification" });
+        statsd().decrement("rpc.open_request_count", { method: "getVerification", peer: call.getPeer() });
         verificationResult?.match(
           (verification: VerificationAddAddressMessage) => {
             callback(null, verification);
@@ -1347,7 +1347,7 @@ export default class Server {
       getVerificationsByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getVerificationsByFid", req: call.request }, `RPC call from ${peer}`);
-        statsd().increment("rpc.open_request_count", { method: "getVerificationsByFid" });
+        statsd().increment("rpc.open_request_count", { method: "getVerificationsByFid", peer: call.getPeer() });
 
         const { fid, pageSize, pageToken, reverse } = call.request;
 
@@ -1357,7 +1357,7 @@ export default class Server {
           reverse,
         });
 
-        statsd().decrement("rpc.open_request_count", { method: "getVerificationsByFid" });
+        statsd().decrement("rpc.open_request_count", { method: "getVerificationsByFid", peer: call.getPeer() });
         verificationsResult?.match(
           (page: MessagesPage<VerificationAddAddressMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1370,13 +1370,13 @@ export default class Server {
       getOnChainSigner: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getOnChainSigner", req: call.request }, `RPC call from ${peer}`);
-        statsd().decrement("rpc.open_request_count", { method: "getVerificationsByFid" });
+        statsd().decrement("rpc.open_request_count", { method: "getOnChainSigner", peer: call.getPeer() });
 
         const request = call.request;
 
         const signerResult = await this.engine?.getActiveSigner(request.fid, request.signer);
 
-        statsd().decrement("rpc.open_request_count", { method: "getOnChainSigner" });
+        statsd().decrement("rpc.open_request_count", { method: "getOnChainSigner", peer: call.getPeer() });
         signerResult?.match(
           (signer: SignerOnChainEvent) => {
             callback(null, signer);
@@ -1389,13 +1389,13 @@ export default class Server {
       getLink: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getLink", req: call.request }, `RPC call from ${peer}`);
-        statsd().increment("rpc.open_request_count", { method: "getLink" });
+        statsd().increment("rpc.open_request_count", { method: "getLink", peer: call.getPeer() });
 
         const request = call.request;
 
         const linkResult = await this.engine?.getLink(request.fid, request.linkType, request.targetFid ?? 0);
 
-        statsd().decrement("rpc.open_request_count", { method: "getLink" });
+        statsd().decrement("rpc.open_request_count", { method: "getLink", peer: call.getPeer() });
         linkResult?.match(
           (link: LinkAddMessage) => {
             callback(null, link);
@@ -1408,7 +1408,7 @@ export default class Server {
       getLinksByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getLinksByFid", req: call.request }, `RPC call from ${peer}`);
-        statsd().increment("rpc.open_request_count", { method: "getLinksByFid" });
+        statsd().increment("rpc.open_request_count", { method: "getLinksByFid", peer: call.getPeer() });
 
         const { fid, linkType, pageSize, pageToken, reverse } = call.request;
         const linksResult = await this.engine?.getLinksByFid(fid, linkType, {
@@ -1417,7 +1417,7 @@ export default class Server {
           reverse,
         });
 
-        statsd().decrement("rpc.open_request_count", { method: "getLinksByFid" });
+        statsd().decrement("rpc.open_request_count", { method: "getLinksByFid", peer: call.getPeer() });
         linksResult?.match(
           (page: MessagesPage<LinkAddMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1430,7 +1430,7 @@ export default class Server {
       getLinksByTarget: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getLinksByTarget", req: call.request }, `RPC call from ${peer}`);
-        statsd().increment("rpc.open_request_count", { method: "getLinksByTarget" });
+        statsd().increment("rpc.open_request_count", { method: "getLinksByTarget", peer: call.getPeer() });
 
         const { targetFid, linkType, pageSize, pageToken, reverse } = call.request;
         const linksResult = await this.engine?.getLinksByTarget(targetFid ?? 0, linkType, {
@@ -1439,7 +1439,7 @@ export default class Server {
           reverse,
         });
 
-        statsd().decrement("rpc.open_request_count", { method: "getLinksByTarget" });
+        statsd().decrement("rpc.open_request_count", { method: "getLinksByTarget", peer: call.getPeer() });
         linksResult?.match(
           (page: MessagesPage<LinkAddMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1452,12 +1452,12 @@ export default class Server {
       getIdRegistryOnChainEvent: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getIdRegistryOnChainEvent", req: call.request }, `RPC call from ${peer}`);
-        statsd().increment("rpc.open_request_count", { method: "getIdRegistryOnChainEvent" });
+        statsd().increment("rpc.open_request_count", { method: "getIdRegistryOnChainEvent", peer: call.getPeer() });
 
         const request = call.request;
         const idRegistryEventResult = await this.engine?.getIdRegistryOnChainEvent(request.fid);
 
-        statsd().decrement("rpc.open_request_count", { method: "getIdRegistryOnChainEvent" });
+        statsd().decrement("rpc.open_request_count", { method: "getIdRegistryOnChainEvent", peer: call.getPeer() });
         idRegistryEventResult?.match(
           (idRegistryEvent: OnChainEvent) => {
             callback(null, idRegistryEvent);
@@ -1470,12 +1470,18 @@ export default class Server {
       getIdRegistryOnChainEventByAddress: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getIdRegistryOnChainEventByAddress", req: call.request }, `RPC call from ${peer}`);
-        statsd().increment("rpc.open_request_count", { method: "getIdRegistryOnChainEventByAddress" });
+        statsd().increment("rpc.open_request_count", {
+          method: "getIdRegistryOnChainEventByAddress",
+          peer: call.getPeer(),
+        });
 
         const request = call.request;
         const idRegistryEventResult = await this.engine?.getIdRegistryOnChainEventByAddress(request.address);
 
-        statsd().decrement("rpc.open_request_count", { method: "getIdRegistryOnChainEventByAddress" });
+        statsd().decrement("rpc.open_request_count", {
+          method: "getIdRegistryOnChainEventByAddress",
+          peer: call.getPeer(),
+        });
         idRegistryEventResult?.match(
           (idRegistryEvent: OnChainEvent) => {
             callback(null, idRegistryEvent);
@@ -1486,12 +1492,12 @@ export default class Server {
         );
       },
       getCurrentStorageLimitsByFid: async (call, callback) => {
-        statsd().increment("rpc.open_request_count", { method: "getCurrentStorageLimitsByFid" });
+        statsd().increment("rpc.open_request_count", { method: "getCurrentStorageLimitsByFid", peer: call.getPeer() });
 
         const request = call.request;
         const storageLimitsResult = await this.engine?.getCurrentStorageLimitsByFid(request.fid);
 
-        statsd().decrement("rpc.open_request_count", { method: "getCurrentStorageLimitsByFid" });
+        statsd().decrement("rpc.open_request_count", { method: "getCurrentStorageLimitsByFid", peer: call.getPeer() });
         storageLimitsResult?.match(
           (storageLimits: StorageLimitsResponse) => {
             callback(null, storageLimits);
@@ -1504,7 +1510,7 @@ export default class Server {
       getFids: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getFids", req: call.request }, `RPC call from ${peer}`);
-        statsd().increment("rpc.open_request_count", { method: "getFids" });
+        statsd().increment("rpc.open_request_count", { method: "getFids", peer: call.getPeer() });
 
         const { pageSize, pageToken, reverse } = call.request;
 
@@ -1514,7 +1520,7 @@ export default class Server {
           reverse,
         });
 
-        statsd().decrement("rpc.open_request_count", { method: "getFids" });
+        statsd().decrement("rpc.open_request_count", { method: "getFids", peer: call.getPeer() });
         result?.match(
           (page: { fids: number[]; nextPageToken: Uint8Array | undefined }) => {
             callback(null, FidsResponse.create(page));
@@ -1527,7 +1533,7 @@ export default class Server {
       getAllCastMessagesByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getAllCastMessagesByFid", req: call.request }, `RPC call from ${peer}`);
-        statsd().increment("rpc.open_request_count", { method: "getAllCastMessagesByFid" });
+        statsd().increment("rpc.open_request_count", { method: "getAllCastMessagesByFid", peer: call.getPeer() });
 
         const { fid, pageSize, pageToken, reverse, startTimestamp, stopTimestamp } = call.request;
         const result = await this.engine?.getAllCastMessagesByFid(
@@ -1541,7 +1547,7 @@ export default class Server {
           stopTimestamp,
         );
 
-        statsd().decrement("rpc.open_request_count", { method: "getAllCastMessagesByFid" });
+        statsd().decrement("rpc.open_request_count", { method: "getAllCastMessagesByFid", peer: call.getPeer() });
         result?.match(
           (page: MessagesPage<CastAddMessage | CastRemoveMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1554,7 +1560,7 @@ export default class Server {
       getAllReactionMessagesByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getAllReactionMessagesByFid", req: call.request }, `RPC call from ${peer}`);
-        statsd().increment("rpc.open_request_count", { method: "getAllReactionMessagesByFid" });
+        statsd().increment("rpc.open_request_count", { method: "getAllReactionMessagesByFid", peer: call.getPeer() });
 
         const { fid, pageSize, pageToken, reverse, startTimestamp, stopTimestamp } = call.request;
         const result = await this.engine?.getAllReactionMessagesByFid(
@@ -1568,7 +1574,7 @@ export default class Server {
           stopTimestamp,
         );
 
-        statsd().decrement("rpc.open_request_count", { method: "getAllReactionMessagesByFid" });
+        statsd().decrement("rpc.open_request_count", { method: "getAllReactionMessagesByFid", peer: call.getPeer() });
         result?.match(
           (page: MessagesPage<ReactionAddMessage | ReactionRemoveMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1581,7 +1587,10 @@ export default class Server {
       getAllVerificationMessagesByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getAllVerificationMessagesByFid", req: call.request }, `RPC call from ${peer}`);
-        statsd().increment("rpc.open_request_count", { method: "getAllVerificationMessagesByFid" });
+        statsd().increment("rpc.open_request_count", {
+          method: "getAllVerificationMessagesByFid",
+          peer: call.getPeer(),
+        });
 
         const { fid, pageSize, pageToken, reverse, startTimestamp, stopTimestamp } = call.request;
         const result = await this.engine?.getAllVerificationMessagesByFid(
@@ -1595,7 +1604,10 @@ export default class Server {
           stopTimestamp,
         );
 
-        statsd().decrement("rpc.open_request_count", { method: "getAllVerificationMessagesByFid" });
+        statsd().decrement("rpc.open_request_count", {
+          method: "getAllVerificationMessagesByFid",
+          peer: call.getPeer(),
+        });
         result?.match(
           (page: MessagesPage<VerificationAddAddressMessage | VerificationRemoveMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1608,7 +1620,7 @@ export default class Server {
       getAllUserDataMessagesByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getAllUserDataMessagesByFid", req: call.request }, `RPC call from ${peer}`);
-        statsd().increment("rpc.open_request_count", { method: "getAllUserDataMessagesByFid" });
+        statsd().increment("rpc.open_request_count", { method: "getAllUserDataMessagesByFid", peer: call.getPeer() });
 
         const { fid, pageSize, pageToken, reverse, startTimestamp, stopTimestamp } = call.request;
         const result = await this.engine?.getUserDataByFid(
@@ -1622,7 +1634,7 @@ export default class Server {
           stopTimestamp,
         );
 
-        statsd().decrement("rpc.open_request_count", { method: "getAllUserDataMessagesByFid" });
+        statsd().decrement("rpc.open_request_count", { method: "getAllUserDataMessagesByFid", peer: call.getPeer() });
         result?.match(
           (page: MessagesPage<UserDataAddMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1635,7 +1647,7 @@ export default class Server {
       getAllLinkMessagesByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getAllLinkMessagesByFid", req: call.request }, `RPC call from ${peer}`);
-        statsd().increment("rpc.open_request_count", { method: "getAllLinkMessagesByFid" });
+        statsd().increment("rpc.open_request_count", { method: "getAllLinkMessagesByFid", peer: call.getPeer() });
 
         const { fid, pageSize, pageToken, reverse, startTimestamp, stopTimestamp } = call.request;
         const result = await this.engine?.getAllLinkMessagesByFid(
@@ -1649,7 +1661,7 @@ export default class Server {
           stopTimestamp,
         );
 
-        statsd().decrement("rpc.open_request_count", { method: "getAllLinkMessagesByFid" });
+        statsd().decrement("rpc.open_request_count", { method: "getAllLinkMessagesByFid", peer: call.getPeer() });
         result?.match(
           (page: MessagesPage<LinkAddMessage | LinkRemoveMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1662,7 +1674,10 @@ export default class Server {
       getLinkCompactStateMessageByFid: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getLinkCompactStateMessageByFid", req: call.request }, `RPC call from ${peer}`);
-        statsd().increment("rpc.open_request_count", { method: "getLinkCompactStateMessageByFid" });
+        statsd().increment("rpc.open_request_count", {
+          method: "getLinkCompactStateMessageByFid",
+          peer: call.getPeer(),
+        });
 
         const { fid, pageSize, pageToken, reverse } = call.request;
         const result = await this.engine?.getLinkCompactStateMessageByFid(fid, {
@@ -1671,7 +1686,10 @@ export default class Server {
           reverse,
         });
 
-        statsd().decrement("rpc.open_request_count", { method: "getLinkCompactStateMessageByFid" });
+        statsd().decrement("rpc.open_request_count", {
+          method: "getLinkCompactStateMessageByFid",
+          peer: call.getPeer(),
+        });
         result?.match(
           (page: MessagesPage<LinkCompactStateMessage>) => {
             callback(null, messagesPageToResponse(page));
@@ -1684,11 +1702,11 @@ export default class Server {
       getEvent: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getEvent", req: call.request }, `RPC call from ${peer}`);
-        statsd().increment("rpc.open_request_count", { method: "getevent" });
+        statsd().increment("rpc.open_request_count", { method: "getevent", peer: call.getPeer() });
 
         const result = await this.engine?.getEvent(call.request.id);
 
-        statsd().decrement("rpc.open_request_count", { method: "getevent" });
+        statsd().decrement("rpc.open_request_count", { method: "getevent", peer: call.getPeer() });
         result?.match(
           (event: HubEvent) => callback(null, event),
           (err: HubError) => callback(toServiceError(err)),
@@ -1713,7 +1731,8 @@ export default class Server {
 
         if (allowed.isOk() || authorized) {
           log.info({ r: request, peer }, "subscribe: starting stream");
-          statsd().increment("rpc.open_request_count", { method: "subscribe" });
+          statsd().increment("rpc.open_stream_count", { method: "subscribe", peer: stream.getPeer() });
+          statsd().increment("rpc.open_request_count", { method: "subscribe", peer: stream.getPeer() });
         } else {
           log.info({ r: request, peer, err: allowed.error.message }, "subscribe: rejected stream");
           destroyStream(stream, allowed.error);
@@ -1764,7 +1783,8 @@ export default class Server {
           this.subscribeIpLimiter.removeConnection(peer);
 
           log.info({ peer }, "subscribe: stream closed");
-          statsd().decrement("rpc.open_request_count", { method: "subscribe" });
+          statsd().decrement("rpc.open_stream_count", { method: "subscribe", peer: stream.getPeer() });
+          statsd().decrement("rpc.open_request_count", { method: "subscribe", peer: stream.getPeer() });
         });
 
         // If the user wants to start from a specific event, we'll start from there first
@@ -1878,7 +1898,8 @@ export default class Server {
             resolve();
           });
           stream.on("data", async (request) => {
-            statsd().increment("rpc.open_request_count", { method: "streamSync" });
+            statsd().increment("rpc.open_stream_count", { method: "streamSync", peer: stream.getPeer() });
+            statsd().increment("rpc.open_request_count", { method: "streamSync", peer: stream.getPeer() });
             if (request.forceSync) {
               const result = await this.forceSync(request.forceSync);
               if (result.isErr()) {
@@ -2067,7 +2088,8 @@ export default class Server {
                 timeout.refresh();
               }
             }
-            statsd().decrement("rpc.open_request_count", { method: "streamSync" });
+            statsd().decrement("rpc.open_stream_count", { method: "streamSync", peer: stream.getPeer() });
+            statsd().decrement("rpc.open_request_count", { method: "streamSync", peer: stream.getPeer() });
           });
         });
       },
@@ -2082,7 +2104,8 @@ export default class Server {
             resolve();
           });
           stream.on("data", async (request) => {
-            statsd().increment("rpc.open_request_count", { method: "streamFetch" });
+            statsd().increment("rpc.open_stream_count", { method: "streamFetch", peer: stream.getPeer() });
+            statsd().increment("rpc.open_request_count", { method: "streamFetch", peer: stream.getPeer() });
             const requestPayload =
               request.castMessagesByFid ||
               request.linkMessagesByFid ||
@@ -2181,7 +2204,8 @@ export default class Server {
               },
             );
             timeout.refresh();
-            statsd().decrement("rpc.open_request_count", { method: "streamFetch" });
+            statsd().decrement("rpc.open_stream_count", { method: "streamFetch", peer: stream.getPeer() });
+            statsd().decrement("rpc.open_request_count", { method: "streamFetch", peer: stream.getPeer() });
           });
         });
       },

@@ -66,7 +66,7 @@ function getCallObject<M extends keyof HubServiceServer>(
   request: fastify.FastifyRequest,
   metadata?: Metadata,
 ): CallTypeForMethod<M> {
-  statsd().increment(`httpapi.${method}`);
+  statsd().increment(`httpapi.${method}`, { peer: request.ip });
 
   return {
     request: params,
