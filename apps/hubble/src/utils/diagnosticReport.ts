@@ -60,7 +60,7 @@ class DiagnosticReporter {
     // We use the "../../" to resolve the path from the build directory for transpiled code
     const workerPath = new URL("../../build/utils/diagnosticReportWorker.js", import.meta.url);
 
-    this.worker = new Worker(workerPath, { execArgv: ["--inspect=0.0.0.0:9234"] });
+    this.worker = new Worker(workerPath);
   }
 
   public reportError(error: Error) {
