@@ -1370,7 +1370,7 @@ export default class Server {
       getOnChainSigner: async (call, callback) => {
         const peer = Result.fromThrowable(() => call.getPeer())().unwrapOr("unknown");
         log.debug({ method: "getOnChainSigner", req: call.request }, `RPC call from ${peer}`);
-        statsd().decrement("rpc.open_request_count", { method: "getVerificationsByFid" });
+        statsd().decrement("rpc.open_request_count", { method: "getOnChainSigner" });
 
         const request = call.request;
 
@@ -1713,6 +1713,7 @@ export default class Server {
 
         if (allowed.isOk() || authorized) {
           log.info({ r: request, peer }, "subscribe: starting stream");
+          statsd().increment("rpc.open_stream_count", { method: "subscribe" });
           statsd().increment("rpc.open_request_count", { method: "subscribe" });
         } else {
           log.info({ r: request, peer, err: allowed.error.message }, "subscribe: rejected stream");
@@ -1764,6 +1765,7 @@ export default class Server {
           this.subscribeIpLimiter.removeConnection(peer);
 
           log.info({ peer }, "subscribe: stream closed");
+          statsd().decrement("rpc.open_stream_count", { method: "subscribe" });
           statsd().decrement("rpc.open_request_count", { method: "subscribe" });
         });
 
@@ -1878,6 +1880,7 @@ export default class Server {
             resolve();
           });
           stream.on("data", async (request) => {
+            statsd().increment("rpc.open_stream_count", { method: "streamSync" });
             statsd().increment("rpc.open_request_count", { method: "streamSync" });
             if (request.forceSync) {
               const result = await this.forceSync(request.forceSync);
@@ -2067,6 +2070,7 @@ export default class Server {
                 timeout.refresh();
               }
             }
+            statsd().decrement("rpc.open_stream_count", { method: "streamSync" });
             statsd().decrement("rpc.open_request_count", { method: "streamSync" });
           });
         });
@@ -2082,6 +2086,7 @@ export default class Server {
             resolve();
           });
           stream.on("data", async (request) => {
+            statsd().increment("rpc.open_stream_count", { method: "streamFetch" });
             statsd().increment("rpc.open_request_count", { method: "streamFetch" });
             const requestPayload =
               request.castMessagesByFid ||
@@ -2181,6 +2186,7 @@ export default class Server {
               },
             );
             timeout.refresh();
+            statsd().decrement("rpc.open_stream_count", { method: "streamFetch" });
             statsd().decrement("rpc.open_request_count", { method: "streamFetch" });
           });
         });
