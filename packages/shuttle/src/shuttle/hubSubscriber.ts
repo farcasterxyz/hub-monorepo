@@ -1,4 +1,4 @@
-import { ClientReadableStream, HubEvent, HubEventType, HubResult, HubRpcClient } from "@farcaster/hub-nodejs";
+import { ClientReadableStream, HubEvent, HubEventType, HubRpcClient } from "@farcaster/hub-nodejs";
 import { err, ok, Result } from "neverthrow";
 import { Logger } from "../log";
 import { TypedEmitter } from "tiny-typed-emitter";
@@ -8,6 +8,7 @@ import { RedisClient } from "./redis";
 import { HubClient } from "./hub";
 import { ProcessResult } from "./index";
 import { statsd } from "../statsd";
+import { clearTimeout } from "timers";
 
 interface HubEventsEmitter {
   onError: (error: Error, stopped: boolean) => void;
@@ -152,9 +153,18 @@ export class BaseHubSubscriber extends HubSubscriber {
       }
 
       try {
+        // Do not allow hanging unresponsive connections to linger:
+        let cancel = setTimeout(() => {
+          this.destroy();
+        }, 30000);
         for await (const event of stream) {
           await this.processHubEvent(event);
+          clearTimeout(cancel);
+          cancel = setTimeout(() => {
+            this.destroy();
+          }, 30000);
         }
+        clearTimeout(cancel);
         // biome-ignore lint/suspicious/noExplicitAny: error catching
       } catch (e: any) {
         this.emit("onError", e, this.stopped);
