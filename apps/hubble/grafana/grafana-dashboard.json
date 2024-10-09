@@ -2064,10 +2064,7 @@
       "type": "row"
     },
     {
-      "datasource": {
-        "type": "graphite",
-        "uid": "bac321a6-733a-4486-8028-994878266191"
-      },
+      "datasource": "Graphite",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -2141,10 +2138,7 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "graphite",
-            "uid": "bac321a6-733a-4486-8028-994878266191"
-          },
+          "datasource": "Graphite",
           "refId": "A",
           "target": "stats.hubble.httpapi.*"
         }
@@ -2153,10 +2147,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": {
-        "type": "graphite",
-        "uid": "bac321a6-733a-4486-8028-994878266191"
-      },
+      "datasource": "Graphite",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -2230,10 +2221,7 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "graphite",
-            "uid": "bac321a6-733a-4486-8028-994878266191"
-          },
+          "datasource": "Graphite",
           "refId": "A",
           "target": "stats.hubble.rpc.open_request_count"
         }
@@ -2242,10 +2230,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": {
-        "type": "graphite",
-        "uid": "bac321a6-733a-4486-8028-994878266191"
-      },
+      "datasource": "Graphite",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -2319,10 +2304,7 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "graphite",
-            "uid": "bac321a6-733a-4486-8028-994878266191"
-          },
+          "datasource": "Graphite",
           "refId": "A",
           "target": "stats.hubble.rpc.open_stream_count",
           "textEditor": true
