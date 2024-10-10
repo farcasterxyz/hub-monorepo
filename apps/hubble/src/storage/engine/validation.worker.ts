@@ -33,7 +33,6 @@ if (!isMainThread) {
       console.log("missing port");
     } else {
       inspector.open(parseInt(port), "0.0.0.0");
-      console.log("Got to inspector open");
     }
   }
 }
@@ -41,7 +40,6 @@ if (!isMainThread) {
 // Wait for messages from the main thread and validate them, posting the result back
 parentPort?.on("message", (data) => {
   (async () => {
-    console.log("received message in validation worker");
     const { id, message } = data;
     const result = await validations.validateMessage(message, rsValidationMethods, publicClients);
 

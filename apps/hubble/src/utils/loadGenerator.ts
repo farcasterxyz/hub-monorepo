@@ -592,7 +592,6 @@ export class SimpleSubscriber extends BaseHubSubscriber {
     } catch (e) {
       console.log("Error", e);
     }
-    console.log(this.validationWorker);
   }
 
   public override async processHubEvent(event: HubEvent) {
