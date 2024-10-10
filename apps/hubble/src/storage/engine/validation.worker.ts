@@ -33,6 +33,7 @@ if (!isMainThread) {
       console.log("missing port");
     } else {
       inspector.open(parseInt(port), "0.0.0.0");
+      console.log("Got to inspector open");
     }
   }
 }
