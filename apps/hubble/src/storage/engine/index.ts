@@ -210,20 +210,19 @@ class Engine extends TypedEmitter<EngineEvents> {
           this._validationWorkers = [];
           const validationWorkerHandler = (data: ValidationWorkerMessage) => {
             this._numValidationWorkerMessages++;
-            log.info(`Validation worker message ${this._numValidationWorkerMessages}`);
             const { id, message, errCode, errMessage } = data;
-            const resolve = this._validationWorkerPromiseMap.get(id);
+            // const resolve = this._validationWorkerPromiseMap.get(id);
 
-            if (resolve) {
-              this._validationWorkerPromiseMap.delete(id);
-              if (message) {
-                resolve(ok(message));
-              } else {
-                resolve(err(new HubError(errCode, errMessage)));
-              }
-            } else {
-              log.warn({ id }, "validation worker promise.response not found");
-            }
+            // if (resolve) {
+            //   this._validationWorkerPromiseMap.delete(id);
+            //   if (message) {
+            //     resolve(ok(message));
+            //   } else {
+            //     resolve(err(new HubError(errCode, errMessage)));
+            //   }
+            // } else {
+            //   log.warn({ id }, "validation worker promise.response not found");
+            // }
           };
 
           const workerData = this.getWorkerData();
@@ -1341,20 +1340,20 @@ class Engine extends TypedEmitter<EngineEvents> {
 
       // If this is a low-priority message and we're under load, only send it to the [0] worker,
       // leaving the rest for high-priority messages
-      let workerIndex = this._nextValidationWorker;
-      if (this._validationWorkerPromiseMap.size > 100) {
-        if (lowPriority) {
-          workerIndex = 0;
-        } else {
-          // Send the high-priority message any but the first worker, which is reserved for the low-priority messages
-          workerIndex = this._nextValidationWorker === 0 ? 1 : this._nextValidationWorker;
-        }
-      }
+      const workerIndex = this._nextValidationWorker;
+      // if (this._validationWorkerPromiseMap.size > 100) {
+      //   if (lowPriority) {
+      //     workerIndex = 0;
+      //   } else {
+      //     // Send the high-priority message any but the first worker, which is reserved for the low-priority messages
+      //     workerIndex = this._nextValidationWorker === 0 ? 1 : this._nextValidationWorker;
+      //   }
+      // }
 
       const worker = this._validationWorkers[workerIndex] as Worker;
       return new Promise<HubResult<Message>>((resolve) => {
         const id = this._validationWorkerJobId++;
-        this._validationWorkerPromiseMap.set(id, resolve);
+        // this._validationWorkerPromiseMap.set(id, resolve);
 
         worker.postMessage({ id, message });
       });
