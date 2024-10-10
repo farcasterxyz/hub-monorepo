@@ -620,7 +620,7 @@ export class SimpleSubscriber extends BaseHubSubscriber {
     // }
 
     // const authMetadata = getAuthMetadata(username, password);
-    if (this.messages.length > 10) {
+    if (this.messages.length > 10_000) {
       //   console.log("Attempting to submit messages");
       for (const message of this.messages) {
         // console.log(messageToLog(message));
