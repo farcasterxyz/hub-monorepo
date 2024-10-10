@@ -79,7 +79,7 @@ import { FNameRegistryEventsProvider } from "../../eth/fnameRegistryEventsProvid
 import { statsd } from "../../utils/statsd.js";
 import { L2EventsProvider } from "eth/l2EventsProvider.js";
 
-export const NUM_VALIDATION_WORKERS = 0;
+export const NUM_VALIDATION_WORKERS = 2;
 
 export interface ValidationWorkerData {
   l2RpcUrl: string;
@@ -1332,32 +1332,32 @@ class Engine extends TypedEmitter<EngineEvents> {
     }
 
     // 6. Check message body and envelope
-    if (this._validationWorkers) {
-      this._nextValidationWorker += 1;
-      this._nextValidationWorker = this._nextValidationWorker % this._validationWorkers.length;
+    // if (this._validationWorkers) {
+    //   this._nextValidationWorker += 1;
+    //   this._nextValidationWorker = this._nextValidationWorker % this._validationWorkers.length;
 
-      // If this is a low-priority message and we're under load, only send it to the [0] worker,
-      // leaving the rest for high-priority messages
-      let workerIndex = this._nextValidationWorker;
-      if (this._validationWorkerPromiseMap.size > 100) {
-        if (lowPriority) {
-          workerIndex = 0;
-        } else {
-          // Send the high-priority message any but the first worker, which is reserved for the low-priority messages
-          workerIndex = this._nextValidationWorker === 0 ? 1 : this._nextValidationWorker;
-        }
-      }
+    //   // If this is a low-priority message and we're under load, only send it to the [0] worker,
+    //   // leaving the rest for high-priority messages
+    //   let workerIndex = this._nextValidationWorker;
+    //   if (this._validationWorkerPromiseMap.size > 100) {
+    //     if (lowPriority) {
+    //       workerIndex = 0;
+    //     } else {
+    //       // Send the high-priority message any but the first worker, which is reserved for the low-priority messages
+    //       workerIndex = this._nextValidationWorker === 0 ? 1 : this._nextValidationWorker;
+    //     }
+    //   }
 
-      const worker = this._validationWorkers[workerIndex] as Worker;
-      return new Promise<HubResult<Message>>((resolve) => {
-        const id = this._validationWorkerJobId++;
-        this._validationWorkerPromiseMap.set(id, resolve);
+    //   const worker = this._validationWorkers[workerIndex] as Worker;
+    //   return new Promise<HubResult<Message>>((resolve) => {
+    //     const id = this._validationWorkerJobId++;
+    //     this._validationWorkerPromiseMap.set(id, resolve);
 
-        worker.postMessage({ id, message });
-      });
-    } else {
-      return validations.validateMessage(message, rsValidationMethods, this.getPublicClients());
-    }
+    //     worker.postMessage({ id, message });
+    //   });
+    // } else {
+    return validations.validateMessage(message, rsValidationMethods, this.getPublicClients());
+    // }
   }
 
   private async validateEnsUsernameProof(
