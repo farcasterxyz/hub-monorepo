@@ -79,7 +79,7 @@ import { FNameRegistryEventsProvider } from "../../eth/fnameRegistryEventsProvid
 import { statsd } from "../../utils/statsd.js";
 import { L2EventsProvider } from "eth/l2EventsProvider.js";
 
-export const NUM_VALIDATION_WORKERS = 2;
+export const NUM_VALIDATION_WORKERS = 0;
 
 export interface ValidationWorkerData {
   l2RpcUrl: string;
