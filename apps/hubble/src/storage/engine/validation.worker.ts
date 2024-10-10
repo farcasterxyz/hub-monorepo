@@ -40,6 +40,7 @@ if (!isMainThread) {
 // Wait for messages from the main thread and validate them, posting the result back
 parentPort?.on("message", (data) => {
   (async () => {
+    console.log("received message in validation worker");
     const { id, message } = data;
     const result = await validations.validateMessage(message, rsValidationMethods, publicClients);
 
