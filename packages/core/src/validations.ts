@@ -121,7 +121,7 @@ const validateNumber = (value: string) => {
 const validateDecimalPlaces = (value: string) => {
   const [_, decimals] = value.split(".");
   if (decimals === undefined || decimals.length !== 2) {
-    return err(new HubError("bad_request.validation_failure", "Wrong precision for latitude/longitude"));
+    return err(new HubError("bad_request.validation_failure", "Wrong precision for latitude or longitude"));
   }
 
   return ok(value);
@@ -163,7 +163,7 @@ export const validateUserLocation = (location: string) => {
   }
 
   if (!location.startsWith("geo:")) {
-    return err(new HubError("bad_request.validation_failure", "Invalid Geo URI"));
+    return err(new HubError("bad_request.validation_failure", "Location missing geo: prefix"));
   }
 
   const coords = location.substring(4);
@@ -176,7 +176,7 @@ export const validateUserLocation = (location: string) => {
   }
 
   if (coordParts[0] === undefined) {
-    return err(new HubError("bad_request.validation_failure", "Geo URI missing latitude"));
+    return err(new HubError("bad_request.validation_failure", "Location missing latitude"));
   }
 
   const latitude = validateLatitude(coordParts[0]);
@@ -185,7 +185,7 @@ export const validateUserLocation = (location: string) => {
   }
 
   if (coordParts[1] === undefined) {
-    return err(new HubError("bad_request.validation_failure", "Geo URI missing longitude"));
+    return err(new HubError("bad_request.validation_failure", "Location missing longitude"));
   }
 
   const longitude = validateLongitude(coordParts[1]);
