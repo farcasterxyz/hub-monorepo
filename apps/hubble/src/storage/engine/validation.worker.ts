@@ -41,18 +41,20 @@ if (!isMainThread) {
 parentPort?.on("message", (data) => {
   (async () => {
     const { id, message } = data;
-    const result = await validations.validateMessage(message, rsValidationMethods, publicClients);
+    const response: ValidationWorkerMessage = { id, message };
+    parentPort?.postMessage(response);
+    // const result = await validations.validateMessage(message, rsValidationMethods, publicClients);
 
-    if (result.isErr()) {
-      const response: ValidationWorkerMessage = {
-        id,
-        errCode: result.error.errCode,
-        errMessage: result.error.message,
-      };
-      parentPort?.postMessage(response);
-    } else {
-      const response: ValidationWorkerMessage = { id, message: result.value };
-      parentPort?.postMessage(response);
-    }
+    // if (result.isErr()) {
+    //   const response: ValidationWorkerMessage = {
+    //     id,
+    //     errCode: result.error.errCode,
+    //     errMessage: result.error.message,
+    //   };
+    //   parentPort?.postMessage(response);
+    // } else {
+    //   const response: ValidationWorkerMessage = { id, message: result.value };
+    //   parentPort?.postMessage(response);
+    // }
   })();
 });
