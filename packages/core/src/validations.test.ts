@@ -1137,7 +1137,7 @@ describe("validateUserDataAddBody", () => {
         type: protobufs.UserDataType.LOCATION,
         value: "geo:12.345,12.34",
       });
-      hubErrorMessage = "Wrong precision for latitude or longitude";
+      hubErrorMessage = "Invalid location string";
     });
 
     test("when latitude has insufficient precision", () => {
@@ -1145,7 +1145,7 @@ describe("validateUserDataAddBody", () => {
         type: protobufs.UserDataType.LOCATION,
         value: "geo:12,12.34",
       });
-      hubErrorMessage = "Wrong precision for latitude or longitude";
+      hubErrorMessage = "Invalid location string";
     });
 
     test("when longitude has too much precision", () => {
@@ -1153,7 +1153,7 @@ describe("validateUserDataAddBody", () => {
         type: protobufs.UserDataType.LOCATION,
         value: "geo:12.34,12.345",
       });
-      hubErrorMessage = "Wrong precision for latitude or longitude";
+      hubErrorMessage = "Invalid location string";
     });
 
     test("when longitude has insufficient precision", () => {
@@ -1161,7 +1161,7 @@ describe("validateUserDataAddBody", () => {
         type: protobufs.UserDataType.LOCATION,
         value: "geo:12.34,12",
       });
-      hubErrorMessage = "Wrong precision for latitude or longitude";
+      hubErrorMessage = "Invalid location string";
     });
 
     test("when latitude is an invalid number", () => {
@@ -1169,7 +1169,7 @@ describe("validateUserDataAddBody", () => {
         type: protobufs.UserDataType.LOCATION,
         value: "geo:xx,12.34",
       });
-      hubErrorMessage = "Latitude or longitude is not a valid number";
+      hubErrorMessage = "Invalid location string";
     });
 
     test("when longitude is an invalid number", () => {
@@ -1177,7 +1177,7 @@ describe("validateUserDataAddBody", () => {
         type: protobufs.UserDataType.LOCATION,
         value: "geo:12.34,xx",
       });
-      hubErrorMessage = "Latitude or longitude is not a valid number";
+      hubErrorMessage = "Invalid location string";
     });
 
     test("when location is missing geo prefix", () => {
@@ -1185,7 +1185,7 @@ describe("validateUserDataAddBody", () => {
         type: protobufs.UserDataType.LOCATION,
         value: "12.34,12.34",
       });
-      hubErrorMessage = "Location missing geo: prefix";
+      hubErrorMessage = "Invalid location string";
     });
 
     test("when location is missing both coordinates", () => {
@@ -1193,7 +1193,7 @@ describe("validateUserDataAddBody", () => {
         type: protobufs.UserDataType.LOCATION,
         value: "geo:",
       });
-      hubErrorMessage = "Location contains invalid coordinates";
+      hubErrorMessage = "Invalid location string";
     });
 
     test("when location is missing a coordinate", () => {
@@ -1201,7 +1201,15 @@ describe("validateUserDataAddBody", () => {
         type: protobufs.UserDataType.LOCATION,
         value: "geo:12.34,",
       });
-      hubErrorMessage = "Latitude or longitude is not a valid number";
+      hubErrorMessage = "Invalid location string";
+    });
+
+    test("when location contains a space", () => {
+      body = Factories.UserDataBody.build({
+        type: protobufs.UserDataType.LOCATION,
+        value: "geo:12.34, 12.34",
+      });
+      hubErrorMessage = "Invalid location string";
     });
   });
 });

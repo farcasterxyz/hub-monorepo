@@ -113,7 +113,7 @@ export const validateMessageHash = (hash?: Uint8Array): HubResult<Uint8Array> =>
 const validateNumber = (value: string) => {
   const number = parseFloat(value);
   if (Number.isNaN(number)) {
-    return err(new HubError("bad_request.validation_failure", "Latitude or longitude is not a valid number"));
+    return err(undefined);
   }
   return ok(number);
 };
@@ -131,7 +131,7 @@ const validateLatitude = (value: string) => {
   const number = validateNumber(value);
 
   if (number.isErr()) {
-    return err(number.error);
+    return err(new HubError("bad_request.validation_failure", "Latitude is not a valid number"));
   }
 
   if (number.value < -90 || number.value > 90) {
@@ -145,7 +145,7 @@ const validateLongitude = (value: string) => {
   const number = validateNumber(value);
 
   if (number.isErr()) {
-    return err(number.error);
+    return err(new HubError("bad_request.validation_failure", "Longitude is not a valid number"));
   }
 
   if (number.value < -180 || number.value > 180) {
@@ -162,8 +162,10 @@ export const validateUserLocation = (location: string) => {
     return ok(location);
   }
 
-  if (!location.startsWith("geo:")) {
-    return err(new HubError("bad_request.validation_failure", "Location missing geo: prefix"));
+  const result = location.match(/^geo:-?\d{1,2}\.\d{2},-?\d{1,3}\.\d{2}$/);
+
+  if (result === null || result.length !== 1 || result[0] !== location) {
+    return err(new HubError("bad_request.validation_failure", "Invalid location string"));
   }
 
   const coords = location.substring(4);
