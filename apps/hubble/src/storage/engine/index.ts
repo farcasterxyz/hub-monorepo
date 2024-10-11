@@ -151,7 +151,6 @@ class Engine extends TypedEmitter<EngineEvents> {
   private _solanaVerficationsEnabled = false;
 
   private _fNameRetryRateLimiter = new RateLimiterMemory({ points: 60, duration: 60 }); // 60 retries per minute allowed
-  private _numValidationWorkerMessages = 0;
 
   constructor(
     db: RocksDB,
@@ -209,7 +208,6 @@ class Engine extends TypedEmitter<EngineEvents> {
         if (fs.existsSync(workerPath)) {
           this._validationWorkers = [];
           const validationWorkerHandler = (data: ValidationWorkerMessage) => {
-            this._numValidationWorkerMessages++;
             const { id, message, errCode, errMessage } = data;
             const resolve = this._validationWorkerPromiseMap.get(id);
 
@@ -222,10 +220,6 @@ class Engine extends TypedEmitter<EngineEvents> {
               }
             } else {
               log.warn({ id }, "validation worker promise.response not found");
-            }
-
-            if (gc) {
-              gc();
             }
           };
 
