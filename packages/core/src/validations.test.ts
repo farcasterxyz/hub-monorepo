@@ -1159,7 +1159,7 @@ describe("validateUserDataAddBody", () => {
     test("when longitude has insufficient precision", () => {
       body = Factories.UserDataBody.build({
         type: protobufs.UserDataType.LOCATION,
-        value: "geo:12.345,12.34",
+        value: "geo:12.34,12",
       });
       hubErrorMessage = "Wrong precision for latitude or longitude";
     });
@@ -1188,12 +1188,20 @@ describe("validateUserDataAddBody", () => {
       hubErrorMessage = "Location missing geo: prefix";
     });
 
+    test("when location is missing both coordinates", () => {
+      body = Factories.UserDataBody.build({
+        type: protobufs.UserDataType.LOCATION,
+        value: "geo:",
+      });
+      hubErrorMessage = "Location contains invalid coordinates";
+    });
+
     test("when location is missing a coordinate", () => {
       body = Factories.UserDataBody.build({
         type: protobufs.UserDataType.LOCATION,
-        value: "geo:12.34",
+        value: "geo:12.34,",
       });
-      hubErrorMessage = "Invalid coordinates in Geo URI";
+      hubErrorMessage = "Latitude or longitude is not a valid number";
     });
   });
 });

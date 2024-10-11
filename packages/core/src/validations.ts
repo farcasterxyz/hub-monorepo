@@ -172,7 +172,7 @@ export const validateUserLocation = (location: string) => {
   const coordParts = coords.split(",");
 
   if (coordParts === undefined || coordParts.length < 2) {
-    return err(new HubError("bad_request.validation_failure", "Invalid coordinates in Geo URI"));
+    return err(new HubError("bad_request.validation_failure", "Location contains invalid coordinates"));
   }
 
   if (coordParts[0] === undefined) {
