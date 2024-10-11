@@ -8,6 +8,7 @@ import {
   HubError,
   HubRpcClient,
   isUserDataAddData,
+  makeUserDataAdd,
   Message,
   OnChainEvent,
   UserDataAddMessage,
@@ -190,6 +191,31 @@ describe("getUserData", () => {
     expect(await engine.mergeMessage(locationAdd)).toBeInstanceOf(Ok);
     const location = await client.getUserData(UserDataRequest.create({ fid, userDataType: UserDataType.LOCATION }));
     expect(Message.toJSON(location._unsafeUnwrap())).toEqual(Message.toJSON(locationAdd));
+  });
+
+  test("user location data can be cleared", async () => {
+    expect(await engine.mergeMessage(locationAdd)).toBeInstanceOf(Ok);
+    const location = await client.getUserData(UserDataRequest.create({ fid, userDataType: UserDataType.LOCATION }));
+    expect(Message.toJSON(location._unsafeUnwrap())).toEqual(Message.toJSON(locationAdd));
+    makeUserDataAdd;
+    const emptyLocationAdd = await Factories.UserDataAddMessage.create(
+      {
+        data: {
+          fid,
+          userDataBody: {
+            type: UserDataType.LOCATION,
+            value: "",
+          },
+          timestamp: locationAdd.data.timestamp + 1,
+        },
+      },
+      { transient: { signer } },
+    );
+    expect(await engine.mergeMessage(emptyLocationAdd)).toBeInstanceOf(Ok);
+    const emptyLocation = await client.getUserData(
+      UserDataRequest.create({ fid, userDataType: UserDataType.LOCATION }),
+    );
+    expect(Message.toJSON(emptyLocation._unsafeUnwrap())).toEqual(Message.toJSON(emptyLocationAdd));
   });
 
   test("fails when user data is missing", async () => {

@@ -110,32 +110,63 @@ export const validateMessageHash = (hash?: Uint8Array): HubResult<Uint8Array> =>
   return ok(hash);
 };
 
-const validateLatitudeLongitude = (value: string) => {
+const validateNumber = (value: string) => {
+  const number = parseFloat(value);
+  if (Number.isNaN(number)) {
+    return err(new HubError("bad_request.validation_failure", "Latitude or longitude is not a valid number"));
+  }
+  return ok(number);
+};
+
+const validateDecimalPlaces = (value: string) => {
   const [_, decimals] = value.split(".");
-  if (decimals?.length !== 2) {
+  if (decimals === undefined || decimals.length !== 2) {
     return err(new HubError("bad_request.validation_failure", "Wrong precision for latitude/longitude"));
   }
 
   return ok(value);
 };
 
+const validateLatitude = (value: string) => {
+  const number = validateNumber(value);
+
+  if (number.isErr()) {
+    return err(number.error);
+  }
+
+  if (number.value < -90 || number.value > 90) {
+    return err(new HubError("bad_request.validation_failure", "Latitude value outside valid range"));
+  }
+
+  return validateDecimalPlaces(value);
+};
+
+const validateLongitude = (value: string) => {
+  const number = validateNumber(value);
+
+  if (number.isErr()) {
+    return err(number.error);
+  }
+
+  if (number.value < -180 || number.value > 180) {
+    return err(new HubError("bad_request.validation_failure", "Longitude value outside valid range"));
+  }
+
+  return validateDecimalPlaces(value);
+};
+
+// Expected format is [geo:<lat>,<long>}]
 export const validateUserLocation = (location: string) => {
+  if (location === "") {
+    // This is to support clearing location
+    return ok(location);
+  }
+
   if (!location.startsWith("geo:")) {
     return err(new HubError("bad_request.validation_failure", "Invalid Geo URI"));
   }
 
-  const geoString = location.substring(4);
-
-  // Split on the semicolon to handle any optional parameters
-  const [coords, ...params] = geoString.split(";");
-
-  if (params.length > 0) {
-    return err(new HubError("bad_request.validation_failure", "Extra parameters in Geo URI not supported"));
-  }
-
-  if (coords === undefined) {
-    return err(new HubError("bad_request.validation_failure", "Invalid Geo URI. No coordinates provided"));
-  }
+  const coords = location.substring(4);
 
   // Split the coordinates (latitude, longitude, altitude)
   const coordParts = coords.split(",");
@@ -148,7 +179,7 @@ export const validateUserLocation = (location: string) => {
     return err(new HubError("bad_request.validation_failure", "Geo URI missing latitude"));
   }
 
-  const latitude = validateLatitudeLongitude(coordParts[0]);
+  const latitude = validateLatitude(coordParts[0]);
   if (latitude.isErr()) {
     return err(latitude.error);
   }
@@ -157,7 +188,7 @@ export const validateUserLocation = (location: string) => {
     return err(new HubError("bad_request.validation_failure", "Geo URI missing longitude"));
   }
 
-  const longitude = validateLatitudeLongitude(coordParts[1]);
+  const longitude = validateLongitude(coordParts[1]);
   if (longitude.isErr()) {
     return err(longitude.error);
   }
@@ -996,6 +1027,13 @@ export const validateUserDataAddBody = (body: protobufs.UserDataBody): HubResult
         if (validatedFname.isErr() && validatedEnsName.isErr()) {
           return err(validatedFname.error);
         }
+      }
+      break;
+    }
+    case protobufs.UserDataType.LOCATION: {
+      const validatedUserLocation = validateUserLocation(value);
+      if (validatedUserLocation.isErr()) {
+        return err(validatedUserLocation.error);
       }
       break;
     }
