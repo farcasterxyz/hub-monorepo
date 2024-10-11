@@ -118,15 +118,6 @@ const validateNumber = (value: string) => {
   return ok(number);
 };
 
-const validateDecimalPlaces = (value: string) => {
-  const [_, decimals] = value.split(".");
-  if (decimals === undefined || decimals.length !== 2) {
-    return err(new HubError("bad_request.validation_failure", "Wrong precision for latitude or longitude"));
-  }
-
-  return ok(value);
-};
-
 const validateLatitude = (value: string) => {
   const number = validateNumber(value);
 
@@ -138,7 +129,7 @@ const validateLatitude = (value: string) => {
     return err(new HubError("bad_request.validation_failure", "Latitude value outside valid range"));
   }
 
-  return validateDecimalPlaces(value);
+  return ok(value);
 };
 
 const validateLongitude = (value: string) => {
@@ -152,7 +143,7 @@ const validateLongitude = (value: string) => {
     return err(new HubError("bad_request.validation_failure", "Longitude value outside valid range"));
   }
 
-  return validateDecimalPlaces(value);
+  return ok(value);
 };
 
 // Expected format is [geo:<lat>,<long>}]
@@ -162,35 +153,27 @@ export const validateUserLocation = (location: string) => {
     return ok(location);
   }
 
-  const result = location.match(/^geo:-?\d{1,2}\.\d{2},-?\d{1,3}\.\d{2}$/);
+  // Match any <=2 digit number with 2dp for latitude and <=3 digit number with 3dp for longitude. Perform validation on ranges in code after parsing because doing this in regex is pretty cumbersome.
+  const result = location.match(/^geo:(-?\d{1,2}\.\d{2}),(-?\d{1,3}\.\d{2})$/);
 
-  if (result === null || result.length !== 1 || result[0] !== location) {
+  if (result === null || result[0] !== location) {
     return err(new HubError("bad_request.validation_failure", "Invalid location string"));
   }
 
-  const coords = location.substring(4);
-
-  // Split the coordinates (latitude, longitude, altitude)
-  const coordParts = coords.split(",");
-
-  if (coordParts === undefined || coordParts.length < 2) {
-    return err(new HubError("bad_request.validation_failure", "Location contains invalid coordinates"));
-  }
-
-  if (coordParts[0] === undefined) {
+  if (result[1] === undefined) {
     return err(new HubError("bad_request.validation_failure", "Location missing latitude"));
   }
 
-  const latitude = validateLatitude(coordParts[0]);
+  const latitude = validateLatitude(result[1]);
   if (latitude.isErr()) {
     return err(latitude.error);
   }
 
-  if (coordParts[1] === undefined) {
+  if (result[2] === undefined) {
     return err(new HubError("bad_request.validation_failure", "Location missing longitude"));
   }
 
-  const longitude = validateLongitude(coordParts[1]);
+  const longitude = validateLongitude(result[2]);
   if (longitude.isErr()) {
     return err(longitude.error);
   }

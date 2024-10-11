@@ -1050,10 +1050,18 @@ describe("validateUserDataAddBody", () => {
     expect(validations.validateUserDataAddBody(body)).toEqual(ok(body));
   });
 
-  test("succeeds for valid location", async () => {
+  test("succeeds for valid location: negative longitude", async () => {
     const body = Factories.UserDataBody.build({
       type: UserDataType.LOCATION,
       value: "geo:12.34,-123.45",
+    });
+    expect(validations.validateUserDataAddBody(body)).toEqual(ok(body));
+  });
+
+  test("succeeds for valid location: negative latitude", async () => {
+    const body = Factories.UserDataBody.build({
+      type: UserDataType.LOCATION,
+      value: "geo:-12.34,123.45",
     });
     expect(validations.validateUserDataAddBody(body)).toEqual(ok(body));
   });
