@@ -7,6 +7,8 @@ import {
   getInsecureHubRpcClient,
   HubError,
   HubRpcClient,
+  isUserDataAddData,
+  makeUserDataAdd,
   Message,
   OnChainEvent,
   UserDataAddMessage,
@@ -68,6 +70,8 @@ let addFname: UserDataAddMessage;
 let ensNameProof: UsernameProofMessage;
 let addEnsName: UserDataAddMessage;
 
+let locationAdd: UserDataAddMessage;
+
 beforeAll(async () => {
   const signerKey = (await signer.getSignerKey())._unsafeUnwrap();
   custodySignerKey = (await custodySigner.getSignerKey())._unsafeUnwrap();
@@ -92,6 +96,20 @@ beforeAll(async () => {
         userDataBody: {
           type: UserDataType.USERNAME,
           value: bytesToUtf8String(fname)._unsafeUnwrap(),
+        },
+        timestamp: pfpAdd.data.timestamp + 2,
+      },
+    },
+    { transient: { signer } },
+  );
+
+  locationAdd = await Factories.UserDataAddMessage.create(
+    {
+      data: {
+        fid,
+        userDataBody: {
+          type: UserDataType.LOCATION,
+          value: "geo:23.45,-167.78",
         },
         timestamp: pfpAdd.data.timestamp + 2,
       },
@@ -169,6 +187,35 @@ describe("getUserData", () => {
     expect(await engine.mergeMessage(addEnsName)).toBeInstanceOf(Ok);
     const ensNameData = await client.getUserData(UserDataRequest.create({ fid, userDataType: UserDataType.USERNAME }));
     expect(Message.toJSON(ensNameData._unsafeUnwrap())).toEqual(Message.toJSON(addEnsName));
+
+    expect(await engine.mergeMessage(locationAdd)).toBeInstanceOf(Ok);
+    const location = await client.getUserData(UserDataRequest.create({ fid, userDataType: UserDataType.LOCATION }));
+    expect(Message.toJSON(location._unsafeUnwrap())).toEqual(Message.toJSON(locationAdd));
+  });
+
+  test("user location data can be cleared", async () => {
+    expect(await engine.mergeMessage(locationAdd)).toBeInstanceOf(Ok);
+    const location = await client.getUserData(UserDataRequest.create({ fid, userDataType: UserDataType.LOCATION }));
+    expect(Message.toJSON(location._unsafeUnwrap())).toEqual(Message.toJSON(locationAdd));
+    makeUserDataAdd;
+    const emptyLocationAdd = await Factories.UserDataAddMessage.create(
+      {
+        data: {
+          fid,
+          userDataBody: {
+            type: UserDataType.LOCATION,
+            value: "",
+          },
+          timestamp: locationAdd.data.timestamp + 1,
+        },
+      },
+      { transient: { signer } },
+    );
+    expect(await engine.mergeMessage(emptyLocationAdd)).toBeInstanceOf(Ok);
+    const emptyLocation = await client.getUserData(
+      UserDataRequest.create({ fid, userDataType: UserDataType.LOCATION }),
+    );
+    expect(Message.toJSON(emptyLocation._unsafeUnwrap())).toEqual(Message.toJSON(emptyLocationAdd));
   });
 
   test("fails when user data is missing", async () => {

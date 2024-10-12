@@ -1042,6 +1042,30 @@ describe("validateUserDataAddBody", () => {
     expect(validations.validateUserDataAddBody(body)).toEqual(ok(body));
   });
 
+  test("succeeds for empty location", async () => {
+    const body = Factories.UserDataBody.build({
+      type: UserDataType.LOCATION,
+      value: "",
+    });
+    expect(validations.validateUserDataAddBody(body)).toEqual(ok(body));
+  });
+
+  test("succeeds for valid location: negative longitude", async () => {
+    const body = Factories.UserDataBody.build({
+      type: UserDataType.LOCATION,
+      value: "geo:12.34,-123.45",
+    });
+    expect(validations.validateUserDataAddBody(body)).toEqual(ok(body));
+  });
+
+  test("succeeds for valid location: negative latitude", async () => {
+    const body = Factories.UserDataBody.build({
+      type: UserDataType.LOCATION,
+      value: "geo:-12.34,123.45",
+    });
+    expect(validations.validateUserDataAddBody(body)).toEqual(ok(body));
+  });
+
   describe("fails", () => {
     let body: protobufs.UserDataBody;
     let hubErrorMessage: string;
@@ -1082,6 +1106,118 @@ describe("validateUserDataAddBody", () => {
         value: faker.random.alphaNumeric(257),
       });
       hubErrorMessage = "url value > 256";
+    });
+
+    test("when latitude is too low", () => {
+      body = Factories.UserDataBody.build({
+        type: protobufs.UserDataType.LOCATION,
+        value: "geo:-90.01,12.34",
+      });
+      hubErrorMessage = "Latitude value outside valid range";
+    });
+
+    test("when latitude is too high", () => {
+      body = Factories.UserDataBody.build({
+        type: protobufs.UserDataType.LOCATION,
+        value: "geo:90.01,12.34",
+      });
+      hubErrorMessage = "Latitude value outside valid range";
+    });
+
+    test("when longitude is too low", () => {
+      body = Factories.UserDataBody.build({
+        type: protobufs.UserDataType.LOCATION,
+        value: "geo:12.34,-180.01",
+      });
+      hubErrorMessage = "Longitude value outside valid range";
+    });
+
+    test("when longitude is too high", () => {
+      body = Factories.UserDataBody.build({
+        type: protobufs.UserDataType.LOCATION,
+        value: "geo:12.34,180.01",
+      });
+      hubErrorMessage = "Longitude value outside valid range";
+    });
+
+    test("when latitude has too much precision", () => {
+      body = Factories.UserDataBody.build({
+        type: protobufs.UserDataType.LOCATION,
+        value: "geo:12.345,12.34",
+      });
+      hubErrorMessage = "Invalid location string";
+    });
+
+    test("when latitude has insufficient precision", () => {
+      body = Factories.UserDataBody.build({
+        type: protobufs.UserDataType.LOCATION,
+        value: "geo:12,12.34",
+      });
+      hubErrorMessage = "Invalid location string";
+    });
+
+    test("when longitude has too much precision", () => {
+      body = Factories.UserDataBody.build({
+        type: protobufs.UserDataType.LOCATION,
+        value: "geo:12.34,12.345",
+      });
+      hubErrorMessage = "Invalid location string";
+    });
+
+    test("when longitude has insufficient precision", () => {
+      body = Factories.UserDataBody.build({
+        type: protobufs.UserDataType.LOCATION,
+        value: "geo:12.34,12",
+      });
+      hubErrorMessage = "Invalid location string";
+    });
+
+    test("when latitude is an invalid number", () => {
+      body = Factories.UserDataBody.build({
+        type: protobufs.UserDataType.LOCATION,
+        value: "geo:xx,12.34",
+      });
+      hubErrorMessage = "Invalid location string";
+    });
+
+    test("when longitude is an invalid number", () => {
+      body = Factories.UserDataBody.build({
+        type: protobufs.UserDataType.LOCATION,
+        value: "geo:12.34,xx",
+      });
+      hubErrorMessage = "Invalid location string";
+    });
+
+    test("when location is missing geo prefix", () => {
+      body = Factories.UserDataBody.build({
+        type: protobufs.UserDataType.LOCATION,
+        value: "12.34,12.34",
+      });
+      hubErrorMessage = "Invalid location string";
+    });
+
+    test("when location is missing both coordinates", () => {
+      body = Factories.UserDataBody.build({
+        type: protobufs.UserDataType.LOCATION,
+        value: "geo:",
+      });
+      hubErrorMessage = "Invalid location string";
+    });
+
+    test("when location is missing a coordinate", () => {
+      body = Factories.UserDataBody.build({
+        type: protobufs.UserDataType.LOCATION,
+        value: "geo:12.34,",
+      });
+      hubErrorMessage = "Invalid location string";
+    });
+
+    test("when location contains a space", () => {
+      body = Factories.UserDataBody.build({
+        type: protobufs.UserDataType.LOCATION,
+        value: "geo:12.34, 12.34",
+      });
+      hubErrorMessage = "Invalid location string";
     });
   });
 });

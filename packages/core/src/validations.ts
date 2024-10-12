@@ -110,6 +110,77 @@ export const validateMessageHash = (hash?: Uint8Array): HubResult<Uint8Array> =>
   return ok(hash);
 };
 
+const validateNumber = (value: string) => {
+  const number = parseFloat(value);
+  if (Number.isNaN(number)) {
+    return err(undefined);
+  }
+  return ok(number);
+};
+
+const validateLatitude = (value: string) => {
+  const number = validateNumber(value);
+
+  if (number.isErr()) {
+    return err(new HubError("bad_request.validation_failure", "Latitude is not a valid number"));
+  }
+
+  if (number.value < -90 || number.value > 90) {
+    return err(new HubError("bad_request.validation_failure", "Latitude value outside valid range"));
+  }
+
+  return ok(value);
+};
+
+const validateLongitude = (value: string) => {
+  const number = validateNumber(value);
+
+  if (number.isErr()) {
+    return err(new HubError("bad_request.validation_failure", "Longitude is not a valid number"));
+  }
+
+  if (number.value < -180 || number.value > 180) {
+    return err(new HubError("bad_request.validation_failure", "Longitude value outside valid range"));
+  }
+
+  return ok(value);
+};
+
+// Expected format is [geo:<lat>,<long>}]
+export const validateUserLocation = (location: string) => {
+  if (location === "") {
+    // This is to support clearing location
+    return ok(location);
+  }
+
+  // Match any <=2 digit number with 2dp for latitude and <=3 digit number with 3dp for longitude. Perform validation on ranges in code after parsing because doing this in regex is pretty cumbersome.
+  const result = location.match(/^geo:(-?\d{1,2}\.\d{2}),(-?\d{1,3}\.\d{2})$/);
+
+  if (result === null || result[0] !== location) {
+    return err(new HubError("bad_request.validation_failure", "Invalid location string"));
+  }
+
+  if (result[1] === undefined) {
+    return err(new HubError("bad_request.validation_failure", "Location missing latitude"));
+  }
+
+  const latitude = validateLatitude(result[1]);
+  if (latitude.isErr()) {
+    return err(latitude.error);
+  }
+
+  if (result[2] === undefined) {
+    return err(new HubError("bad_request.validation_failure", "Location missing longitude"));
+  }
+
+  const longitude = validateLongitude(result[2]);
+  if (longitude.isErr()) {
+    return err(longitude.error);
+  }
+
+  return ok(location);
+};
+
 export const validateCastId = (castId?: protobufs.CastId): HubResult<protobufs.CastId> => {
   if (!castId) {
     return err(new HubError("bad_request.validation_failure", "castId is missing"));
@@ -941,6 +1012,13 @@ export const validateUserDataAddBody = (body: protobufs.UserDataBody): HubResult
         if (validatedFname.isErr() && validatedEnsName.isErr()) {
           return err(validatedFname.error);
         }
+      }
+      break;
+    }
+    case protobufs.UserDataType.LOCATION: {
+      const validatedUserLocation = validateUserLocation(value);
+      if (validatedUserLocation.isErr()) {
+        return err(validatedUserLocation.error);
       }
       break;
     }
