@@ -1,5 +1,13 @@
 # @farcaster/hub-web
 
+## 0.9.4
+
+### Patch Changes
+
+- aa9cde75: feat: add user location to the protocol
+- Updated dependencies [aa9cde75]
+  - @farcaster/core@0.15.5
+
 ## 0.9.3
 
 ### Patch Changes
