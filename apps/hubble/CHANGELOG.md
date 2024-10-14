@@ -1,5 +1,14 @@
 # @farcaster/hubble
 
+## 1.15.7
+
+### Patch Changes
+
+- aa9cde75: feat: add user location to the protocol
+- d22394f5: chore: add metrics for http/rpc/streaming requests for grafana
+- Updated dependencies [aa9cde75]
+  - @farcaster/hub-nodejs@0.12.5
+
 ## 1.15.6
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.15.5
+
+### Patch Changes
+
+- aa9cde75: feat: add user location to the protocol
+
 ## 0.15.4
 
 ### Patch Changes

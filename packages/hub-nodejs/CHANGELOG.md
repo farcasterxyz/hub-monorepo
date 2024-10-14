@@ -1,5 +1,13 @@
 # @farcaster/hub-nodejs
 
+## 0.12.5
+
+### Patch Changes
+
+- aa9cde75: feat: add user location to the protocol
+- Updated dependencies [aa9cde75]
+  - @farcaster/core@0.15.5
+
 ## 0.12.4
 
 ### Patch Changes
