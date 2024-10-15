@@ -1,5 +1,5 @@
 ---
-"@farcaster/hub-nodejs": minor
+"@farcaster/hub-nodejs": patch
 ---
 
 Add createDefaultMetadataKeyInterceptor
