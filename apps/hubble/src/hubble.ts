@@ -2260,28 +2260,3 @@ export class Hub implements HubInterface {
     return `snapshots/${network}/DB_SCHEMA_${LATEST_DB_SCHEMA_VERSION - (prevVersionCounter ?? 0)}`;
   }
 }
-
-export function createDefaultMetadataKeyInterceptor(apiKey: string, apiKeyName = 'x-api-key') {
-  return function metadataKeyInterceptor(options: any, nextCall: any) {
-      var requester = {
-          start: function (metadata: any, listener: any, next: any) {
-              if (metadata.get(apiKeyName) == false) {
-                  metadata.add(apiKeyName, apiKey);
-              }
-              var newListener = {
-                  onReceiveMetadata: function (metadata, next) {
-                      next(metadata);
-                  },
-                  onReceiveMessage: function (message, next) {
-                      next(message);
-                  },
-                  onReceiveStatus: function (status, next) {
-                      next(status);
-                  },
-              };
-              next(metadata, newListener);
-          },
-      };
-      return new grpc.InterceptingCall(nextCall(options), requester);
-  };
-}

@@ -164,3 +164,29 @@ export const getAdminClient = (address: string, options?: Partial<grpc.ClientOpt
   if (!address) throw new Error("Hub address not specified");
   return new AdminServiceClient(address, grpc.credentials.createInsecure(), { ...options });
 };
+
+
+export function createDefaultMetadataKeyInterceptor(apiKey: string, apiKeyName = 'x-api-key') {
+  return function metadataKeyInterceptor(options: any, nextCall: any) {
+      var requester = {
+          start: function (metadata: any, listener: any, next: any) {
+              if (metadata.get(apiKeyName) == false) {
+                  metadata.add(apiKeyName, apiKey);
+              }
+              var newListener = {
+                  onReceiveMetadata: function (metadata: any, next: any) {
+                      next(metadata);
+                  },
+                  onReceiveMessage: function (message: any, next: any) {
+                      next(message);
+                  },
+                  onReceiveStatus: function (status: any, next: any) {
+                      next(status);
+                  },
+              };
+              next(metadata, newListener);
+          },
+      };
+      return new grpc.InterceptingCall(nextCall(options), requester);
+  };
+}
