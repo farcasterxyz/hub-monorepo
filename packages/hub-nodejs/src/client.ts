@@ -165,12 +165,12 @@ export const getAdminClient = (address: string, options?: Partial<grpc.ClientOpt
   return new AdminServiceClient(address, grpc.credentials.createInsecure(), { ...options });
 };
 
-export function createDefaultMetadataKeyInterceptor(apiKey: string, apiKeyName = 'x-api-key') {
+export function createDefaultMetadataKeyInterceptor(value: string, key = 'x-api-key') {
   return function metadataKeyInterceptor(options: any, nextCall: any) {
       var requester = {
           start: function (metadata: any, listener: any, next: any) {
-              if (metadata.get(apiKeyName) == false) {
-                  metadata.add(apiKeyName, apiKey);
+              if (metadata.get(key) == false) {
+                  metadata.add(key, value);
               }
               var newListener = {
                   onReceiveMetadata: function (metadata: any, next: any) {
