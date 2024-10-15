@@ -165,7 +165,6 @@ export const getAdminClient = (address: string, options?: Partial<grpc.ClientOpt
   return new AdminServiceClient(address, grpc.credentials.createInsecure(), { ...options });
 };
 
-
 export function createDefaultMetadataKeyInterceptor(apiKey: string, apiKeyName = 'x-api-key') {
   return function metadataKeyInterceptor(options: any, nextCall: any) {
       var requester = {
