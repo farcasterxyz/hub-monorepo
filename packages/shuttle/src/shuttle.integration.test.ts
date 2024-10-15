@@ -704,7 +704,7 @@ describe("shuttle", () => {
       },
       getAllCastMessagesByFid: async (_request: FidRequest, _metadata: Metadata, _options: Partial<CallOptions>) => {
         // force wait for 2 seconds to trigger failure
-        await new Promise((resolve) => setTimeout(resolve, 5000));
+        await new Promise((resolve) => setTimeout(resolve, 30000));
         return ok(
           MessagesResponse.create({
             messages: [
@@ -744,7 +744,7 @@ describe("shuttle", () => {
         _options: Partial<CallOptions>,
       ) => {
         // force wait for 2 seconds to trigger failure
-        await new Promise((resolve) => setTimeout(resolve, 5000));
+        await new Promise((resolve) => setTimeout(resolve, 30000));
         return ok(
           MessagesResponse.create({
             messages: [],
@@ -791,7 +791,7 @@ describe("shuttle", () => {
         startTimestamp,
       ),
     ).rejects.toThrow();
-  }, 15000); // Need to make sure this is long enough to handle the timeout termination
+  }, 40000); // Need to make sure this is long enough to handle the timeout termination
 
   test("marks messages as pruned", async () => {
     const addMessage = await Factories.ReactionAddMessage.create({}, { transient: { signer } });
