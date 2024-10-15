@@ -184,7 +184,10 @@ export class MessageReconciliation {
     const id = randomUUID();
     const result = new Promise<HubResult<MessagesResponse>>((resolve) => {
       // Do not allow hanging unresponsive connections to linger:
-      const cancel = setTimeout(() => resolve(err(new HubError("unavailable", "server timeout"))), this.connectionTimeout);
+      const cancel = setTimeout(
+        () => resolve(err(new HubError("unavailable", "server timeout"))),
+        this.connectionTimeout,
+      );
 
       if (!this.stream) {
         fallback()
