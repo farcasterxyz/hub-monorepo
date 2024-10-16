@@ -165,27 +165,27 @@ export const getAdminClient = (address: string, options?: Partial<grpc.ClientOpt
   return new AdminServiceClient(address, grpc.credentials.createInsecure(), { ...options });
 };
 
-export function createDefaultMetadataKeyInterceptor(value: string, key = 'x-api-key') {
+export function createDefaultMetadataKeyInterceptor(key: string, value: string) {
   return function metadataKeyInterceptor(options: any, nextCall: any) {
-      var requester = {
-          start: function (metadata: any, listener: any, next: any) {
-              if (metadata.get(key) == false) {
-                  metadata.add(key, value);
-              }
-              var newListener = {
-                  onReceiveMetadata: function (metadata: any, next: any) {
-                      next(metadata);
-                  },
-                  onReceiveMessage: function (message: any, next: any) {
-                      next(message);
-                  },
-                  onReceiveStatus: function (status: any, next: any) {
-                      next(status);
-                  },
-              };
-              next(metadata, newListener);
+    const requester = {
+      start: function (metadata: any, listener: any, next: any) {
+        if (metadata.get(key).length === 0) {
+          metadata.add(key, value);
+        }
+        var newListener = {
+          onReceiveMetadata: function (metadata: any, next: any) {
+            next(metadata);
           },
-      };
-      return new grpc.InterceptingCall(nextCall(options), requester);
+          onReceiveMessage: function (message: any, next: any) {
+            next(message);
+          },
+          onReceiveStatus: function (status: any, next: any) {
+            next(status);
+          },
+        };
+        next(metadata, newListener);
+      },
+    };
+    return new grpc.InterceptingCall(nextCall(options), requester);
   };
 }
