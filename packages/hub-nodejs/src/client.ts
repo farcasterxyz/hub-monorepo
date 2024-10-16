@@ -168,7 +168,11 @@ export const getAdminClient = (address: string, options?: Partial<grpc.ClientOpt
 export function createDefaultMetadataKeyInterceptor(key: string, value: string) {
   return function metadataKeyInterceptor(options: grpc.InterceptorOptions, nextCall: grpc.NextCall) {
     const requester = {
-      start: function (metadata: grpc.Metadata, listener: grpc.Listener, next: (metadata: grpc.Metadata, listener: any) => void) {
+      start: function (
+        metadata: grpc.Metadata,
+        listener: grpc.Listener,
+        next: (metadata: grpc.Metadata, listener: any) => void,
+      ) {
         if (metadata.get(key).length === 0) {
           metadata.add(key, value);
         }
