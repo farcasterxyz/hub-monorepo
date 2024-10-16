@@ -55,6 +55,7 @@ export class BaseHubSubscriber extends HubSubscriber {
   private stream: ClientReadableStream<HubEvent> | null = null;
   private totalShards: number | undefined;
   private shardIndex: number | undefined;
+  private connectionTimeout: number; // milliseconds
 
   constructor(
     label: string,
@@ -63,6 +64,7 @@ export class BaseHubSubscriber extends HubSubscriber {
     eventTypes?: HubEventType[],
     totalShards?: number,
     shardIndex?: number,
+    connectionTimeout = 30000,
   ) {
     super();
     this.label = label;
@@ -71,6 +73,7 @@ export class BaseHubSubscriber extends HubSubscriber {
     this.totalShards = totalShards;
     this.shardIndex = shardIndex;
     this.eventTypes = eventTypes || DEFAULT_EVENT_TYPES;
+    this.connectionTimeout = connectionTimeout;
   }
 
   public override stop() {
@@ -156,13 +159,13 @@ export class BaseHubSubscriber extends HubSubscriber {
         // Do not allow hanging unresponsive connections to linger:
         let cancel = setTimeout(() => {
           this.destroy();
-        }, 30000);
+        }, this.connectionTimeout);
         for await (const event of stream) {
           await this.processHubEvent(event);
           clearTimeout(cancel);
           cancel = setTimeout(() => {
             this.destroy();
-          }, 30000);
+          }, this.connectionTimeout);
         }
         clearTimeout(cancel);
         // biome-ignore lint/suspicious/noExplicitAny: error catching

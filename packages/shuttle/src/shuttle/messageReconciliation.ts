@@ -35,11 +35,13 @@ export class MessageReconciliation {
   private stream: ClientDuplexStream<StreamFetchRequest, StreamFetchResponse> | undefined;
   private db: DB;
   private log: pino.Logger;
+  private connectionTimeout: number; // milliseconds
 
-  constructor(client: HubRpcClient, db: DB, log: pino.Logger) {
+  constructor(client: HubRpcClient, db: DB, log: pino.Logger, connectionTimeout = 30000) {
     this.client = client;
     this.db = db;
     this.log = log;
+    this.connectionTimeout = connectionTimeout;
     this.establishStream();
   }
 
@@ -182,7 +184,10 @@ export class MessageReconciliation {
     const id = randomUUID();
     const result = new Promise<HubResult<MessagesResponse>>((resolve) => {
       // Do not allow hanging unresponsive connections to linger:
-      const cancel = setTimeout(() => resolve(err(new HubError("unavailable", "server timeout"))), 5000);
+      const cancel = setTimeout(
+        () => resolve(err(new HubError("unavailable", "server timeout"))),
+        this.connectionTimeout,
+      );
 
       if (!this.stream) {
         fallback()

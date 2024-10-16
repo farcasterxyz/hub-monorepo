@@ -703,8 +703,8 @@ describe("shuttle", () => {
         );
       },
       getAllCastMessagesByFid: async (_request: FidRequest, _metadata: Metadata, _options: Partial<CallOptions>) => {
-        // force wait for 2 seconds to trigger failure
-        await new Promise((resolve) => setTimeout(resolve, 5000));
+        // force wait longer than MessageReconciliation's configured timeout to trigger failure
+        await new Promise((resolve) => setTimeout(resolve, 550));
         return ok(
           MessagesResponse.create({
             messages: [
@@ -743,8 +743,8 @@ describe("shuttle", () => {
         _metadata: Metadata,
         _options: Partial<CallOptions>,
       ) => {
-        // force wait for 2 seconds to trigger failure
-        await new Promise((resolve) => setTimeout(resolve, 5000));
+        // force wait longer than MessageReconciliation's configured timeout to trigger failure
+        await new Promise((resolve) => setTimeout(resolve, 550));
         return ok(
           MessagesResponse.create({
             messages: [],
@@ -767,7 +767,7 @@ describe("shuttle", () => {
     };
 
     // Only include 2 of the 3 messages in the time window
-    const reconciler = new MessageReconciliation(mockRPCClient as unknown as HubRpcClient, db, log);
+    const reconciler = new MessageReconciliation(mockRPCClient as unknown as HubRpcClient, db, log, 500);
     const messagesOnHub: Message[] = [];
     const messagesInDb: {
       hash: Uint8Array;
@@ -791,7 +791,7 @@ describe("shuttle", () => {
         startTimestamp,
       ),
     ).rejects.toThrow();
-  }, 15000); // Need to make sure this is long enough to handle the timeout termination
+  }, 5000); // Need to make sure this is long enough to handle the timeout termination
 
   test("marks messages as pruned", async () => {
     const addMessage = await Factories.ReactionAddMessage.create({}, { transient: { signer } });
