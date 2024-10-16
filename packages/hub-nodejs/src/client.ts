@@ -171,23 +171,12 @@ export function createDefaultMetadataKeyInterceptor(key: string, value: string) 
       start: function (
         metadata: grpc.Metadata,
         listener: grpc.Listener,
-        next: (metadata: grpc.Metadata, listener: any) => void,
+        next: (metadata: grpc.Metadata, listener: grpc.Listener) => void,
       ) {
         if (metadata.get(key).length === 0) {
-          metadata.add(key, value);
+          metadata.set(key, value);
         }
-        const newListener = {
-          onReceiveMetadata: function (metadata: grpc.InterceptorOptions, next: any) {
-            next(metadata);
-          },
-          onReceiveMessage: function (message: grpc.InterceptorOptions, next: any) {
-            next(message);
-          },
-          onReceiveStatus: function (status: grpc.InterceptorOptions, next: any) {
-            next(status);
-          },
-        };
-        next(metadata, newListener);
+        next(metadata, listener);
       },
     };
     return new grpc.InterceptingCall(nextCall(options), requester);
