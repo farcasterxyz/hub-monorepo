@@ -1,5 +1,11 @@
 # @farcaster/hub-nodejs
 
+## 0.12.6
+
+### Patch Changes
+
+- 91b77204: Add createDefaultMetadataKeyInterceptor
+
 ## 0.12.5
 
 ### Patch Changes

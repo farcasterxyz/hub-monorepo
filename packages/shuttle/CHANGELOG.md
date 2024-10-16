@@ -1,5 +1,13 @@
 # @farcaster/hub-shuttle
 
+## 0.6.8
+
+### Patch Changes
+
+- 727041cb: feat(shuttle): Parametrize hub connection timeouts for HubSubscriber and MessageReconciliation
+- Updated dependencies [91b77204]
+  - @farcaster/hub-nodejs@0.12.6
+
 ## 0.6.7
 
 ### Patch Changes
