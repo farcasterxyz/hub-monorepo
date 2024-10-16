@@ -1,5 +1,16 @@
 # @farcaster/hubble
 
+## 1.16.0
+
+### Minor Changes
+
+- chore: Update protocol version
+
+### Patch Changes
+
+- Updated dependencies [91b77204]
+  - @farcaster/hub-nodejs@0.12.6
+
 ## 1.15.7
 
 ### Patch Changes
