@@ -166,20 +166,20 @@ export const getAdminClient = (address: string, options?: Partial<grpc.ClientOpt
 };
 
 export function createDefaultMetadataKeyInterceptor(key: string, value: string) {
-  return function metadataKeyInterceptor(options: any, nextCall: any) {
+  return function metadataKeyInterceptor(options: grpc.InterceptorOptions, nextCall: grpc.NextCall) {
     const requester = {
-      start: function (metadata: any, listener: any, next: any) {
+      start: function (metadata: grpc.Metadata, listener: grpc.Listener, next: (metadata: grpc.Metadata, listener: any) => void) {
         if (metadata.get(key).length === 0) {
           metadata.add(key, value);
         }
-        var newListener = {
-          onReceiveMetadata: function (metadata: any, next: any) {
+        const newListener = {
+          onReceiveMetadata: function (metadata: grpc.InterceptorOptions, next: any) {
             next(metadata);
           },
-          onReceiveMessage: function (message: any, next: any) {
+          onReceiveMessage: function (message: grpc.InterceptorOptions, next: any) {
             next(message);
           },
-          onReceiveStatus: function (status: any, next: any) {
+          onReceiveStatus: function (status: grpc.InterceptorOptions, next: any) {
             next(status);
           },
         };
