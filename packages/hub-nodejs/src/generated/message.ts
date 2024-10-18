@@ -244,6 +244,8 @@ export enum UserDataType {
   USERNAME = 6,
   /** LOCATION - Current location for the user */
   LOCATION = 7,
+  /** TWITTER - Username of user on twitter */
+  TWITTER = 8,
 }
 
 export function userDataTypeFromJSON(object: any): UserDataType {
@@ -269,6 +271,9 @@ export function userDataTypeFromJSON(object: any): UserDataType {
     case 7:
     case "USER_DATA_TYPE_LOCATION":
       return UserDataType.LOCATION;
+    case 8:
+    case "USER_DATA_TYPE_TWITTER":
+      return UserDataType.TWITTER;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum UserDataType");
   }
@@ -290,6 +295,8 @@ export function userDataTypeToJSON(object: UserDataType): string {
       return "USER_DATA_TYPE_USERNAME";
     case UserDataType.LOCATION:
       return "USER_DATA_TYPE_LOCATION";
+    case UserDataType.TWITTER:
+      return "USER_DATA_TYPE_TWITTER";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum UserDataType");
   }
