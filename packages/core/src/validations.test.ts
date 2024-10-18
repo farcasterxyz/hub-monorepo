@@ -1219,6 +1219,41 @@ describe("validateUserDataAddBody", () => {
       });
       hubErrorMessage = "Invalid location string";
     });
+
+    test("succeeds for twitter usernames", async () => {
+      const body = Factories.UserDataBody.build({
+        type: UserDataType.TWITTER,
+        value: "dwr",
+      });
+      expect(validations.validateUserDataAddBody(body)).toEqual(ok(body));
+    });
+
+    test("fails for invalid twitter usernames", async () => {
+      const body1 = Factories.UserDataBody.build({
+        type: UserDataType.TWITTER,
+        value: "-wrong-info",
+      });
+      expect(validations.validateUserDataAddBody(body1)).toEqual(
+        err(
+          new HubError(
+            "bad_request.validation_failure",
+            `username "-wrong-info" doesn't match ${validations.TWITTER_REGEX}`,
+          ),
+        ),
+      );
+      const body2 = Factories.UserDataBody.build({
+        type: UserDataType.TWITTER,
+        value: "too_many_characters_for_a_username",
+      });
+      expect(validations.validateUserDataAddBody(body2)).toEqual(
+        err(
+          new HubError(
+            "bad_request.validation_failure",
+            `username "too_many_characters_for_a_username" > 15 characters`,
+          ),
+        ),
+      );
+    });
   });
 });
 

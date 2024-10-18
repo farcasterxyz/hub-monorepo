@@ -19,6 +19,7 @@ export const ALLOWED_CLOCK_SKEW_SECONDS = 10 * 60;
 
 export const FNAME_REGEX = /^[a-z0-9][a-z0-9-]{0,15}$/;
 export const HEX_REGEX = /^(0x)?[0-9A-Fa-f]+$/;
+export const TWITTER_REGEX = /^[a-z0-9_]{0,15}$/;
 
 export const USERNAME_MAX_LENGTH = 20;
 
@@ -1022,6 +1023,13 @@ export const validateUserDataAddBody = (body: protobufs.UserDataBody): HubResult
       }
       break;
     }
+    case protobufs.UserDataType.TWITTER: {
+      const validatedTwitterUsername = validateTwitterUsername(value);
+      if (validatedTwitterUsername.isErr()) {
+        return err(validatedTwitterUsername.error);
+      }
+      break;
+    }
     default:
       return err(new HubError("bad_request.validation_failure", "invalid user data type"));
   }
@@ -1107,4 +1115,38 @@ export const validateEnsName = <T extends string | Uint8Array>(ensNameP?: T | nu
   }
 
   return ok(ensNameP);
+};
+
+export const validateTwitterUsername = <T extends string | Uint8Array>(username?: T | null): HubResult<T> => {
+  if (username === undefined || username === null || username === "") {
+    return err(new HubError("bad_request.validation_failure", "username is missing"));
+  }
+
+  let twitterUsername;
+  if (username instanceof Uint8Array) {
+    const fromBytes = bytesToUtf8String(username);
+    if (fromBytes.isErr()) {
+      return err(fromBytes.error);
+    }
+    twitterUsername = fromBytes.value;
+  } else {
+    twitterUsername = username;
+  }
+
+  if (twitterUsername === undefined || twitterUsername === null || twitterUsername === "") {
+    return err(new HubError("bad_request.validation_failure", "username is missing"));
+  }
+
+  if (twitterUsername.length > 15) {
+    return err(new HubError("bad_request.validation_failure", `username "${twitterUsername}" > 15 characters`));
+  }
+
+  const hasValidChars = TWITTER_REGEX.test(twitterUsername);
+  if (hasValidChars === false) {
+    return err(
+      new HubError("bad_request.validation_failure", `username "${twitterUsername}" doesn't match ${TWITTER_REGEX}`),
+    );
+  }
+
+  return ok(username);
 };

@@ -98,6 +98,7 @@ enum UserDataType {
   USER_DATA_TYPE_URL = 5; // URL of the user
   USER_DATA_TYPE_USERNAME = 6; // Preferred Name for the user
   USER_DATA_TYPE_LOCATION = 7; // Current location for the user
+  USER_DATA_TYPE_TWITTER = 8; // Username of user on twitter
 }
 
 message Embed {
