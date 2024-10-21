@@ -134,6 +134,54 @@ class BufferedLogger {
   }
 }
 
+export class Tags {
+  private fields: Object;
+
+  constructor(obj = {}) {
+    this.fields = obj;
+  }
+
+  addTimestamp(timestamp: number) {
+    return new Tags({ ...this.fields, timestamp: fromFarcasterTime(timestamp)._unsafeUnwrap() });
+  }
+
+  addFid(fid: number) {
+    return new Tags({ ...this.fields, fid });
+  }
+
+  addMessageType(messageType: MessageType) {
+    return new Tags({ ...this.fields, messageType: MessageType[messageType] });
+  }
+
+  addPeerId(peerId: string) {
+    return new Tags({ ...this.fields, peerId });
+  }
+
+  addErrorMessage(errMsg: string) {
+    return new Tags({ ...this.fields, errMsg });
+  }
+
+  addMessageFields(message: Message) {
+    return new Tags({
+      ...this.fields,
+      messageFields: {
+        timestamp: fromFarcasterTime(message.data?.timestamp || 0)._unsafeUnwrap(),
+        hash: bytesToHexString(message.hash)._unsafeUnwrap(),
+        fid: message.data?.fid,
+        type: message.data?.type,
+      },
+    });
+  }
+
+  merge(tags: Tags) {
+    return new Tags({ ...this.fields, ...tags.fields });
+  }
+
+  build() {
+    return this.fields;
+  }
+}
+
 export const logger = new BufferedLogger().createProxy();
 export type Logger = pino.Logger;
 
