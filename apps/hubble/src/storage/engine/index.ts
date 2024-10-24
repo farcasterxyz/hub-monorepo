@@ -1279,23 +1279,28 @@ class Engine extends TypedEmitter<EngineEvents> {
           return err(nameProof.error);
         }
 
-        if (nameProof.value.type === UserNameType.USERNAME_TYPE_FNAME) {
-          // Check that the fid for the fname and message are the same
-          if (nameProof.value.fid !== message.data.fid) {
-            return err(
-              new HubError(
-                "bad_request.validation_failure",
-                `fname fid ${nameProof.value.fid} does not match message fid ${message.data.fid}`,
-              ),
-            );
-          }
-        } else if (nameProof.value.type === UserNameType.USERNAME_TYPE_ENS_L1) {
+        if (
+          nameProof.value.type !== UserNameType.USERNAME_TYPE_FNAME &&
+          nameProof.value.type !== UserNameType.USERNAME_TYPE_ENS_L1
+        ) {
+          return err(new HubError("bad_request.validation_failure", "invalid username type"));
+        }
+
+        // Check that the fid for the fname/ens name and message are the same
+        if (nameProof.value.fid !== message.data.fid) {
+          return err(
+            new HubError(
+              "bad_request.validation_failure",
+              `fid ${nameProof.value.fid} does not match message fid ${message.data.fid}`,
+            ),
+          );
+        }
+
+        if (nameProof.value.type === UserNameType.USERNAME_TYPE_ENS_L1) {
           const result = await this.validateEnsUsernameProof(nameProof.value, custodyAddress);
           if (result.isErr()) {
             return err(result.error);
           }
-        } else {
-          return err(new HubError("bad_request.validation_failure", "invalid username type"));
         }
       }
     }

@@ -983,6 +983,43 @@ describe("mergeMessage", () => {
         expect(result._unsafeUnwrapErr().message).toMatch("failed to resolve ens");
       });
 
+      test("fails when fid on message doesn't match fid on ens name proof", async () => {
+        const fid2 = Factories.Fid.build();
+        const signer2 = Factories.Ed25519Signer.build();
+        const custodySigner2 = Factories.Eip712Signer.build();
+        const signerKey2 = (await signer2.getSignerKey())._unsafeUnwrap();
+        const custodySignerKey2 = (await custodySigner2.getSignerKey())._unsafeUnwrap();
+        const custodyEvent2 = Factories.IdRegistryOnChainEvent.build(
+          { fid: fid2 },
+          { transient: { to: custodySignerKey2 } },
+        );
+        const signerAddEvent2 = Factories.SignerOnChainEvent.build(
+          { fid: fid2 },
+          { transient: { signer: signerKey2 } },
+        );
+        const storageEvent2 = Factories.StorageRentOnChainEvent.build({ fid: fid2 });
+        await engine.mergeOnChainEvent(custodyEvent2);
+        await engine.mergeOnChainEvent(signerAddEvent2);
+        await engine.mergeOnChainEvent(storageEvent2);
+
+        const spoofedUserDataAdd = await Factories.UserDataAddMessage.create(
+          {
+            data: {
+              fid: fid2,
+              userDataBody: {
+                type: UserDataType.USERNAME,
+                value: "test123.eth",
+              },
+            },
+          },
+          { transient: { signer: signer2 } },
+        );
+
+        const result = await engine.mergeMessage(spoofedUserDataAdd);
+        expect(result).toMatchObject(err({ errCode: "bad_request.validation_failure" }));
+        expect(result._unsafeUnwrapErr().message).toMatch(`fid ${fid} does not match message fid ${fid2}`);
+      });
+
       test("revokes the user data add when the username proof is revoked", async () => {
         const result = await engine.mergeMessage(userDataAdd);
         expect(result.isOk()).toBeTruthy();
