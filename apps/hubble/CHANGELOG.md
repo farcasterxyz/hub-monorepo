@@ -1,5 +1,11 @@
 # @farcaster/hubble
 
+## 1.16.1
+
+### Patch Changes
+
+- c2140e26: fix: validate that fid on username add message matches fid on ens proof
+
 ## 1.16.0
 
 ### Minor Changes
