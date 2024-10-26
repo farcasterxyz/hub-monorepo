@@ -17,6 +17,7 @@ import {
   idRegistryABI,
   ViemLocalEip712Signer,
   makeCastRemove,
+  makeUserNameProofClaim,
 } from "@farcaster/hub-nodejs";
 import { mnemonicToAccount, toAccount } from "viem/accounts";
 import {
@@ -29,6 +30,7 @@ import {
   publicActions,
   toHex,
   zeroAddress,
+  bytesToHex,
 } from "viem";
 import { optimism } from "viem/chains";
 import { ed25519 } from "@noble/curves/ed25519";
@@ -182,11 +184,13 @@ const registerFname = async (fid: number) => {
   const timestamp = Math.floor(Date.now() / 1000);
   const localAccount = toAccount(account);
   const signer = new ViemLocalEip712Signer(localAccount as LocalAccount<string>);
-  const userNameProofSignature = signer.signUserNameProofClaim({
-    name: fname,
-    timestamp: BigInt(timestamp),
-    owner: account.address,
-  });
+  const userNameProofSignature = await signer.signUserNameProofClaim(
+    makeUserNameProofClaim({
+      name: fname,
+      timestamp: timestamp,
+      owner: account.address,
+    })
+  );
 
   console.log(`Registering fname: ${fname} to fid: ${fid}`);
   try {
@@ -197,7 +201,7 @@ const registerFname = async (fid: number) => {
       fid: fid, // Fid making the request (must match from or to)
       owner: account.address, // Custody address of fid making the request
       timestamp: timestamp, // Current timestamp in seconds
-      signature: userNameProofSignature, // EIP-712 signature signed by the current custody address of the fid
+      signature: bytesToHex(userNameProofSignature.value), // EIP-712 signature signed by the current custody address of the fid
     });
     return fname;
   } catch (e) {
