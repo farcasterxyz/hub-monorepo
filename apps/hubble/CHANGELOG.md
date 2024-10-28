@@ -1,5 +1,13 @@
 # @farcaster/hubble
 
+## 1.16.2
+
+### Patch Changes
+
+- 36847dfc: Place backups in dedicated directory
+- Updated dependencies [913c0f67]
+  - @farcaster/hub-nodejs@0.12.7
+
 ## 1.16.1
 
 ### Patch Changes
