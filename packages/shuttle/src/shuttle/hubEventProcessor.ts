@@ -23,9 +23,8 @@ export class HubEventProcessor {
   static async processHubEvent(db: DB, event: HubEvent, handler: MessageHandler) {
     await db.transaction().execute(async (trx) => {
       const shouldSkip = await handler.onHubEvent(event, trx);
-      if (shouldSkip) {
-        return;
-      }
+      if (shouldSkip) return;
+
       if (isMergeMessageHubEvent(event)) {
         await this.processMessage(
           trx,
@@ -34,9 +33,13 @@ export class HubEventProcessor {
           "merge",
           event.mergeMessageBody.deletedMessages,
         );
-      } else if (isRevokeMessageHubEvent(event)) {
+      }
+      
+      if (isRevokeMessageHubEvent(event)) {
         await this.processMessage(trx, event.revokeMessageBody.message, handler, "revoke");
-      } else if (isPruneMessageHubEvent(event)) {
+      }
+      
+      if (isPruneMessageHubEvent(event)) {
         await this.processMessage(trx, event.pruneMessageBody.message, handler, "prune");
       }
     });
@@ -44,11 +47,8 @@ export class HubEventProcessor {
 
   static async handleMissingMessage(db: DB, message: Message, handler: MessageHandler, missingInHub?: boolean) {
     await db.transaction().execute(async (trx) => {
-      if (missingInHub) {
-        await this.processMessage(trx, message, handler, "delete", [], true);
-      } else {
-        await this.processMessage(trx, message, handler, "merge", [], true);
-      }
+      const operation = missingInHub ? "delete" : "merge";
+      await this.processMessage(trx, message, handler, operation, [], true);
     });
   }
 
@@ -61,6 +61,7 @@ export class HubEventProcessor {
     wasMissed = false,
   ) {
     const shouldValidate = process.env["SHUTTLE_VALIDATE_MESSAGES"] === "true";
+    
     if (deletedMessages.length > 0) {
       await Promise.all(
         deletedMessages.map(async (deletedMessage) => {
@@ -78,6 +79,7 @@ export class HubEventProcessor {
         }),
       );
     }
+
     const isNew = await MessageProcessor.storeMessage(message, trx, operation, log, shouldValidate);
     const state = this.getMessageState(message, operation);
     await handler.handleMessageMerge(message, trx, operation, state, isNew, wasMissed);
@@ -85,36 +87,18 @@ export class HubEventProcessor {
 
   public static getMessageState(message: Message, operation: StoreMessageOperation): MessageState {
     const isAdd = operation === "merge";
-    // Casts
-    if (isAdd && isCastAddMessage(message)) {
-      return "created";
-    } else if ((isAdd && isCastRemoveMessage(message)) || (!isAdd && isCastAddMessage(message))) {
-      return "deleted";
-    }
-    // Links
-    if ((isAdd && isLinkAddMessage(message)) || (isAdd && isLinkCompactStateMessage(message))) {
-      return "created";
-    } else if ((isAdd && isLinkRemoveMessage(message)) || (!isAdd && isLinkAddMessage(message))) {
-      return "deleted";
-    }
-    // Reactions
-    if (isAdd && isReactionAddMessage(message)) {
-      return "created";
-    } else if ((isAdd && isReactionRemoveMessage(message)) || (!isAdd && isReactionAddMessage(message))) {
-      return "deleted";
-    }
-    // Verifications
-    if (isAdd && isVerificationAddAddressMessage(message)) {
-      return "created";
-    } else if (
-      (isAdd && isVerificationRemoveMessage(message)) ||
-      (!isAdd && isVerificationAddAddressMessage(message))
-    ) {
-      return "deleted";
-    }
 
-    // The above are 2p sets, so we have the consider whether they are add or remove messages to determine the state
-    // The rest are 1p sets, so we can just check the operation
+    if (isAdd && isCastAddMessage(message)) return "created";
+    if ((isAdd && isCastRemoveMessage(message)) || (!isAdd && isCastAddMessage(message))) return "deleted";
+    
+    if ((isAdd && isLinkAddMessage(message)) || (isAdd && isLinkCompactStateMessage(message))) return "created";
+    if ((isAdd && isLinkRemoveMessage(message)) || (!isAdd && isLinkAddMessage(message))) return "deleted";
+    
+    if (isAdd && isReactionAddMessage(message)) return "created";
+    if ((isAdd && isReactionRemoveMessage(message)) || (!isAdd && isReactionAddMessage(message))) return "deleted";
+    
+    if (isAdd && isVerificationAddAddressMessage(message)) return "created";
+    if ((isAdd && isVerificationRemoveMessage(message)) || (!isAdd && isVerificationAddAddressMessage(message))) return "deleted";
 
     return isAdd ? "created" : "deleted";
   }
