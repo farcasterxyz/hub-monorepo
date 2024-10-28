@@ -1011,7 +1011,7 @@ impl RocksDB {
             .to_string();
 
         let start = std::time::SystemTime::now();
-        info!(logger, "Creating chunked tar.gz snapshot for directory: {}", 
+        info!(logger, "Creating chunked tar.gz snapshot for directory: {}",
             input_dir; o!("output_file_path" => &chunked_output_dir, "base_name" => &base_name));
 
         let mut multi_chunk_writer = MultiChunkWriter::new(
@@ -1049,12 +1049,11 @@ impl RocksDB {
         let timestamp = chrono::NaiveDateTime::from_timestamp_millis(timestamp_ms)
             .unwrap_or(chrono::Utc::now().naive_utc());
 
-        let main_backup_path = Path::new(&format!(
-            "{}-{}.backup",
-            main_db_path,
-            timestamp.format("%Y-%m-%d-%s")
-        ))
-        .join("rocks.hub._default");
+        let main_backup_path = Path::new(&main_db_path)
+            .join("..") // Create backup as sibling directory of normal path
+            .join("backup")
+            .join(format!("{}.backup", timestamp.format("%Y-%m-%d-%s")))
+            .join("rocks.hub._default");
 
         // rm -rf this path if it exists
         if main_backup_path.exists() {
