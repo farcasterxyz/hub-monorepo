@@ -1758,7 +1758,7 @@ export class Hub implements HubInterface {
       }
     }
 
-    log.info(new Tags().addPeerId(peerId.toString()).build(), "falling back to addressbook lookup for peer");
+    log.info(new Tags({ peerId: peerId.toString() }), "falling back to addressbook lookup for peer");
     const peerAddresses = await this.gossipNode.getPeerAddresses(peerId);
     if (!peerAddresses) {
       log.info({ function: "getRPCClientForPeer", peer }, `failed to find peer's address to request simple sync`);

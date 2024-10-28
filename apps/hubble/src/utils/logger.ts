@@ -134,51 +134,46 @@ class BufferedLogger {
   }
 }
 
+export type TagFields = {
+  fid?: number;
+  timestamp?: number;
+  peerId?: string;
+  messageType?: MessageType;
+  message?: Message;
+  // biome-ignore lint/suspicious/noExplicitAny: justified use case
+  [key: string]: any;
+};
+
 export class Tags {
-  private fields: Object;
+  private fields: TagFields;
 
-  constructor(obj = {}) {
-    this.fields = obj;
-  }
-
-  addTimestamp(timestamp: number) {
-    return new Tags({ ...this.fields, timestamp: fromFarcasterTime(timestamp)._unsafeUnwrap() });
-  }
-
-  addFid(fid: number) {
-    return new Tags({ ...this.fields, fid });
-  }
-
-  addMessageType(messageType: MessageType) {
-    return new Tags({ ...this.fields, messageType: MessageType[messageType] });
-  }
-
-  addPeerId(peerId: string) {
-    return new Tags({ ...this.fields, peerId });
-  }
-
-  addErrorMessage(errMsg: string) {
-    return new Tags({ ...this.fields, errMsg });
-  }
-
-  addMessageFields(message: Message) {
-    return new Tags({
-      ...this.fields,
-      messageFields: {
-        timestamp: fromFarcasterTime(message.data?.timestamp || 0)._unsafeUnwrap(),
-        hash: bytesToHexString(message.hash)._unsafeUnwrap(),
-        fid: message.data?.fid,
-        type: message.data?.type,
-      },
-    });
+  constructor(fields: TagFields) {
+    this.fields = fields;
   }
 
   merge(tags: Tags) {
-    return new Tags({ ...this.fields, ...tags.fields });
+    this.fields = { ...this.fields, ...tags.fields };
   }
 
-  build() {
-    return this.fields;
+  toString() {
+    const extraFields = Object.fromEntries(
+      Object.entries(this.fields).filter(([key, value]) => {
+        return !["fid", "timestamp", "peerId", "messageType", "message"].includes(key);
+      }),
+    );
+    JSON.stringify({
+      fid: this.fields.fid,
+      timestamp: this.fields.timestamp,
+      peerId: this.fields.peerId,
+      messageType: this.fields.messageType,
+      messageFields: {
+        timestamp: fromFarcasterTime(this.fields.message?.data?.timestamp || 0)._unsafeUnwrap(),
+        hash: this.fields.message ? bytesToHexString(this.fields.message.hash)._unsafeUnwrap() : undefined,
+        fid: this.fields.message?.data?.fid,
+        type: this.fields.message?.data?.type,
+      },
+      ...extraFields,
+    });
   }
 }
 

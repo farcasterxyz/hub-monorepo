@@ -110,24 +110,22 @@ export class MeasureSyncHealthJobScheduler {
     for (const result of results) {
       if (result.isOk()) {
         log.info(
-          new Tags({ startTime, stopTime }).addPeerId(peerId).addMessageFields(result.value),
+          new Tags({ peerId, message: result.value, startTime, stopTime }),
           "Successfully submitted message via SyncHealth",
         );
 
         numSuccesses += 1;
       } else {
-        const logTags = new Tags({ errMessage: result.error.hubError.message, startTime, stopTime })
-          .addPeerId(peerId)
-          .addMessageFields(result.error.originalMessage);
+        const logTags = new Tags({ errMessage: result.error.hubError.message, startTime, stopTime });
 
         if (result.error.hubError.errCode === "bad_request.duplicate") {
           // This message has already been merged into the DB, but for some reason is not in the Trie.
           // Just update the trie.
           await this._metadataRetriever._syncEngine.trie.insert(SyncId.fromMessage(result.error.originalMessage));
-          log.info(logTags.build(), "Merged missing message into sync trie via SyncHealth");
+          log.info(logTags, "Merged missing message into sync trie via SyncHealth");
           numAlreadyMerged += 1;
         } else {
-          log.info(logTags.build(), "Failed to submit message via SyncHealth");
+          log.info(logTags, "Failed to submit message via SyncHealth");
           numErrors += 1;
         }
       }
@@ -140,7 +138,7 @@ export class MeasureSyncHealthJobScheduler {
       const contactInfo = this._metadataRetriever._syncEngine.getContactInfoForPeerId(peer.identifier);
 
       if (!contactInfo) {
-        log.info(new Tags().addPeerId(peer.identifier).build(), "Couldn't get contact info for peer");
+        log.info(new Tags({ peerId: peer.identifier }), "Couldn't get contact info for peer");
         return undefined;
       }
 
@@ -179,7 +177,7 @@ export class MeasureSyncHealthJobScheduler {
       const rpcClient = await this.getRpcClient(peer);
 
       if (rpcClient === undefined) {
-        log.info(new Tags().addPeerId(peer.identifier).build(), "Couldn't get rpc client, skipping peer");
+        log.info(new Tags({ peerId: peer.identifier }), "Couldn't get rpc client, skipping peer");
         continue;
       }
 
@@ -202,7 +200,8 @@ export class MeasureSyncHealthJobScheduler {
             new Tags({
               err: syncHealthMessageStats.error,
               contactInfo,
-            }).addPeerId(peer.identifier),
+              peerId: peer.identifier,
+            }),
             `Error computing SyncHealth: ${syncHealthMessageStats.error}.`,
           );
           continue;

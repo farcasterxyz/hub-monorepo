@@ -549,9 +549,8 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
         new Tags({
           addrs: detail.remoteAddr,
           type: detail.direction,
-        })
-          .addPeerId(detail.remotePeer.toString())
-          .build(),
+          peerId: detail.remotePeer.toString(),
+        }),
         "P2P Connection established",
       );
       this.emit("peerConnect", detail);
@@ -562,12 +561,12 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       this.putPeerAddrToDB(detail.remotePeer.toString(), detail.remoteAddr.toString());
     });
     this._nodeEvents?.addListener("connection:close", (detail: Connection) => {
-      log.info(new Tags().addPeerId(detail.remotePeer.toString()).build(), "P2P Connection disconnected");
+      log.info(new Tags({ peerId: detail.remotePeer.toString() }), "P2P Connection disconnected");
       this.emit("peerDisconnect", detail);
       this.updateStatsdPeerGauges();
     });
     this._nodeEvents?.addListener("peer:discovery", (detail) => {
-      log.info(new Tags().addPeerId(detail.remotePeer.toString()).build(), "Discovered peer");
+      log.info(new Tags({ peerId: detail.remotePeer.toString() }), "Discovered peer");
     });
     this._nodeEvents?.addListener("gossipsub:message", (detail: GossipsubMessage) => {
       log.debug({
