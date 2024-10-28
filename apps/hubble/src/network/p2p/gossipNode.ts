@@ -267,7 +267,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   async putPeerAddrToDB(peerIdStr: string, addr: string) {
     if (this._db) {
       await this._db.put(this.makePeerKey(peerIdStr), Buffer.from(addr));
-      log.info(new Tags({ addr }).addPeerId(peerIdStr).build(), "Added peer to DB");
+      log.info(new Tags({ addr, peerId: peerIdStr }), "Added peer to DB");
     }
   }
 
@@ -302,9 +302,9 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       const peerAddr = multiaddr(addr);
       const result = await this.connectAddress(peerAddr);
       if (result.isOk()) {
-        log.info(new Tags({ addr }).addPeerId(peerIdStr).build(), "Connected to peer from DB");
+        log.info(new Tags({ addr, peerId: peerIdStr }), "Connected to peer from DB");
       } else {
-        log.debug(new Tags({ addr, error: result.error }).addPeerId(peerIdStr), "Failed to connect to peer from DB");
+        log.debug(new Tags({ addr, error: result.error, peerId: peerIdStr }), "Failed to connect to peer from DB");
       }
 
       // Sleep for a bit to avoid overwhelming the network
