@@ -1,5 +1,13 @@
 # @farcaster/hub-web
 
+## 0.9.5
+
+### Patch Changes
+
+- 913c0f67: feat: support twitter and github usernames
+- Updated dependencies [913c0f67]
+  - @farcaster/core@0.15.6
+
 ## 0.9.4
 
 ### Patch Changes

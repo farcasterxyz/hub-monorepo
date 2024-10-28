@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.15.6
+
+### Patch Changes
+
+- 913c0f67: feat: support twitter and github usernames
+
 ## 0.15.5
 
 ### Patch Changes
