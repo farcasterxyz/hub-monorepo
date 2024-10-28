@@ -144,6 +144,7 @@ export type TagFields = {
   [key: string]: any;
 };
 
+// Always go through this class to construct log tags so that tag names are standardized.
 export class Tags {
   private fields: TagFields;
 
