@@ -1,5 +1,5 @@
 import cron from "node-cron";
-import { logger } from "../../utils/logger.js";
+import { logger, Tags } from "../../utils/logger.js";
 import SyncEngine from "./syncEngine.js";
 import { RpcMetadataRetriever, SyncEngineMetadataRetriever, SyncHealthProbe } from "../../utils/syncHealth.js";
 import { HubInterface } from "hubble.js";
@@ -109,43 +109,15 @@ export class MeasureSyncHealthJobScheduler {
     let numAlreadyMerged = 0;
     for (const result of results) {
       if (result.isOk()) {
-        const hashString = bytesToHexString(result.value.hash);
-        const hash = hashString.isOk() ? hashString.value : "unable to show hash";
-
-        const typeValue = result.value.data?.type;
-        const type = typeValue ? UserDataType[typeValue] : "unknown type";
-
         log.info(
-          {
-            msgDetails: {
-              type,
-              fid: result.value.data?.fid,
-              timestamp: this.unixTimestampFromMessage(result.value),
-              hash,
-              peerId,
-            },
-            startTime,
-            stopTime,
-          },
+          new Tags({ peerId, message: result.value, startTime, stopTime }),
           "Successfully submitted message via SyncHealth",
         );
 
         numSuccesses += 1;
       } else {
-        const hashString = bytesToHexString(result.error.originalMessage.hash);
-        const hash = hashString.isOk() ? hashString.value : "unable to show hash";
+        const logTags = new Tags({ errMessage: result.error.hubError.message, startTime, stopTime });
 
-        const logTags = {
-          errMessage: result.error.hubError.message,
-          peerId,
-          startTime,
-          stopTime,
-          msgDetails: {
-            fid: result.error.originalMessage.data?.fid,
-            timestamp: this.unixTimestampFromMessage(result.error.originalMessage),
-            hash,
-          },
-        };
         if (result.error.hubError.errCode === "bad_request.duplicate") {
           // This message has already been merged into the DB, but for some reason is not in the Trie.
           // Just update the trie.
@@ -166,7 +138,7 @@ export class MeasureSyncHealthJobScheduler {
       const contactInfo = this._metadataRetriever._syncEngine.getContactInfoForPeerId(peer.identifier);
 
       if (!contactInfo) {
-        log.info({ peerId: peer.identifier }, "Couldn't get contact info for peer");
+        log.info(new Tags({ peerId: peer.identifier }), "Couldn't get contact info for peer");
         return undefined;
       }
 
@@ -205,7 +177,7 @@ export class MeasureSyncHealthJobScheduler {
       const rpcClient = await this.getRpcClient(peer);
 
       if (rpcClient === undefined) {
-        log.info({ peerId: peer.identifier }, "Couldn't get rpc client, skipping peer");
+        log.info(new Tags({ peerId: peer.identifier }), "Couldn't get rpc client, skipping peer");
         continue;
       }
 
@@ -225,11 +197,11 @@ export class MeasureSyncHealthJobScheduler {
         if (syncHealthMessageStats.isErr()) {
           const contactInfo = this.contactInfoForLogs(peer);
           log.info(
-            {
-              peerId: peer.identifier,
+            new Tags({
               err: syncHealthMessageStats.error,
               contactInfo,
-            },
+              peerId: peer.identifier,
+            }),
             `Error computing SyncHealth: ${syncHealthMessageStats.error}.`,
           );
           continue;

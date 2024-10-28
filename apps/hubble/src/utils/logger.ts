@@ -134,6 +134,46 @@ class BufferedLogger {
   }
 }
 
+export type TagFields = {
+  fid?: number;
+  timestamp?: number;
+  peerId?: string;
+  messageType?: MessageType;
+  message?: Message;
+  // biome-ignore lint/suspicious/noExplicitAny: justified use case
+  [key: string]: any;
+};
+
+// Always go through this class to construct log tags so that tag names are standardized.
+export class Tags {
+  private fields: TagFields;
+
+  constructor(fields: TagFields) {
+    this.fields = fields;
+  }
+
+  toString() {
+    const extraFields = Object.fromEntries(
+      Object.entries(this.fields).filter(([key, value]) => {
+        return !["fid", "timestamp", "peerId", "messageType", "message"].includes(key);
+      }),
+    );
+    JSON.stringify({
+      fid: this.fields.fid,
+      timestamp: this.fields.timestamp,
+      peerId: this.fields.peerId,
+      messageType: this.fields.messageType,
+      messageFields: {
+        timestamp: fromFarcasterTime(this.fields.message?.data?.timestamp || 0)._unsafeUnwrap(),
+        hash: this.fields.message ? bytesToHexString(this.fields.message.hash)._unsafeUnwrap() : undefined,
+        fid: this.fields.message?.data?.fid,
+        type: this.fields.message?.data?.type,
+      },
+      ...extraFields,
+    });
+  }
+}
+
 export const logger = new BufferedLogger().createProxy();
 export type Logger = pino.Logger;
 

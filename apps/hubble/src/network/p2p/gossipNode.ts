@@ -25,7 +25,7 @@ import { peerIdFromBytes, peerIdFromString } from "@libp2p/peer-id";
 import { multiaddr, Multiaddr } from "@multiformats/multiaddr";
 import { err, ok, Result } from "neverthrow";
 import { TypedEmitter } from "tiny-typed-emitter";
-import { logger, messageTypeToName } from "../../utils/logger.js";
+import { logger, messageTypeToName, Tags } from "../../utils/logger.js";
 import { PeriodicPeerCheckScheduler } from "./periodicPeerCheck.js";
 import { GOSSIP_PROTOCOL_VERSION } from "./protocol.js";
 import { AddrInfo } from "@chainsafe/libp2p-gossipsub/types";
@@ -267,7 +267,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
   async putPeerAddrToDB(peerIdStr: string, addr: string) {
     if (this._db) {
       await this._db.put(this.makePeerKey(peerIdStr), Buffer.from(addr));
-      log.info({ peerId: peerIdStr, addr }, "Added peer to DB");
+      log.info(new Tags({ addr, peerId: peerIdStr }), "Added peer to DB");
     }
   }
 
@@ -302,9 +302,9 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       const peerAddr = multiaddr(addr);
       const result = await this.connectAddress(peerAddr);
       if (result.isOk()) {
-        log.info({ peerIdStr, addr }, "Connected to peer from DB");
+        log.info(new Tags({ addr, peerId: peerIdStr }), "Connected to peer from DB");
       } else {
-        log.debug({ peerIdStr, addr, error: result.error }, "Failed to connect to peer from DB");
+        log.debug(new Tags({ addr, error: result.error, peerId: peerIdStr }), "Failed to connect to peer from DB");
       }
 
       // Sleep for a bit to avoid overwhelming the network
@@ -546,11 +546,11 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
     this._nodeEvents?.addListener("connection:open", (detail: Connection) => {
       // console.log("Peer Connected", JSON.stringify(detail, null, 2));
       log.info(
-        {
-          peer: detail.remotePeer,
+        new Tags({
           addrs: detail.remoteAddr,
           type: detail.direction,
-        },
+          peerId: detail.remotePeer.toString(),
+        }),
         "P2P Connection established",
       );
       this.emit("peerConnect", detail);
@@ -561,12 +561,12 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       this.putPeerAddrToDB(detail.remotePeer.toString(), detail.remoteAddr.toString());
     });
     this._nodeEvents?.addListener("connection:close", (detail: Connection) => {
-      log.info({ peer: detail.remotePeer }, "P2P Connection disconnected");
+      log.info(new Tags({ peerId: detail.remotePeer.toString() }), "P2P Connection disconnected");
       this.emit("peerDisconnect", detail);
       this.updateStatsdPeerGauges();
     });
     this._nodeEvents?.addListener("peer:discovery", (detail) => {
-      log.info({ peer: detail }, "Discovered peer");
+      log.info(new Tags({ peerId: detail.remotePeer?.toString() }), "Discovered peer");
     });
     this._nodeEvents?.addListener("gossipsub:message", (detail: GossipsubMessage) => {
       log.debug({

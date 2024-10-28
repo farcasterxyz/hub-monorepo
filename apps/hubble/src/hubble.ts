@@ -51,6 +51,7 @@ import {
   onChainEventToLog,
   SubmitMessageSuccessLogCache,
   usernameProofToLog,
+  Tags,
 } from "./utils/logger.js";
 import {
   addressInfoFromGossip,
@@ -1757,7 +1758,7 @@ export class Hub implements HubInterface {
       }
     }
 
-    log.info({ peerId }, "falling back to addressbook lookup for peer");
+    log.info(new Tags({ peerId: peerId.toString() }), "falling back to addressbook lookup for peer");
     const peerAddresses = await this.gossipNode.getPeerAddresses(peerId);
     if (!peerAddresses) {
       log.info({ function: "getRPCClientForPeer", peer }, `failed to find peer's address to request simple sync`);
