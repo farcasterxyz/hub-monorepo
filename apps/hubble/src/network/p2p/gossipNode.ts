@@ -566,7 +566,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
       this.updateStatsdPeerGauges();
     });
     this._nodeEvents?.addListener("peer:discovery", (detail) => {
-      log.info(new Tags({ peerId: detail.remotePeer.toString() }), "Discovered peer");
+      log.info(new Tags({ peerId: detail.remotePeer?.toString() }), "Discovered peer");
     });
     this._nodeEvents?.addListener("gossipsub:message", (detail: GossipsubMessage) => {
       log.debug({
