@@ -155,11 +155,11 @@ export class BaseHubSubscriber extends HubSubscriber {
         break; // Break out since `start` will start new stream
       }
 
+      let cancel = setTimeout(() => {
+        this.destroy();
+      }, this.connectionTimeout);
+
       try {
-        // Do not allow hanging unresponsive connections to linger:
-        let cancel = setTimeout(() => {
-          this.destroy();
-        }, this.connectionTimeout);
         for await (const event of stream) {
           await this.processHubEvent(event);
           clearTimeout(cancel);
@@ -167,8 +167,6 @@ export class BaseHubSubscriber extends HubSubscriber {
             this.destroy();
           }, this.connectionTimeout);
         }
-        clearTimeout(cancel);
-        // biome-ignore lint/suspicious/noExplicitAny: error catching
       } catch (e: any) {
         this.emit("onError", e, this.stopped);
         if (this.stopped) {
@@ -179,6 +177,8 @@ export class BaseHubSubscriber extends HubSubscriber {
           await sleep(5_000);
           void this.start();
         }
+      } finally {
+        clearTimeout(cancel);
       }
     }
   }
@@ -201,8 +201,8 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
   private eventsToAdd: [HubEvent, Buffer][];
   public eventBatchSize = 100;
   private eventBatchLastFlushedAt = 0;
-  public maxTimeBetweenBatchFlushes = 200; // Millis
-  public maxBatchBytesBeforeForceFlush = 2 ** 20; // 2 MiB
+  public maxTimeBetweenBatchFlushes = 200; // milliseconds
+  public maxBatchBytesBeforeForceFlush = 2 ** 20; // 2 MB
   private eventBatchBytes = 0;
   private beforeProcess?: PreProcessHandler;
   private afterProcess?: PostProcessHandler;
@@ -232,7 +232,6 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
   }
 
   public override async getLastEventId(): Promise<number | undefined> {
-    // Migrate the old label based key if present
     const labelBasedKey = await this.redis.getLastProcessedEvent(this.label);
     if (labelBasedKey > 0) {
       await this.redis.setLastProcessedEvent(this.redisKey, labelBasedKey);
@@ -246,33 +245,32 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
 
     this.eventBatchBytes += eventBytes.length;
     this.eventsToAdd.push([event, eventBytes]);
+
     if (
       this.eventsToAdd.length >= this.eventBatchSize ||
       this.eventBatchBytes >= this.maxBatchBytesBeforeForceFlush ||
       Date.now() - this.eventBatchLastFlushedAt > this.maxTimeBetweenBatchFlushes
     ) {
       const startTime = Date.now();
-      // Empties the current batch
-      const eventBatch = this.eventsToAdd.splice(0, this.eventsToAdd.length);
-      const events = eventBatch.map(([evt, _evtBytes]) => evt);
+
+      const eventBatch = this.eventsToAdd.splice(0, this.eventsToAdd.length); // Clear current batch
+      const events = eventBatch.map(([evt]) => evt);
       this.eventBatchBytes = 0;
 
       let eventsToWriteBatch = eventBatch;
       if (this.beforeProcess) {
-        const eventBytesBatch = eventBatch.map(([_evt, evtBytes]) => evtBytes);
+        const eventBytesBatch = eventBatch.map(([, evtBytes]) => evtBytes);
         const preprocessResult = await this.beforeProcess.call(this, events, eventBytesBatch);
-        eventsToWriteBatch = eventBatch.filter((evt, idx) => !preprocessResult[idx]?.skipped);
+        eventsToWriteBatch = eventBatch.filter((_, idx) => !preprocessResult[idx]?.skipped);
       }
 
-      const eventToWriteBatch = eventsToWriteBatch.map(([evt, _evtBytes]) => evt);
-      const eventBytesToWriteBatch = eventsToWriteBatch.map(([_evt, evtBytes]) => evtBytes);
-      // Copies the removed events to the stream
+      const eventToWriteBatch = eventsToWriteBatch.map(([evt]) => evt);
+      const eventBytesToWriteBatch = eventsToWriteBatch.map(([, evtBytes]) => evtBytes);
       await this.eventStream.add(this.streamKey, eventBytesToWriteBatch);
 
       this.eventBatchLastFlushedAt = Date.now();
 
-      // biome-ignore lint/style/noNonNullAssertion: batch always has at least one event
-      const [evt, eventBytes] = eventBatch[eventBatch.length - 1]!;
+      const [evt] = eventBatch[eventBatch.length - 1]!;
       const lastEventId = evt.id;
       await this.redis.setLastProcessedEvent(this.redisKey, lastEventId);
 
@@ -281,13 +279,10 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
       }
 
       const processTime = Date.now() - startTime;
-
       statsd.gauge("hub.event.subscriber.last_batch_size", events.length, { source: this.shardKey });
-
       statsd.timing("hub.event.subscriber.process_time.per_event", processTime / events.length, {
         source: this.shardKey,
       });
-
       statsd.timing("hub.event.subscriber.process_time.per_batch", processTime, { source: this.shardKey });
     }
 
