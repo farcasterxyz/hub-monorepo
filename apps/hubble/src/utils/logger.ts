@@ -151,10 +151,6 @@ export class Tags {
     this.fields = fields;
   }
 
-  merge(tags: Tags) {
-    this.fields = { ...this.fields, ...tags.fields };
-  }
-
   toString() {
     const extraFields = Object.fromEntries(
       Object.entries(this.fields).filter(([key, value]) => {
