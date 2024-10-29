@@ -1,4 +1,10 @@
-import { ClientReadableStream, HubEvent, HubEventType, HubRpcClient } from "@farcaster/hub-nodejs";
+import {
+  ClientReadableStream,
+  extractEventTimestamp,
+  HubEvent,
+  HubEventType,
+  HubRpcClient,
+} from "@farcaster/hub-nodejs";
 import { err, ok, Result } from "neverthrow";
 import { Logger } from "../log";
 import { TypedEmitter } from "tiny-typed-emitter";
@@ -206,6 +212,7 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
   private eventBatchBytes = 0;
   private beforeProcess?: PreProcessHandler;
   private afterProcess?: PostProcessHandler;
+  private hub: string;
 
   constructor(
     label: string,
@@ -225,6 +232,7 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
     this.redis = redis;
     this.streamKey = `hub:${hubClient.host}:evt:msg:${shardKey}`;
     this.redisKey = `${hubClient.host}:${shardKey}`;
+    this.hub = hubClient.host;
     this.eventsToAdd = [];
     this.beforeProcess = options?.beforeProcess;
     this.afterProcess = options?.afterProcess;
@@ -282,13 +290,25 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
 
       const processTime = Date.now() - startTime;
 
-      statsd.gauge("hub.event.subscriber.last_batch_size", events.length, { source: this.shardKey });
+      if (events[0]) {
+        const startEventTimestamp = extractEventTimestamp(events[0].id);
+        statsd.gauge("hub.event.subscriber.last_batch_earliest_event_timestamp", startEventTimestamp, {
+          source: this.shardKey,
+          hub: this.hub,
+        });
+      }
+
+      statsd.gauge("hub.event.subscriber.last_batch_size", events.length, { source: this.shardKey, hub: this.hub });
 
       statsd.timing("hub.event.subscriber.process_time.per_event", processTime / events.length, {
         source: this.shardKey,
+        hub: this.hub,
       });
 
-      statsd.timing("hub.event.subscriber.process_time.per_batch", processTime, { source: this.shardKey });
+      statsd.timing("hub.event.subscriber.process_time.per_batch", processTime, {
+        source: this.shardKey,
+        hub: this.hub,
+      });
     }
 
     return true;
