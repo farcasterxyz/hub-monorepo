@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@farcaster/core": "^0.12.10",
-    "axios": "^1.6.0",
+    "axios": "^1.7.4",
     "javascript-time-ago": "^2.5.9"
   },
   "devDependencies": {
