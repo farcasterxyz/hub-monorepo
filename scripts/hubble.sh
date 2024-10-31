@@ -84,6 +84,7 @@ self_upgrade() {
     fi
 
     local tmp_file
+    trap 'rm -f "$tmp_file"' EXIT
     tmp_file=$(mktemp)
     fetch_file_from_repo "$SCRIPT_FILE_PATH" "$tmp_file"
 
