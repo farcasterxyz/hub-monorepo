@@ -1,5 +1,12 @@
 # @farcaster/hub-shuttle
 
+## 0.6.9
+
+### Patch Changes
+
+- a9c45a3d: feat(shuttle): Pipe connectionTimeout arg through EventStreamHubSubscriber
+- 99982106: chore: add event timestamp metric for event subscription monitoring
+
 ## 0.6.8
 
 ### Patch Changes
