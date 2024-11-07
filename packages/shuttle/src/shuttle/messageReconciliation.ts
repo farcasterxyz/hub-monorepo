@@ -183,22 +183,23 @@ export class MessageReconciliation {
   ) {
     const id = randomUUID();
     const result = new Promise<HubResult<MessagesResponse>>((resolve) => {
-      // Do not allow hanging unresponsive connections to linger:
-      const cancel = setTimeout(
-        () => resolve(err(new HubError("unavailable", "server timeout"))),
-        this.connectionTimeout,
-      );
-
       if (!this.stream) {
-        fallback()
-          .then((result) => resolve(result))
-          .finally(() => clearTimeout(cancel));
+        fallback().then((result) => resolve(result));
         return;
       }
       const process = async (response: StreamFetchResponse) => {
+        // Do not allow hanging unresponsive connections to linger:
+        const cancel = setTimeout(() => {
+          this.log.warn("Stream fetch timed out, falling back to RPC");
+          this.stream?.cancel();
+          this.stream = undefined;
+          fallback().then((result) => resolve(result));
+        }, this.connectionTimeout);
+
         if (!this.stream) {
           clearTimeout(cancel);
-          resolve(err(new HubError("unavailable", "unexpected stream termination")));
+          this.log.warn("Stream unavailable, falling back to RPC");
+          fallback().then((result) => resolve(result));
           return;
         }
         this.stream.off("data", process);
