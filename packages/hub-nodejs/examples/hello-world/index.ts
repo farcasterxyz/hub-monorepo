@@ -189,7 +189,7 @@ const registerFname = async (fid: number) => {
       name: fname,
       timestamp: timestamp,
       owner: account.address,
-    })
+    }),
   );
 
   console.log(`Registering fname: ${fname} to fid: ${fid}`);
