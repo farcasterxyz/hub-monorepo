@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.6.10
+
+### Patch Changes
+
+- 07aaf852: fix: Make fallback to rpc in more cases when reconcile stream errors
+
 ## 0.6.9
 
 ### Patch Changes
