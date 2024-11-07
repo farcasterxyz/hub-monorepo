@@ -1,5 +1,11 @@
 # @farcaster/hubble
 
+## 1.16.3
+
+### Patch Changes
+
+- 5080bbb7: chore: introduce a pattern to help standardize log tag names
+
 ## 1.16.2
 
 ### Patch Changes
