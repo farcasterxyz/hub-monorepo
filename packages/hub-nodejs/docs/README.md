@@ -15,7 +15,7 @@ Note: The HTTP API is an alternate way to read/write to the Hub. Please see the 
 1. Timestamps are calculated from the [Farcaster epoch](./Utils.md#time), not the Unix epoch.
 2. Errors are handled with [a monadic pattern](./Utils.md#errors), instead of try-catch.
 3. [Ethers](https://www.npmjs.com/package/ethers) and [noble](https://www.npmjs.com/package/@noble/ed25519) are required to create new messages.
-4. Both Nodejs and [browser environments are supported](https://github.com/farcasterxyz/hubble/issues/573).
+4. Both Node.js and [browser environments are supported](https://github.com/farcasterxyz/hubble/issues/573).
 5. Fixed length data is encoded in [byte formats](./Utils.md#bytes), instead of strings.
 
 There are also a few Farcaster-specific terms that are very commonly used in this package:
