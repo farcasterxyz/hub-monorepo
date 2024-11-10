@@ -31,7 +31,7 @@
 
 ### Patch Changes
 
-- 386059ac: fix: gracefully handle streaming hangups when the server dies unexpected
+- 386059ac: fix: gracefully handle streaming hangups when the server dies unexpectedly
 
 ## 0.6.5
 
