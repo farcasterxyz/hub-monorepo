@@ -78,7 +78,7 @@ Due to a quirk of how gRPC compiles types to TypeScript, MessageData has many op
 | Name                 | Type                | Description                           |
 | :------------------- | :------------------ | ------------------------------------- |
 | `embeds?`            | `string[]`          | URLs to be embedded in the cast       |
-| `mentions?`          | `number[]`          | Fids mentioned in the cast            |
+| `mentions?`          | `number[]`          | FIDs mentioned in the cast            |
 | `mentionsPositions?` | `number[]`          | Positions of the mentions in the text |
 | `parentCastId?`      | [`CastId`](#castid) | Parent cast of the cast               |
 | `text`               | `string`            | Text of the cast                      |
@@ -190,7 +190,7 @@ Unique identifier for a Cast that includes its author.
 
 | Name   | Type     | Description                          |
 | :----- | :------- | ------------------------------------ |
-| `fid`  | `number` | Fid of the user who created the cast |
+| `fid`  | `number` | FID of the user who created the cast |
 | `hash` | `string` | Hash of the cast                     |
 
 ### VerificationEthAddressClaim
