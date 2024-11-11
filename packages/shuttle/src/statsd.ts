@@ -4,7 +4,7 @@ import { isIP } from "node:net";
 import StatsD from "@farcaster/hot-shots";
 
 export const statsd = new StatsD({
-  host: "127.0.0.1", // Avoid Node.js deprecation warning by specifying explicitly
+  host: process.env["STATSD_HOST"] || "127.0.0.1",
   cacheDns: true,
   maxBufferSize: 4096 /* 4KiB */,
   udpSocketOptions: {
