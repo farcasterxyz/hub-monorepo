@@ -9,7 +9,7 @@ Specifications for API's and data formats used in Hubble, including both Farcast
 | [HubEvent](schemas/hub_event.proto)         | Types for hub events              | [docs](docs/message.md) |
 | [RPC](schemas/rpc.proto)                    | Types for gRPC APIs exposed by Hubs      | [docs](docs/rpc.md)     |
 | [Gossip](schemas/gossip.proto)              | Types for gossiping data between Hubs    |                         |
-| [HubState](schemas/hub_state.proto)         | Types for for maintaining internal state |                         |
+| [HubState](schemas/hub_state.proto)         | Types for maintaining internal state     |                         |
 
 ## Getting Started
 

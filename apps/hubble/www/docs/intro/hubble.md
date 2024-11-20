@@ -13,7 +13,7 @@ The Farcaster team runs some instances of Hubble for use by the public. These in
 
 ```bash
 url: nemes.farcaster.xyz
-httpapi_port: 2281
+http_api_port: 2281
 gossipsub_port: 2282
 grpc_port: 2283
 ```
