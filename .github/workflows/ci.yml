@@ -1,13 +1,12 @@
 name: CI
+
 on:
-  # CI is run on main because new branches can only access caches from master, not previous branches.
-  # So building on master allows new PR's to get the cache from before.
   push:
     branches: [main]
   pull_request:
     branches: [main]
 
-# prevent multiple simultaneous test runs
+# Prevent multiple simultaneous test runs
 concurrency:
   group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
   cancel-in-progress: true
@@ -18,11 +17,14 @@ jobs:
     runs-on: 'warp-ubuntu-latest-arm64-16x'
 
     steps:
+      # Checkout code
       - uses: actions/checkout@v4
 
+      # Setup Docker buildx for multi-platform support
       - name: Install Docker buildx
         uses: docker/setup-buildx-action@v3
 
+      # Build Docker image with caching
       - name: Build Docker image
         id: docker-image
         uses: docker/build-push-action@v5
@@ -34,13 +36,18 @@ jobs:
           load: true
           tags: farcasterxyz/hubble:test
 
+      # Run Hubble container with necessary arguments
       - name: Run Hubble
         shell: bash
-        run: docker run --name hub --detach -p2282:2282 -p2283:2283 farcasterxyz/hubble:test sh -c 'node build/cli.js identity create && HUBBLE_ARGS="start --rpc-port 2283 --ip 0.0.0.0 --gossip-port 2282 --eth-mainnet-rpc-url https://eth-mainnet.g.alchemy.com/v2/8cz__IXnQ5FK_GNYDlfooLzYhBAW7ta0 --l2-rpc-url https://opt-mainnet.g.alchemy.com/v2/3xWX-cWV-an3IPXmVCRXX51PpQzc-8iJ --network 3 --allowed-peers none --catchup-sync-with-snapshot false" npx pm2-runtime start pm2.config.cjs'
+        run: |
+          docker run --name hub --detach -p2282:2282 -p2283:2283 farcasterxyz/hubble:test sh -c \
+          'node build/cli.js identity create && \
+          HUBBLE_ARGS="start --rpc-port 2283 --ip 0.0.0.0 --gossip-port 2282 --eth-mainnet-rpc-url https://eth-mainnet.g.alchemy.com/v2/8cz__IXnQ5FK_GNYDlfooLzYhBAW7ta0 --l2-rpc-url https://opt-mainnet.g.alchemy.com/v2/3xWX-cWV-an3IPXmVCRXX51PpQzc-8iJ --network 3 --allowed-peers none --catchup-sync-with-snapshot false" \
+          npx pm2-runtime start pm2.config.cjs'
 
-      - name: Download grpcurl
-        shell: bash
-        run: curl -L https://github.com/fullstorydev/grpcurl/releases/download/v1.8.7/grpcurl_1.8.7_linux_arm64.tar.gz -o - | tar -xzf -
+      # Install grpcurl and check if gRPC server is running
+      - name: Install grpcurl
+        run: curl -L https://github.com/fullstorydev/grpcurl/releases/download/v1.8.7/grpcurl_1.8.7_linux_arm64.tar.gz | tar -xz
 
       - name: Check that gRPC server is running
         uses: nick-fields/retry@v3
@@ -54,19 +61,18 @@ jobs:
 
   test:
     timeout-minutes: 10
-
     strategy:
       matrix:
         include:
           - node_version: 20
             runs_on: 'warp-ubuntu-latest-x64-16x'
-          - node_version: 22.4.1 # HACK: There's an issue with node 22.7.0
-            runs_on: 'warp-ubuntu-latest-arm64-16x' # Only works on ARM for now
-          - node_version: 22.4.1 # HACK: There's an issue with node 22.7.0
+          - node_version: 22.4.1
+            runs_on: 'warp-ubuntu-latest-arm64-16x'
+          - node_version: 22.4.1
             runs_on: 'warp-ubuntu-latest-x64-16x'
 
     runs-on: ${{ matrix.runs_on }}
-    name: test (${{ matrix.node_version }})
+    name: Test with Node.js ${{ matrix.node_version }}
 
     services:
       postgres:
@@ -85,24 +91,23 @@ jobs:
         options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
 
     steps:
-      # Make sure this matches what we do locally and what we build with our Docker image
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: 1.77.0
-
+      # Checkout code
       - uses: actions/checkout@v4
 
+      # Setup Node.js
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node_version }}
 
-      - name: Restore cached dependencies for Node modules.
+      # Cache Node.js dependencies (yarn.lock)
+      - name: Restore Node modules cache
         id: module-cache
         uses: actions/cache@v4
         with:
-          path: ${{ github.workspace }}/node_modules
-          key: ${{ runner.os }}-${{ runner.arch }}--node--${{ matrix.node_version}}--${{ hashFiles('yarn.lock') }}
+          path: node_modules
+          key: ${{ runner.os }}-${{ runner.arch }}--node--${{ matrix.node_version }}--${{ hashFiles('yarn.lock') }}
 
+      # Cache Cargo registry and git for Rust dependencies
       - name: Cache Cargo registry and git
         uses: actions/cache@v4
         with:
@@ -111,34 +116,41 @@ jobs:
             ~/.cargo/git
           key: ${{ runner.os }}-${{ runner.arch }}-cargo-registry-${{ hashFiles('apps/hubble/src/addon/Cargo.lock') }}
 
+      # Cache Cargo build artifacts
       - name: Cache Cargo build artifacts
         uses: actions/cache@v4
         with:
-          path: ${{ github.workspace }}/apps/hubble/src/addon/target
+          path: apps/hubble/src/addon/target
           key: ${{ runner.os }}-${{ runner.arch }}-cargo-build-${{ hashFiles('apps/hubble/src/addon/Cargo.lock') }}
 
+      # Install Protocol Buffers (protoc)
       - name: Install Protocol Buffer Compiler
         uses: arduino/setup-protoc@v3
         with:
           version: "24.4"
 
+      # Install Foundry (Rust toolchain for Ethereum)
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
 
+      # Install dependencies
       - name: Install dependencies
         run: yarn install
 
+      # Build the project
       - name: Run build
         run: yarn build
 
+      # Lint the code
       - name: Run linter
         run: yarn lint:ci
 
+      # Run tests
       - name: Run tests
         run: yarn test:ci
 
+      # Upload coverage results
       - name: Upload coverage results
         uses: codecov/codecov-action@v4
-        continue-on-error: true # Don't fail the build if codecov fails
+        continue-on-error: true
         timeout-minutes: 1
-
