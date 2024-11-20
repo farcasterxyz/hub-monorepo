@@ -11,6 +11,6 @@ We do not recommend running this example in a cloud environment because it requi
 ### Run locally
 
 1. Clone the repo locally
-2. Navigate to this folder with `cd packages/hub-nodejs/examples/make-cast`
+2. Navigate to this folder with `cd packages/hub-nodejs/examples/write-data`
 3. Run `yarn install` to install dependencies
 4. Run `yarn start`
