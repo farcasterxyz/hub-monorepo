@@ -378,7 +378,7 @@ class MerkleTrie {
     return await rsMerkleTrieRootHash(this._rustTrie);
   }
 
-  public async unloadChidrenAtRoot(): Promise<void> {
+  public async unloadChildrenAtRoot(): Promise<void> {
     return await rsMerkleTrieUnloadChildren(this._rustTrie);
   }
 
@@ -388,7 +388,7 @@ class MerkleTrie {
   }
 
   public async commitToDb(): Promise<void> {
-    return await this.unloadChidrenAtRoot();
+    return await this.unloadChildrenAtRoot();
   }
 }
 
