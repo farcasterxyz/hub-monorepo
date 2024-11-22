@@ -20,9 +20,9 @@ export class ConnectionFilter implements ConnectionGater {
   private allowedPeers: string[] | undefined;
   private deniedPeers: string[];
 
-  constructor(addrs: string[] | undefined, deiniedPeers: string[] | undefined) {
+  constructor(addrs: string[] | undefined, deniedPeers: string[] | undefined) {
     this.allowedPeers = addrs;
-    this.deniedPeers = deiniedPeers ?? [];
+    this.deniedPeers = deniedPeers ?? [];
   }
 
   updateAllowedPeers(addrs: string[] | undefined) {
