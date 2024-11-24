@@ -64,7 +64,7 @@ Emitted by contracts whenever the ownership of fids or fnames changes.
 
 ### IdRegistryEvent
 
-Emit when an onchain event occurs in the IdRegistry which registers or transfers an fid.
+Emit when an onchain event occurs in the IdRegistry which registers or transfers a fid.
 
 | Name            | Type                        | Description                                              |
 | --------------- | --------------------------- | -------------------------------------------------------- |
