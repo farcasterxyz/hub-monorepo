@@ -6,7 +6,7 @@ Given a custody address with ~10$ worth of funds on OP Mainnet, this example wil
  - Register an FID on the IdRegistry contract
  - Purchase 1 unit of storage on the StorageContract
  - Create a signer on the KeyRegistry contract
- - Register an fname on the fname registry server
+ - Register a fname on the fname registry server
  - Update the user's profile
 
 ### Run on StackBlitz
