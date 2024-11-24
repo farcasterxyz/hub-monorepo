@@ -4,7 +4,7 @@ This example app demonstrates how to create and use EIP-712 signatures to sponso
 
 Every onchain action in the Farcaster protocol can be performed by a third party on behalf of the end user by collecting a typed signature and providing it to the Farcaster smart contracts. This makes it possible to pay gas and sponsor onchain transactions for your users without asking them to pay a fee or send a transaction from their wallet.
 
-The structured format of EIP-712 signatures makes them more secure for the end user and easier for wallets to parse, but they can be difficult to construct and work with as an application developer. This demo app shows how to call every signature based function in the Farcaster contracts, including registering an account, transferring an fid, and adding/removing signer keys.
+The structured format of EIP-712 signatures makes them more secure for the end user and easier for wallets to parse, but they can be difficult to construct and work with as an application developer. This demo app shows how to call every signature based function in the Farcaster contracts, including registering an account, transferring a fid, and adding/removing signer keys.
 
 This example uses [Hardhat](https://hardhat.org/) to run a local node that simulates OP Mainnet, where the Farcaster contracts are deployed.
 
