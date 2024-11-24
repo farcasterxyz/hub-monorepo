@@ -79,7 +79,7 @@ Emit when an onchain event occurs in the IdRegistry which registers or transfers
 
 ### NameRegistryEvent
 
-Emit when an onchain event occurs in the NameRegistry which registers, transfers or renews an fname.
+Emit when an onchain event occurs in the NameRegistry which registers, transfers or renews a fname.
 
 | Name            | Type                                              | Description                                              |
 | --------------- | ------------------------------------------------- | -------------------------------------------------------- |
@@ -105,8 +105,8 @@ The Farcaster network that will accept the message.
 | HUB_EVENT_TYPE_MERGE_MESSAGE             | 1      | A message was merged into the Hub                 |
 | HUB_EVENT_TYPE_PRUNE_MESSAGE             | 2      | A message was pruned because a limit was exceeded |
 | HUB_EVENT_TYPE_REVOKE_MESSAGE            | 3      | A message was revoked by a user                   |
-| HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT   | 4      | An fid was issued or transferred.                 |
-| HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT | 5      | An fname was issued, transferred or renewed.      |
+| HUB_EVENT_TYPE_MERGE_ID_REGISTRY_EVENT   | 4      | A fid was issued or transferred.                 |
+| HUB_EVENT_TYPE_MERGE_NAME_REGISTRY_EVENT | 5      | A fname was issued, transferred or renewed.      |
 
 ### IdRegistryEventType
 
@@ -121,5 +121,5 @@ The Farcaster network that will accept the message.
 | Name                              | Number | Description                         |
 | --------------------------------- | ------ | ----------------------------------- |
 | NAME_REGISTRY_EVENT_TYPE_NONE     | 0      |                                     |
-| NAME_REGISTRY_EVENT_TYPE_TRANSFER | 1      | An fname was minted or transferred. |
-| NAME_REGISTRY_EVENT_TYPE_RENEW    | 1      | An fname was renewed.               |
+| NAME_REGISTRY_EVENT_TYPE_TRANSFER | 1      | A fname was minted or transferred. |
+| NAME_REGISTRY_EVENT_TYPE_RENEW    | 1      | A fname was renewed.               |
