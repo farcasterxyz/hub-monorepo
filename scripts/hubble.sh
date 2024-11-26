@@ -332,11 +332,16 @@ setup_grafana() {
     ensure_grafana
 
     # Step 2: Wait for Grafana to be ready
+wait_for_grafana() {
     echo "Waiting for Grafana to be ready..."
-    while [[ "$(curl -s -o /dev/null -w ''%{http_code}'' $grafana_url/api/health)" != "200" ]]; do
-        sleep 2;
+    while [[ "$(curl -s -o /dev/null -w '%{http_code}' "$grafana_url/api/health")" != "200" ]]; do
+        sleep 2
     done
     echo "Grafana is ready."
+}
+
+# Call the function to wait for Grafana
+wait_for_grafana
 
     # Step 3: Add Graphite as a data source using Grafana's API
     add_datasource
