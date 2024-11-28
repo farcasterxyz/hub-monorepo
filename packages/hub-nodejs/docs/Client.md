@@ -529,7 +529,7 @@ Returns all active casts that are replies to a specific cast in reverse chronolo
 #### Usage
 
 ```typescript
-import { geSSLHubRpcClient, hexStringToBytes } from '@farcaster/hub-nodejs';
+import { getSSLHubRpcClient, hexStringToBytes } from '@farcaster/hub-nodejs';
 
 const hubRpcEndpoint = 'testnet1.farcaster.xyz:2283';
 const client = getSSLHubRpcClient(hubRpcEndpoint);
