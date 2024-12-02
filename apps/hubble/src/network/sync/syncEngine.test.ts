@@ -382,7 +382,7 @@ describe("SyncEngine", () => {
     const result = await syncEngine.mergeMessages([castAdd], rpcClient);
     expect(result.successCount).toEqual(1);
 
-    // Should sync should return true becuase the excluded hashes don't match
+    // Should sync should return true because the excluded hashes don't match
     expect(oldSnapshot.excludedHashes).not.toEqual((await syncEngine.getSnapshot())._unsafeUnwrap().excludedHashes);
     expect((await syncEngine.syncStatus("test", oldSnapshot))._unsafeUnwrap().shouldSync).toBeTruthy();
 
