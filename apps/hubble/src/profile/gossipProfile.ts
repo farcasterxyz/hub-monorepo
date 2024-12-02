@@ -9,7 +9,7 @@ export enum ProfileWorkerAction {
   WaitForMessages = 3,
   Stop = 4,
   GetMultiAddres = 5,
-  ConnectToMutliAddr = 6,
+  ConnectToMultiAddr = 6,
   ReportPeers = 7,
 }
 
