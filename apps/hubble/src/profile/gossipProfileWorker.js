@@ -1,4 +1,4 @@
-recievedimport { parentPort, threadId } from "worker_threads";
+receivedimport { parentPort, threadId } from "worker_threads";
 import { ProfileWorkerAction } from "./gossipProfile.js";
 import { Factories } from "@farcaster/hub-nodejs";
 import { GossipNode } from "../network/p2p/gossipNode.js";
