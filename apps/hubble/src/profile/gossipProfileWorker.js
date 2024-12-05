@@ -1,4 +1,4 @@
-import { parentPort, threadId } from "worker_threads";
+recievedimport { parentPort, threadId } from "worker_threads";
 import { ProfileWorkerAction } from "./gossipProfile.js";
 import { Factories } from "@farcaster/hub-nodejs";
 import { GossipNode } from "../network/p2p/gossipNode.js";
@@ -109,7 +109,7 @@ class GossipTestNode {
   gossipNode;
   connectedPeers = 0;
   sentMessages = 0;
-  recievedMessages = new Map(); // Id -> timestamp
+  receivedMessages = new Map(); // Id -> timestamp
   constructor() {
     this.gossipNode = new GossipNode();
   }
