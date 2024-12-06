@@ -387,11 +387,13 @@ impl UsernameProofStore {
         name: &Vec<u8>,
         name_type: u8,
     ) -> Result<Option<protos::Message>, HubError> {
-        if name_type != UserNameType::UsernameTypeEnsL1 as u8 {
+        if name_type != UserNameType::UsernameTypeEnsL1 as u8
+            && name_type != UserNameType::UsernameTypeBase as u8
+        {
             return Err(HubError {
                 code: "bad_request".to_string(),
                 message: format!(
-                    "Unsupported username type {}. Only ENS L1 is supported",
+                    "Unsupported username type {}. Only ENS L1 and Base names are supported",
                     name_type as u8
                 ),
             });
