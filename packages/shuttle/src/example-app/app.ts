@@ -56,7 +56,7 @@ import url from "node:url";
 import { err, ok, Result } from "neverthrow";
 import { getQueue, getWorker } from "./worker";
 import { Queue } from "bullmq";
-import { bytesToHex, farcasterTimeToDate } from "../utils";
+import { bytesToHex, farcasterTimeToDate, sleep } from "../utils";
 
 const hubId = "shuttle";
 
@@ -200,7 +200,8 @@ export class App implements MessageHandler {
 
     const newMessage = Message.create(message);
     newMessage.dataBytes = MessageData.encode(message.data).finish();
-    newMessage.data = undefined;
+    // TODO(aditi): Is this right? Need to leave data as is to avoid message missing data error.
+    // newMessage.data = undefined;
     const result = await this.snapchainClient.submitMessage(newMessage);
     if (result.isErr()) {
       log.info(`Unable to submit message to snapchain ${result.error.message} ${result.error.stack}`);
@@ -300,6 +301,10 @@ export class App implements MessageHandler {
         log.info(`Unable to get signer events ${idRegisterResult.error.message} ${idRegisterResult.error.stack}`);
         continue;
       }
+
+      // Wait for the onchain events to get committed
+      // TODO(aditi): We may want to do something better here.
+      await sleep(1 * 1000);
 
       await reconciler.reconcileMessagesForFid(
         fid,
