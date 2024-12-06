@@ -1382,7 +1382,7 @@ class Engine extends TypedEmitter<EngineEvents> {
     let resolvedAddressString;
     try {
       // Use the appropriate client based on the username type
-      const client = nameProof.type === UserNameType.USERNAME_TYPE_ENS_L2 ? this._l2PublicClient : this._publicClient;
+      const client = nameProof.type === UserNameType.USERNAME_TYPE_BASE ? this._l2PublicClient : this._publicClient;
       if (!client) {
         return err(new HubError("unavailable.network_failure", "no client available for ENS resolution"));
       }

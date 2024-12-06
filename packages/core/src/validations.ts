@@ -1108,7 +1108,7 @@ export const validateFname = <T extends string | Uint8Array>(fnameP?: T | null):
 
   return ok(fnameP);
 };
-
+// TODO: Add basename validation
 export const validateEnsName = <T extends string | Uint8Array>(ensNameP?: T | null): HubResult<T> => {
   if (ensNameP === undefined || ensNameP === null || ensNameP === "") {
     return err(new HubError("bad_request.validation_failure", "ensName is missing"));

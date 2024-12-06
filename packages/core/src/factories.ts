@@ -78,9 +78,10 @@ const FnameFactory = Factory.define<Uint8Array>(() => {
   return bytes;
 });
 
-const EnsNameFactory = Factory.define<Uint8Array>(() => {
+const EnsNameFactory = Factory.define<Uint8Array, { nameType?: "Basename" | "ENS_L1" }>(({ transientParams }) => {
   const ensName = faker.random.alphaNumeric(faker.datatype.number({ min: 3, max: 16 }));
-  return utf8StringToBytes(ensName.concat(".eth"))._unsafeUnwrap();
+  const suffix = transientParams.nameType === "Basename" ? ".base.eth" : ".eth";
+  return utf8StringToBytes(ensName.concat(suffix))._unsafeUnwrap();
 });
 
 /** Eth */
@@ -670,8 +671,9 @@ const UserDataAddMessageFactory = Factory.define<protobufs.UserDataAddMessage, {
 const UsernameProofDataFactory = Factory.define<protobufs.UsernameProofData>(() => {
   const proofBody = UserNameProofFactory.build({
     type: UserNameType.USERNAME_TYPE_ENS_L1,
-    name: EnsNameFactory.build(),
+    name: EnsNameFactory.build({}, { transient: { nameType: "ENS_L1" } }),
   });
+
   return MessageDataFactory.build({
     usernameProofBody: proofBody,
     type: protobufs.MessageType.USERNAME_PROOF,
