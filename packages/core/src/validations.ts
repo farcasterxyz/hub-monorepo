@@ -2,7 +2,7 @@ import * as protobufs from "./protobufs";
 import { CastType, Protocol, UserNameType } from "./protobufs";
 import { blake3 } from "@noble/hashes/blake3";
 import { err, ok, Result } from "neverthrow";
-import { bytesCompare, bytesToUtf8String, utf8StringToBytes } from "./bytes";
+import { bytesCompare, bytesToHexString, bytesToUtf8String, utf8StringToBytes } from "./bytes";
 import { ed25519, eip712 } from "./crypto";
 import { HubAsyncResult, HubError, HubResult } from "./errors";
 import { fromFarcasterTime, getFarcasterTime, toFarcasterTime } from "./time";
@@ -886,12 +886,43 @@ export const validateVerificationRemoveBody = (
   }
 };
 
+export const validateUsernameProofSignature = async (
+  body: protobufs.UserNameProof,
+  publicClients: PublicClients = defaultPublicClients,
+): HubAsyncResult<Uint8Array> => {
+  if (body.signature.length > 2048) {
+    return err(new HubError("bad_request.validation_failure", "signature > 2048 bytes"));
+  }
+
+  const nameResult = bytesToUtf8String(body.name);
+  if (nameResult.isErr()) {
+    return err(nameResult.error);
+  }
+
+  const claim = makeUserNameProofClaim({
+    name: nameResult.value,
+    owner: bytesToHexString(body.owner)._unsafeUnwrap(),
+    timestamp: body.timestamp,
+  });
+
+  const verificationResult = await eip712.verifyUserNameProofClaim(claim, body.signature, body.owner, body.type);
+  if (verificationResult.isErr()) {
+    return err(verificationResult.error);
+  }
+
+  if (!verificationResult.value) {
+    return err(new HubError("bad_request.validation_failure", "invalid signature"));
+  }
+
+  return ok(body.signature);
+};
+
 export const validateUsernameProofBody = (
   body: protobufs.UserNameProof,
   data: protobufs.MessageData,
 ): HubResult<protobufs.UserNameProof> => {
-  // Gossiped username proofs must only have an ENS type
-  if (body.type !== UserNameType.USERNAME_TYPE_ENS_L1) {
+  // Gossiped username proofs must only have an ENS type (L1 or L2)
+  if (body.type !== UserNameType.USERNAME_TYPE_ENS_L1 && body.type !== UserNameType.USERNAME_TYPE_BASE) {
     return err(new HubError("bad_request.validation_failure", `invalid username type: ${body.type}`));
   }
   const validateName = validateEnsName(body.name);
