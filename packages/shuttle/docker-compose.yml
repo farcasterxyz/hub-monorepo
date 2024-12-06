@@ -18,6 +18,25 @@ services:
       retries: 3
     networks:
       - shuttle-network
+  postgres2:
+    image: 'postgres:16-alpine'
+    restart: unless-stopped
+    ports:
+      - '6542:5432' # Use a port unlikely to be in use so the example "Just Works"
+    environment:
+      - POSTGRES_DB=shuttle2
+      - POSTGRES_USER=shuttle2
+      - POSTGRES_PASSWORD=password2
+    volumes:
+      - postgres-data:/var/lib/postgresql/data2
+    healthcheck:
+      # Need to specify name/user to avoid `FATAL: role "root" does not exist` errors in logs
+      test: [ 'CMD-SHELL', 'env', 'pg_isready', '--dbname', '$$POSTGRES_DB', '-U', '$$POSTGRES_USER' ]
+      interval: 10s
+      timeout: 10s
+      retries: 3
+    networks:
+      - shuttle-network
   redis:
     image: 'redis:7.2-alpine'
     restart: unless-stopped
