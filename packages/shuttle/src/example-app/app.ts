@@ -15,17 +15,25 @@ import {
 } from "../index"; // If you want to use this as a standalone app, replace this import with "@farcaster/shuttle"
 import { AppDb, migrateToLatest, Tables } from "./db";
 import {
+  AdminRpcClient,
   bytesToHexString,
+  getAdminRpcClient,
   getStorageUnitExpiry,
   getStorageUnitType,
   HubEvent,
+  HubRpcClient,
   isCastAddMessage,
   isCastRemoveMessage,
   isIdRegisterOnChainEvent,
   isMergeOnChainHubEvent,
   isSignerOnChainEvent,
   isStorageRentOnChainEvent,
+  LegacyMessage,
   Message,
+  MessageData,
+  OnChainEvent,
+  OnChainEventRequest,
+  OnChainEventType,
 } from "@farcaster/hub-nodejs";
 import { log } from "./log";
 import { Command } from "@commander-js/extra-typings";
@@ -41,13 +49,14 @@ import {
   REDIS_URL,
   SHARD_INDEX,
   TOTAL_SHARDS,
+  SNAPCHAIN_HOST,
 } from "./env";
 import * as process from "node:process";
 import url from "node:url";
-import { ok, Result } from "neverthrow";
+import { err, ok, Result } from "neverthrow";
 import { getQueue, getWorker } from "./worker";
 import { Queue } from "bullmq";
-import { bytesToHex, farcasterTimeToDate } from "../utils";
+import { bytesToHex, farcasterTimeToDate, sleep } from "../utils";
 
 const hubId = "shuttle";
 
@@ -58,6 +67,8 @@ export class App implements MessageHandler {
   private streamConsumer: HubEventStreamConsumer;
   public redis: RedisClient;
   private readonly hubId;
+  private snapchainClient: HubRpcClient;
+  private snapchainAdminClient: AdminRpcClient;
 
   constructor(
     db: DB,
@@ -65,6 +76,8 @@ export class App implements MessageHandler {
     redis: RedisClient,
     hubSubscriber: HubSubscriber,
     streamConsumer: HubEventStreamConsumer,
+    snapchainClient: HubRpcClient,
+    snapchainAdminClient: AdminRpcClient,
   ) {
     this.db = db;
     this.dbSchema = dbSchema;
@@ -72,19 +85,24 @@ export class App implements MessageHandler {
     this.hubSubscriber = hubSubscriber;
     this.hubId = hubId;
     this.streamConsumer = streamConsumer;
+    this.snapchainClient = snapchainClient;
+    this.snapchainAdminClient = snapchainAdminClient;
   }
 
-  static create(
+  static async create(
     dbUrl: string,
     dbSchema: string,
     redisUrl: string,
     hubUrl: string,
+    snapchainUrl: string,
     totalShards: number,
     shardIndex: number,
     hubSSL = false,
   ) {
     const db = getDbClient(dbUrl, dbSchema);
     const hub = getHubClient(hubUrl, { ssl: hubSSL });
+    const snapchainClient = getHubClient(snapchainUrl, { ssl: false }).client;
+    const snapchainAdminClient = await getAdminRpcClient(snapchainUrl);
     const redis = RedisClient.create(redisUrl);
     const eventStreamForWrite = new EventStreamConnection(redis.client);
     const eventStreamForRead = new EventStreamConnection(redis.client);
@@ -102,53 +120,63 @@ export class App implements MessageHandler {
     );
     const streamConsumer = new HubEventStreamConsumer(hub, eventStreamForRead, shardKey);
 
-    return new App(db, dbSchema, redis, hubSubscriber, streamConsumer);
+    return new App(db, dbSchema, redis, hubSubscriber, streamConsumer, snapchainClient, snapchainAdminClient);
+  }
+
+  async handleOnChainEvent(onChainEvent: OnChainEvent, txn: DB) {
+    const result = await this.snapchainAdminClient.submitOnChainEvent(onChainEvent);
+    if (result.isErr()) {
+      log.info(`Unable to submit onchain event to snapchain ${result.error.message} ${result.error.stack}`);
+      return;
+    }
+
+    let body = {};
+    if (isIdRegisterOnChainEvent(onChainEvent)) {
+      body = {
+        eventType: onChainEvent.idRegisterEventBody.eventType,
+        from: bytesToHex(onChainEvent.idRegisterEventBody.from),
+        to: bytesToHex(onChainEvent.idRegisterEventBody.to),
+        recoveryAddress: bytesToHex(onChainEvent.idRegisterEventBody.recoveryAddress),
+      };
+    } else if (isSignerOnChainEvent(onChainEvent)) {
+      body = {
+        eventType: onChainEvent.signerEventBody.eventType,
+        key: bytesToHex(onChainEvent.signerEventBody.key),
+        keyType: onChainEvent.signerEventBody.keyType,
+        metadata: bytesToHex(onChainEvent.signerEventBody.metadata),
+        metadataType: onChainEvent.signerEventBody.metadataType,
+      };
+    } else if (isStorageRentOnChainEvent(onChainEvent)) {
+      body = {
+        eventType: getStorageUnitType(onChainEvent),
+        expiry: getStorageUnitExpiry(onChainEvent),
+        units: onChainEvent.storageRentEventBody.units,
+        payer: bytesToHex(onChainEvent.storageRentEventBody.payer),
+      };
+    }
+    try {
+      await (txn as AppDb)
+        .insertInto("onchain_events")
+        .values({
+          fid: onChainEvent.fid,
+          timestamp: new Date(onChainEvent.blockTimestamp * 1000),
+          blockNumber: onChainEvent.blockNumber,
+          logIndex: onChainEvent.logIndex,
+          txHash: onChainEvent.transactionHash,
+          type: onChainEvent.type,
+          body: body,
+        })
+        .execute();
+      log.info(`Recorded OnchainEvent ${onChainEvent.type} for fid  ${onChainEvent.fid}`);
+    } catch (e) {
+      log.error("Failed to insert onchain event", e);
+    }
   }
 
   async onHubEvent(event: HubEvent, txn: DB): Promise<boolean> {
     if (isMergeOnChainHubEvent(event)) {
       const onChainEvent = event.mergeOnChainEventBody.onChainEvent;
-      let body = {};
-      if (isIdRegisterOnChainEvent(onChainEvent)) {
-        body = {
-          eventType: onChainEvent.idRegisterEventBody.eventType,
-          from: bytesToHex(onChainEvent.idRegisterEventBody.from),
-          to: bytesToHex(onChainEvent.idRegisterEventBody.to),
-          recoveryAddress: bytesToHex(onChainEvent.idRegisterEventBody.recoveryAddress),
-        };
-      } else if (isSignerOnChainEvent(onChainEvent)) {
-        body = {
-          eventType: onChainEvent.signerEventBody.eventType,
-          key: bytesToHex(onChainEvent.signerEventBody.key),
-          keyType: onChainEvent.signerEventBody.keyType,
-          metadata: bytesToHex(onChainEvent.signerEventBody.metadata),
-          metadataType: onChainEvent.signerEventBody.metadataType,
-        };
-      } else if (isStorageRentOnChainEvent(onChainEvent)) {
-        body = {
-          eventType: getStorageUnitType(onChainEvent),
-          expiry: getStorageUnitExpiry(onChainEvent),
-          units: onChainEvent.storageRentEventBody.units,
-          payer: bytesToHex(onChainEvent.storageRentEventBody.payer),
-        };
-      }
-      try {
-        await (txn as AppDb)
-          .insertInto("onchain_events")
-          .values({
-            fid: onChainEvent.fid,
-            timestamp: new Date(onChainEvent.blockTimestamp * 1000),
-            blockNumber: onChainEvent.blockNumber,
-            logIndex: onChainEvent.logIndex,
-            txHash: onChainEvent.transactionHash,
-            type: onChainEvent.type,
-            body: body,
-          })
-          .execute();
-        log.info(`Recorded OnchainEvent ${onChainEvent.type} for fid  ${onChainEvent.fid}`);
-      } catch (e) {
-        log.error("Failed to insert onchain event", e);
-      }
+      await this.handleOnChainEvent(onChainEvent, txn);
     }
     return false;
   }
@@ -163,6 +191,20 @@ export class App implements MessageHandler {
   ): Promise<void> {
     if (!isNew) {
       // Message was already in the db, no-op
+      return;
+    }
+
+    if (!message.data) {
+      return;
+    }
+
+    const newMessage = Message.create(message);
+    newMessage.dataBytes = MessageData.encode(message.data).finish();
+    // TODO(aditi): Is this right? Need to leave data as is to avoid message missing data error.
+    // newMessage.data = undefined;
+    const result = await this.snapchainClient.submitMessage(newMessage);
+    if (result.isErr()) {
+      log.info(`Unable to submit message to snapchain ${result.error.message} ${result.error.stack}`);
       return;
     }
 
@@ -192,7 +234,11 @@ export class App implements MessageHandler {
     }
 
     const messageDesc = wasMissed ? `missed message (${operation})` : `message (${operation})`;
-    log.info(`${state} ${messageDesc} ${bytesToHexString(message.hash)._unsafeUnwrap()} (type ${message.data?.type})`);
+    log.info(
+      `${state} ${messageDesc} ${bytesToHexString(message.hash)._unsafeUnwrap()} (type ${message.data?.type}) (fid ${
+        message.data?.fid
+      })`,
+    );
   }
 
   async start() {
@@ -212,10 +258,54 @@ export class App implements MessageHandler {
     });
   }
 
+  async reconcileOnchainEvents(fid: number, eventType: OnChainEventType) {
+    // Just sync all of them, no need to reconcile
+    // TODO(aditi): Handle multiple pages
+    if (!this.hubSubscriber.hubClient) {
+      throw "Missing hub client";
+    }
+
+    const result = await this.hubSubscriber.hubClient.getOnChainEvents(OnChainEventRequest.create({ fid, eventType }));
+
+    if (result.isErr()) {
+      return err(result.error);
+    }
+
+    for (const onChainEvent of result.value.events) {
+      await this.handleOnChainEvent(onChainEvent, this.db);
+    }
+
+    return ok(undefined);
+  }
+
   async reconcileFids(fids: number[]) {
     // biome-ignore lint/style/noNonNullAssertion: client is always initialized
     const reconciler = new MessageReconciliation(this.hubSubscriber.hubClient!, this.db, log);
     for (const fid of fids) {
+      const storageResult = await this.reconcileOnchainEvents(fid, OnChainEventType.EVENT_TYPE_STORAGE_RENT);
+      if (storageResult.isErr()) {
+        log.info(`Unable to get storage events ${storageResult.error.message} ${storageResult.error.stack}`);
+        continue;
+      }
+
+      const signerResult = await this.reconcileOnchainEvents(fid, OnChainEventType.EVENT_TYPE_SIGNER);
+      if (signerResult.isErr()) {
+        log.info(`Unable to get signer events ${signerResult.error.message} ${signerResult.error.stack}`);
+        continue;
+      }
+
+      // TODO(aditi): Signer migrated for fid 0
+
+      const idRegisterResult = await this.reconcileOnchainEvents(fid, OnChainEventType.EVENT_TYPE_ID_REGISTER);
+      if (idRegisterResult.isErr()) {
+        log.info(`Unable to get signer events ${idRegisterResult.error.message} ${idRegisterResult.error.stack}`);
+        continue;
+      }
+
+      // Wait for the onchain events to get committed
+      // TODO(aditi): We may want to do something better here.
+      await sleep(1 * 1000);
+
       await reconciler.reconcileMessagesForFid(
         fid,
         async (message, missingInDb, prunedInDb, revokedInDb) => {
@@ -238,6 +328,7 @@ export class App implements MessageHandler {
   async backfillFids(fids: number[], backfillQueue: Queue) {
     const startedAt = Date.now();
     if (fids.length === 0) {
+      log.info("No fids provided");
       const maxFidResult = await this.hubSubscriber.hubClient.getFids({ pageSize: 1, reverse: true });
       if (maxFidResult.isErr()) {
         log.error("Failed to get max fid", maxFidResult.error);
@@ -248,7 +339,7 @@ export class App implements MessageHandler {
         log.error("Max fid was undefined");
         throw new Error("Max fid was undefined");
       }
-      log.info(`Queuing up fids upto: ${maxFid}`);
+      log.info(`Queuing up fids up to: ${maxFid}`);
       // create an array of arrays in batches of 100 upto maxFid
       const batchSize = 10;
       const fids = Array.from({ length: Math.ceil(maxFid / batchSize) }, (_, i) => i * batchSize).map((fid) => fid + 1);
@@ -257,6 +348,7 @@ export class App implements MessageHandler {
         await backfillQueue.add("reconcile", { fids: subset });
       }
     } else {
+      log.info(`Adding fids ${fids}`);
       await backfillQueue.add("reconcile", { fids });
     }
     await backfillQueue.add("completionMarker", { startedAt });
@@ -286,17 +378,39 @@ export class App implements MessageHandler {
 if (import.meta.url.endsWith(url.pathToFileURL(process.argv[1] || "").toString())) {
   async function start() {
     log.info(`Creating app connecting to: ${POSTGRES_URL}, ${REDIS_URL}, ${HUB_HOST}`);
-    const app = App.create(POSTGRES_URL, POSTGRES_SCHEMA, REDIS_URL, HUB_HOST, TOTAL_SHARDS, SHARD_INDEX, HUB_SSL);
+    const app = await App.create(
+      POSTGRES_URL,
+      POSTGRES_SCHEMA,
+      REDIS_URL,
+      HUB_HOST,
+      SNAPCHAIN_HOST,
+      TOTAL_SHARDS,
+      SHARD_INDEX,
+      HUB_SSL,
+    );
     log.info("Starting shuttle");
     await app.start();
   }
 
   async function backfill() {
     log.info(`Creating app connecting to: ${POSTGRES_URL}, ${REDIS_URL}, ${HUB_HOST}`);
-    const app = App.create(POSTGRES_URL, POSTGRES_SCHEMA, REDIS_URL, HUB_HOST, TOTAL_SHARDS, SHARD_INDEX, HUB_SSL);
+    const app = await App.create(
+      POSTGRES_URL,
+      POSTGRES_SCHEMA,
+      REDIS_URL,
+      HUB_HOST,
+      SNAPCHAIN_HOST,
+      TOTAL_SHARDS,
+      SHARD_INDEX,
+      HUB_SSL,
+    );
     const fids = BACKFILL_FIDS ? BACKFILL_FIDS.split(",").map((fid) => parseInt(fid)) : [];
     log.info(`Backfilling fids: ${fids}`);
+
+    // Don't want any carry over from past runs for now
     const backfillQueue = getQueue(app.redis.client);
+    await backfillQueue.drain(true);
+
     await app.backfillFids(fids, backfillQueue);
 
     // Start the worker after initiating a backfill
@@ -307,7 +421,16 @@ if (import.meta.url.endsWith(url.pathToFileURL(process.argv[1] || "").toString()
 
   async function worker() {
     log.info(`Starting worker connecting to: ${POSTGRES_URL}, ${REDIS_URL}, ${HUB_HOST}`);
-    const app = App.create(POSTGRES_URL, POSTGRES_SCHEMA, REDIS_URL, HUB_HOST, TOTAL_SHARDS, SHARD_INDEX, HUB_SSL);
+    const app = await App.create(
+      POSTGRES_URL,
+      POSTGRES_SCHEMA,
+      REDIS_URL,
+      HUB_HOST,
+      SNAPCHAIN_HOST,
+      TOTAL_SHARDS,
+      SHARD_INDEX,
+      HUB_SSL,
+    );
     const worker = getWorker(app, app.redis.client, log, CONCURRENCY);
     await worker.run();
   }
