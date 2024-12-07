@@ -224,7 +224,7 @@ describe("MerkleTrie", () => {
       const rootHash = await trie.rootHash();
 
       // Unload the trie
-      await trie.unloadChidrenAtRoot();
+      await trie.unloadChildrenAtRoot();
 
       // Expect the root hash to be the same
       expect(await trie.rootHash()).toEqual(rootHash);
@@ -485,7 +485,7 @@ describe("MerkleTrie", () => {
       const rootHash = await trie.rootHash();
 
       // Unload all the children of the first node
-      await trie.unloadChidrenAtRoot();
+      await trie.unloadChildrenAtRoot();
 
       // Now try deleting syncId1
       expect(await trie.delete(syncId1)).toBeTruthy();
@@ -641,7 +641,7 @@ describe("MerkleTrie", () => {
     const trie = await trieWithIds([1665182332, 1665182343, 1665182345]);
 
     // Unload all the children of the first node
-    await trie.unloadChidrenAtRoot();
+    await trie.unloadChildrenAtRoot();
 
     let values = await trie.getAllValues(new Uint8Array(Buffer.from("16651823")));
     expect(values?.length).toEqual(3);

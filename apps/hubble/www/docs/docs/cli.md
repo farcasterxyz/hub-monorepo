@@ -9,7 +9,7 @@ Documentation for the Hubble CLI.
 5. `profile` - profile the storage usage of the db.
 6. `console` - start an interactive repl console for debugging.
 
-Commands must invoked with yarn by running:
+Commands must be invoked with yarn by running:
 
 ```
 # if using docker

@@ -53,7 +53,7 @@ import { getHubRpcClient } from '@farcaster/hub-web';
 (async () => {
   const client = getHubRpcClient('https://testnet1.farcaster.xyz:2285');
 
-  // If you're using gRPC-Web from a Nodejs environment, add a second false parameter
+  // If you're using gRPC-Web from a Node.js environment, add a second false parameter
   // const nodeClient = getHubRpcClient('https://testnet1.farcaster.xyz:2285', false);
 })();
 ```
@@ -69,7 +69,7 @@ import { getHubRpcClient } from '@farcaster/hub-web';
 | Name        | Type      | Description                                                                |
 | :---------- | :-------- | :------------------------------------------------------------------------- |
 | `url`       | `string`  | Address and RPC port string (e.g. `https://testnet1.farcaster.xyz:2285`)   |
-| `isBrowser` | `boolean` | Optional parameter indicating whether to use the gRPC-Web Nodejs transport |
+| `isBrowser` | `boolean` | Optional parameter indicating whether to use the gRPC-Web Node.js transport |
 
 ### Streaming hub events
 

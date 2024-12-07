@@ -59,7 +59,7 @@ describe("validateFname", () => {
     expect(validations.validateFname(fname)).toEqual(ok(fname));
   });
 
-  test("succeeds with valid string inpt", () => {
+  test("succeeds with valid string input", () => {
     const fname = bytesToUtf8String(Factories.Fname.build())._unsafeUnwrap();
     expect(validations.validateFname(fname)).toEqual(ok(fname));
   });

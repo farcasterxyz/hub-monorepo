@@ -236,7 +236,7 @@
 
 ### Patch Changes
 
-- 06bb2f43: chore: Go lang example for submitMessage()
+- 06bb2f43: chore: Golang example for submitMessage()
 - a5708f85: chore: Remove grpc-web
 - ba86d374: feat: Allow signing raw message data bytes to support rust, Golang etc...
 - Updated dependencies [ba86d374]
