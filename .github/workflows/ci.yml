@@ -58,8 +58,6 @@ jobs:
     strategy:
       matrix:
         include:
-          - node_version: 20
-            runs_on: ['runs-on=${{ github.run_id }}', 'runner=4cpu-linux-x64']
           - node_version: 22.4.1 # HACK: There's an issue with node 22.7.0
             runs_on: ['runs-on=${{ github.run_id }}', 'runner=4cpu-linux-arm64']
           - node_version: 22.4.1 # HACK: There's an issue with node 22.7.0
