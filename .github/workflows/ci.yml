@@ -14,8 +14,8 @@ concurrency:
 
 jobs:
   build-image:
-    timeout-minutes: 10
-    runs-on: 'warp-ubuntu-latest-arm64-16x'
+    timeout-minutes: 25
+    runs-on: ['runs-on=${{ github.run_id }}', 'runner=4cpu-linux-arm64']
 
     steps:
       - uses: actions/checkout@v4
@@ -53,17 +53,17 @@ jobs:
           on_retry_command: docker logs hub
 
   test:
-    timeout-minutes: 10
+    timeout-minutes: 25
 
     strategy:
       matrix:
         include:
           - node_version: 20
-            runs_on: 'warp-ubuntu-latest-x64-16x'
+            runs_on: ['runs-on=${{ github.run_id }}', 'runner=4cpu-linux-x64']
           - node_version: 22.4.1 # HACK: There's an issue with node 22.7.0
-            runs_on: 'warp-ubuntu-latest-arm64-16x' # Only works on ARM for now
+            runs_on: ['runs-on=${{ github.run_id }}', 'runner=4cpu-linux-arm64']
           - node_version: 22.4.1 # HACK: There's an issue with node 22.7.0
-            runs_on: 'warp-ubuntu-latest-x64-16x'
+            runs_on: ['runs-on=${{ github.run_id }}', 'runner=4cpu-linux-x64']
 
     runs-on: ${{ matrix.runs_on }}
     name: test (${{ matrix.node_version }})
