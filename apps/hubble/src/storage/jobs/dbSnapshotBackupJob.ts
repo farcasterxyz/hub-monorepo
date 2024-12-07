@@ -100,7 +100,7 @@ export class DbSnapshotBackupJobScheduler {
         )();
         if (deleteResult.isErr()) {
           log.warn(
-            { error: deleteResult.error, errMessaeg: deleteResult.error.message },
+            { error: deleteResult.error, errMessage: deleteResult.error.message },
             "failed to delete tar.gz snapshot backup chunks",
           );
         }

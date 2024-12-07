@@ -1,4 +1,4 @@
-import { parentPort, threadId } from "worker_threads";
+receivedimport { parentPort, threadId } from "worker_threads";
 import { ProfileWorkerAction } from "./gossipProfile.js";
 import { Factories } from "@farcaster/hub-nodejs";
 import { GossipNode } from "../network/p2p/gossipNode.js";
@@ -109,7 +109,7 @@ class GossipTestNode {
   gossipNode;
   connectedPeers = 0;
   sentMessages = 0;
-  recievedMessages = new Map(); // Id -> timestamp
+  receivedMessages = new Map(); // Id -> timestamp
   constructor() {
     this.gossipNode = new GossipNode();
   }
@@ -135,8 +135,8 @@ class GossipTestNode {
     await new Promise((resolve) => {
       const timeoutFn = setTimeout(resolve, timeout);
       const interval = setInterval(() => {
-        // console.log("Recieved messages", this.recievedMessages.size, "/", numMessages);
-        if (this.recievedMessages.size >= numMessages) {
+        // console.log("Received messages", this.receivedMessages.size, "/", numMessages);
+        if (this.receivedMessages.size >= numMessages) {
           clearInterval(interval);
           clearTimeout(timeoutFn);
           // Wait 100ms for the connection to be fully established
@@ -150,12 +150,12 @@ class GossipTestNode {
     // Send a message from the first node
     const r = await this.gossipNode.gossipMessage(msg);
     console.log("Sent message:", counter, "-", r);
-    // When sending a message, we add it to our own stats, since technically we also have recieved
+    // When sending a message, we add it to our own stats, since technically we also have received
     // the message
     this.sentMessages++;
   }
   getData() {
-    const delays = Array.from(this.recievedMessages.values());
+    const delays = Array.from(this.receivedMessages.values());
     const sentMessages = this.sentMessages;
     const count = delays.length;
     const median = delays[Math.floor(count / 2)] ?? NaN;
@@ -170,7 +170,7 @@ class GossipTestNode {
       const split = castData?.text.split(":");
       const id = parseInt(split?.[0] ?? "-1");
       const delay = Date.now() - parseInt(split?.[1] ?? "-1");
-      this.recievedMessages.set(id, delay);
+      this.receivedMessages.set(id, delay);
       console.log("Received message ", id, " - ", delay);
     });
     this.gossipNode.on("peerConnect", (peer) => {
