@@ -1,5 +1,11 @@
 # @farcaster/hubble
 
+## 1.17.0
+
+### Minor Changes
+
+- chore: Release 1.17
+
 ## 1.16.3
 
 ### Patch Changes
