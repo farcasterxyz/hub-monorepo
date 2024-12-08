@@ -5,6 +5,7 @@ import { VerificationAddressClaim, VerificationAddressClaimEthereum } from "../v
 import { UserNameProofClaim } from "../userNameProof";
 import { defaultPublicClients, PublicClients } from "../eth/clients";
 import { CHAIN_IDS } from "../eth/chains";
+import { UserNameType } from "protobufs";
 
 export const EIP_712_FARCASTER_DOMAIN = {
   name: "Farcaster Verify Ethereum Address",
@@ -45,7 +46,12 @@ export const EIP_712_USERNAME_DOMAIN = {
   name: "Farcaster name verification",
   version: "1",
   chainId: 1,
-  verifyingContract: "0xe3be01d99baa8db9905b33a3ca391238234b79d1", // name registry contract, will be the farcaster ENS CCIP contract later
+} as const;
+
+export const EIP_712_USERNAME_DOMAIN_BASE = {
+  name: "Farcaster name verification",
+  version: "1",
+  chainId: 8453, // Base mainnet
 } as const;
 
 export const EIP_712_USERNAME_PROOF = [
@@ -56,6 +62,14 @@ export const EIP_712_USERNAME_PROOF = [
 
 export const USERNAME_PROOF_EIP_712_TYPES = {
   domain: EIP_712_USERNAME_DOMAIN,
+  types: { UserNameProof: EIP_712_USERNAME_PROOF },
+} as const;
+
+export const USERNAME_PROOF_EIP_712_TYPES_BASE = {
+  domain: {
+    ...EIP_712_USERNAME_DOMAIN_BASE,
+    chainId: 8453, // Base mainnet
+  },
   types: { UserNameProof: EIP_712_USERNAME_PROOF },
 } as const;
 
@@ -148,11 +162,14 @@ export const verifyUserNameProofClaim = async (
   nameProof: UserNameProofClaim,
   signature: Uint8Array,
   address: Uint8Array,
+  type: UserNameType,
 ): HubAsyncResult<boolean> => {
-  const valid = await ResultAsync.fromPromise(
+  const domain = type === UserNameType.USERNAME_TYPE_BASE ? EIP_712_USERNAME_DOMAIN_BASE : EIP_712_USERNAME_DOMAIN;
+
+  return ResultAsync.fromPromise(
     verifyTypedData({
       address: bytesToHex(address),
-      domain: EIP_712_USERNAME_DOMAIN,
+      domain,
       types: { UserNameProof: EIP_712_USERNAME_PROOF },
       primaryType: "UserNameProof",
       message: nameProof,
@@ -160,8 +177,6 @@ export const verifyUserNameProofClaim = async (
     }),
     (e) => new HubError("unknown", e as Error),
   );
-
-  return valid;
 };
 
 export const verifyMessageHashSignature = async (

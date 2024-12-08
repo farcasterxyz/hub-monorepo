@@ -2,12 +2,12 @@ import { validations } from "@farcaster/hub-nodejs";
 import { rsValidationMethods } from "../../rustfunctions.js";
 import { workerData, parentPort } from "worker_threads";
 import { http, createPublicClient, fallback } from "viem";
-import { optimism, mainnet } from "viem/chains";
+import { optimism, mainnet, base } from "viem/chains";
 import { ValidationWorkerData, ValidationWorkerMessage } from "./index.js";
 
 const config = workerData as ValidationWorkerData;
 const opMainnetRpcUrls = config.l2RpcUrl.split(",");
-const opTransports = opMainnetRpcUrls.map((url) => http(url, { retryCount: 2 }));
+const opTransports = opMainnetRpcUrls.map((url: string) => http(url, { retryCount: 2 }));
 const opClient = createPublicClient({
   chain: optimism,
   transport: fallback(opTransports, { rank: false }),
@@ -20,9 +20,16 @@ const mainnetClient = createPublicClient({
   transport: fallback(transports, { rank: false }),
 });
 
+// Create Base chain client using the L2 RPC URL
+const baseClient = createPublicClient({
+  chain: base,
+  transport: fallback(opTransports, { rank: false }), // Reuse L2 RPC URLs for Base
+});
+
 const publicClients = {
   [optimism.id]: opClient,
   [mainnet.id]: mainnetClient,
+  [base.id]: baseClient,
 };
 
 // Wait for messages from the main thread and validate them, posting the result back
