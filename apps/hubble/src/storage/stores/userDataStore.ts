@@ -109,7 +109,7 @@ class UserDataStore extends RustStoreBase<UserDataAddMessage, never> {
     const resultBytes = new Uint8Array(result.value);
     const hubEvent = HubEvent.decode(resultBytes);
 
-    void this._eventHandler.processRustCommitedTransaction(hubEvent);
+    void this._eventHandler.processRustCommittedTransaction(hubEvent);
     return hubEvent.id;
   }
 }
