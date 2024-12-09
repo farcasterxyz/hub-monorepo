@@ -42,13 +42,9 @@ export class HubEventProcessor {
     });
   }
 
-  static async handleMissingMessage(db: DB, message: Message, handler: MessageHandler, missingInHub?: boolean) {
+  static async handleMissingMessage(db: DB, message: Message, handler: MessageHandler) {
     await db.transaction().execute(async (trx) => {
-      if (missingInHub) {
-        await this.processMessage(trx, message, handler, "delete", [], true);
-      } else {
-        await this.processMessage(trx, message, handler, "merge", [], true);
-      }
+      await this.processMessage(trx, message, handler, "merge", [], true);
     });
   }
 
