@@ -50,7 +50,7 @@ Emit when an IdRegistryEvent is merged into the Hub.
 
 ### MergeNameRegistry
 
-Emit when an NameRegistryEvent is merged into the Hub.
+Emit when a NameRegistryEvent is merged into the Hub.
 
 | Name              | Type                            | Description                               |
 | ----------------- | ------------------------------- | ----------------------------------------- |
