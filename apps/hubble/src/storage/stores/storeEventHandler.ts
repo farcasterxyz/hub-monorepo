@@ -381,7 +381,7 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
       });
   }
 
-  async processRustCommitedTransaction(event: HubEvent): HubAsyncResult<void> {
+  async processRustCommittedTransaction(event: HubEvent): HubAsyncResult<void> {
     void this._storageCache.processEvent(event);
     void this.broadcastEvent(event);
     return ok(undefined);

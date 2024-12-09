@@ -116,7 +116,7 @@ export abstract class RustStoreBase<TAdd extends Message, TRemove extends Messag
         mergeResults.set(i, err(result.error));
       } else {
         const hubEvent = HubEvent.decode(new Uint8Array(result.value));
-        void this._eventHandler.processRustCommitedTransaction(hubEvent);
+        void this._eventHandler.processRustCommittedTransaction(hubEvent);
         mergeResults.set(i, ok(hubEvent.id));
       }
     }
@@ -148,7 +148,7 @@ export abstract class RustStoreBase<TAdd extends Message, TRemove extends Messag
     const resultBytes = new Uint8Array(result.value);
     const hubEvent = HubEvent.decode(resultBytes);
 
-    void this._eventHandler.processRustCommitedTransaction(hubEvent);
+    void this._eventHandler.processRustCommittedTransaction(hubEvent);
     return hubEvent.id;
   }
 
@@ -162,7 +162,7 @@ export abstract class RustStoreBase<TAdd extends Message, TRemove extends Messag
     const resultBytes = new Uint8Array(result.value);
     const hubEvent = HubEvent.decode(resultBytes);
 
-    void this._eventHandler.processRustCommitedTransaction(hubEvent);
+    void this._eventHandler.processRustCommittedTransaction(hubEvent);
     return ok(hubEvent.id);
   }
 
@@ -201,7 +201,7 @@ export abstract class RustStoreBase<TAdd extends Message, TRemove extends Messag
     for (const resultBytes of result.value) {
       const hubEvent = HubEvent.decode(new Uint8Array(resultBytes));
       commits.push(hubEvent.id);
-      void this._eventHandler.processRustCommitedTransaction(hubEvent);
+      void this._eventHandler.processRustCommittedTransaction(hubEvent);
     }
 
     return ok(commits);

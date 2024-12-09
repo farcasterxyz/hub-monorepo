@@ -34,7 +34,7 @@ parentPort?.on("message", (data) => {
     } else if (action === ProfileWorkerAction.GetMultiAddres) {
       const response = getMultiAddrs();
       parentPort?.postMessage({ id, action, response });
-    } else if (action === ProfileWorkerAction.ConnectToMutliAddr) {
+    } else if (action === ProfileWorkerAction.ConnectToMultiAddr) {
       const { multiAddr } = args as ConnectToMultiAddrArgs;
       connectToMultiAddr(multiAddr);
 
