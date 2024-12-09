@@ -561,18 +561,6 @@ describe("shuttle", () => {
           }),
         );
       },
-      getAllVerificationMessagesByFid: async (
-        _request: FidRequest,
-        _metadata: Metadata,
-        _options: Partial<CallOptions>,
-      ) => {
-        return ok(
-          MessagesResponse.create({
-            messages: [verificationAddMessage],
-            nextPageToken: undefined,
-          }),
-        );
-      },
       getAllReactionMessagesByFid: async (
         _request: FidRequest,
         _metadata: Metadata,
@@ -604,7 +592,7 @@ describe("shuttle", () => {
       ) => {
         return ok(
           MessagesResponse.create({
-            messages: [],
+            messages: [verificationAddMessage],
             nextPageToken: undefined,
           }),
         );
