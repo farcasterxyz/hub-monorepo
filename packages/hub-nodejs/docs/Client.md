@@ -620,7 +620,7 @@ Returns an active reaction of a particular type made by a user to a cast.
 #### Usage
 
 ```typescript
-import { geSSLHubRpcClient, hexStringToBytes, ReactionType } from '@farcaster/hub-nodejs';
+import { getSSLHubRpcClient, hexStringToBytes, ReactionType } from '@farcaster/hub-nodejs';
 
 const hubRpcEndpoint = 'testnet1.farcaster.xyz:2283';
 const client = getSSLHubRpcClient(hubRpcEndpoint);
