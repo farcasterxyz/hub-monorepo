@@ -104,7 +104,7 @@ export async function profileGossipServer(nodeConfig = "3:10") {
     const workerResponse = await callWorkerMethod(workers[i - 1] as Worker, ProfileWorkerAction.GetMultiAddres);
     const prevMultiAddrs = workerResponse.response as MultiAddrResponse;
 
-    await callWorkerMethod(workers[i] as Worker, ProfileWorkerAction.ConnectToMutliAddr, {
+    await callWorkerMethod(workers[i] as Worker, ProfileWorkerAction.ConnectToMultiAddr, {
       multiAddr: prevMultiAddrs?.multiAddrs ?? [],
     });
 
