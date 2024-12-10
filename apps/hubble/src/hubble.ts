@@ -891,7 +891,7 @@ export class Hub implements HubInterface {
       this.options.allowlistedImmunePeers,
       this.options.strictContactInfoValidation,
       this.options.strictNoSign,
-      this.engine.solanaVerficationsEnabled,
+      this.engine.solanaVerificationsEnabled,
       this.options.useStreaming,
     );
 
