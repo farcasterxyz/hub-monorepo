@@ -39,7 +39,7 @@ install_jq() {
         sudo dnf install -y jq
 
     # openSUSE
-    elif [[ -f /etc/os-release ]] && grep -q "ID=openSUSE" /etc/os-release; then
+    elif [[ -f /etc/os-release ]] && grep -iq "ID=opensuse" /etc/os-release; then
         sudo zypper install -y jq
 
     # Arch Linux
