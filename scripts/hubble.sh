@@ -664,7 +664,7 @@ fi
 
 if [ "$1" == "autoupgrade" ]; then
     # Autoupgrade cronjob needs the correct $PATH entries
-    if [[ ! -f "~/.bashrc" ]]; then
+    if [[ ! -f ~/.bashrc ]]; then
       source ~/.bashrc
     fi
 
