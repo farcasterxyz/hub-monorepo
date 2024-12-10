@@ -12,7 +12,14 @@ export function getWorker(app: App, redis: Redis | Cluster, log: pino.Logger, co
       if (job.name === "reconcile") {
         const start = Date.now();
         const fids = job.data.fids as number[];
-        await app.reconcileFids(fids);
+        await app.reconcileFidsAgainstBackendDb(fids);
+        const elapsed = (Date.now() - start) / 1000;
+        const lastFid = fids[fids.length - 1];
+        log.info(`Reconciled ${fids.length} upto ${lastFid} in ${elapsed}s at ${new Date().toISOString()}`);
+      } else if (job.name === "reconcileOnchainEvents") {
+        const start = Date.now();
+        const fids = job.data.fids as number[];
+        await app.reconcileAllOnchainEvents(fids);
         const elapsed = (Date.now() - start) / 1000;
         const lastFid = fids[fids.length - 1];
         log.info(`Reconciled ${fids.length} upto ${lastFid} in ${elapsed}s at ${new Date().toISOString()}`);
