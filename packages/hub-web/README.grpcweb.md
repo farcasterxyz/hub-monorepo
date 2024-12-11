@@ -1,9 +1,5 @@
 # @farcaster/hub-web
 
-**Deprecation Notice:**
-grpc-web has been deprecated and is no longer supported. Please use the [HTTP API](./README.md) instead. This original document has been kept only for historical reference.
-
-
 A lightweight, fast Typescript interface for Farcaster Hubs. Designed to work with [Hubble](https://github.com/farcasterxyz/hubble/) and any other Hub that implements the [Farcaster protocol](https://github.com/farcasterxyz/protocol).
 
 ## Features
@@ -37,8 +33,31 @@ import { getHubRpcClient } from '@farcaster/hub-web';
 
   const castsResult = await client.getCastsByFid({ fid: 15 });
 
-  castsResult.map((casts) => casts.messages.map((cast) => console.log(cast.data?.castAddBody?.text)));
+  castsResult.map((casts) =>
+    casts.messages.map((cast) => console.log(cast.data?.castAddBody?.text))
+  );
 })();
+```
+
+### Get the username by FID
+
+```typescript
+const getFnameFromFid = async (
+  fid: number,
+  client: HubRpcClient
+): HubAsyncResult<string> => {
+  const result = await client.getUserData({
+    fid: fid,
+    userDataType: UserDataType.FNAME,
+  });
+  return result.map((message) => {
+    if (isUserDataAddMessage(message)) {
+      return message.data.userDataBody.value;
+    } else {
+      return '';
+    }
+  });
+};
 ```
 
 ### Instantiating a client
@@ -53,7 +72,7 @@ import { getHubRpcClient } from '@farcaster/hub-web';
 (async () => {
   const client = getHubRpcClient('https://testnet1.farcaster.xyz:2285');
 
-  // If you're using gRPC-Web from a Node.js environment, add a second false parameter
+  // If you're using gRPC-Web from a Nodejs environment, add a second false parameter
   // const nodeClient = getHubRpcClient('https://testnet1.farcaster.xyz:2285', false);
 })();
 ```
@@ -69,7 +88,7 @@ import { getHubRpcClient } from '@farcaster/hub-web';
 | Name        | Type      | Description                                                                |
 | :---------- | :-------- | :------------------------------------------------------------------------- |
 | `url`       | `string`  | Address and RPC port string (e.g. `https://testnet1.farcaster.xyz:2285`)   |
-| `isBrowser` | `boolean` | Optional parameter indicating whether to use the gRPC-Web Node.js transport |
+| `isBrowser` | `boolean` | Optional parameter indicating whether to use the gRPC-Web Nodejs transport |
 
 ### Streaming hub events
 
@@ -83,7 +102,10 @@ import { getHubRpcClient } from '@farcaster/hub-web';
 async () => {
   const client = getHubRpcClient('https://testnet1.farcaster.xyz:2285');
 
-  const result = client.subscribe({ eventTypes: [HubEventType.PRUNE_MESSAGE], fromId: 0 });
+  const result = client.subscribe({
+    eventTypes: [HubEventType.PRUNE_MESSAGE],
+    fromId: 0,
+  });
 
   result.map((observable) => {
     observable.subscribe({
