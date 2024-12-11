@@ -314,3 +314,30 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
     return true;
   }
 }
+
+export class BasicHubSubscriber extends BaseHubSubscriber {
+  private eventStream: EventStreamConnection;
+  public readonly streamKey: string;
+
+  constructor(
+    label: string,
+    hubClient: HubClient,
+    eventStream: EventStreamConnection,
+    log: Logger,
+    shardKey: string,
+    eventTypes?: HubEventType[],
+    totalShards?: number,
+    shardIndex?: number,
+    connectionTimeout?: number,
+  ) {
+    super(label, hubClient.client, log, eventTypes, totalShards, shardIndex, connectionTimeout);
+    this.eventStream = eventStream;
+    this.streamKey = `hub:${hubClient.host}:evt:msg:${shardKey}`;
+  }
+
+  public override async processHubEvent(event: HubEvent): Promise<boolean> {
+    const eventBytes = Buffer.from(HubEvent.encode(event).finish());
+    await this.eventStream.add(this.streamKey, eventBytes);
+    return true;
+  }
+}

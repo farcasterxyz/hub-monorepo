@@ -13,11 +13,13 @@ import {
   isVerificationAddAddressMessage,
   isVerificationRemoveMessage,
   Message,
+  MessageType,
 } from "@farcaster/hub-nodejs";
 import { DB, DBTransaction } from "./db";
 import { MessageProcessor } from "./messageProcessor";
 import { MessageHandler, MessageState, StoreMessageOperation } from "./";
 import { log } from "../log";
+import { bytesToHex } from "src/utils";
 
 export class HubEventProcessor {
   static async processHubEvent(db: DB, event: HubEvent, handler: MessageHandler) {
