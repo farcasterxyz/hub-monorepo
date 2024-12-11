@@ -540,6 +540,7 @@ class Engine extends TypedEmitter<EngineEvents> {
   }
 
   async pruneMessages(fid: number): HubAsyncResult<number> {
+    await this.clearStorageCacheForFid(fid);
     const logPruneResult = (result: HubResult<number[]>, store: string): number => {
       return result.match(
         (ids) => {
@@ -968,6 +969,7 @@ class Engine extends TypedEmitter<EngineEvents> {
       return err(validatedFid.error);
     }
 
+    await this.clearStorageCacheForFid(fid);
     const slot = await this.eventHandler.getCurrentStorageSlotForFid(fid);
 
     if (slot.isErr()) {
@@ -1002,6 +1004,14 @@ class Engine extends TypedEmitter<EngineEvents> {
       limits: limits,
       unitDetails: unitDetails,
     });
+  }
+
+  async clearStorageCacheForFid(fid: number): HubAsyncResult<void> {
+    const limits = getStoreLimits([]);
+    for (const limit of limits) {
+      await this.eventHandler.clearCachedMessageCount(fid, limit.storeType);
+    }
+    return ok(undefined);
   }
 
   async getUserNameProof(name: Uint8Array, retries = 1): HubAsyncResult<UserNameProof> {

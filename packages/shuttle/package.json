@@ -11,9 +11,7 @@
       "types": "./dist/index.d.ts"
     }
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "license": "MIT",
   "dependencies": {
     "@farcaster/hot-shots": "^10.0.0",
@@ -33,7 +31,9 @@
   "scripts": {
     "build": "tsup --config tsup.config.ts",
     "start": "tsx src/example-app/app.ts",
-    "clean": "rimraf ./dist",
+    "migrate:onchain-events": "tsx src/shuttle/migration.ts backfill-onchain-events",
+    "migrate:messages": "tsx src/shuttle/migration.ts backfill-messages",
+    "migrate:validate": "tsx src/shuttle/migration.ts compare-message-counts",
     "lint": "biome format src/ --write && biome check src/ --apply",
     "lint:ci": "biome ci src/",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --detectOpenHandles --forceExit",
