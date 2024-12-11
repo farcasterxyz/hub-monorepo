@@ -295,11 +295,16 @@ export class App implements MessageHandler {
   async reconcileFidsAgainstBackendDb(fids: number[]) {
     for (const fid of fids) {
       const messageTypes = [
-        MessageType.CAST_ADD,
-        MessageType.REACTION_ADD,
+        // MessageType.CAST_ADD,
+        // MessageType.CAST_REMOVE,
+        // MessageType.REACTION_ADD,
+        // MessageType.REACTION_REMOVE,
         MessageType.LINK_ADD,
-        MessageType.VERIFICATION_ADD_ETH_ADDRESS,
-        MessageType.USER_DATA_ADD,
+        MessageType.LINK_REMOVE,
+        MessageType.LINK_COMPACT_STATE,
+        // MessageType.VERIFICATION_ADD_ETH_ADDRESS,
+        // MessageType.VERIFICATION_REMOVE,
+        // MessageType.USER_DATA_ADD,
       ];
       for (const type of messageTypes) {
         let pageNumber = 0;
@@ -331,6 +336,7 @@ export class App implements MessageHandler {
 
             const newMessage = Message.create(message);
             newMessage.dataBytes = MessageData.encode(message.data).finish();
+            newMessage.data = undefined;
             // TODO(aditi): Is this right? Need to leave data as is to avoid message missing data error.
             // newMessage.data = undefined;
             const result = await this.snapchainClient.submitMessage(newMessage);
@@ -338,7 +344,7 @@ export class App implements MessageHandler {
               log.info(`Unable to submit message to snapchain ${result.error.message} ${result.error.stack}`);
               continue;
             }
-            HubEventProcessor.handleMissingMessage(this.db, message, this, false);
+            HubEventProcessor.handleMissingMessage(this.db, message, this);
           }
 
           pageNumber += 1;
