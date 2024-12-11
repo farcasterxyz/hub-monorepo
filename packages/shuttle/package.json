@@ -32,7 +32,7 @@
     "build": "tsup --config tsup.config.ts",
     "start": "tsx src/example-app/app.ts",
     "migrate:onchain-events": "tsx src/shuttle/migration.ts backfill-onchain-events",
-    "migrate:messages": "tsx src/migration.ts backfill-messages",
+    "migrate:messages": "tsx src/shuttle/migration.ts backfill-messages",
     "clean": "rimraf ./dist",
     "lint": "biome format src/ --write && biome check src/ --apply",
     "lint:ci": "biome ci src/",
