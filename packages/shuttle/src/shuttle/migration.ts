@@ -146,7 +146,6 @@ export class Migration {
   }
 }
 
-//If the module is being run directly, start the shuttle
 if (import.meta.url.endsWith(url.pathToFileURL(process.argv[1] || "").toString())) {
   async function backfillOnChainEvents() {
     const migration = await Migration.create(POSTGRES_SCHEMA, HUB_HOST, SNAPCHAIN_HOST);
