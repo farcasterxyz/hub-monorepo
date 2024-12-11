@@ -9,6 +9,7 @@ export function getWorker(app: App, redis: Redis | Cluster, log: pino.Logger, co
   const worker = new Worker(
     QUEUE_NAME,
     async (job: Job) => {
+      log.info({ job }, "Starting job");
       if (job.name === "reconcile") {
         const start = Date.now();
         const fids = job.data.fids as number[];

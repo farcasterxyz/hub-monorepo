@@ -176,7 +176,6 @@ export class MessageReconciliation {
     for await (const messages of fn.call(this, fid, MAX_PAGE_SIZE, startTimestamp, stopTimestamp)) {
       yield messages as Message[];
     }
-    this.log.info({ type, fid }, "[reconciliation] Done all hub messages of type");
   }
 
   private async doCallWithFailover(
