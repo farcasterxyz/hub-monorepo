@@ -13,7 +13,7 @@ const TEST_TIMEOUT_LONG = 10_000;
 
 describe("fnameSyncIds migration", () => {
   test(
-    "should delete unpaddded fname syncIds",
+    "should delete unpadded fname syncIds",
     async () => {
       const syncTrie = new MerkleTrie(db);
       const trieDb = syncTrie.getDb();
