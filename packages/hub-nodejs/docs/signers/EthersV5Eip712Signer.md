@@ -1,6 +1,6 @@
 # EthersV5Eip712Signer
 
-An Eip712Signer that is initialized with an [Ethers v5](https://github.com/ethers-io/ethers.js/tree/v5) Ethereum wallet and can be used with [Builders](../builders/builders.md) to sign Farcaster Messages.
+An Eip712Signer that is initialized with an [Ethers v5](https://github.com/ethers-io/ethers.js/tree/v5) Ethereum wallet and can be used with [Builders](https://github.com/farcasterxyz/hub-monorepo/blob/main/packages/hub-nodejs/docs/Builders.md) to sign Farcaster Messages.
 
 ## Properties
 

@@ -1,6 +1,6 @@
 # NobleEd25519Signer
 
-An Ed25519Signer that is initialized with an Ed25519 key pair and can be used with [Builders](../builders/builders.md) to sign Farcaster Messages.
+An Ed25519Signer that is initialized with an Ed25519 key pair and can be used with [Builders](https://github.com/farcasterxyz/hub-monorepo/blob/main/packages/hub-nodejs/docs/Builders.md) to sign Farcaster Messages.
 
 ## Properties
 
