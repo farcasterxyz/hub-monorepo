@@ -40,6 +40,27 @@ try {
 }
 ```
 
+### Get the username by FID
+
+```typescript
+const getFnameFromFid = async (
+  fid: number,
+  client: HubRpcClient
+): HubAsyncResult<string> => {
+  const result = await client.getUserData({
+    fid: fid,
+    userDataType: UserDataType.FNAME,
+  });
+  return result.map((message) => {
+    if (isUserDataAddMessage(message)) {
+      return message.data.userDataBody.value;
+    } else {
+      return '';
+    }
+  });
+};
+```
+
 ### Running the examples
 
 There are several examples in the `examples/` folder. To run the examples, please look at the individual README files in the examples directory. Most examples can be run by
