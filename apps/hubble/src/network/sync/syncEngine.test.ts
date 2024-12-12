@@ -557,7 +557,7 @@ describe("SyncEngine", () => {
       await engine.mergeUserNameProof(fnameProof);
       await engine.mergeMessage(castAdd);
 
-      // Manually remove cast add to have an emtpy trie
+      // Manually remove cast add to have an empty trie
       await syncEngine.trie.delete(SyncId.fromMessage(castAdd));
       await syncEngine.trie.delete(SyncId.fromOnChainEvent(custodyEvent));
       await syncEngine.trie.delete(SyncId.fromOnChainEvent(signerEvent));

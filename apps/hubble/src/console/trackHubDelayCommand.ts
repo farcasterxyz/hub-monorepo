@@ -1,4 +1,4 @@
-import { HubEvent, HubRpcClient, SubscribeRequest, fromFarcasterTime, toFarcasterTime } from "@farcaster/hub-nodejs";
+import { HubEvent, HubRpcClient, SubscribeRequest, fromFarcasterTime } from "@farcaster/hub-nodejs";
 import { ConsoleCommandInterface } from "./console.js";
 
 export class TrackHubDelayCommand implements ConsoleCommandInterface {
