@@ -6,6 +6,8 @@ export const COLORIZE =
 export const LOG_LEVEL = process.env["LOG_LEVEL"] || "info";
 
 export const HUB_HOST = process.env["HUB_HOST"] || "localhost:2283";
+export const HUB_ADMIN_HOST = process.env["HUB_ADMIN_HOST"] || "127.0.0.1:2284";
+export const ONCHAIN_EVENTS_HUB_HOST = process.env["ONCHAIN_EVENTS_HUB_HOST"] || "localhost:2283";
 export const SNAPCHAIN_HOST = process.env["SNAPCHAIN_HOST"] || "127.0.0.1:3383";
 export const HUB_SSL = process.env["HUB_SSL"] === "true" ? true : false;
 

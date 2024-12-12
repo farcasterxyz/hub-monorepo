@@ -400,6 +400,7 @@ export class MessageReconciliation {
     }
   }
 }
+
 export async function allActiveDbMessagesOfTypeForFid(
   db: DB,
   fid: number,
@@ -409,22 +410,7 @@ export async function allActiveDbMessagesOfTypeForFid(
   limit?: number,
   offset?: number,
 ) {
-  let typeSet: MessageType[] = [type];
-  // Add remove types for messages which support them
-  switch (type) {
-    case MessageType.CAST_ADD:
-      typeSet = [...typeSet, MessageType.CAST_REMOVE];
-      break;
-    case MessageType.REACTION_ADD:
-      typeSet = [...typeSet, MessageType.REACTION_REMOVE];
-      break;
-    case MessageType.LINK_ADD:
-      typeSet = [...typeSet, MessageType.LINK_REMOVE, MessageType.LINK_COMPACT_STATE];
-      break;
-    case MessageType.VERIFICATION_ADD_ETH_ADDRESS:
-      typeSet = [...typeSet, MessageType.VERIFICATION_REMOVE];
-      break;
-  }
+  const typeSet: MessageType[] = [type];
 
   let startDate;
   if (startTimestamp) {

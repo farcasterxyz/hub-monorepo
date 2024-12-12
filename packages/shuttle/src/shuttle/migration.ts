@@ -12,7 +12,15 @@ import {
 import { log } from "../example-app/log";
 import { Command } from "@commander-js/extra-typings";
 import { readFileSync } from "fs";
-import { BACKFILL_FIDS, HUB_HOST, MAX_FID, POSTGRES_SCHEMA, SNAPCHAIN_HOST } from "../example-app/env";
+import {
+  BACKFILL_FIDS,
+  HUB_ADMIN_HOST,
+  HUB_HOST,
+  MAX_FID,
+  ONCHAIN_EVENTS_HUB_HOST,
+  POSTGRES_SCHEMA,
+  SNAPCHAIN_HOST,
+} from "../example-app/env";
 import * as process from "node:process";
 import url from "node:url";
 import { err, ok } from "neverthrow";
@@ -20,30 +28,51 @@ import { err, ok } from "neverthrow";
 export class Migration {
   private snapchainClient: HubRpcClient;
   private snapchainAdminClient: AdminRpcClient;
+  private hubClient: HubRpcClient;
+  private hubAdminClient: AdminRpcClient;
   private onchainEventsHubClient: HubRpcClient;
   private backendDb: DB;
 
   constructor(
     backendDb: DB,
     snapchainClient: HubRpcClient,
+    hubClient: HubRpcClient,
     snapchainAdminClient: AdminRpcClient,
+    hubAdminClient: AdminRpcClient,
     onchainEventsHubClient: HubRpcClient,
   ) {
     this.backendDb = backendDb;
     this.snapchainClient = snapchainClient;
+    this.hubClient = hubClient;
     this.snapchainAdminClient = snapchainAdminClient;
+    this.hubAdminClient = hubAdminClient;
     this.onchainEventsHubClient = onchainEventsHubClient;
   }
 
-  static async create(dbSchema: string, onchainEventsHubUrl: string, snapchainUrl: string) {
+  static async create(
+    dbSchema: string,
+    onchainEventsHubUrl: string,
+    snapchainUrl: string,
+    hubUrl: string,
+    hubAdminUrl: string,
+  ) {
     const backendDb = getDbClient(
       "postgres://read_prod:bbgrq8k3jVLUBRUKOJ3HZVXp2mqOAynE@read.cluster-custom-cbfnhl1vqqgl.us-east-1.rds.amazonaws.com:5432/indexer_prod",
       dbSchema,
     );
     const snapchainClient = getHubClient(snapchainUrl, { ssl: false }).client;
     const snapchainAdminClient = await getAdminRpcClient(snapchainUrl);
-    const onchainEventsHubClient = getHubClient(onchainEventsHubUrl, { ssl: false });
-    return new Migration(backendDb, snapchainClient, snapchainAdminClient, onchainEventsHubClient.client);
+    const onchainEventsHubClient = getHubClient(onchainEventsHubUrl, { ssl: true });
+    const hubClient = getHubClient(hubUrl, { ssl: false });
+    const hubAdminClient = await getAdminRpcClient(hubAdminUrl);
+    return new Migration(
+      backendDb,
+      snapchainClient,
+      hubClient.client,
+      snapchainAdminClient,
+      hubAdminClient,
+      onchainEventsHubClient.client,
+    );
   }
 
   async ingestOnchainEvents(fid: number, eventType: OnChainEventType) {
@@ -56,10 +85,19 @@ export class Migration {
     }
 
     for (const onChainEvent of result.value.events) {
-      const result = await this.snapchainAdminClient.submitOnChainEvent(onChainEvent);
-      if (result.isErr()) {
-        log.info(`Unable to submit onchain event to snapchain ${result.error.message} ${result.error.stack}`);
+      const snapchainResult = await this.snapchainAdminClient.submitOnChainEvent(onChainEvent);
+      if (snapchainResult.isErr()) {
+        log.info(
+          `Unable to submit onchain event to snapchain ${snapchainResult.error.message} ${snapchainResult.error.stack}`,
+        );
       }
+
+      const hubResult = await this.hubAdminClient.submitOnChainEvent(onChainEvent);
+      if (hubResult.isErr()) {
+        log.info(`Unable to submit onchain event to hub ${hubResult.error.message} ${hubResult.error.stack}`);
+      }
+
+      log.info(`Process onchain event of type ${onChainEvent.type} for fid ${fid}`);
     }
 
     return ok(undefined);
@@ -69,24 +107,31 @@ export class Migration {
     for (const fid of fids) {
       const storageResult = await this.ingestOnchainEvents(fid, OnChainEventType.EVENT_TYPE_STORAGE_RENT);
       if (storageResult.isErr()) {
-        log.info(`Unable to get storage events ${storageResult.error.message} ${storageResult.error.stack}`);
+        log.info(
+          `Unable to get storage events for fid ${fid} ${storageResult.error.message} ${storageResult.error.stack}`,
+        );
       }
 
       const signerResult = await this.ingestOnchainEvents(fid, OnChainEventType.EVENT_TYPE_SIGNER);
       if (signerResult.isErr()) {
-        log.info(`Unable to get signer events ${signerResult.error.message} ${signerResult.error.stack}`);
+        log.info(
+          `Unable to get signer events for fid ${fid} ${signerResult.error.message} ${signerResult.error.stack}`,
+        );
       }
 
       // TODO(aditi): Signer migrated for fid 0
 
       const idRegisterResult = await this.ingestOnchainEvents(fid, OnChainEventType.EVENT_TYPE_ID_REGISTER);
       if (idRegisterResult.isErr()) {
-        log.info(`Unable to get signer events ${idRegisterResult.error.message} ${idRegisterResult.error.stack}`);
+        log.info(
+          `Unable to get signer events for fid ${fid} ${idRegisterResult.error.message} ${idRegisterResult.error.stack}`,
+        );
       }
     }
   }
 
   async ingestMessagesFromDb(fids: number[]) {
+    let numMessages = 0;
     for (const fid of fids) {
       const messageTypes = [
         MessageType.CAST_ADD,
@@ -131,36 +176,56 @@ export class Migration {
             const newMessage = Message.create(message);
             newMessage.dataBytes = MessageData.encode(message.data).finish();
             newMessage.data = undefined;
-            // TODO(aditi): Is this right? Need to leave data as is to avoid message missing data error.
-            // newMessage.data = undefined;
-            const result = await this.snapchainClient.submitMessage(newMessage);
-            if (result.isErr()) {
-              log.info(`Unable to submit message to snapchain ${result.error.message} ${result.error.stack}`);
+
+            const snapchainResult = await this.snapchainClient.submitMessage(newMessage);
+            if (snapchainResult.isErr()) {
+              log.info(
+                `Unable to submit message to snapchain ${snapchainResult.error.message} ${snapchainResult.error.stack}`,
+              );
             }
+
+            const hubResult = await this.hubClient.submitMessage(newMessage);
+            if (hubResult.isErr()) {
+              log.info(`Unable to submit message to hub ${hubResult.error.message} ${hubResult.error.stack}`);
+            }
+            numMessages += 1;
           }
 
           pageNumber += 1;
         }
       }
     }
+    log.info(`Submitted ${numMessages} messages`);
   }
 }
 
 if (import.meta.url.endsWith(url.pathToFileURL(process.argv[1] || "").toString())) {
   async function backfillOnChainEvents() {
-    const migration = await Migration.create(POSTGRES_SCHEMA, HUB_HOST, SNAPCHAIN_HOST);
+    const migration = await Migration.create(
+      POSTGRES_SCHEMA,
+      ONCHAIN_EVENTS_HUB_HOST,
+      SNAPCHAIN_HOST,
+      HUB_HOST,
+      HUB_ADMIN_HOST,
+    );
     const fids = BACKFILL_FIDS
       ? BACKFILL_FIDS.split(",").map((fid) => parseInt(fid))
-      : Array.from<number>({ length: parseInt(MAX_FID) });
+      : Array.from({ length: parseInt(MAX_FID) }, (_, i) => i + 1);
     await migration.ingestAllOnchainEvents(fids);
     return;
   }
 
   async function backfillMessages() {
-    const migration = await Migration.create(POSTGRES_SCHEMA, HUB_HOST, SNAPCHAIN_HOST);
+    const migration = await Migration.create(
+      POSTGRES_SCHEMA,
+      ONCHAIN_EVENTS_HUB_HOST,
+      SNAPCHAIN_HOST,
+      HUB_HOST,
+      HUB_ADMIN_HOST,
+    );
     const fids = BACKFILL_FIDS
       ? BACKFILL_FIDS.split(",").map((fid) => parseInt(fid))
-      : Array.from<number>({ length: parseInt(MAX_FID) });
+      : Array.from({ length: parseInt(MAX_FID) }, (_, i) => i + 1);
 
     await migration.ingestMessagesFromDb(fids);
 
