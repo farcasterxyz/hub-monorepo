@@ -84,6 +84,7 @@ export class Migration {
       return err(result.error);
     }
 
+    let numOnchainEvents = 0;
     for (const onChainEvent of result.value.events) {
       const snapchainResult = await this.snapchainAdminClient.submitOnChainEvent(onChainEvent);
       if (snapchainResult.isErr()) {
@@ -97,8 +98,10 @@ export class Migration {
         log.info(`Unable to submit onchain event to hub ${hubResult.error.message} ${hubResult.error.stack}`);
       }
 
-      log.info(`Process onchain event of type ${onChainEvent.type} for fid ${fid}`);
+      numOnchainEvents += 1;
     }
+
+    log.info(`Processed ${numOnchainEvents} onchain events`);
 
     return ok(undefined);
   }
@@ -131,8 +134,10 @@ export class Migration {
   }
 
   async ingestMessagesFromDb(fids: number[]) {
-    let numMessages = 0;
     for (const fid of fids) {
+      let numMessages = 0;
+      let numErrorsOnHub = 0;
+      let numErrorsOnSnapchain = 0;
       const messageTypes = [
         MessageType.CAST_ADD,
         MessageType.CAST_REMOVE,
@@ -178,15 +183,18 @@ export class Migration {
             newMessage.data = undefined;
 
             const snapchainResult = await this.snapchainClient.submitMessage(newMessage);
+            const hubResult = await this.hubClient.submitMessage(newMessage);
+
             if (snapchainResult.isErr()) {
               log.info(
                 `Unable to submit message to snapchain ${snapchainResult.error.message} ${snapchainResult.error.stack}`,
               );
+              numErrorsOnSnapchain += 1;
             }
 
-            const hubResult = await this.hubClient.submitMessage(newMessage);
             if (hubResult.isErr()) {
               log.info(`Unable to submit message to hub ${hubResult.error.message} ${hubResult.error.stack}`);
+              numErrorsOnHub += 1;
             }
             numMessages += 1;
           }
@@ -194,8 +202,10 @@ export class Migration {
           pageNumber += 1;
         }
       }
+      log.info(
+        `Submitted ${numMessages} messages for fid ${fid}. ${numErrorsOnHub} hub errors. ${numErrorsOnSnapchain} snapchain errors.`,
+      );
     }
-    log.info(`Submitted ${numMessages} messages`);
   }
 }
 

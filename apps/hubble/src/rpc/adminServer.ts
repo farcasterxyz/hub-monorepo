@@ -152,7 +152,7 @@ export default class AdminServer {
       submitOnChainEvent: async (call, callback) => {
         const authResult = await authenticateUser(call.metadata, this.rpcUsers);
         if (authResult.isErr()) {
-          logger.warn({ errMsg: authResult.error.message }, "submitOnChainEvent failed");
+          log.warn({ errMsg: authResult.error.message }, "submitOnChainEvent failed");
           callback(
             toServiceError(new HubError("unauthenticated", `gRPC authentication failed: ${authResult.error.message}`)),
           );
@@ -161,6 +161,7 @@ export default class AdminServer {
 
         const onChainEvent = call.request;
         const result = await this.hub?.submitOnChainEvent(onChainEvent, "rpc");
+        log.info({ result, fid: onChainEvent.fid, type: onChainEvent.type }, "submitOnChainEvent complete");
         result?.match(
           () => {
             callback(null, onChainEvent);
