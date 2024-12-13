@@ -195,6 +195,39 @@ export class Migration {
     return result;
   }
 
+  async compareMessageCounts(fid: number) {
+    const hubCounts = await this.hubClient.getCurrentStorageLimitsByFid({ fid });
+
+    if (hubCounts.isErr()) {
+      return err(hubCounts.error);
+    }
+
+    const snapchainCounts = await this.snapchainClient.getCurrentStorageLimitsByFid({ fid });
+
+    if (snapchainCounts.isErr()) {
+      return err(snapchainCounts.error);
+    }
+
+    const hubUsages = new Map();
+    for (const limits of hubCounts.value.limits) {
+      hubUsages.set(limits.name, limits.used);
+    }
+
+    const snapchainUsages = new Map();
+    for (const limits of snapchainCounts.value.limits) {
+      snapchainUsages.set(limits.name, limits.used);
+    }
+
+    for (const [name, hubUsage] of hubUsages.entries()) {
+      const snapchainUsage = snapchainUsages.get(name);
+      if (hubUsage !== snapchainUsage) {
+        log.info(`USAGE MISMATCH: type: ${name}, hub usage: ${hubUsage}, snapchain usage ${snapchainUsage}`);
+      }
+    }
+
+    return ok(undefined);
+  }
+
   async ingestMessagesFromDb(fids: number[]) {
     for (const fid of fids) {
       let numMessages = 0;
@@ -285,6 +318,11 @@ export class Migration {
       log.info(
         `Submitted ${numMessages} messages for fid ${fid}. ${numErrorsOnHub} hub errors. ${numErrorsOnSnapchain} snapchain errors. ${numMessagesPruned} pruned on hub. Skipped ${numSkipped}.`,
       );
+
+      const compareResult = await this.compareMessageCounts(fid);
+      if (compareResult.isErr()) {
+        log.info(`Error comparing message counts ${compareResult.error}`);
+      }
     }
   }
 }
