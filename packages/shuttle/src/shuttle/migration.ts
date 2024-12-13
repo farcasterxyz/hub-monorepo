@@ -2,6 +2,8 @@ import { DB, getDbClient, getHubClient, allActiveDbMessagesOfTypeForFid } from "
 import {
   AdminRpcClient,
   getAdminRpcClient,
+  HubError,
+  HubResult,
   HubRpcClient,
   Message,
   MessageData,
@@ -24,6 +26,7 @@ import {
 import * as process from "node:process";
 import url from "node:url";
 import { err, ok } from "neverthrow";
+import { sleep } from "src/utils";
 
 export class Migration {
   private snapchainClient: HubRpcClient;
@@ -85,12 +88,20 @@ export class Migration {
     }
 
     let numOnchainEvents = 0;
+    let numSkipped = 0;
     for (const onChainEvent of result.value.events) {
-      const snapchainResult = await this.snapchainAdminClient.submitOnChainEvent(onChainEvent);
+      const snapchainResult = await this.submitWithRetry(3, () => {
+        return this.snapchainAdminClient.submitOnChainEvent(onChainEvent);
+      });
       if (snapchainResult.isErr()) {
         log.info(
           `Unable to submit onchain event to snapchain ${snapchainResult.error.message} ${snapchainResult.error.stack}`,
         );
+        if (this.shouldRetry(snapchainResult.error)) {
+          log.info("Skipping hub submit to avoid mismatch");
+          numSkipped += 1;
+          continue;
+        }
       }
 
       const hubResult = await this.hubAdminClient.submitOnChainEvent(onChainEvent);
@@ -101,7 +112,7 @@ export class Migration {
       numOnchainEvents += 1;
     }
 
-    log.info(`Processed ${numOnchainEvents} onchain events for fid ${fid}`);
+    log.info(`Processed ${numOnchainEvents} onchain events for fid ${fid}. Skipped ${numSkipped}.`);
 
     return ok(undefined);
   }
@@ -114,10 +125,18 @@ export class Migration {
         continue;
       }
 
+      let numSkipped = 0;
       for (const usernameProof of result.value.proofs) {
-        const snapchainResult = await this.snapchainAdminClient.submitUserNameProof(usernameProof);
+        const snapchainResult = await this.submitWithRetry(3, () => {
+          return this.snapchainAdminClient.submitUserNameProof(usernameProof);
+        });
         if (snapchainResult.isErr()) {
           log.info(`Unable to submit username proof for fid ${fid} to snapchain ${snapchainResult.error.message}`);
+          if (this.shouldRetry(snapchainResult.error)) {
+            log.info("Skipping hub submit to avoid mismatch");
+            numSkipped += 1;
+            continue;
+          }
         }
 
         const hubResult = await this.hubAdminClient.submitUserNameProof(usernameProof);
@@ -126,7 +145,7 @@ export class Migration {
         }
       }
 
-      log.info(`Processed ${result.value.proofs.length} username proofs for fid ${fid}`);
+      log.info(`Processed ${result.value.proofs.length} username proofs for fid ${fid}. Skipped ${numSkipped}.`);
     }
   }
 
@@ -157,11 +176,31 @@ export class Migration {
     }
   }
 
+  shouldRetry(error: HubError) {
+    return error.message.includes("channel is full");
+  }
+
+  async submitWithRetry<T>(numRetries: number, submitFn: () => Promise<HubResult<T>>) {
+    let result = await submitFn();
+    let numRetriesRemaining = numRetries;
+    let waitTime = 1000;
+
+    if (result.isErr() && this.shouldRetry(result.error) && numRetriesRemaining > 0) {
+      await sleep(waitTime);
+      numRetriesRemaining -= 1;
+      waitTime *= 2;
+      result = await submitFn();
+    }
+
+    return result;
+  }
+
   async ingestMessagesFromDb(fids: number[]) {
     for (const fid of fids) {
       let numMessages = 0;
       let numErrorsOnHub = 0;
       let numErrorsOnSnapchain = 0;
+      let numSkipped = 0;
       const messageTypes = [
         MessageType.CAST_ADD,
         MessageType.CAST_REMOVE,
@@ -206,13 +245,20 @@ export class Migration {
             newMessage.dataBytes = MessageData.encode(message.data).finish();
             newMessage.data = undefined;
 
-            const snapchainResult = await this.snapchainClient.submitMessage(newMessage);
+            const snapchainResult = await this.submitWithRetry(3, async () => {
+              return this.snapchainClient.submitMessage(newMessage);
+            });
             const hubResult = await this.hubClient.submitMessage(newMessage);
 
             if (snapchainResult.isErr()) {
               log.info(
                 `Unable to submit message to snapchain ${snapchainResult.error.message} ${snapchainResult.error.stack}`,
               );
+              if (this.shouldRetry(snapchainResult.error)) {
+                log.info("Skipping hub submit to avoid mismatch");
+                numSkipped += 1;
+                continue;
+              }
               numErrorsOnSnapchain += 1;
             }
 
@@ -227,7 +273,7 @@ export class Migration {
         }
       }
       log.info(
-        `Submitted ${numMessages} messages for fid ${fid}. ${numErrorsOnHub} hub errors. ${numErrorsOnSnapchain} snapchain errors.`,
+        `Submitted ${numMessages} messages for fid ${fid}. ${numErrorsOnHub} hub errors. ${numErrorsOnSnapchain} snapchain errors. Skipped ${numSkipped}.`,
       );
     }
   }
