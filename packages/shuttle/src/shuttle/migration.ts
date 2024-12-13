@@ -101,9 +101,33 @@ export class Migration {
       numOnchainEvents += 1;
     }
 
-    log.info(`Processed ${numOnchainEvents} onchain events`);
+    log.info(`Processed ${numOnchainEvents} onchain events for fid ${fid}`);
 
     return ok(undefined);
+  }
+
+  async ingestUsernameProofs(fids: number[]) {
+    for (const fid of fids) {
+      const result = await this.onchainEventsHubClient.getUserNameProofsByFid({ fid });
+      if (result.isErr()) {
+        log.info(`Unable to get username proofs for fid ${fid}`);
+        continue;
+      }
+
+      for (const usernameProof of result.value.proofs) {
+        const snapchainResult = await this.snapchainAdminClient.submitUserNameProof(usernameProof);
+        if (snapchainResult.isErr()) {
+          log.info(`Unable to submit username proof for fid ${fid} to snapchain ${snapchainResult.error.message}`);
+        }
+
+        const hubResult = await this.hubAdminClient.submitUserNameProof(usernameProof);
+        if (hubResult.isErr()) {
+          log.info(`Unable to submit username proof for fid ${fid} to hub ${hubResult.error.message}`);
+        }
+      }
+
+      log.info(`Processed ${result.value.proofs.length} username proofs for fid ${fid}`);
+    }
   }
 
   async ingestAllOnchainEvents(fids: number[]) {
@@ -222,6 +246,7 @@ if (import.meta.url.endsWith(url.pathToFileURL(process.argv[1] || "").toString()
       ? BACKFILL_FIDS.split(",").map((fid) => parseInt(fid))
       : Array.from({ length: parseInt(MAX_FID) }, (_, i) => i + 1);
     await migration.ingestAllOnchainEvents(fids);
+    await migration.ingestUsernameProofs(fids);
     return;
   }
 

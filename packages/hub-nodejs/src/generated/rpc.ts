@@ -1420,12 +1420,22 @@ export const AdminServiceService = {
     responseSerialize: (value: OnChainEvent) => Buffer.from(OnChainEvent.encode(value).finish()),
     responseDeserialize: (value: Buffer) => OnChainEvent.decode(value),
   },
+  submitUserNameProof: {
+    path: "/AdminService/SubmitUserNameProof",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: UserNameProof) => Buffer.from(UserNameProof.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => UserNameProof.decode(value),
+    responseSerialize: (value: UserNameProof) => Buffer.from(UserNameProof.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => UserNameProof.decode(value),
+  },
 } as const;
 
 export interface AdminServiceServer extends UntypedServiceImplementation {
   rebuildSyncTrie: handleUnaryCall<Empty, Empty>;
   deleteAllMessagesFromDb: handleUnaryCall<Empty, Empty>;
   submitOnChainEvent: handleUnaryCall<OnChainEvent, OnChainEvent>;
+  submitUserNameProof: handleUnaryCall<UserNameProof, UserNameProof>;
 }
 
 export interface AdminServiceClient extends Client {
@@ -1470,6 +1480,21 @@ export interface AdminServiceClient extends Client {
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: OnChainEvent) => void,
+  ): ClientUnaryCall;
+  submitUserNameProof(
+    request: UserNameProof,
+    callback: (error: ServiceError | null, response: UserNameProof) => void,
+  ): ClientUnaryCall;
+  submitUserNameProof(
+    request: UserNameProof,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: UserNameProof) => void,
+  ): ClientUnaryCall;
+  submitUserNameProof(
+    request: UserNameProof,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: UserNameProof) => void,
   ): ClientUnaryCall;
 }
 

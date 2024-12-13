@@ -125,4 +125,5 @@ service AdminService {
   rpc DeleteAllMessagesFromDb(Empty) returns (Empty);
   
   rpc SubmitOnChainEvent(OnChainEvent) returns (OnChainEvent);
+  rpc SubmitUserNameProof(UserNameProof) returns (UserNameProof);
 }

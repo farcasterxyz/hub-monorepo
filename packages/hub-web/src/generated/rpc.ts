@@ -1527,6 +1527,7 @@ export interface AdminService {
   rebuildSyncTrie(request: DeepPartial<Empty>, metadata?: grpcWeb.grpc.Metadata): Promise<Empty>;
   deleteAllMessagesFromDb(request: DeepPartial<Empty>, metadata?: grpcWeb.grpc.Metadata): Promise<Empty>;
   submitOnChainEvent(request: DeepPartial<OnChainEvent>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEvent>;
+  submitUserNameProof(request: DeepPartial<UserNameProof>, metadata?: grpcWeb.grpc.Metadata): Promise<UserNameProof>;
 }
 
 export class AdminServiceClientImpl implements AdminService {
@@ -1537,6 +1538,7 @@ export class AdminServiceClientImpl implements AdminService {
     this.rebuildSyncTrie = this.rebuildSyncTrie.bind(this);
     this.deleteAllMessagesFromDb = this.deleteAllMessagesFromDb.bind(this);
     this.submitOnChainEvent = this.submitOnChainEvent.bind(this);
+    this.submitUserNameProof = this.submitUserNameProof.bind(this);
   }
 
   rebuildSyncTrie(request: DeepPartial<Empty>, metadata?: grpcWeb.grpc.Metadata): Promise<Empty> {
@@ -1549,6 +1551,10 @@ export class AdminServiceClientImpl implements AdminService {
 
   submitOnChainEvent(request: DeepPartial<OnChainEvent>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEvent> {
     return this.rpc.unary(AdminServiceSubmitOnChainEventDesc, OnChainEvent.fromPartial(request), metadata);
+  }
+
+  submitUserNameProof(request: DeepPartial<UserNameProof>, metadata?: grpcWeb.grpc.Metadata): Promise<UserNameProof> {
+    return this.rpc.unary(AdminServiceSubmitUserNameProofDesc, UserNameProof.fromPartial(request), metadata);
   }
 }
 
@@ -1613,6 +1619,29 @@ export const AdminServiceSubmitOnChainEventDesc: UnaryMethodDefinitionish = {
   responseType: {
     deserializeBinary(data: Uint8Array) {
       const value = OnChainEvent.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const AdminServiceSubmitUserNameProofDesc: UnaryMethodDefinitionish = {
+  methodName: "SubmitUserNameProof",
+  service: AdminServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return UserNameProof.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = UserNameProof.decode(data);
       return {
         ...value,
         toObject() {

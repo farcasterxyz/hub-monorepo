@@ -171,6 +171,28 @@ export default class AdminServer {
           },
         );
       },
+      submitUserNameProof: async (call, callback) => {
+        const authResult = await authenticateUser(call.metadata, this.rpcUsers);
+        if (authResult.isErr()) {
+          log.warn({ errMsg: authResult.error.message }, "submitUserNameProof failed");
+          callback(
+            toServiceError(new HubError("unauthenticated", `gRPC authentication failed: ${authResult.error.message}`)),
+          );
+          return;
+        }
+
+        const usernameProof = call.request;
+        const result = await this.hub?.submitUserNameProof(usernameProof, "rpc");
+        log.info({ result, fid: usernameProof.fid }, "submitUserNameProof complete");
+        result?.match(
+          () => {
+            callback(null, usernameProof);
+          },
+          (err: HubError) => {
+            callback(toServiceError(err));
+          },
+        );
+      },
     };
   };
 }
