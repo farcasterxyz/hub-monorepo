@@ -272,8 +272,18 @@ export class Migration {
           pageNumber += 1;
         }
       }
+
+      const result = await this.hubAdminClient.pruneMessages({ fid });
+      let numMessagesPruned = 0;
+      if (result.isErr()) {
+        log.info(`Unable to prune hub messages for fid ${fid}`);
+      } else {
+        numMessagesPruned = result.value.numMessagesPruned;
+      }
+
+      // TODO(aditi): This log should have better structure.
       log.info(
-        `Submitted ${numMessages} messages for fid ${fid}. ${numErrorsOnHub} hub errors. ${numErrorsOnSnapchain} snapchain errors. Skipped ${numSkipped}.`,
+        `Submitted ${numMessages} messages for fid ${fid}. ${numErrorsOnHub} hub errors. ${numErrorsOnSnapchain} snapchain errors. ${numMessagesPruned} pruned on hub. Skipped ${numSkipped}.`,
       );
     }
   }

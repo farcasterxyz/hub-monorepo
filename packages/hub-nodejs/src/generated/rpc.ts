@@ -36,6 +36,8 @@ import {
   MessagesResponse,
   OnChainEventRequest,
   OnChainEventResponse,
+  PruneMessagesRequest,
+  PruneMessagesResponse,
   ReactionRequest,
   ReactionsByFidRequest,
   ReactionsByTargetRequest,
@@ -1411,6 +1413,15 @@ export const AdminServiceService = {
     responseSerialize: (value: Empty) => Buffer.from(Empty.encode(value).finish()),
     responseDeserialize: (value: Buffer) => Empty.decode(value),
   },
+  pruneMessages: {
+    path: "/AdminService/PruneMessages",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: PruneMessagesRequest) => Buffer.from(PruneMessagesRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => PruneMessagesRequest.decode(value),
+    responseSerialize: (value: PruneMessagesResponse) => Buffer.from(PruneMessagesResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => PruneMessagesResponse.decode(value),
+  },
   submitOnChainEvent: {
     path: "/AdminService/SubmitOnChainEvent",
     requestStream: false,
@@ -1434,6 +1445,7 @@ export const AdminServiceService = {
 export interface AdminServiceServer extends UntypedServiceImplementation {
   rebuildSyncTrie: handleUnaryCall<Empty, Empty>;
   deleteAllMessagesFromDb: handleUnaryCall<Empty, Empty>;
+  pruneMessages: handleUnaryCall<PruneMessagesRequest, PruneMessagesResponse>;
   submitOnChainEvent: handleUnaryCall<OnChainEvent, OnChainEvent>;
   submitUserNameProof: handleUnaryCall<UserNameProof, UserNameProof>;
 }
@@ -1465,6 +1477,21 @@ export interface AdminServiceClient extends Client {
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: Empty) => void,
+  ): ClientUnaryCall;
+  pruneMessages(
+    request: PruneMessagesRequest,
+    callback: (error: ServiceError | null, response: PruneMessagesResponse) => void,
+  ): ClientUnaryCall;
+  pruneMessages(
+    request: PruneMessagesRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: PruneMessagesResponse) => void,
+  ): ClientUnaryCall;
+  pruneMessages(
+    request: PruneMessagesRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: PruneMessagesResponse) => void,
   ): ClientUnaryCall;
   submitOnChainEvent(
     request: OnChainEvent,

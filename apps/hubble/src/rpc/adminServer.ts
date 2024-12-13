@@ -193,6 +193,28 @@ export default class AdminServer {
           },
         );
       },
+      pruneMessages: async (call, callback) => {
+        const authResult = await authenticateUser(call.metadata, this.rpcUsers);
+        if (authResult.isErr()) {
+          log.warn({ errMsg: authResult.error.message }, "pruneMessages failed");
+          callback(
+            toServiceError(new HubError("unauthenticated", `gRPC authentication failed: ${authResult.error.message}`)),
+          );
+          return;
+        }
+
+        const fid = call.request.fid;
+        const result = await this.hub?.engine.pruneMessages(fid);
+        log.info({ result, fid }, "pruneMessages complete");
+        result?.match(
+          (numMessagesPruned) => {
+            callback(null, { numMessagesPruned });
+          },
+          (err: HubError) => {
+            callback(toServiceError(err));
+          },
+        );
+      },
     };
   };
 }

@@ -24,6 +24,8 @@ import {
   MessagesResponse,
   OnChainEventRequest,
   OnChainEventResponse,
+  PruneMessagesRequest,
+  PruneMessagesResponse,
   ReactionRequest,
   ReactionsByFidRequest,
   ReactionsByTargetRequest,
@@ -1526,6 +1528,7 @@ export const HubServiceGetSyncSnapshotByPrefixDesc: UnaryMethodDefinitionish = {
 export interface AdminService {
   rebuildSyncTrie(request: DeepPartial<Empty>, metadata?: grpcWeb.grpc.Metadata): Promise<Empty>;
   deleteAllMessagesFromDb(request: DeepPartial<Empty>, metadata?: grpcWeb.grpc.Metadata): Promise<Empty>;
+  pruneMessages(request: DeepPartial<PruneMessagesRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<PruneMessagesResponse>;
   submitOnChainEvent(request: DeepPartial<OnChainEvent>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEvent>;
   submitUserNameProof(request: DeepPartial<UserNameProof>, metadata?: grpcWeb.grpc.Metadata): Promise<UserNameProof>;
 }
@@ -1537,6 +1540,7 @@ export class AdminServiceClientImpl implements AdminService {
     this.rpc = rpc;
     this.rebuildSyncTrie = this.rebuildSyncTrie.bind(this);
     this.deleteAllMessagesFromDb = this.deleteAllMessagesFromDb.bind(this);
+    this.pruneMessages = this.pruneMessages.bind(this);
     this.submitOnChainEvent = this.submitOnChainEvent.bind(this);
     this.submitUserNameProof = this.submitUserNameProof.bind(this);
   }
@@ -1547,6 +1551,10 @@ export class AdminServiceClientImpl implements AdminService {
 
   deleteAllMessagesFromDb(request: DeepPartial<Empty>, metadata?: grpcWeb.grpc.Metadata): Promise<Empty> {
     return this.rpc.unary(AdminServiceDeleteAllMessagesFromDbDesc, Empty.fromPartial(request), metadata);
+  }
+
+  pruneMessages(request: DeepPartial<PruneMessagesRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<PruneMessagesResponse> {
+    return this.rpc.unary(AdminServicePruneMessagesDesc, PruneMessagesRequest.fromPartial(request), metadata);
   }
 
   submitOnChainEvent(request: DeepPartial<OnChainEvent>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEvent> {
@@ -1596,6 +1604,29 @@ export const AdminServiceDeleteAllMessagesFromDbDesc: UnaryMethodDefinitionish =
   responseType: {
     deserializeBinary(data: Uint8Array) {
       const value = Empty.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const AdminServicePruneMessagesDesc: UnaryMethodDefinitionish = {
+  methodName: "PruneMessages",
+  service: AdminServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return PruneMessagesRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = PruneMessagesResponse.decode(data);
       return {
         ...value,
         toObject() {
