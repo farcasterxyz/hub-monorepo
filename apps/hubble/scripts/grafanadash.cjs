@@ -20,7 +20,7 @@ module.exports = function grafana() {
       lineNumber++;
 
       // Check if the current line contains the undesired datasource entry
-      if (line.includes('"datasource":') && !line.replaceAll(" ", "").includes('"datasource":"Graphite"')) {
+      if (line.includes('"datasource":') && !line.replace(/ /g, "").includes('"datasource":"Graphite"')) {
         return lineNumber;
       }
     }
