@@ -40,7 +40,7 @@ const ed25519Signer = new NobleEd25519Signer(privateKey);
 
 ### Eip712Signer
 
-An Eip712Signer is an ECDSA key pair that is necessary signing for some messages like `SignerAdds` and `Verifications`. This example shows how to construct an `EthersEip712Signer` from a wallet's recovery phrase:
+An Eip712Signer is an ECDSA key pair that is for necessary signing some messages like `SignerAdds` and `Verifications`. This example shows how to construct an `EthersEip712Signer` from a wallet's recovery phrase:
 
 ```typescript
 import { EthersEip712Signer } from '@farcaster/hub-nodejs';
@@ -56,7 +56,7 @@ Note: If you must use Ethers v5 in your application, you'll need to use the [`Et
 
 ### Data Options
 
-Common message properties that must be passed into to any Builder method to produce a valid message.
+Common message properties that must be passed into any Builder method to produce a valid message.
 
 #### Usage
 
