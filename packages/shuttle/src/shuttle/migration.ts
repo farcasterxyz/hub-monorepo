@@ -10,6 +10,7 @@ import {
   MessageType,
   OnChainEventRequest,
   OnChainEventType,
+  StoreType,
 } from "@farcaster/hub-nodejs";
 import { log } from "../example-app/log";
 import { Command } from "@commander-js/extra-typings";
@@ -221,7 +222,7 @@ export class Migration {
       const snapchainUsage = snapchainUsages.get(storeType);
       if (hubUsage !== snapchainUsage) {
         log.info(
-          `USAGE MISMATCH: fid: ${fid} type: ${storeType}, hub usage: ${hubUsage}, snapchain usage ${snapchainUsage}`,
+          `USAGE MISMATCH: fid: ${fid} store_type: ${StoreType[storeType]}, hub usage: ${hubUsage}, snapchain usage ${snapchainUsage}`,
         );
       }
     }
@@ -248,6 +249,7 @@ export class Migration {
         MessageType.USER_DATA_ADD,
       ];
       for (const type of messageTypes) {
+        let numMessagesByType = 0;
         let pageNumber = 0;
         const pageSize = 100;
         while (true) {
@@ -300,11 +302,15 @@ export class Migration {
               log.info(`Unable to submit message to hub ${hubResult.error.message} ${hubResult.error.stack}`);
               numErrorsOnHub += 1;
             }
+
             numMessages += 1;
+            numMessagesByType += 1;
           }
 
           pageNumber += 1;
         }
+
+        log.info(`Submitted ${numMessagesByType} messages for fid ${fid} for type ${MessageType[type]}`);
       }
 
       const result = await this.hubAdminClient.pruneMessages({ fid });
