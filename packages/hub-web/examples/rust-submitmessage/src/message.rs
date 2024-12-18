@@ -3523,7 +3523,7 @@ impl ::protobuf::reflect::ProtobufValue for VerificationRemoveBody {
 #[derive(PartialEq,Clone,Default)]
 pub struct LinkBody {
     // message fields
-    pub field_type: ::std::string::String,
+    pub type: ::std::string::String,
     pub displayTimestamp: u32,
     // message oneof groups
     pub target: ::std::option::Option<LinkBody_oneof_target>,
