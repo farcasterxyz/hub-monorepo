@@ -32,7 +32,7 @@ describe("gossip network with bundle tests", () => {
   }, TEST_TIMEOUT_SHORT);
 
   test(
-    "broadcast a individual messages that get bundled via gossip to other nodes",
+    "broadcast an individual messages that get bundled via gossip to other nodes",
     async () => {
       // Connect the first node to every other node by dialing them manually
       for (const n of nodes.slice(1)) {
