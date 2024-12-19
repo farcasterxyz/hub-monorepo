@@ -2,12 +2,12 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "declaration": true,
-    "baseUrl": "./",
+    "baseUrl": "./src",
     "outDir": "build",
-    "rootDir": "./",
+    "rootDir": "./src",
     "isolatedModules": true,
     "exactOptionalPropertyTypes": false,
   },
-  "include": ["./**/*.ts", "./**/*.d.ts"],
+  "include": ["src/**/*.ts", "src/**/*.d.ts"],
   "exclude": ["build", "node_modules", "jest.config.ts"]
 }
