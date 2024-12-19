@@ -96,7 +96,7 @@ export class App implements MessageHandler {
       redis,
       shardKey,
       log,
-      null,
+      undefined,
       totalShards,
       shardIndex,
     );
@@ -237,6 +237,10 @@ export class App implements MessageHandler {
 
   async backfillFids(fids: number[], backfillQueue: Queue) {
     const startedAt = Date.now();
+    if (!this.hubSubscriber.hubClient) {
+      log.error("Hub client is not initialized");
+      throw new Error("Hub client is not initialized");
+    }
     if (fids.length === 0) {
       const maxFidResult = await this.hubSubscriber.hubClient.getFids({ pageSize: 1, reverse: true });
       if (maxFidResult.isErr()) {
