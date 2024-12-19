@@ -102,7 +102,7 @@ describe("gossip network with bundle tests", () => {
       expect(duplicatePublishResult.isErr()).toBeTruthy();
       expect(duplicatePublishResult._unsafeUnwrapErr().errCode).toBe("bad_request.duplicate");
 
-      // Gossiping a invalid bundle will succeed, beacuse the broadcast will succeed but each individual node
+      // Gossiping an invalid bundle will succeed, beacuse the broadcast will succeed but each individual node
       // will report it as invalid, and it will not spread through the network
       const invalidPublishResult = await randomNode.gossipBundle(invalidBundle);
       expect(invalidPublishResult.isOk()).toBeTruthy();
