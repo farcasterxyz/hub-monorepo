@@ -45,7 +45,7 @@ class CastStore extends RustStoreBase<CastAddMessage, CastRemoveMessage> {
     return messageDecode(new Uint8Array(result.value)) as CastRemoveMessage;
   }
 
-  /** Gets all CastAdd messages for an fid */
+  /** Gets all CastAdd messages for a fid */
   async getCastAddsByFid(fid: number, pageOptions: PageOptions = {}): Promise<MessagesPage<CastAddMessage>> {
     const messages_page = await rsGetCastAddsByFid(this._rustStore, fid, pageOptions ?? {});
 

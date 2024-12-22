@@ -42,8 +42,8 @@ const LRU_CACHE_SIZE = 50_000;
  * OnChainStore persists On Chain Event messages in RocksDB using a grow only CRDT set
  * to guarantee eventual consistency.
  *
- * It build custom secondary indexes based on the type of the on chain event to allow querying for
- * current status (e.g. active signer for an fid).
+ * It builds custom secondary indexes based on the type of the on chain event to allow querying for
+ * current status (e.g. active signer for a fid).
  */
 class OnChainEventStore {
   protected _db: RocksDB;

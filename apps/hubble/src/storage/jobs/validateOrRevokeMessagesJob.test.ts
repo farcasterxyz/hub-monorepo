@@ -205,7 +205,7 @@ describe("ValidateOrRevokeMessagesJob", () => {
     expect(hubState.validateOrRevokeState?.lastFid).toBe(0);
     expect(hubState.validateOrRevokeState?.lastJobTimestamp).toBeGreaterThan(0);
 
-    // Running it again checks no messages
+    // Rerunning it checks no messages
     const result2 = await job.doJobs();
     expect(result2.isOk()).toBe(true);
     expect(result2._unsafeUnwrap()).toBe(0);
@@ -214,7 +214,7 @@ describe("ValidateOrRevokeMessagesJob", () => {
     const result3 = await engine.mergeMessage(ensNameProof);
     expect(result3.isOk()).toBe(true);
 
-    // Running it again checks the ENS name proof
+    // Rerunning it checks the ENS name proof
     const result4 = await job.doJobs();
     expect(result4.isOk()).toBe(true);
     expect(result4._unsafeUnwrap()).toBe(1);
