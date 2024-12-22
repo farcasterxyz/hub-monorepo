@@ -134,7 +134,7 @@ describe("gossip network tests", () => {
 
       expect(numCastAddMessages).toBe(NUM_NODES - 1);
       // Reaction messages are not forwarded to all nodes because they are considered invalid. They stop after the first node.
-      // This is a test that asyncValidation is working as expected.
+      // This is a test that shows that asyncValidation is working as expected.
       expect(numReactionAddMessages).toBe(1);
 
       messageStore.clear();
