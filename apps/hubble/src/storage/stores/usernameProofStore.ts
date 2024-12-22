@@ -41,7 +41,7 @@ class UsernameProofStore extends RustStoreBase<UsernameProofMessage, never> {
     return messageDecode(new Uint8Array(result.value)) as UsernameProofMessage;
   }
 
-  /** Finds all UserNameProof messages for an fid */
+  /** Finds all UserNameProof messages for a fid */
   async getUsernameProofsByFid(fid: number): Promise<UserNameProof[]> {
     const messages_page = await rsGetUsernameProofsByFid(this._rustStore, fid, {});
 
