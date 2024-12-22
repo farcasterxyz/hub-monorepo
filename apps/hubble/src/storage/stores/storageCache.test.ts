@@ -306,7 +306,7 @@ describe("processEvent", () => {
       makeTsHash(middleMessage.data.timestamp, middleMessage.hash),
     );
 
-    // Adding a later messages does not change the earliest tsHash
+    // Adding a later message does not change the earliest tsHash
     const laterMessage = await Factories.CastAddMessage.create({
       data: { fid, timestamp: middleMessage.data.timestamp + 10 },
     });
