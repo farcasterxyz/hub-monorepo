@@ -30,4 +30,4 @@ yarn start --statsd-metrics-server 127.0.0.1:8125
 
 ## Troubleshooting
 
-- Make sure that the `grafana/data` directory is writeable to all users. 
+- Make sure that the `grafana/data` directory is writable to all users. 
