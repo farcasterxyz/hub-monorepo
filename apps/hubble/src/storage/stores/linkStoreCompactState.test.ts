@@ -169,7 +169,7 @@ describe("Merge LinkCompactState messages", () => {
     );
 
     // create a link add 2, that's newer than the link add1, but older than compact state, and it should be merged
-    // because the compact state is has the target fid
+    // because the compact state has the target fid
     const linkAdd2 = await Factories.LinkAddMessage.create({
       data: { fid, linkBody: Factories.LinkBody.build({ type: "follow", targetFid }), timestamp: timestamp + 5 },
     });
@@ -387,7 +387,7 @@ describe("Merge LinkCompactState messages", () => {
     expect(allMessages).toContainEqual(linkAdd2);
     expect(allMessages).toContainEqual(linkRemove1);
 
-    // Now, create more linkadds and removes 10s later
+    // Now, create more linkadds and remove 10s later
     const timestamp2 = timestamp + 10;
     const linkAdd3 = await Factories.LinkAddMessage.create({
       data: {
