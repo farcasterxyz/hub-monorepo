@@ -56,7 +56,7 @@ export enum RootPrefix {
   // Deprecated, DO NOT USE
   // GossipMetrics = 18,
 
-  /* Used to index user submited username proofs */
+  /* Used to index user submitted username proofs */
   UserNameProofByName = 19,
 
   // Deprecated
