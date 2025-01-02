@@ -274,6 +274,9 @@ export interface HubOptions {
   /** Resync fname events */
   resyncNameEvents?: boolean;
 
+  /** Id of last fname transfer to ingest */
+  stopFnameTransferId?: number;
+
   /** Name of the RocksDB instance */
   rocksDBName?: string;
 
@@ -446,6 +449,7 @@ export class Hub implements HubInterface {
         new FNameRegistryClient(options.fnameServerUrl),
         this,
         options.resyncNameEvents ?? false,
+        options.stopFnameTransferId,
       );
     } else {
       log.warn("No FName Registry URL provided, unable to sync fname events");
@@ -804,7 +808,7 @@ export class Hub implements HubInterface {
     }
 
     await this.l2RegistryProvider.start();
-    // await this.fNameRegistryEventsProvider.start();
+    await this.fNameRegistryEventsProvider.start();
 
     const peerId = this.options.peerId
       ? exportToProtobuf(this.options.peerId as RSAPeerId | Ed25519PeerId | Secp256k1PeerId)
