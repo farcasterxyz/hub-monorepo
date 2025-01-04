@@ -244,7 +244,9 @@ export class LibP2PNode {
         ...(peerId && { peerId }),
         connectionGater: this._connectionGater,
         connectionManager: {
-          minConnections: 0,
+          // Set between the default DLo and DHi values. So we always have some connections, and not just the bootstrap peers.
+          // This is also helpful in case the node starts with a clean db, since the only explicit connections are to bootstrap peers and db peers.
+          minConnections: 7,
         },
         addresses: {
           listen: [listenMultiAddrStr],
