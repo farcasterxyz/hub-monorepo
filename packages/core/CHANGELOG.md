@@ -67,7 +67,7 @@
 
 ### Patch Changes
 
-- eacf29c9: fix: http endoint return not found instead of internal database error
+- eacf29c9: fix: http endpoint return not found instead of internal database error
 
 ## 0.14.16
 
