@@ -5,7 +5,7 @@
 #
 # MUST be run from the root of the repository so the Docker build context is correct.
 #
-# You must `docker login ...` first so that we have the necessary permissions to
+# You must `docker login ...` first so that we have the necessary permission to
 # push the image layers + tags to Docker Hub.
 
 HUBBLE_VERSION=$(node -e "console.log(require('./apps/hubble/package.json').version);")
