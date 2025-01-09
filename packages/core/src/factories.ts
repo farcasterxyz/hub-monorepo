@@ -107,7 +107,7 @@ const Ed25519PrivateKeyFactory = Factory.define<Uint8Array>(() => {
   return ed25519.utils.randomPrivateKey();
 });
 
-const Ed25519PPublicKeyFactory = Factory.define<Uint8Array>(() => {
+const Ed25519PublicKeyFactory = Factory.define<Uint8Array>(() => {
   const privateKey = Ed25519PrivateKeyFactory.build();
   return ed25519.getPublicKey(privateKey);
 });
@@ -748,7 +748,7 @@ const UserNameProofFactory = Factory.define<protobufs.UserNameProof>(() => {
 
 const SignerEventBodyFactory = Factory.define<protobufs.SignerEventBody>(() => {
   return SignerEventBody.create({
-    key: Ed25519PPublicKeyFactory.build(),
+    key: Ed25519PublicKeyFactory.build(),
     eventType: SignerEventType.ADD,
     keyType: 1,
     metadataType: 1,
@@ -830,7 +830,7 @@ export const Factories = {
   EnsName: EnsNameFactory,
   TransactionHash: TransactionHashFactory,
   Ed25519PrivateKey: Ed25519PrivateKeyFactory,
-  Ed25519PPublicKey: Ed25519PPublicKeyFactory,
+  Ed25519PPublicKey: Ed25519PublicKeyFactory,
   Ed25519Signer: Ed25519SignerFactory,
   Ed25519Signature: Ed25519SignatureFactory,
   Eip712Signer: Eip712SignerFactory,
