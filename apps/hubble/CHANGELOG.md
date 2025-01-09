@@ -828,7 +828,7 @@
 - 52260bc8: chore: Deprecate "status" command
 - 0f83be8f: fix: Reformat grafana dashboard with descriptions
 - 316bcd3a: chore: Remove signer pre-sync for initial sync
-- 3c32cf21: fix: Supress progress logs during tests
+- 3c32cf21: fix: Suppress progress logs during tests
 - 2ab99d95: feat: Add REST API
 - 7fd1f945: fix: Add progress bar for storage cache
 - aac4220f: chore: Add cli options documentation linter
