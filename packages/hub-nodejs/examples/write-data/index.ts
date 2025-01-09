@@ -165,7 +165,7 @@ const NETWORK = FarcasterNetwork.TESTNET; // Network of the Hub
    * "🤓https://url-after-unicode.com can include URL immediately after emoji"
    */
 
-  const castWithEmojiLinkAttachmnent = await makeCastAdd(
+  const castWithEmojiLinkAttachment = await makeCastAdd(
     {
       text: "🤓https://url-after-unicode.com can include URL immediately after emoji",
       embeds: [{ url: "https://url-after-unicode.com" }],
@@ -176,7 +176,7 @@ const NETWORK = FarcasterNetwork.TESTNET; // Network of the Hub
     dataOptions,
     ed25519Signer,
   );
-  castResults.push(castWithEmojiLinkAttachmnent);
+  castResults.push(castWithEmojiLinkAttachment);
 
   /**
    * Example 7: A cast that replies to a URL
