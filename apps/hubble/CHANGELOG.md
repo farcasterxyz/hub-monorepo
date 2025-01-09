@@ -1,5 +1,15 @@
 # @farcaster/hubble
 
+## 1.18.0
+
+### Minor Changes
+
+- chore: Release 1.18
+
+### Patch Changes
+
+- 85c7e5e3: fix: Ensure we always have a minimum number of connected peers
+
 ## 1.17.0
 
 ### Minor Changes
