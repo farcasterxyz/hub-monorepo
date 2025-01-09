@@ -33,6 +33,10 @@ export class ConnectionFilter implements ConnectionGater {
     this.deniedPeers = addrs;
   }
 
+  addDeniedPeer(peerId: string) {
+    this.deniedPeers.push(peerId);
+  }
+
   denyDialPeer = async (peerId: PeerId): Promise<boolean> => {
     const deny = this.shouldDeny(peerId.toString());
     if (deny) {
