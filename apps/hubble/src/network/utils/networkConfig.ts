@@ -118,7 +118,7 @@ export function applyNetworkConfig(
 
   if (semver.valid(minAppVersion)) {
     if (semver.lt(APP_VERSION, minAppVersion)) {
-      const errMsg = "Hubble version is too old too start. Please update your node.";
+      const errMsg = "Hubble version is too old to start. Please update your node.";
       log.fatal({ minAppVersion, ourVersion: APP_VERSION }, errMsg);
       return {
         allowedPeerIds,

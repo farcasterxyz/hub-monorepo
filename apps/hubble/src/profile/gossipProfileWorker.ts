@@ -141,7 +141,7 @@ class GossipTestNode {
   }
 
   async start() {
-    // Override the peer score threholds. When running benchmark tests, we want to accept all messages
+    // Override the peer score thresholds. When running benchmark tests, we want to accept all messages
     // and not unnecessarily graylist peers (which libp2p does since all the connections appear to come
     // from the same IP)
     await this.gossipNode.start([], {
