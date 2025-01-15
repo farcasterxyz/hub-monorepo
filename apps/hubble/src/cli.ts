@@ -186,6 +186,11 @@ app
   .option("--commit-lock-timeout <number>", "Rocks DB commit lock timeout in milliseconds (default: 500)", parseNumber)
   .option("--commit-lock-max-pending <number>", "Rocks DB commit lock max pending jobs (default: 1000)", parseNumber)
   .option("--rpc-auth <username:password,...>", "Require username-password auth for RPC submit. (default: disabled)")
+  .option(
+    "--stream-message-buffer-size <number>",
+    "Maximum number of messages to buffer when a stream is backed up (default: 10000)",
+    parseNumber,
+  )
 
   .action(async (cliOptions) => {
     const handleShutdownSignal = (signalName: string) => {
