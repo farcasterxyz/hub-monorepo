@@ -4,8 +4,8 @@ import { err, ok } from "neverthrow";
 
 export const STREAM_DRAIN_TIMEOUT_MS = 10_000;
 export const SLOW_CLIENT_GRACE_PERIOD_MS = 60_000;
-// TODO: Make this configurable via CLI
-export const STREAM_MESSAGE_BUFFER_SIZE = 10_000;
+// Default value if not configured via CLI
+export const DEFAULT_STREAM_MESSAGE_BUFFER_SIZE = 10_000;
 
 /**
  * A BufferedStreamWriter is a wrapper around a gRPC stream that will buffer messages when the stream is backed up.
@@ -16,11 +16,12 @@ export const STREAM_MESSAGE_BUFFER_SIZE = 10_000;
 export class BufferedStreamWriter {
   private streamIsBackedUp = false;
   private stream: ServerWritableStream<SubscribeRequest, HubEvent>;
-  // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
   private dataWaitingForDrain: any[] = [];
+  private bufferSize: number;
 
-  constructor(stream: ServerWritableStream<SubscribeRequest, HubEvent>) {
+  constructor(stream: ServerWritableStream<SubscribeRequest, HubEvent>, bufferSize?: number) {
     this.stream = stream;
+    this.bufferSize = bufferSize || DEFAULT_STREAM_MESSAGE_BUFFER_SIZE;
   }
 
   /**
@@ -29,12 +30,11 @@ export class BufferedStreamWriter {
    * ok(false) if the message was buffered because the stream is full
    * err if the stream can't be written to any more and will be closed.
    */
-  // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
   public writeToStream(message: any): HubResult<boolean> {
     if (this.streamIsBackedUp) {
       this.dataWaitingForDrain.push(message);
 
-      if (this.dataWaitingForDrain.length > STREAM_MESSAGE_BUFFER_SIZE) {
+      if (this.dataWaitingForDrain.length > this.bufferSize) {
         this.destroyStream();
 
         return err(new HubError("unavailable.network_failure", "Stream is backed up and cache is full"));
