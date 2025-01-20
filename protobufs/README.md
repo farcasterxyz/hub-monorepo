@@ -4,10 +4,10 @@ Specifications for API's and data formats used in Hubble, including both Farcast
 
 | Schema                                      | Type Description                         | Docs                    |
 |---------------------------------------------|------------------------------------------| ----------------------- |
-| [Message](schemas/message.proto)            | Types for Farcaster deltas               | [docs](docs/message.md) |
-| [OnChainEvent](schemas/onchain_event.proto) | Types for Farcaster onchain events       | [docs](docs/message.md) |
-| [HubEvent](schemas/hub_event.proto)         | Types for hub events                     | [docs](docs/message.md) |
-| [RPC](schemas/rpc.proto)                    | Types for gRPC APIs exposed by Hubs      | [docs](docs/rpc.md)     |
+| [Message](schemas/message.proto)            | Types for Farcaster deltas               | [docs](../apps/hubble/www/docs/docs/messages.md) |
+| [OnChainEvent](schemas/onchain_event.proto) | Types for Farcaster onchain events       | [docs](../apps/hubble/www/docs/docs/onchain_events.md) |
+| [HubEvent](schemas/hub_event.proto)         | Types for hub events                     | [docs](../apps/hubble/www/docs/docs/events.md) |
+| [RPC](schemas/rpc.proto)                    | Types for gRPC APIs exposed by Hubs      | [docs](../apps/hubble/www/docs/docs/api.md)     |
 | [Gossip](schemas/gossip.proto)              | Types for gossiping data between Hubs    |                         |
 | [HubState](schemas/hub_state.proto)         | Types for maintaining internal state     |                         |
 
