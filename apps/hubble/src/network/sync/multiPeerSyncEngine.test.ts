@@ -599,7 +599,7 @@ describe("Multi peer sync engine with streams", () => {
     expect(await syncEngine2.trie.items()).toEqual(3 + 2); // 2 onchain events + 2 castAdds
     expect(await syncEngine1.trie.items()).toEqual(3 + 1); // 2 onchain events + 1 castAdd
 
-    // Attempt to sync engine2 <-- engine1. Engine1 has only singerAdd
+    // Attempt to sync engine2 <-- engine1. Engine1 has only signerAdd
     await syncEngine2.performSync("engine1", clientForServer1);
 
     // The sync engine should realize that castAdd2 is not in it's engine, so it should be removed from the sync trie
@@ -1496,7 +1496,7 @@ describe("Multi peer sync engine with rpcs", () => {
     expect(await syncEngine2.trie.items()).toEqual(3 + 2); // 2 onchain events + 2 castAdds
     expect(await syncEngine1.trie.items()).toEqual(3 + 1); // 2 onchain events + 1 castAdd
 
-    // Attempt to sync engine2 <-- engine1. Engine1 has only singerAdd
+    // Attempt to sync engine2 <-- engine1. Engine1 has only signerAdd
     await syncEngine2.performSync("engine1", clientForServer1);
 
     // The sync engine should realize that castAdd2 is not in it's engine, so it should be removed from the sync trie
