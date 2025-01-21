@@ -91,10 +91,10 @@ export class PruneMessagesJobScheduler {
         // 2. Don't overload the DB or Sync Trie, causing spikes in latency
         if (fid % 100 === 0) {
           // See if we are running ahead of schedule
-          const allotedTimeMs = TIME_SCHEDULED_PER_FID_MS * fid;
+          const allottedTimeMs = TIME_SCHEDULED_PER_FID_MS * fid;
           const elapsedTimeMs = Date.now() - start;
-          if (allotedTimeMs > elapsedTimeMs) {
-            const sleepTimeMs = allotedTimeMs - elapsedTimeMs;
+          if (allottedTimeMs > elapsedTimeMs) {
+            const sleepTimeMs = allottedTimeMs - elapsedTimeMs;
             // Sleep for the remaining time
             await sleep(sleepTimeMs);
           }
