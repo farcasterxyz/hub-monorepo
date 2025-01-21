@@ -134,10 +134,10 @@ export class ValidateOrRevokeMessagesJobScheduler {
         // Throttle the job.
         // We run at the rate of 50 fids per second. If we are running ahead of schedule, we sleep to catch up
         if (fid % 100 === 0) {
-          const allotedTimeMs = (fid - lastFid) * TIME_SCHEDULED_PER_FID_MS;
+          const allottedTimeMs = (fid - lastFid) * TIME_SCHEDULED_PER_FID_MS;
           const elapsedTimeMs = Date.now() - start;
-          if (allotedTimeMs > elapsedTimeMs) {
-            const sleepTimeMs = allotedTimeMs - elapsedTimeMs;
+          if (allottedTimeMs > elapsedTimeMs) {
+            const sleepTimeMs = allottedTimeMs - elapsedTimeMs;
             // Sleep for the remaining time
             await sleep(sleepTimeMs);
           }
