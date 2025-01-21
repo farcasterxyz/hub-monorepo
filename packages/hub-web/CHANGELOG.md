@@ -4,7 +4,7 @@
 
 ### Patch Changes
 
-- 913c0f67: feat: support twitter and github usernames
+- 913c0f67: feat: support x and github usernames
 - Updated dependencies [913c0f67]
   - @farcaster/core@0.15.6
 
