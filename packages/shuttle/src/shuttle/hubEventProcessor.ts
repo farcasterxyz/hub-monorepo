@@ -109,7 +109,7 @@ export class HubEventProcessor {
       return "deleted";
     }
 
-    // The above are 2p sets, so we have the consider whether they are add or remove messages to determine the state
+    // The above are 2p sets, so we have to consider whether they are add or remove messages to determine the state
     // The rest are 1p sets, so we can just check the operation
 
     return isAdd ? "created" : "deleted";
