@@ -7,7 +7,7 @@ const log = logger.child({
 });
 
 /**
- * ConnectionFilter ensures that nodes only collect to peers in a specific allowlist.
+ * ConnectionFilter ensures that nodes only connect to peers in a specific allowlist.
  *
  * It implements the entire libp2p ConnectionGater interface to intercept calls at the lowest level
  * and prevent the connection.
