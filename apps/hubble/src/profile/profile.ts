@@ -280,12 +280,12 @@ export async function profileStorageUsed(rocksDB: RocksDB, fidProfileFileName?: 
   const allKeys = new KeysProfile("All Keys");
   const prefixKeys = Array.from(
     { length: getMaxValue(RootPrefix) + 1 },
-    (_v, i: number) => new KeysProfile(RootPrefix[i]?.toString()),
+    (_v, i: number) => new KeysProfile(RootPrefix[i]?.toString() || ""),
   );
 
   const userPostfixKeys = Array.from(
     { length: getMaxValue(UserPostfix) + 1 },
-    (_v, i: number) => new KeysProfile(UserPostfix[i]?.toString()),
+    (_v, i: number) => new KeysProfile(UserPostfix[i]?.toString() || ""),
   );
 
   const onchainPostfixKeys = Array.from(
