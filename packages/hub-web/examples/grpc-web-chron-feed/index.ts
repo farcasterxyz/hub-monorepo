@@ -25,18 +25,39 @@ const FIDS = [2, 3]; // User IDs to fetch casts for
 /**
  * Returns a user's casts which are not replies to any other casts in reverse chronological order.
  */
-const getPrimaryCastsByFid = async (fid: number, client: HubRpcClient): HubAsyncResult<CastAddMessage[]> => {
-  // TODO: Instead of fetching N casts and returning the primary ones, loop through until N primary casts are found.
-  const result = await client.getCastsByFid({ fid: fid, pageSize: 10, reverse: true });
+const getPrimaryCastsByFid = async (fid: number, client: HubRpcClient, desiredCount: number = 10): HubAsyncResult<CastAddMessage[]> => {
+  let primaryCasts: CastAddMessage[] = [];
+  let cursor: Uint8Array | undefined;
+  
+  while (primaryCasts.length < desiredCount) {
+    const result = await client.getCastsByFid({ 
+      fid: fid, 
+      pageSize: 20, 
+      reverse: true,
+      cursor
+    });
 
-  if (result.isErr()) {
-    return err(result.error);
+    if (result.isErr()) {
+      return err(result.error);
+    }
+
+    if (result.value.messages.length === 0) {
+      break; // No more messages to fetch
+    }
+
+    // Coerce Messages into Casts and filter primary ones
+    const casts = result.value.messages.filter(isCastAddMessage);
+    const newPrimaryCasts = casts.filter((message) => !message.data.castAddBody.parentCastId);
+    primaryCasts = [...primaryCasts, ...newPrimaryCasts];
+
+    cursor = result.value.nextPageCursor;
+    
+    if (!cursor) {
+      break; // No more pages to fetch
+    }
   }
 
-  // Coerce Messages into Casts, should not actually filter out any messages
-  const casts = result.value.messages.filter(isCastAddMessage);
-
-  return ok(casts.filter((message) => !message.data.castAddBody.parentCastId));
+  return ok(primaryCasts.slice(0, desiredCount));
 };
 
 const getFnameFromFid = async (fid: number, client: HubRpcClient): HubAsyncResult<string> => {
