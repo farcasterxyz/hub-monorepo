@@ -29,7 +29,7 @@ describe("connectionFilter tests", () => {
     });
     await expect(filter.denyDialPeer(allowedPeerId)).resolves.toBeTruthy();
     await expect(filter.denyDialMultiaddr(multiaddr(allowedMultiAddrStr))).resolves.toBeTruthy();
-    // Incepient Inbound Connections are always allowed
+    // Incipient Inbound Connections are always allowed
     await expect(filter.denyInboundConnection(remoteConnection)).resolves.toBeFalsy();
     await expect(filter.denyInboundEncryptedConnection(allowedPeerId, remoteConnection)).resolves.toBeTruthy();
     await expect(filter.denyInboundUpgradedConnection(allowedPeerId, remoteConnection)).resolves.toBeTruthy();
@@ -47,7 +47,7 @@ describe("connectionFilter tests", () => {
     });
     await expect(filter.denyDialPeer(allowedPeerId)).resolves.toBeFalsy();
     await expect(filter.denyDialMultiaddr(multiaddr(allowedMultiAddrStr))).resolves.toBeFalsy();
-    // Incepient Inbound Connections are always allowed
+    // Incipient Inbound Connections are always allowed
     await expect(filter.denyInboundConnection(remoteConnection)).resolves.toBeFalsy();
     await expect(filter.denyInboundEncryptedConnection(allowedPeerId, remoteConnection)).resolves.toBeFalsy();
     await expect(filter.denyInboundUpgradedConnection(allowedPeerId, remoteConnection)).resolves.toBeFalsy();
@@ -65,7 +65,7 @@ describe("connectionFilter tests", () => {
     });
     await expect(filter.denyDialPeer(allowedPeerId)).resolves.toBeFalsy();
     await expect(filter.denyDialPeer(blockedPeerId)).resolves.toBeTruthy();
-    // Incepient Inbound Connections are always allowed
+    // Incipient Inbound Connections are always allowed
     await expect(filter.denyInboundConnection(remoteConnection)).resolves.toBeFalsy();
     await expect(filter.denyOutboundConnection(blockedPeerId, remoteConnection)).resolves.toBeTruthy();
     await expect(filter.filterMultiaddrForPeer(blockedPeerId)).resolves.toBeFalsy();
@@ -79,7 +79,7 @@ describe("connectionFilter tests", () => {
     });
     await expect(filter.denyDialPeer(allowedPeerId)).resolves.toBeFalsy();
     await expect(filter.denyDialPeer(blockedPeerId)).resolves.toBeTruthy();
-    // Incepient Inbound Connections are always allowed
+    // Incipient Inbound Connections are always allowed
     await expect(filter.denyInboundConnection(remoteConnection)).resolves.toBeFalsy();
     await expect(filter.denyOutboundConnection(blockedPeerId, remoteConnection)).resolves.toBeTruthy();
     await expect(filter.filterMultiaddrForPeer(blockedPeerId)).resolves.toBeFalsy();
@@ -93,7 +93,7 @@ describe("connectionFilter tests", () => {
     });
     await expect(filter.denyDialPeer(blockedPeerId)).resolves.toBeTruthy();
     await expect(filter.denyDialMultiaddr(multiaddr(allowedMultiAddrStr))).resolves.toBeTruthy();
-    // Incepient Inbound Connections are always allowed
+    // Incipient Inbound Connections are always allowed
     await expect(filter.denyInboundConnection(remoteConnection)).resolves.toBeFalsy();
     await expect(filter.denyOutboundConnection(blockedPeerId, remoteConnection)).resolves.toBeTruthy();
     await expect(filter.filterMultiaddrForPeer(blockedPeerId)).resolves.toBeFalsy();
@@ -107,7 +107,7 @@ describe("connectionFilter tests", () => {
     });
     await expect(filter.denyDialPeer(allowedPeerId)).resolves.toBeFalsy();
     await expect(filter.denyDialPeer(blockedPeerId)).resolves.toBeFalsy();
-    // Incepient Inbound Connections are always allowed
+    // Incipient Inbound Connections are always allowed
     await expect(filter.denyInboundConnection(remoteConnection)).resolves.toBeFalsy();
     await expect(filter.denyOutboundConnection(allowedPeerId, remoteConnection)).resolves.toBeFalsy();
     await expect(filter.filterMultiaddrForPeer(allowedPeerId)).resolves.toBeTruthy();
