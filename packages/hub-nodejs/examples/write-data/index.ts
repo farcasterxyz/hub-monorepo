@@ -179,7 +179,7 @@ const NETWORK = FarcasterNetwork.TESTNET; // Network of the Hub
   castResults.push(castWithEmojiLinkAttachment);
 
   /**
-   * Example 7: A cast that replies to a URL
+   * Example 8: A cast that replies to a URL
    *
    * "I think this is a great protocol 🚀"
    */
