@@ -525,7 +525,7 @@ describe("SyncEngine", () => {
         expect((await syncEngine.getDbStats()).numFnames).toEqual(1);
       });
 
-      test("adds sync ids to the trie when not present and egnine rejects as duplicate", async () => {
+      test("adds sync ids to the trie when not present and engine rejects as duplicate", async () => {
         await engine.mergeOnChainEvent(custodyEvent);
         await engine.mergeUserNameProof(userNameProof);
 

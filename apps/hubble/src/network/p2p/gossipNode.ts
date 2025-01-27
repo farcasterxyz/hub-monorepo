@@ -615,7 +615,7 @@ export class GossipNode extends TypedEmitter<NodeEvents> {
 
   registerDebugListeners() {
     this._nodeEvents?.addListener("peer:discovery", (detail) => {
-      log.info({ identity: this.identity }, `Found peer: ${detail.multiaddrs}  }`);
+      log.info({ identity: this.identity }, `Found peer: ${detail.multiaddrs}`);
     });
     this._nodeEvents?.addListener("connection:open", (detail: Connection) => {
       log.info({ identity: this.identity }, `Connection established to: ${detail.remotePeer.toString()}`);
