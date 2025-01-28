@@ -227,7 +227,7 @@ impl ReactionStoreDef {
         if target.is_some() && r#type == 0 {
             return Err(HubError {
                 code: "bad_request.validation_failure".to_string(),
-                message: "targetId provided without type".to_string(),
+                message: "target ID provided without type".to_string(),
             });
         }
         let mut key = Vec::with_capacity(33 + 1 + 1 + 28);
@@ -253,7 +253,7 @@ impl ReactionStoreDef {
         if target.is_some() && r#type == 0 {
             return Err(HubError {
                 code: "bad_request.validation_failure".to_string(),
-                message: "targetId provided without type".to_string(),
+                message: "target ID provided without type".to_string(),
             });
         }
         let mut key = Vec::with_capacity(33 + 1 + 1 + 28);
