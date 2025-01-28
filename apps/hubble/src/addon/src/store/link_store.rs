@@ -295,7 +295,7 @@ impl LinkStore {
             && (link_body.r#type.is_empty() || link_body.r#type.len() == 0)
         {
             return Err(HubError::validation_failure(
-                "targetId provided without type",
+                "target ID provided without type",
             ));
         }
 
@@ -344,7 +344,7 @@ impl LinkStore {
             && (link_body.r#type.is_empty() || link_body.r#type.len() == 0)
         {
             return Err(HubError::validation_failure(
-                "targetID provided without type",
+                "target ID provided without type",
             ));
         }
 
