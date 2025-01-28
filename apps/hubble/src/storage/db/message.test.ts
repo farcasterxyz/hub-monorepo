@@ -199,8 +199,6 @@ describe("getAllMessagesBySigner", () => {
   });
 
   test("succeeds with no results", async () => {
-    await expect(getAllMessagesBySigner(castMessage.data.fid, Factories.Ed25519PPublicKey.build())).resolves.toEqual(
-      [],
-    );
+    await expect(getAllMessagesBySigner(castMessage.data.fid, Factories.Ed25519PublicKey.build())).resolves.toEqual([]);
   });
 });
