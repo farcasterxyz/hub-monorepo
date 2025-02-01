@@ -41,6 +41,8 @@ import {
   REDIS_URL,
   SHARD_INDEX,
   TOTAL_SHARDS,
+  USE_STREAMING_RPCS_FOR_BACKFILL,
+  SUBSCRIBE_RPC_TIMEOUT,
 } from "./env";
 import * as process from "node:process";
 import url from "node:url";
@@ -99,6 +101,7 @@ export class App implements MessageHandler {
       null,
       totalShards,
       shardIndex,
+      SUBSCRIBE_RPC_TIMEOUT,
     );
     const streamConsumer = new HubEventStreamConsumer(hub, eventStreamForRead, shardKey);
 
@@ -213,8 +216,14 @@ export class App implements MessageHandler {
   }
 
   async reconcileFids(fids: number[]) {
-    // biome-ignore lint/style/noNonNullAssertion: client is always initialized
-    const reconciler = new MessageReconciliation(this.hubSubscriber.hubClient!, this.db, log);
+    const reconciler = new MessageReconciliation(
+      // biome-ignore lint/style/noNonNullAssertion: client is always initialized
+      this.hubSubscriber.hubClient!,
+      this.db,
+      log,
+      undefined,
+      USE_STREAMING_RPCS_FOR_BACKFILL,
+    );
     for (const fid of fids) {
       await reconciler.reconcileMessagesForFid(
         fid,

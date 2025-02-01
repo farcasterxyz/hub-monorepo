@@ -22,3 +22,5 @@ export const STATSD_HOST = process.env["STATSD_HOST"];
 export const STATSD_METRICS_PREFIX = process.env["STATSD_METRICS_PREFIX"] || "shuttle.";
 
 export const CONCURRENCY = parseInt(process.env["CONCURRENCY"] || "2");
+export const USE_STREAMING_RPCS_FOR_BACKFILL = process.env["USE_STREAMING_RPCS_FOR_BACKFILL"] === "true" ? true : false;
+export const SUBSCRIBE_RPC_TIMEOUT = parseInt(process.env["SUBSCRIBE_RPC_TIMEOUT"] || "30000");
