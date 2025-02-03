@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.6.13
+
+### Patch Changes
+
+- 63eb1407: feat: add envvars to shuttle for consuming from snapchain
+
 ## 0.6.12
 
 ### Patch Changes
