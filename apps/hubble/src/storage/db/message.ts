@@ -108,8 +108,11 @@ export const typeToSetPostfix = (type: MessageType): UserMessagePostfix => {
 };
 
 export const putMessage = (db: RocksDB, message: Message): Promise<void> => {
-  const txn = putMessageTransaction(db.transaction(), message);
-  return db.commit(txn);
+  const txnResult = putMessageTransaction(db.transaction(), message);
+  if (txnResult.isErr()) {
+    return Promise.reject(txnResult.error);
+  }
+  return db.commit(txnResult.value);
 };
 
 export const getMessage = async <T extends Message>(
@@ -238,18 +241,18 @@ export const forEachMessageBySigner = async (
   });
 };
 
-export const putMessageTransaction = (txn: RocksDbTransaction, message: Message): RocksDbTransaction => {
+export const putMessageTransaction = (txn: RocksDbTransaction, message: Message): Result<RocksDbTransaction, HubError> => {
   if (!message.data) {
-    throw new HubError("bad_request.invalid_param", "message data is missing");
+    return err(new HubError("bad_request.invalid_param", "message data is missing"));
   }
   const tsHash = makeTsHash(message.data.timestamp, message.hash);
   if (tsHash.isErr()) {
-    throw tsHash.error; // TODO: use result pattern
+    return err(tsHash.error);
   }
   const primaryKey = makeMessagePrimaryKey(message.data.fid, typeToSetPostfix(message.data.type), tsHash.value);
-
-  const messageBuffer = messageEncode(message);
-  return txn.put(primaryKey, Buffer.from(messageBuffer));
+  
+  txn.put(primaryKey, messageEncode(message));
+  return ok(txn);
 };
 
 export const deleteMessageTransaction = (txn: RocksDbTransaction, message: Message): RocksDbTransaction => {
