@@ -17,6 +17,8 @@ import { jestRocksDB } from "../../storage/db/jestUtils.js";
 import Engine from "../../storage/engine/index.js";
 import { MockHub } from "../../test/mocks.js";
 import { setReferenceDateForTest } from "../../utils/versions.js";
+import { beforeAll, afterAll, beforeEach, describe, test, expect } from "@jest/globals";
+import { getFarcasterTime } from "../../utils";
 
 const db = jestRocksDB("protobufs.rpc.linkService.test");
 const network = FarcasterNetwork.TESTNET;
@@ -96,6 +98,21 @@ describe("getLink", () => {
     );
 
     expect(Message.toJSON(result._unsafeUnwrap())).toEqual(Message.toJSON(linkAddFollow));
+  });
+
+  test("succeeds with mentor", async () => {
+    const timestamp = getFarcasterTime()._unsafeUnwrap();
+    const linkAddMentor = await Factories.LinkAddMessage.create(
+      { data: { fid, network, timestamp, linkBody: { targetFid, type: "mentor" } } },
+      { transient: { signer } },
+    );
+    await engine.mergeMessage(linkAddMentor);
+
+    const result = await client.getLink(
+      LinkRequest.create({ fid, linkType: "mentor", targetFid: targetFid }),
+    );
+
+    expect(Message.toJSON(result._unsafeUnwrap())).toEqual(Message.toJSON(linkAddMentor));
   });
 
   test("succeeds with endorse", async () => {
