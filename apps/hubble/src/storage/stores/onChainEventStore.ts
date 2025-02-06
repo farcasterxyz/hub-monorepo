@@ -27,7 +27,7 @@ import {
   makeSignerOnChainEventBySignerKey,
   putOnChainEventTransaction,
 } from "../db/onChainEvent.js";
-import { ok, ResultAsync } from "neverthrow";
+import { ok, ResultAsync, err } from "neverthrow";
 import { OnChainEventPostfix, RootPrefix } from "../db/types.js";
 import { getHubState, putHubState } from "../db/hubState.js";
 import { PageOptions } from "./types.js";
@@ -83,23 +83,32 @@ class OnChainEventStore {
     this._idRegisterByFidCache.clear();
   }
 
-  async getActiveSigner(fid: number, signer: Uint8Array): Promise<SignerOnChainEvent> {
+  async getActiveSigner(fid: number, signer: Uint8Array): Promise<HubResult<SignerOnChainEvent>> {
     // See if we have this in the cache
     const cacheKey = this.getActiveSignerCacheKey(fid, signer);
 
-    return await this._activeSignerCache.get(cacheKey, async () => {
-      // Otherwise, look it up in the database
-      const signerEventPrimaryKey = await this._db.get(makeSignerOnChainEventBySignerKey(fid, signer));
-      const event = await getOnChainEventByKey<SignerOnChainEvent>(this._db, signerEventPrimaryKey);
-      if (
-        event.signerEventBody.eventType === SignerEventType.ADD &&
-        SUPPORTED_SIGNER_SCHEMES.includes(event.signerEventBody.keyType)
-      ) {
-        return event;
-      } else {
-        throw new HubError("not_found", "no such active signer");
+    try {
+      const event = await this._activeSignerCache.get(cacheKey, async () => {
+        // Otherwise, look it up in the database
+        const signerEventPrimaryKey = await this._db.get(makeSignerOnChainEventBySignerKey(fid, signer));
+        const event = await getOnChainEventByKey<SignerOnChainEvent>(this._db, signerEventPrimaryKey);
+        if (
+          event.signerEventBody.eventType === SignerEventType.ADD &&
+          SUPPORTED_SIGNER_SCHEMES.includes(event.signerEventBody.keyType)
+        ) {
+          return event;
+        }
+        return null;
+      });
+      
+      if (!event) {
+        return err(new HubError("not_found", "no such active signer"));
       }
-    });
+      
+      return ok(event);
+    } catch (error) {
+      return err(new HubError("not_found", "failed to get active signer"));
+    }
   }
 
   async getFids(pageOptions: PageOptions = {}): Promise<{
@@ -161,32 +170,33 @@ class OnChainEventStore {
   /**
    * Merges a rent ContractEvent into the StorageEventStore
    */
-  async _mergeEvent(event: OnChainEvent): Promise<number> {
+  async _mergeEvent(event: OnChainEvent): Promise<HubResult<number>> {
     const _existingEvent = await ResultAsync.fromPromise(
       getOnChainEvent(this._db, event.type, event.fid, event.blockNumber, event.logIndex),
       () => undefined,
     );
     if (_existingEvent.isOk()) {
-      throw new HubError("bad_request.duplicate", "onChainEvent already exists");
+      return err(new HubError("bad_request.duplicate", "onChainEvent already exists"));
     }
 
     let txn = putOnChainEventTransaction(this._db.transaction(), event);
 
-    if (isSignerOnChainEvent(event)) {
-      txn = await this._handleSignerEvent(txn, event);
-    } else if (isIdRegisterOnChainEvent(event)) {
-      txn = await this._handleIdRegisterEvent(txn, event);
-    }
+    try {
+      if (isSignerOnChainEvent(event)) {
+        txn = await this._handleSignerEvent(txn, event);
+      } else if (isIdRegisterOnChainEvent(event)) {
+        txn = await this._handleIdRegisterEvent(txn, event);
+      }
 
-    const result = await this._eventHandler.commitTransaction(txn, {
-      type: HubEventType.MERGE_ON_CHAIN_EVENT,
-      mergeOnChainEventBody: { onChainEvent: event },
-    });
-    if (result.isErr()) {
-      throw result.error;
+      const result = await this._eventHandler.commitTransaction(txn, {
+        type: HubEventType.MERGE_ON_CHAIN_EVENT,
+        mergeOnChainEventBody: { onChainEvent: event },
+      });
+      
+      return result;
+    } catch (error) {
+      return err(new HubError("unavailable", "failed to merge event"));
     }
-
-    return result.value;
   }
 
   private async _handleSignerEvent(txn: RocksDbTransaction, event: SignerOnChainEvent): Promise<RocksDbTransaction> {
@@ -201,7 +211,7 @@ class OnChainEventStore {
         event.signerEventBody.eventType === SignerEventType.ADD &&
         event.version === existingEvent.version
       ) {
-        throw new HubError("bad_request.conflict", "attempting to re-add removed key");
+        return err(new HubError("bad_request.conflict", "attempting to re-add removed key"));
       }
     }
 
