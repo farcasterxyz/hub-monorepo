@@ -81,7 +81,7 @@ describe("getCast", () => {
     expect(result._unsafeUnwrapErr().errCode).toEqual("not_found");
   });
 
-  test("fails without fid or tsHash", async () => {
+  test("fails without fid", async () => {
     const result = await client.getCast(CastId.create({ fid: 0, hash: new Uint8Array() }));
     expect(result._unsafeUnwrapErr()).toEqual(new HubError("bad_request.validation_failure", "fid is missing"));
   });
