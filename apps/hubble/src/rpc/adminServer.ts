@@ -135,7 +135,7 @@ export default class AdminServer {
                   deletedCount += 1;
                 },
                 (e) => {
-                  log.error({ errCode: e.errCode }, "Failed to delete key: ${e.message}");
+                  log.error({ errCode: e.errCode }, `Failed to delete key: ${e.message}`);
                 },
               );
             });
