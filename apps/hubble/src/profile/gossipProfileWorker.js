@@ -23,7 +23,7 @@ parentPort?.on("message", (data) => {
       const datas = nodes.map((node) => node.getData());
       const peerIds = nodes.map((node) => node.gossipNode.peerId?.toString());
       parentPort?.postMessage({ id, action, response: { peerIds, datas } });
-    } else if (action === ProfileWorkerAction.GetMultiAddres) {
+    } else if (action === ProfileWorkerAction.GetMultiAddress) {
       const response = getMultiAddrs();
       parentPort?.postMessage({ id, action, response });
     } else if (action === ProfileWorkerAction.ConnectToMutliAddr) {
