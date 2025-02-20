@@ -1,6 +1,6 @@
 # Architecture
 
-A Hub is a single-process daemon that receives data from clients, other hubs and farcaster contracts. It has three main components:
+A Hub is a single-process daemon which receives data from clients, other hubs and farcaster contracts. It has three main components:
 
 - P2P Engine - establishes a gossipsub network to exchange messages with hubs.
 - Sync Engine - handles edge cases when gossip fails to deliver messages.
