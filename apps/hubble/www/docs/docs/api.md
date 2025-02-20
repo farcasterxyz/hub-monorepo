@@ -10,12 +10,12 @@ Used to retrieve on chain events (id registry, signers, storage rent)
 
 | Method Name                        | Request Type                    | Response Type         | Description                                                                                                 |
 |------------------------------------|---------------------------------|-----------------------|-------------------------------------------------------------------------------------------------------------|
-| GetOnChainSigner                   | SignerRequest                   | OnChainEvent          | Returns the onchain event for an active signer for an Fid                                                   |
+| GetOnChainSigner                   | SignerRequest                   | OnChainEvent          | Returns the onchain event for an active signer for a Fid                                                   |
 | GetOnChainSignersByFid             | FidRequest                      | OnChainEventResponse  | Returns all active signers add events for a Fid                                                            |
 | GetIdRegistryOnChainEvent          | FidRequest                      | OnChainEvent          | Returns the most recent register/transfer on chain event for a fid                                         |
 | GetIdRegistryOnChainEventByAddress | IdRegistryEventByAddressRequest | OnChainEvent          | Returns the registration/transfer event by address if it exists (allows looking up fid by address)          |
 | GetCurrentStorageLimitsByFid       | FidRequest                      | StorageLimitsResponse | Returns current storage limits for all stores for a Fid                                                    |
-| GetOnChainEvents                   | OnChainEventRequest             | OnChainEventResponse  | Returns all on chain events filtered by type for an Fid (includes inactive signers and expired rent events) |
+| GetOnChainEvents                   | OnChainEventRequest             | OnChainEventResponse  | Returns all on chain events filtered by type for a Fid (includes inactive signers and expired rent events) |
 | GetFids                            | FidsRequest                     | FidsResponse          | Returns the most recent Fids that were registered                                                           |
 
 
@@ -84,9 +84,9 @@ Users to retrieve the current metadata associated with a user
 
 | Method Name                  | Request Type    | Response Type         | Description                             |
 |------------------------------|-----------------|-----------------------|-----------------------------------------|
-| GetUserData                  | UserDataRequest | Message               | Returns a specific UserData for an Fid  |
-| GetUserDataByFid             | FidRequest      | MessagesResponse      | Returns all UserData for an Fid         |
-| GetAllUserDataMessagesByFid  | FidRequest      | MessagesResponse      | Returns all UserData for an Fid         |
+| GetUserData                  | UserDataRequest | Message               | Returns a specific UserData for a Fid  |
+| GetUserDataByFid             | FidRequest      | MessagesResponse      | Returns all UserData for a Fid         |
+| GetAllUserDataMessagesByFid  | FidRequest      | MessagesResponse      | Returns all UserData for a Fid         |
 
 #### UserData Request
 
@@ -109,9 +109,9 @@ Used to retrieve valid casts or tombstones for deleted casts
 | Method Name             | Request Type | Response Type    | Description                                                    |
 | ----------------------- | ------------ | ---------------- | -------------------------------------------------------------- |
 | GetCast                 | CastId       | Message          | Returns a specific Cast                                        |
-| GetCastsByFid           | FidRequest   | MessagesResponse | Returns CastAdds for an Fid in reverse chron order             |
+| GetCastsByFid           | FidRequest   | MessagesResponse | Returns CastAdds for a Fid in reverse chron order             |
 | GetCastsByParent        | CastId       | MessagesResponse | Returns CastAdd replies to a given Cast in reverse chron order |
-| GetCastsByMention       | FidRequest   | MessagesResponse | Returns CastAdds that mention an Fid in reverse chron order    |
+| GetCastsByMention       | FidRequest   | MessagesResponse | Returns CastAdds that mention a Fid in reverse chron order    |
 | GetAllCastMessagesByFid | FidRequest   | MessagesResponse | Returns Casts for a Fid in reverse chron order                |
 
 #### CastsByParentRequest
@@ -130,7 +130,7 @@ Used to retrieve valid casts or tombstones for deleted casts
 | Method Name                 | Request Type             | Response Type    | Description                                                  |
 | --------------------------- | ------------------------ | ---------------- | ------------------------------------------------------------ |
 | GetReaction                 | ReactionRequest          | Message          | Returns a specific Reaction                                  |
-| GetReactionsByFid           | ReactionsByFidRequest    | MessagesResponse | Returns Reactions made by an Fid in reverse chron order      |
+| GetReactionsByFid           | ReactionsByFidRequest    | MessagesResponse | Returns Reactions made by a Fid in reverse chron order      |
 | GetReactionsByCast          | ReactionsByCastRequest   | MessagesResponse | Returns ReactionAdds for a given Cast in reverse chron order |
 | GetReactionsByTarget        | ReactionsByTargetRequest | MessagesResponse | Returns ReactionAdds for a given Cast in reverse chron order |
 | GetAllReactionMessagesByFid | FidRequest               | MessagesResponse | Returns Reactions made by a Fid in reverse chron order      |
@@ -183,9 +183,9 @@ Users to retrieve valid or revoked reactions
 | Method Name                     | Request Type         | Response Type    | Description                                                  |
 | ------------------------------- | -------------------- | ---------------- | ------------------------------------------------------------ |
 | GetLink                         | LinkRequest          | Message          | Returns a specific Link                                  |
-| GetLinksByFid                   | LinksByFidRequest    | MessagesResponse | Returns Links made by an fid in reverse chron order      |
+| GetLinksByFid                   | LinksByFidRequest    | MessagesResponse | Returns Links made by a fid in reverse chron order      |
 | GetLinksByTarget                | LinksByTargetRequest | MessagesResponse | Returns LinkAdds for a given target in reverse chron order |
-| GetAllLinkMessagesByFid         | FidRequest           | MessagesResponse | Returns Links made by an fid in reverse chron order      |
+| GetAllLinkMessagesByFid         | FidRequest           | MessagesResponse | Returns Links made by a fid in reverse chron order      |
 | GetLinkCompactStateMessageByFid | FidRequest           | MessagesResponse | Returns the LinkCompactState message made by a fid       |
 
 #### Link Request
@@ -233,8 +233,8 @@ Used to retrieve valid or revoked proof of ownership of an Ethereum Address.
 | Method Name                     | Request Type        | Response Type    | Description                                       |
 | ------------------------------- | ------------------- | ---------------- | ------------------------------------------------- |
 | GetVerification                 | VerificationRequest | Message          | Returns a VerificationAdd for an Ethereum Address |
-| GetVerificationsByFid           | FidRequest          | MessagesResponse | Returns all VerificationAdds made by an Fid       |
-| GetAllVerificationMessagesByFid | FidRequest          | MessagesResponse | Returns all Verifications made by an Fid          |
+| GetVerificationsByFid           | FidRequest          | MessagesResponse | Returns all VerificationAdds made by a Fid       |
+| GetAllVerificationMessagesByFid | FidRequest          | MessagesResponse | Returns all Verifications made by a Fid          |
 
 #### Verification Request
 
