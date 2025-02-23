@@ -77,10 +77,8 @@ pub fn delete_username_proof_transaction(
     username_proof: &UserNameProof,
     existing_fid: Option<u32>,
 ) {
-    let buf = username_proof.encode_to_vec();
-
     let primary_key = make_fname_username_proof_key(&username_proof.name);
-    txn.put(primary_key.clone(), buf);
+    txn.delete(primary_key);
 
     if existing_fid.is_some() {
         let secondary_key = make_fname_username_proof_by_fid_key(existing_fid.unwrap());
