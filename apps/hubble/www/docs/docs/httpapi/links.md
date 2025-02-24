@@ -94,7 +94,7 @@ Get all links to a target FID
 **Query Parameters**
 | Parameter | Description | Example |
 | --------- | ----------- | ------- |
-| target_fid       | The FID of the reaction's creator | `target_fid=6833` |
+| target_fid       | The FID of the reaction's target | `target_fid=6833` |
 | link_type | The type of link, as a string value| `link_type=follow` |
 
 
