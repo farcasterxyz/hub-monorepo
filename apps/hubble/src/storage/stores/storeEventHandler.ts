@@ -405,22 +405,24 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
   }
 
   private broadcastEvent(event: HubEvent): HubResult<void> {
-    if (isMergeMessageHubEvent(event)) {
-      this.emit("mergeMessage", event);
-    } else if (isPruneMessageHubEvent(event)) {
-      this.emit("pruneMessage", event);
-    } else if (isRevokeMessageHubEvent(event)) {
-      this.emit("revokeMessage", event);
-    } else if (isMergeUsernameProofHubEvent(event)) {
-      this.emit("mergeUsernameProofEvent", event);
-    } else if (isMergeOnChainHubEvent(event)) {
-      this.emit("mergeOnChainEvent", event);
-    } else {
-      return err(new HubError("bad_request.invalid_param", "invalid event type"));
+    const eventHandlers: [((event: HubEvent) => boolean), string][] = [
+      [isMergeMessageHubEvent, "mergeMessage"],
+      [isPruneMessageHubEvent, "pruneMessage"],
+      [isRevokeMessageHubEvent, "revokeMessage"],
+      [isMergeUsernameProofHubEvent, "mergeUsernameProofEvent"],
+      [isMergeOnChainHubEvent, "mergeOnChainEvent"],
+    ];
+  
+    for (const [checkFn, eventName] of eventHandlers) {
+      if (checkFn(event)) {
+        this.emit(eventName, event);
+        return ok(undefined);
+      }
     }
-
-    return ok(undefined);
+  
+    return err(new HubError("bad_request.invalid_param", "invalid event type"));
   }
+  
 }
 
 export default StoreEventHandler;
