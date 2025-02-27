@@ -1,4 +1,3 @@
-
 # Links API
 
 The Links API will accept the following values for the `link_type` field. 
@@ -6,6 +5,7 @@ The Links API will accept the following values for the `link_type` field.
 | String |  Description |
 | ------ |  ----------- |
 | follow | Follow from FID to Target FID |
+| mentor | Indicate that Target FID is a mentor for FID |
 
 ## linkById
 Get a link by its FID and target FID.
