@@ -50,7 +50,7 @@ Emit when an IdRegistryEvent is merged into the Hub.
 
 ### MergeNameRegistry
 
-Emit when an NameRegistryEvent is merged into the Hub.
+Emit when a NameRegistryEvent is merged into the Hub.
 
 | Name              | Type                            | Description                               |
 | ----------------- | ------------------------------- | ----------------------------------------- |
@@ -75,7 +75,7 @@ Emit when an onchain event occurs in the IdRegistry which registers or transfers
 | logIndex        | `number`                    | The log index of the event in the transaction.           |
 | to              | `Uint8Array`                | The address which now owns the fid.                      |
 | transactionHash | `Uint8Array`                | The hash of the transaction in which the event occurred. |
-| type            | [`NameRegistryEventType`]() | The type of event which occurred.                        |
+| type            | [`IdRegistryEventType`](#idregistryeventtype) | The type of event which occurred.                        |
 
 ### NameRegistryEvent
 
@@ -122,4 +122,4 @@ The Farcaster network that will accept the message.
 | --------------------------------- | ------ | ----------------------------------- |
 | NAME_REGISTRY_EVENT_TYPE_NONE     | 0      |                                     |
 | NAME_REGISTRY_EVENT_TYPE_TRANSFER | 1      | An fname was minted or transferred. |
-| NAME_REGISTRY_EVENT_TYPE_RENEW    | 1      | An fname was renewed.               |
+| NAME_REGISTRY_EVENT_TYPE_RENEW    | 2      | An fname was renewed.               |

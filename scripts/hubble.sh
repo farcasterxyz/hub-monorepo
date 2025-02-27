@@ -664,7 +664,7 @@ fi
 
 if [ "$1" == "autoupgrade" ]; then
     # Autoupgrade cronjob needs the correct $PATH entries
-    if [[ ! -f "~/.bashrc" ]]; then
+    if [[ ! -f ~/.bashrc ]]; then
       source ~/.bashrc
     fi
 
@@ -703,3 +703,7 @@ if [ $# -eq 0 ] || [ "$1" == "help" ]; then
     echo "add SKIP_CRONTAB=true to your .env to skip installing the autoupgrade crontab"
     exit 0
 fi
+
+echo "❌ Invalid command: $1"
+echo ""
+exec "$0" help

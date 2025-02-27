@@ -23,7 +23,7 @@ export class HubError extends Error {
   /* Hub classification of error types */
   public readonly errCode: HubErrorCode;
 
-  /* Indicates if if error message can be presented to the user */
+  /* Indicates if error message can be presented to the user */
   public readonly presentable: boolean = false;
 
   /**

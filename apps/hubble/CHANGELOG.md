@@ -1,5 +1,27 @@
 # @farcaster/hubble
 
+## 1.19.0
+
+### Minor Changes
+
+- chore: Release 1.19
+
+## 1.18.0
+
+### Minor Changes
+
+- chore: Release 1.18
+
+### Patch Changes
+
+- 85c7e5e3: fix: Ensure we always have a minimum number of connected peers
+
+## 1.17.0
+
+### Minor Changes
+
+- chore: Release 1.17
+
 ## 1.16.3
 
 ### Patch Changes
@@ -568,7 +590,7 @@
 ### Patch Changes
 
 - 577d698d: fix: Remove score penalty for duplicate gossip messages
-- 57ce2c66: fix: reduce sync freqency to help reduce hub load
+- 57ce2c66: fix: reduce sync frequency to help reduce hub load
 
 ## 1.9.5
 
@@ -812,7 +834,7 @@
 - 52260bc8: chore: Deprecate "status" command
 - 0f83be8f: fix: Reformat grafana dashboard with descriptions
 - 316bcd3a: chore: Remove signer pre-sync for initial sync
-- 3c32cf21: fix: Supress progress logs during tests
+- 3c32cf21: fix: Suppress progress logs during tests
 - 2ab99d95: feat: Add REST API
 - 7fd1f945: fix: Add progress bar for storage cache
 - aac4220f: chore: Add cli options documentation linter

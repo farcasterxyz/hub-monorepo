@@ -7,7 +7,7 @@ const log = logger.child({
 });
 
 /**
- * ConnectionFilter ensures that nodes only collect to peers in a specific allowlist.
+ * ConnectionFilter ensures that nodes only connect to peers in a specific allowlist.
  *
  * It implements the entire libp2p ConnectionGater interface to intercept calls at the lowest level
  * and prevent the connection.
@@ -20,9 +20,9 @@ export class ConnectionFilter implements ConnectionGater {
   private allowedPeers: string[] | undefined;
   private deniedPeers: string[];
 
-  constructor(addrs: string[] | undefined, deiniedPeers: string[] | undefined) {
+  constructor(addrs: string[] | undefined, deniedPeers: string[] | undefined) {
     this.allowedPeers = addrs;
-    this.deniedPeers = deiniedPeers ?? [];
+    this.deniedPeers = deniedPeers ?? [];
   }
 
   updateAllowedPeers(addrs: string[] | undefined) {
@@ -31,6 +31,10 @@ export class ConnectionFilter implements ConnectionGater {
 
   updateDeniedPeers(addrs: string[]) {
     this.deniedPeers = addrs;
+  }
+
+  addDeniedPeer(peerId: string) {
+    this.deniedPeers.push(peerId);
   }
 
   denyDialPeer = async (peerId: PeerId): Promise<boolean> => {

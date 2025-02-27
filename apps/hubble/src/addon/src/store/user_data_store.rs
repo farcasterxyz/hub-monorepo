@@ -70,7 +70,7 @@ impl StoreDef for UserDataStoreDef {
     ) -> Result<(), HubError> {
         Err(HubError {
             code: "bad_request.invalid_param".to_string(),
-            message: "UserDataStoree doesn't support merging removes".to_string(),
+            message: "UserDataStore doesn't support merging removes".to_string(),
         })
     }
 

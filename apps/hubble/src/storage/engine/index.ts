@@ -148,7 +148,7 @@ class Engine extends TypedEmitter<EngineEvents> {
 
   private _totalPruneSize: number;
 
-  private _solanaVerficationsEnabled = false;
+  private _solanaVerificationsEnabled = false;
 
   private _fNameRetryRateLimiter = new RateLimiterMemory({ points: 60, duration: 60 }); // 60 retries per minute allowed
 
@@ -272,13 +272,13 @@ class Engine extends TypedEmitter<EngineEvents> {
     this._onchainEventsStore.clearCaches();
   }
 
-  get solanaVerficationsEnabled(): boolean {
-    return this._solanaVerficationsEnabled;
+  get solanaVerificationsEnabled(): boolean {
+    return this._solanaVerificationsEnabled;
   }
 
   setSolanaVerifications(enabled: boolean) {
-    if (this._solanaVerficationsEnabled !== enabled) {
-      this._solanaVerficationsEnabled = enabled;
+    if (this._solanaVerificationsEnabled !== enabled) {
+      this._solanaVerificationsEnabled = enabled;
       logger.info(`Solana verifications toggled to: ${enabled}`);
     }
   }
@@ -1317,7 +1317,7 @@ class Engine extends TypedEmitter<EngineEvents> {
       isVerificationAddAddressMessage(message) &&
       message.data.verificationAddAddressBody.protocol === Protocol.SOLANA
     ) {
-      if (!this._solanaVerficationsEnabled) {
+      if (!this._solanaVerificationsEnabled) {
         return err(new HubError("bad_request.validation_failure", "solana verifications are not enabled"));
       }
     }

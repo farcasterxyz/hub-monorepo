@@ -244,7 +244,9 @@ export class LibP2PNode {
         ...(peerId && { peerId }),
         connectionGater: this._connectionGater,
         connectionManager: {
-          minConnections: 0,
+          // Set between the default DLo and DHi values. So we always have some connections, and not just the bootstrap peers.
+          // This is also helpful in case the node starts with a clean db, since the only explicit connections are to bootstrap peers and db peers.
+          minConnections: 7,
         },
         addresses: {
           listen: [listenMultiAddrStr],
@@ -423,6 +425,8 @@ export class LibP2PNode {
   /** Removes the peer from the address book and hangs up on them */
   async removePeerFromAddressBook(peerId: PeerId) {
     if (this._node) {
+      // Add to the connection gater so the autodial doesn't reconnect. Not persisted on restart.
+      this._connectionGater?.addDeniedPeer(peerId.toString());
       const hangupResult = await ResultAsync.fromPromise(
         this._node.hangUp(peerId),
         (error) => new HubError("unavailable", error as Error),

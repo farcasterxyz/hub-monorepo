@@ -33,11 +33,32 @@ try {
     const response = await axios.get(`${server}/v1/castsByFid?fid=${fid}`);
 
     console.log(`API Returned HTTP status ${response.status}`);    
-    console.log(`First Cast's text is ${response.messages[0].data.castAddBody.text}`);
+    console.log(`The first cast's text is ${response.messages[0].data.castAddBody.text}`);
 } catch (e) {
     // Handle errors
     console.log(response);
 }
+```
+
+### Get the username by FID
+
+```typescript
+const getFnameFromFid = async (
+  fid: number,
+  client: HubRpcClient
+): HubAsyncResult<string> => {
+  const result = await client.getUserData({
+    fid: fid,
+    userDataType: UserDataType.FNAME,
+  });
+  return result.map((message) => {
+    if (isUserDataAddMessage(message)) {
+      return message.data.userDataBody.value;
+    } else {
+      return '';
+    }
+  });
+};
 ```
 
 ### Running the examples

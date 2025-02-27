@@ -1652,7 +1652,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
     // If the hashes match, we do not need to do any work
     if (ourNode && ourNode.hash === theirNode.hash) return;
 
-    // If there are no messages to fetch, don't enque the work item
+    // If there are no messages to fetch, don't enqueue the work item
     if (theirNode.numMessages === 0) return;
 
     // Don't let the queue grow too large
@@ -1696,7 +1696,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
       // Replace the work queue with only the items that are not completed
       runningWorkItems = newRunningWorkItems;
 
-      // If there is an oppurtunity to do more work, we will do it
+      // If there is an opportunity to do more work, we will do it
       if (this.curSync.executingWorkCount < syncParallelism) {
         const n = Math.max(0, syncParallelism - this.curSync.executingWorkCount);
 
@@ -1766,7 +1766,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
               (c) => c.peerId !== this.curSync.peerId,
             );
 
-            // If none left, then interrupt the sync
+            // If none are left, then interrupt the sync
             if (this.curSync.secondaryRpcClients.length === 0) {
               this.curSync.interruptSync = true;
               log.warn("Perform Sync: PeerError: No more secondary peers, interrupting sync");
@@ -1789,7 +1789,7 @@ class SyncEngine extends TypedEmitter<SyncEvents> {
           await this.getMessagesFromOtherNode(workItem, theirNode.numMessages);
         }
 
-        // Recurse into the children to to schedule the next set of work. Note that we didn't after  the
+        // Recurse into the children to schedule the next set of work. Note that we didn't after  the
         // `getMessagesFromOtherNode` above. This is because even after we get messages from the other node,
         // there still might be left over messages at this node (if, for eg., there are > 10k messages, and the
         // other node only sent 1k messages).

@@ -86,7 +86,7 @@ try {
 
 ## validateMessage
 Validate a signed protobuf-serialized message with the Hub. This can be used to verify that the hub will consider the 
-message valid. Or to validate message that cannot be submitted (e.g. Frame actions) 
+message valid. Or to validate messages that cannot be submitted (e.g. Frame actions) 
 
 **Query Parameters**
 | Parameter | Description | Example |
@@ -168,7 +168,7 @@ async fn main() {
 
     let msg_data_bytes = msg_data.write_to_bytes().unwrap();
     
-    // Calculate the blake3 hash, trucated to 20 bytes
+    // Calculate the blake3 hash, truncated to 20 bytes
     let hash = blake3::hash(&msg_data_bytes).as_bytes()[0..20].to_vec();
 
     // Construct the actual message

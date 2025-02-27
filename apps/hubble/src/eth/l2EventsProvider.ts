@@ -714,7 +714,7 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
       // The viem API requires an event kind if you want to provide filters by indexed arguments-- this is why we're making multiple calls to syncHistoricalEvents and prioritizing the most common event types.
       const eventSpecificArgs = this.getEventSpecificArgs(fid);
 
-      // The batch sizes are artificially large-- this batch size is internally enforced and we essentially want to eliminate batches given that we don't expct a lot of results from these queries.
+      // The batch sizes are artificially large-- this batch size is internally enforced and we essentially want to eliminate batches given that we don't expect a lot of results from these queries.
       await this.syncHistoricalEvents(
         this._firstBlock,
         this._lastBlockNumber,

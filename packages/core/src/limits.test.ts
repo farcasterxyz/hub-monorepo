@@ -24,7 +24,7 @@ describe("getDefaultStoreLimit", () => {
 });
 
 describe("getStoreLimit", () => {
-  test("returns correct limits for multiple unit typos", () => {
+  test("returns correct limits for multiple unit types", () => {
     // single unit type
     expect(getStoreLimit(StoreType.CASTS, [{ unitType: StorageUnitType.UNIT_TYPE_LEGACY, unitSize: 1 }])).toEqual(5000);
 

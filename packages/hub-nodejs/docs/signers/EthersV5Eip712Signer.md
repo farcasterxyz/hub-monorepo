@@ -1,6 +1,6 @@
 # EthersV5Eip712Signer
 
-An Eip712Signer that is initialized with an [Ethers v5](https://github.com/ethers-io/ethers.js/tree/v5) Ethereum wallet and can be used with [Builders](../builders/builders.md) to sign Farcaster Messages.
+An Eip712Signer that is initialized with an [Ethers v5](https://github.com/ethers-io/ethers.js/tree/v5) Ethereum wallet and can be used with [Builders](https://github.com/farcasterxyz/hub-monorepo/blob/main/packages/hub-nodejs/docs/Builders.md) to sign Farcaster Messages.
 
 ## Properties
 
@@ -94,7 +94,7 @@ Generates a 256-bit signature for a VerificationClaim and returns the bytes.
 import { FarcasterNetwork, hexStringToBytes, makeVerificationEthAddressClaim } from '@farcaster/hub-nodejs';
 
 const blockHashHex = '0x1d3b0456c920eb503450c7efdcf9b5cf1f5184bf04e5d8ecbcead188a0d02018';
-const blockHashBytes = hexStringToBytes(blockHashHex)._unsafeUnwrap(); // Safety: blockHashHex is known and can't erro
+const blockHashBytes = hexStringToBytes(blockHashHex)._unsafeUnwrap(); // Safety: blockHashHex is known and can't error
 
 const ethereumAddressResult = await eip712Signer.getSignerKey();
 

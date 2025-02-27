@@ -1372,7 +1372,7 @@ describe("validateMessage", () => {
   test("fails with invalid signature", async () => {
     const message = await Factories.Message.create({
       signature: Factories.Ed25519Signature.build(),
-      signer: Factories.Ed25519PPublicKey.build(),
+      signer: Factories.Ed25519PublicKey.build(),
     });
 
     const result = await validations.validateMessage(message);
@@ -1382,7 +1382,7 @@ describe("validateMessage", () => {
   test("fails with invalid signature data", async () => {
     const message = await Factories.Message.create({
       signature: Factories.Bytes.build({}, { transient: { length: 0 } }),
-      signer: Factories.Ed25519PPublicKey.build(),
+      signer: Factories.Ed25519PublicKey.build(),
     });
 
     const result = await validations.validateMessage(message);

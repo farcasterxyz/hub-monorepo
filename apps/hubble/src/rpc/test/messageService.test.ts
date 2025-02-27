@@ -132,12 +132,12 @@ describe("validateMessage", () => {
   });
 
   test("fails without signer", async () => {
-    const castResult = await client.submitMessage(castAdd);
+    const castResult = await client.validateMessage(castAdd);
     const castErr = castResult._unsafeUnwrapErr();
     expect(castErr.errCode).toEqual("bad_request.unknown_fid");
     expect(castErr.message).toMatch("unknown fid");
 
-    const frameResult = await client.submitMessage(frameAction);
+    const frameResult = await client.validateMessage(frameAction);
     const frameErr = frameResult._unsafeUnwrapErr();
     expect(frameErr.errCode).toEqual("bad_request.unknown_fid");
     expect(frameErr.message).toMatch("unknown fid");

@@ -371,7 +371,7 @@ describe("SyncEngine", () => {
     expect((await syncEngine.syncStatus("test", oldSnapshot))._unsafeUnwrap().shouldSync).toBeTruthy();
   });
 
-  test("syncStatus.shouldSync is false if we didnt merge any messages successfully recently", async () => {
+  test("syncStatus.shouldSync is false if we didn't merge any messages successfully recently", async () => {
     await engine.mergeOnChainEvent(custodyEvent);
     await engine.mergeOnChainEvent(signerEvent);
     await engine.mergeOnChainEvent(storageEvent);
@@ -382,7 +382,7 @@ describe("SyncEngine", () => {
     const result = await syncEngine.mergeMessages([castAdd], rpcClient);
     expect(result.successCount).toEqual(1);
 
-    // Should sync should return true becuase the excluded hashes don't match
+    // Should sync should return true because the excluded hashes don't match
     expect(oldSnapshot.excludedHashes).not.toEqual((await syncEngine.getSnapshot())._unsafeUnwrap().excludedHashes);
     expect((await syncEngine.syncStatus("test", oldSnapshot))._unsafeUnwrap().shouldSync).toBeTruthy();
 
@@ -525,7 +525,7 @@ describe("SyncEngine", () => {
         expect((await syncEngine.getDbStats()).numFnames).toEqual(1);
       });
 
-      test("adds sync ids to the trie when not present and egnine rejects as duplicate", async () => {
+      test("adds sync ids to the trie when not present and engine rejects as duplicate", async () => {
         await engine.mergeOnChainEvent(custodyEvent);
         await engine.mergeUserNameProof(userNameProof);
 
@@ -557,7 +557,7 @@ describe("SyncEngine", () => {
       await engine.mergeUserNameProof(fnameProof);
       await engine.mergeMessage(castAdd);
 
-      // Manually remove cast add to have an emtpy trie
+      // Manually remove cast add to have an empty trie
       await syncEngine.trie.delete(SyncId.fromMessage(castAdd));
       await syncEngine.trie.delete(SyncId.fromOnChainEvent(custodyEvent));
       await syncEngine.trie.delete(SyncId.fromOnChainEvent(signerEvent));

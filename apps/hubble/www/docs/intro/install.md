@@ -117,9 +117,9 @@ First, ensure that the following are installed globally on your machine:
 #### Running Hubble
 To run the Hubble commands, go to the Hubble app (`cd apps/hubble`) and run the `yarn` commands.
 
-1. `yarn identity create` to create a ID
+1. `yarn identity create` to create an ID
 2. Follow the instructions to set [connect to a network](./networks.md)
-3. `yarn start --eth-mainnet-rpc-url <your ETH-mainnet-RPC-URL> --l2-rpc-url <your Optimism-L2-RPC-URL> --hub-operator-fid <your FID>`
+3. `yarn start --eth-mainnet-rpc-url <your_ETH_MAINNET_RPC_URL> --l2-rpc-url <your_Optimism_L2_RPC_URL> --hub-operator-fid <your_FID>`
 
 ### Upgrading Hubble
 

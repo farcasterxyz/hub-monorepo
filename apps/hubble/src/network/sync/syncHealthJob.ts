@@ -98,7 +98,7 @@ export class MeasureSyncHealthJobScheduler {
     return undefined;
   }
 
-  async processSumbitResults(
+  async processSubmitResults(
     results: Result<Message, SubmitError>[],
     peerId: string,
     startTime: number,
@@ -221,7 +221,7 @@ export class MeasureSyncHealthJobScheduler {
           continue;
         }
 
-        const processedResults = await this.processSumbitResults(
+        const processedResults = await this.processSubmitResults(
           resultsPushingToUs.value,
           peer.identifier,
           chunkStartTime,

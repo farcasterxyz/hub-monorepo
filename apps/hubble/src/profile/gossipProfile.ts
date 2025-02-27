@@ -8,8 +8,8 @@ export enum ProfileWorkerAction {
   SendMessage = 2,
   WaitForMessages = 3,
   Stop = 4,
-  GetMultiAddres = 5,
-  ConnectToMutliAddr = 6,
+  GetMultiAddress = 5,
+  ConnectToMultiAddr = 6,
   ReportPeers = 7,
 }
 
@@ -101,10 +101,10 @@ export async function profileGossipServer(nodeConfig = "3:10") {
 
   // 3. We'll connect each group of workers to the previous group
   for (let i = 1; i < workers.length; i++) {
-    const workerResponse = await callWorkerMethod(workers[i - 1] as Worker, ProfileWorkerAction.GetMultiAddres);
+    const workerResponse = await callWorkerMethod(workers[i - 1] as Worker, ProfileWorkerAction.GetMultiAddress);
     const prevMultiAddrs = workerResponse.response as MultiAddrResponse;
 
-    await callWorkerMethod(workers[i] as Worker, ProfileWorkerAction.ConnectToMutliAddr, {
+    await callWorkerMethod(workers[i] as Worker, ProfileWorkerAction.ConnectToMultiAddr, {
       multiAddr: prevMultiAddrs?.multiAddrs ?? [],
     });
 

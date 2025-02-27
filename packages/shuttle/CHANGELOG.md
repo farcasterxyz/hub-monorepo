@@ -1,5 +1,17 @@
 # @farcaster/hub-shuttle
 
+## 0.6.13
+
+### Patch Changes
+
+- 63eb1407: feat: add envvars to shuttle for consuming from snapchain
+
+## 0.6.12
+
+### Patch Changes
+
+- a302bcd1: feat(shuttle): Revert unsafe "Support deleting messages on DB that are missing on hub" #2341
+
 ## 0.6.11
 
 ### Patch Changes

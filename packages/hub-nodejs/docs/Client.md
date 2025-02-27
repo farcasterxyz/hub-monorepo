@@ -102,7 +102,7 @@ successful response of type `<T>` or an error value. There are three types of re
 - [MessagesResult<T>](#messagesresult)
 - [FidsResult<T>](#fidsresult)
 
-Results always return an object of type `Message` instead of a more specific type like `CastAddMessage` due to a quick of the protobuf-generated types. This can be easily remedied by passing responses through a typeguard:
+Results always return an object of type `Message` instead of a more specific type like `CastAddMessage` due to a quirk of the protobuf-generated types. This can be easily remedied by passing responses through a typeguard:
 
 ```typescript
 import { isCastAddMessage } from '@farcaster/hub-nodejs';
@@ -620,7 +620,7 @@ Returns an active reaction of a particular type made by a user to a cast.
 #### Usage
 
 ```typescript
-import { geSSLHubRpcClient, hexStringToBytes, ReactionType } from '@farcaster/hub-nodejs';
+import { getSSLHubRpcClient, hexStringToBytes, ReactionType } from '@farcaster/hub-nodejs';
 
 const hubRpcEndpoint = 'testnet1.farcaster.xyz:2283';
 const client = getSSLHubRpcClient(hubRpcEndpoint);
@@ -1137,7 +1137,7 @@ client.$.waitForReady(Date.now() + 5000, async (e) => {
 
 A documentation alias for `HubAsyncResult<Message>` where the success value contains a single message.
 
-Message are of the type <T> requested but this is an implicit guarantee since ts-proto does not generate bindings
+Messages are of the type <T> requested but this is an implicit guarantee since ts-proto does not generate bindings
 correctly to reflect this in the returned types.
 
 ---

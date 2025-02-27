@@ -37,12 +37,14 @@ export class MessageReconciliation {
   private log: pino.Logger;
   private connectionTimeout: number; // milliseconds
 
-  constructor(client: HubRpcClient, db: DB, log: pino.Logger, connectionTimeout = 30000) {
+  constructor(client: HubRpcClient, db: DB, log: pino.Logger, connectionTimeout = 30000, useStreamingRpcs = true) {
     this.client = client;
     this.db = db;
     this.log = log;
     this.connectionTimeout = connectionTimeout;
-    this.establishStream();
+    if (useStreamingRpcs) {
+      this.establishStream();
+    }
   }
 
   async establishStream() {

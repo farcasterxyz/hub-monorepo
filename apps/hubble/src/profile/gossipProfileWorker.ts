@@ -31,10 +31,10 @@ parentPort?.on("message", (data) => {
       await Promise.all(nodes.map((node) => node.stop()));
 
       parentPort?.postMessage({ id, action, response: { peerIds, datas } });
-    } else if (action === ProfileWorkerAction.GetMultiAddres) {
+    } else if (action === ProfileWorkerAction.GetMultiAddress) {
       const response = getMultiAddrs();
       parentPort?.postMessage({ id, action, response });
-    } else if (action === ProfileWorkerAction.ConnectToMutliAddr) {
+    } else if (action === ProfileWorkerAction.ConnectToMultiAddr) {
       const { multiAddr } = args as ConnectToMultiAddrArgs;
       connectToMultiAddr(multiAddr);
 
@@ -134,14 +134,14 @@ class GossipTestNode {
   connectedPeers = 0;
 
   sentMessages = 0;
-  recievedMessages = new Map<number, number>(); // Id -> timestamp
+  receivedMessages = new Map<number, number>(); // Id -> timestamp
 
   constructor() {
     this.gossipNode = new GossipNode();
   }
 
   async start() {
-    // Override the peer score threholds. When running benchmark tests, we want to accept all messages
+    // Override the peer score thresholds. When running benchmark tests, we want to accept all messages
     // and not unnecessarily graylist peers (which libp2p does since all the connections appear to come
     // from the same IP)
     await this.gossipNode.start([], {
@@ -178,9 +178,9 @@ class GossipTestNode {
       const timeoutFn = setTimeout(resolve, timeout);
 
       const interval = setInterval(() => {
-        // console.log("Recieved messages", this.recievedMessages.size, "/", numMessages);
+        // console.log("Received messages", this.receivedMessages.size, "/", numMessages);
 
-        if (this.recievedMessages.size >= numMessages) {
+        if (this.receivedMessages.size >= numMessages) {
           clearInterval(interval);
           clearTimeout(timeoutFn);
 
@@ -198,13 +198,13 @@ class GossipTestNode {
     const r = await this.gossipNode.gossipMessage(msg);
     // console.log("Sent message:", counter, "-", r[0]?._unsafeUnwrap().recipients);
 
-    // When sending a message, we add it to our own stats, since technically we also have recieved
+    // When sending a message, we add it to our own stats, since technically we also have received
     // the message
     this.sentMessages++;
   }
 
   async getData(): Promise<number[]> {
-    const delays = Array.from(this.recievedMessages.values());
+    const delays = Array.from(this.receivedMessages.values());
 
     // Sort the delays so we can get the median and p95
     delays.sort((a, b) => a - b);
@@ -226,7 +226,7 @@ class GossipTestNode {
       const id = parseInt(split?.[0] ?? "-1");
       const delay = Date.now() - parseInt(split?.[1] ?? "-1");
 
-      this.recievedMessages.set(id, delay);
+      this.receivedMessages.set(id, delay);
       console.log("Received message ", id, " - ", delay);
     });
 

@@ -228,7 +228,7 @@ describe("getCurrentStorageUnitsForFid", () => {
     expect(slot.units).toEqual(newEvent.storageRentEventBody.units);
     const newUnitExpiration = toFarcasterTime((newEvent.blockTimestamp + 365 * 24 * 60 * 60) * 1000)._unsafeUnwrap();
 
-    // Invalidate at is resset to the new event's expiration (which comes first)
+    // Invalidate at is reset to the new event's expiration (which comes first)
     expect(slot.invalidateAt).toEqual(newUnitExpiration);
   });
 });
