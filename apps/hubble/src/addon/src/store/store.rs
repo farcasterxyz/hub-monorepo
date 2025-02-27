@@ -67,7 +67,7 @@ impl Display for HubError {
     }
 }
 
-/** Convert RocksDB errors  */
+/** Convert RocksDB errors */
 impl From<rocksdb::Error> for HubError {
     fn from(e: rocksdb::Error) -> HubError {
         HubError {
