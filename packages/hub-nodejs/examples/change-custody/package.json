@@ -1,0 +1,21 @@
+{
+  "name": "example-change-custody",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0",
+  "main": "index.ts",
+  "scripts": {
+    "start": "tsx index.ts",
+    "typecheck": "yarn tsc --noEmit",
+    "chain:start": "yarn hardhat node"
+  },
+  "dependencies": {
+    "@farcaster/hub-nodejs": "^0.10.13",
+    "viem": "^2.17.4"
+  },
+  "devDependencies": {
+    "hardhat": "^2.19.2",
+    "tsx": "^3.12.5",
+    "typescript": "^5.0.0"
+  }
+}
