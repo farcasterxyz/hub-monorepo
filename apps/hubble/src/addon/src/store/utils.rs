@@ -64,7 +64,7 @@ pub fn increment_vec_u8(vec: &Vec<u8>) -> Vec<u8> {
     result
 }
 
-/** Derement the bytes of a Vec<u8> as if it were a big-endian number */
+/** Decrement the bytes of a Vec<u8> as if it were a big-endian number */
 #[allow(dead_code)]
 pub fn decrement_vec_u8(vec: &Vec<u8>) -> Vec<u8> {
     let mut result = vec.clone(); // Clone the input vector to create a new one for the result
