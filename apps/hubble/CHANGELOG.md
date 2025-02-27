@@ -1,5 +1,11 @@
 # @farcaster/hubble
 
+## 1.19.0
+
+### Minor Changes
+
+- chore: Release 1.19
+
 ## 1.18.0
 
 ### Minor Changes
