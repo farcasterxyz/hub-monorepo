@@ -119,7 +119,7 @@ export const SNAPSHOT_S3_UPLOAD_BUCKET = "farcaster-snapshots";
 export const SNAPSHOT_S3_DOWNLOAD_BUCKET = "download.farcaster.xyz";
 export const S3_REGION = "auto";
 
-export const FARCASTER_VERSION = "2025.1.8";
+export const FARCASTER_VERSION = "2025.2.19";
 export const FARCASTER_VERSIONS_SCHEDULE: VersionSchedule[] = [
   { version: "2023.3.1", expiresAt: 1682553600000 }, // expires at 4/27/23 00:00 UTC
   { version: "2023.4.19", expiresAt: 1686700800000 }, // expires at 6/14/23 00:00 UTC
@@ -138,6 +138,7 @@ export const FARCASTER_VERSIONS_SCHEDULE: VersionSchedule[] = [
   { version: "2024.10.16", expiresAt: 1733875200000 }, // expires at 12/11/24 00:00 UTC
   { version: "2024.11.27", expiresAt: 1737504000000 }, // expires at 1/22/25 00:00 UTC
   { version: "2025.1.8", expiresAt: 1741132800000 }, // expires at 1/22/25 00:00 UTC
+  { version: "2025.2.19", expiresAt: 1744761600000 }, // expires at 4/16/25 00:00 UTC
 ];
 
 const MAX_CONTACT_INFO_AGE_MS = 1000 * 60 * 60; // 60 minutes
