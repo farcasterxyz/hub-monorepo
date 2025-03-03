@@ -2,7 +2,7 @@ import { Kysely, sql } from "kysely";
 
 // biome-ignore lint/suspicious/noExplicitAny: legacy code, avoid using ignore for new code
 export const up = async (db: Kysely<any>) => {
-  // Casts -------------------------------------------------------------------------------------
+  // Onchain Events -------------------------------------------------------------------------------------
   await db.schema
     .createTable("onchain_events")
     .addColumn("id", "uuid", (col) => col.defaultTo(sql`generate_ulid()`))
