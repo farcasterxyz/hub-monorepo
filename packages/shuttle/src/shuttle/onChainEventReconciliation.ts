@@ -1,16 +1,7 @@
-import {
-  ClientDuplexStream,
-  HubError,
-  HubErrorCode,
-  HubResult,
-  HubRpcClient,
-  OnChainEvent,
-  OnChainEventType,
-} from "@farcaster/hub-nodejs";
-import { DB, sql } from "./db";
+import { ClientDuplexStream, HubRpcClient, OnChainEvent, OnChainEventType } from "@farcaster/hub-nodejs";
+import { type DB } from "./db";
 import { pino } from "pino";
-import { ok, err } from "neverthrow";
-import { randomUUID } from "crypto";
+import { ok } from "neverthrow";
 
 const MAX_PAGE_SIZE = 500;
 
@@ -28,20 +19,18 @@ export type DBOnChainEvent = {
   body: unknown;
 };
 
-type EventKeySource = Pick<OnChainEvent | DBOnChainEvent, 'chainId' | 'blockNumber' | 'logIndex'>;
+type EventKeySource = Pick<OnChainEvent | DBOnChainEvent, "chainId" | "blockNumber" | "logIndex">;
 
-export class HubEventReconciliation {
+export class OnChainEventReconciliation {
   private client: HubRpcClient;
-  private stream: ClientDuplexStream<any, any> | undefined;
+  private stream: ClientDuplexStream<OnChainEvent, OnChainEvent> | undefined;
   private db: DB;
   private log: pino.Logger;
-  private connectionTimeout: number; // milliseconds
 
-  constructor(client: HubRpcClient, db: DB, log: pino.Logger, connectionTimeout = 30000) {
+  constructor(client: HubRpcClient, db: DB, log: pino.Logger) {
     this.client = client;
     this.db = db;
     this.log = log;
-    this.connectionTimeout = connectionTimeout;
   }
 
   private getEventKey(event: EventKeySource): string {
@@ -57,8 +46,8 @@ export class HubEventReconciliation {
 
   async reconcileEventsForFid(
     fid: number,
-    onHubEvent: (event: OnChainEvent, missingInDb: boolean) => Promise<void>,
-    onDbEvent?: (event: DBOnChainEvent, missingInHub: boolean) => Promise<void>,
+    onChainEvent: (event: OnChainEvent, missingInDb: boolean) => Promise<void>,
+    onDbEvent?: (event: DBOnChainEvent, missingInOnChain: boolean) => Promise<void>,
     startTimestamp?: number,
     stopTimestamp?: number,
     types?: OnChainEventType[],
@@ -70,22 +59,21 @@ export class HubEventReconciliation {
       OnChainEventType.EVENT_TYPE_STORAGE_RENT,
     ]) {
       this.log.debug(`Reconciling on-chain events for FID ${fid} of type ${type}`);
-      await this.reconcileEventsOfTypeForFid(fid, type, onHubEvent, onDbEvent, startTimestamp, stopTimestamp);
+      await this.reconcileEventsOfTypeForFid(fid, type, onChainEvent, onDbEvent, startTimestamp, stopTimestamp);
     }
   }
 
   async reconcileEventsOfTypeForFid(
     fid: number,
     type: OnChainEventType,
-    onHubEvent: (event: OnChainEvent, missingInDb: boolean) => Promise<void>,
-    onDbEvent?: (event: DBOnChainEvent, missingInHub: boolean) => Promise<void>,
+    onChainEvent: (event: OnChainEvent, missingInDb: boolean) => Promise<void>,
+    onDbEvent?: (event: DBOnChainEvent, missingInOnChain: boolean) => Promise<void>,
     startTimestamp?: number,
     stopTimestamp?: number,
   ) {
-    const hubEventsByKey: Record<string, OnChainEvent> = {};
-    
-    // First, reconcile events that are in the hub but not in the database
-    for await (const events of this.allHubEventsOfTypeForFid(fid, type, startTimestamp, stopTimestamp)) {
+    const onChainEventsByKey: Record<string, OnChainEvent> = {};
+    // First, reconcile events that are in the on-chain but not in the database
+    for await (const events of this.allOnChainEventsOfTypeForFid(fid, type, startTimestamp, stopTimestamp)) {
       const eventKeys = events.map((event: OnChainEvent) => this.getEventKey(event));
 
       if (eventKeys.length === 0) {
@@ -93,7 +81,7 @@ export class HubEventReconciliation {
         continue;
       }
 
-      const dbEvents = await this.dbEventsMatchingHubEvents(fid, type, events);
+      const dbEvents = await this.dbEventsMatchingOnChainEvents(fid, type, events);
 
       const dbEventsByKey = dbEvents.reduce((acc, event) => {
         const key = this.getEventKey(event);
@@ -103,16 +91,16 @@ export class HubEventReconciliation {
 
       for (const event of events) {
         const eventKey = this.getEventKey(event);
-        hubEventsByKey[eventKey] = event;
+        onChainEventsByKey[eventKey] = event;
 
         const dbEvent = dbEventsByKey[eventKey];
         if (dbEvent === undefined) {
-          await onHubEvent(event, true);
+          await onChainEvent(event, true);
         }
       }
     }
 
-    // Next, reconcile events that are in the database but not in the hub
+    // Next, reconcile events that are in the database but not in the on-chain
     if (onDbEvent) {
       const dbEvents = await this.allActiveDbEventsOfTypeForFid(fid, type, startTimestamp, stopTimestamp);
       if (dbEvents.isErr()) {
@@ -122,12 +110,12 @@ export class HubEventReconciliation {
 
       for (const dbEvent of dbEvents.value) {
         const key = this.getEventKey(dbEvent);
-        await onDbEvent(dbEvent, !hubEventsByKey[key]);
+        await onDbEvent(dbEvent, !onChainEventsByKey[key]);
       }
     }
   }
 
-  private async *allHubEventsOfTypeForFid(
+  private async *allOnChainEventsOfTypeForFid(
     fid: number,
     type: OnChainEventType,
     startTimestamp?: number,
@@ -147,7 +135,7 @@ export class HubEventReconciliation {
       const { events, nextPageToken: pageToken } = result.value;
 
       // Filter events by timestamp if provided
-      const filteredEvents = events.filter((event) => {
+      const filteredEvents = events.filter((event: OnChainEvent) => {
         if (startTimestamp && event.blockTimestamp < startTimestamp) return false;
         if (stopTimestamp && event.blockTimestamp > stopTimestamp) return false;
         return true;
@@ -156,7 +144,7 @@ export class HubEventReconciliation {
       yield filteredEvents;
 
       if (!pageToken?.length) break;
-      
+
       result = await this.client.getOnChainEvents({
         pageSize: MAX_PAGE_SIZE,
         pageToken,
@@ -209,12 +197,8 @@ export class HubEventReconciliation {
     return ok(result);
   }
 
-  private async dbEventsMatchingHubEvents(
-    fid: number,
-    type: OnChainEventType,
-    hubEvents: OnChainEvent[],
-  ) {
-    if (hubEvents.length === 0) {
+  private async dbEventsMatchingOnChainEvents(fid: number, type: OnChainEventType, onChainEvents: OnChainEvent[]) {
+    if (onChainEvents.length === 0) {
       return [];
     }
 
@@ -235,9 +219,21 @@ export class HubEventReconciliation {
       ])
       .where("fid", "=", fid)
       .where("type", "=", type)
-      .where("chainId", "in", hubEvents.map(e => BigInt(e.chainId)))
-      .where("blockNumber", "in", hubEvents.map(e => BigInt(e.blockNumber)))
-      .where("logIndex", "in", hubEvents.map(e => e.logIndex))
+      .where(
+        "chainId",
+        "in",
+        onChainEvents.map((e) => BigInt(e.chainId)),
+      )
+      .where(
+        "blockNumber",
+        "in",
+        onChainEvents.map((e) => BigInt(e.blockNumber)),
+      )
+      .where(
+        "logIndex",
+        "in",
+        onChainEvents.map((e) => e.logIndex),
+      )
       .execute();
   }
 }

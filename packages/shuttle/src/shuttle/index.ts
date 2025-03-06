@@ -8,7 +8,7 @@ export * from "./hubSubscriber";
 export * from "./hubEventProcessor";
 export * from "./messageProcessor";
 export * from "./messageReconciliation";
-export * from "./hubEventReconciliation";
+export * from "./onChainEventReconciliation";
 export * from "./eventStream";
 
 export type StoreMessageOperation = "merge" | "delete" | "revoke" | "prune";
