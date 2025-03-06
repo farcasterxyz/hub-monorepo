@@ -1,4 +1,12 @@
-import { ClientDuplexStream, HubRpcClient, OnChainEvent, OnChainEventType } from "@farcaster/hub-nodejs";
+import {
+  ClientDuplexStream,
+  HubRpcClient,
+  OnChainEvent,
+  OnChainEventType,
+  IdRegisterEventBody,
+  SignerEventBody,
+  StorageRentEventBody,
+} from "@farcaster/hub-nodejs";
 import { type DB } from "./db";
 import { pino } from "pino";
 import { ok } from "neverthrow";
@@ -16,7 +24,7 @@ export type DBOnChainEvent = {
   logIndex: number;
   type: OnChainEventType;
   txHash: Uint8Array;
-  body: unknown;
+  body: IdRegisterEventBody | SignerEventBody | StorageRentEventBody;
 };
 
 type EventKeySource = Pick<OnChainEvent | DBOnChainEvent, "chainId" | "blockNumber" | "logIndex">;

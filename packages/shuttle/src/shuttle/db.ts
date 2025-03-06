@@ -25,6 +25,9 @@ import {
   UserDataType,
   UserNameType,
   OnChainEventType,
+  IdRegisterEventBody,
+  SignerEventBody,
+  StorageRentEventBody,
 } from "@farcaster/hub-nodejs";
 import { DrainOuterGeneric, SimplifySingleResult } from "kysely/dist/cjs/util/type-utils.js";
 
@@ -152,7 +155,7 @@ type OnchainEventsTable = {
   logIndex: number;
   type: OnChainEventType;
   txHash: Uint8Array;
-  body: unknown;
+  body: IdRegisterEventBody | SignerEventBody | StorageRentEventBody;
 };
 
 export type OnchainEventRow = Selectable<OnchainEventsTable>;
