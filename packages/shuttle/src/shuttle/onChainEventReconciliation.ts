@@ -80,7 +80,7 @@ export class OnChainEventReconciliation {
     startTimestamp?: number,
     stopTimestamp?: number,
   ) {
-    const onChainEventsByKey: Record<string, OnChainEvent> = {};
+    const onChainEventsByKey = new Map<string, OnChainEvent>();
     // First, reconcile events that are in the on-chain but not in the database
     for await (const events of this.allOnChainEventsOfTypeForFid(fid, type, startTimestamp, stopTimestamp)) {
       const eventKeys = events.map((event: OnChainEvent) => this.getEventKey(event));
@@ -92,18 +92,18 @@ export class OnChainEventReconciliation {
 
       const dbEvents = await this.dbEventsMatchingOnChainEvents(fid, type, events);
 
-      const dbEventsByKey = dbEvents.reduce((acc, event) => {
+      const dbEventsByKey = new Map<string, DBOnChainEvent>();
+      for (const event of dbEvents) {
         const key = this.getEventKey(event);
-        acc[key] = event;
-        return acc;
-      }, {} as Record<string, DBOnChainEvent>);
+        dbEventsByKey.set(key, event);
+      }
 
       for (const event of events) {
         const eventKey = this.getEventKey(event);
-        onChainEventsByKey[eventKey] = event;
+        onChainEventsByKey.set(eventKey, event);
 
-        const dbEvent = dbEventsByKey[eventKey];
-        if (dbEvent === undefined) {
+        const dbEvent = dbEventsByKey.get(eventKey);
+        if (!dbEvent) {
           await onChainEvent(event, true);
         }
       }
@@ -119,7 +119,7 @@ export class OnChainEventReconciliation {
 
       for (const dbEvent of dbEvents.value) {
         const key = this.getEventKey(dbEvent);
-        await onDbEvent(dbEvent, !onChainEventsByKey[key]);
+        await onDbEvent(dbEvent, !onChainEventsByKey.has(key));
       }
     }
   }
