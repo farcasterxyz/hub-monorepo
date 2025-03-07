@@ -6,6 +6,7 @@ import {
   isLinkCompactStateMessage,
   isLinkRemoveMessage,
   isMergeMessageHubEvent,
+  isMergeOnChainHubEvent,
   isPruneMessageHubEvent,
   isReactionAddMessage,
   isReactionRemoveMessage,
@@ -38,6 +39,8 @@ export class HubEventProcessor {
         await this.processMessage(trx, event.revokeMessageBody.message, handler, "revoke");
       } else if (isPruneMessageHubEvent(event)) {
         await this.processMessage(trx, event.pruneMessageBody.message, handler, "prune");
+      } else if (isMergeOnChainHubEvent(event)) {
+        await handler.onHubEvent(event, trx);
       }
     });
   }
