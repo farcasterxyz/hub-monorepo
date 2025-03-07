@@ -132,23 +132,24 @@ export class App implements MessageHandler {
           payer: bytesToHex(onChainEvent.storageRentEventBody.payer),
         };
       }
-      try {
-        await (txn as AppDb)
-          .insertInto("onchain_events")
-          .values({
-            fid: onChainEvent.fid,
-            timestamp: new Date(onChainEvent.blockTimestamp * 1000),
-            blockNumber: onChainEvent.blockNumber,
-            logIndex: onChainEvent.logIndex,
-            txHash: onChainEvent.transactionHash,
-            type: onChainEvent.type,
-            body: body,
-          })
-          .execute();
-        log.info(`Recorded OnchainEvent ${onChainEvent.type} for fid  ${onChainEvent.fid}`);
-      } catch (e) {
-        log.error("Failed to insert onchain event", e);
-      }
+      // try {
+      //   await (txn as AppDb)
+      //     .insertInto("onchain_events")
+      //     .values({
+      //       fid: onChainEvent.fid,
+      //       chainId: onChainEvent.chainId,
+      //       blockTimestamp: new Date(onChainEvent.blockTimestamp * 1000),
+      //       blockNumber: onChainEvent.blockNumber,
+      //       logIndex: onChainEvent.logIndex,
+      //       txHash: onChainEvent.transactionHash,
+      //       type: onChainEvent.type,
+      //       body: body,
+      //     })
+      //     .execute();
+      //   log.info(`Recorded OnchainEvent ${onChainEvent.type} for fid  ${onChainEvent.fid}`);
+      // } catch (e) {
+      //   log.error("Failed to insert onchain event", e);
+      // }
     }
     return false;
   }

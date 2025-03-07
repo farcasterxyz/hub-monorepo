@@ -1,5 +1,16 @@
 import { HubEvent, Message } from "@farcaster/hub-nodejs";
 import { DB } from "./db";
+import { execSync } from "child_process";
+
+const getCurrentBranch = () => {
+  try {
+    return execSync("git rev-parse --abbrev-ref HEAD").toString().trim();
+  } catch (error) {
+    return "unknown";
+  }
+};
+
+console.log(`shuttle (branch: ${getCurrentBranch()})`);
 
 export * from "./db";
 export * from "./redis";

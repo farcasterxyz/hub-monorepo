@@ -144,7 +144,7 @@ type MessagesTable = {
 export type MessageRow = Selectable<MessagesTable>;
 export type InsertableMessageRow = Insertable<MessagesTable>;
 
-type OnchainEventsTable = {
+type OnChainEventsTable = {
   id: Generated<string>;
   chainId: bigint;
   createdAt: Generated<Date>;
@@ -158,13 +158,13 @@ type OnchainEventsTable = {
   body: IdRegisterEventBody | SignerEventBody | StorageRentEventBody;
 };
 
-export type OnchainEventRow = Selectable<OnchainEventsTable>;
-export type InsertableOnchainEventRow = Insertable<OnchainEventsTable>;
+export type OnchainEventRow = Selectable<OnChainEventsTable>;
+export type InsertableOnchainEventRow = Insertable<OnChainEventsTable>;
 
 // ALL TABLES -------------------------------------------------------------------------------------
 export interface HubTables {
   messages: MessagesTable;
-  onchain_events: OnchainEventsTable;
+  onchain_events: OnChainEventsTable;
 }
 
 export const getDbClient = (connectionString?: string, schema = "public") => {

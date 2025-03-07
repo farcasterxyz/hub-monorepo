@@ -10,7 +10,7 @@ import {
 import { type DB } from "./db";
 import { pino } from "pino";
 import { ok } from "neverthrow";
-import { extendDatabaseErrorStack } from "../utils";
+import { extendStackTrace } from "../utils";
 
 const MAX_PAGE_SIZE = 500;
 
@@ -206,9 +206,7 @@ export class OnChainEventReconciliation {
       const result = await queryWithStopTime.execute();
       return ok(result);
     } catch (e) {
-      throw new Error("Database query failed", {
-        cause: extendDatabaseErrorStack(this.db, e, queryWithStopTime),
-      });
+      throw extendStackTrace(e, new Error(), queryWithStopTime);
     }
   }
 
@@ -253,9 +251,7 @@ export class OnChainEventReconciliation {
     try {
       return await query.execute();
     } catch (e) {
-      throw new Error("Database query failed", {
-        cause: extendDatabaseErrorStack(this.db, e, query),
-      });
+      throw extendStackTrace(e, new Error(), query);
     }
   }
 }
