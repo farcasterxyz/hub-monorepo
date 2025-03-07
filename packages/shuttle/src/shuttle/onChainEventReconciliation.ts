@@ -10,6 +10,7 @@ import {
 import { type DB } from "./db";
 import { pino } from "pino";
 import { ok } from "neverthrow";
+import { extendDatabaseErrorStack } from "../utils";
 
 const MAX_PAGE_SIZE = 500;
 
@@ -66,7 +67,7 @@ export class OnChainEventReconciliation {
       OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED,
       OnChainEventType.EVENT_TYPE_STORAGE_RENT,
     ]) {
-      this.log.debug(`Reconciling on-chain events for FID ${fid} of type ${type}`);
+      this.log.debug({ fid, type }, "Reconciling on-chain events for FID");
       await this.reconcileEventsOfTypeForFid(fid, type, onChainEvent, onDbEvent, startTimestamp, stopTimestamp);
     }
   }
@@ -85,7 +86,7 @@ export class OnChainEventReconciliation {
       const eventKeys = events.map((event: OnChainEvent) => this.getEventKey(event));
 
       if (eventKeys.length === 0) {
-        this.log.debug(`No on-chain events of type ${type} for FID ${fid}`);
+        this.log.debug({ fid, type }, "No on-chain events found");
         continue;
       }
 
@@ -112,7 +113,7 @@ export class OnChainEventReconciliation {
     if (onDbEvent) {
       const dbEvents = await this.allActiveDbEventsOfTypeForFid(fid, type, startTimestamp, stopTimestamp);
       if (dbEvents.isErr()) {
-        this.log.error({ startTimestamp, stopTimestamp }, "Invalid time range provided to reconciliation");
+        this.log.error({ fid, type, startTimestamp, stopTimestamp }, "Invalid time range provided to reconciliation");
         return;
       }
 
@@ -201,8 +202,14 @@ export class OnChainEventReconciliation {
       ? queryWithStartTime.where("blockTimestamp", "<=", stopDate)
       : queryWithStartTime;
 
-    const result = await queryWithStopTime.execute();
-    return ok(result);
+    try {
+      const result = await queryWithStopTime.execute();
+      return ok(result);
+    } catch (e) {
+      throw new Error("Database query failed", {
+        cause: extendDatabaseErrorStack(this.db, e, queryWithStopTime),
+      });
+    }
   }
 
   private async dbEventsMatchingOnChainEvents(fid: number, type: OnChainEventType, onChainEvents: OnChainEvent[]) {
@@ -210,7 +217,7 @@ export class OnChainEventReconciliation {
       return [];
     }
 
-    return this.db
+    const query = this.db
       .selectFrom("onchain_events")
       .select([
         "id",
@@ -241,7 +248,14 @@ export class OnChainEventReconciliation {
         "logIndex",
         "in",
         onChainEvents.map((e) => e.logIndex),
-      )
-      .execute();
+      );
+
+    try {
+      return await query.execute();
+    } catch (e) {
+      throw new Error("Database query failed", {
+        cause: extendDatabaseErrorStack(this.db, e, query),
+      });
+    }
   }
 }
