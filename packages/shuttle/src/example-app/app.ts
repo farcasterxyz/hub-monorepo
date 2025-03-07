@@ -136,8 +136,8 @@ export class App implements MessageHandler {
       //   await (txn as AppDb)
       //     .insertInto("onchain_events")
       //     .values({
-      //       fid: onChainEvent.fid,
-      //       timestamp: new Date(onChainEvent.blockTimestamp * 1000),
+      //       chainId: onChainEvent.chainId,
+      //       blockTimestamp: new Date(onChainEvent.blockTimestamp * 1000),
       //       blockNumber: onChainEvent.blockNumber,
       //       logIndex: onChainEvent.logIndex,
       //       txHash: onChainEvent.transactionHash,

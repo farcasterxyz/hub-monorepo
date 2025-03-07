@@ -150,7 +150,7 @@ type OnChainEventsTable = {
   createdAt: Generated<Date>;
   updatedAt: Generated<Date>;
   blockTimestamp: Date;
-  fid: number;
+  fid: Fid;
   blockNumber: bigint;
   logIndex: number;
   type: OnChainEventType;

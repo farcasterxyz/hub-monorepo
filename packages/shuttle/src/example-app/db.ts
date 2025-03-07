@@ -6,6 +6,7 @@ import { promises as fs } from "fs";
 import { fileURLToPath } from "node:url";
 import { HubTables } from "..";
 import { Fid } from "../shuttle";
+import { IdRegisterEventBody, SignerEventBody, StorageRentEventBody } from "@farcaster/hub-nodejs";
 
 const createMigrator = async (db: Kysely<HubTables>, dbSchema: string, log: Logger) => {
   const currentDir = path.dirname(fileURLToPath(import.meta.url));
@@ -60,22 +61,23 @@ export type CastRow = {
   text: string;
 };
 
-// export type OnChainEventRow = {
-//   id: Generated<string>;
-//   createdAt: Generated<Date>;
-//   updatedAt: Generated<Date>;
-//   timestamp: Date;
-//   fid: Fid;
-//   blockNumber: number;
-//   logIndex: number;
-//   type: number;
-//   txHash: Uint8Array;
-//   body: Record<string, string | number>;
-// };
+export type OnChainEventRow = {
+  id: Generated<string>;
+  createdAt: Generated<Date>;
+  updatedAt: Generated<Date>;
+  blockTimestamp: Date;
+  fid: Fid;
+  chainId: bigint;
+  blockNumber: bigint;
+  logIndex: number;
+  type: number;
+  txHash: Uint8Array;
+  body: IdRegisterEventBody | SignerEventBody | StorageRentEventBody;
+};
 
 export interface Tables extends HubTables {
   casts: CastRow;
-  // onchain_events: OnChainEventRow;
+  onchain_events: OnChainEventRow;
 }
 
 export type AppDb = Kysely<Tables>;
