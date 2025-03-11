@@ -10,7 +10,7 @@ blake3 = "1.5.0"
 ed25519-dalek = {version = "2.0.0", features = ["rand_core"]}
 rand = "0.8.5"
 hex = "0.4.3"
-protobuf = "2.25.2"
+protobuf = "3.7.2"
 reqwest = "0.11"
 tokio = { version = "1", features = ["full"] }
 
