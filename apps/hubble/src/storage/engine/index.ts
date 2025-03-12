@@ -268,8 +268,10 @@ class Engine extends TypedEmitter<EngineEvents> {
     return this._db;
   }
 
+  // Only used in tests
   clearCaches() {
     this._onchainEventsStore.clearCaches();
+    this.eventHandler.clearCaches();
   }
 
   get solanaVerificationsEnabled(): boolean {

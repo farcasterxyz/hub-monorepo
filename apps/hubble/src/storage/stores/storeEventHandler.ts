@@ -223,6 +223,10 @@ class StoreEventHandler extends TypedEmitter<StoreEvents> {
     });
   }
 
+  clearCaches() {
+    this._storageCache.clearCache();
+  }
+
   async getCacheMessageCount(fid: number, set: UserMessagePostfix, forceFetch = true): HubAsyncResult<number> {
     return await this._storageCache.getMessageCount(fid, set, forceFetch);
   }

@@ -62,6 +62,10 @@ export class StorageCache {
     this._db = db;
   }
 
+  clearCache() {
+    this._counts.clear();
+  }
+
   async syncFromDb(): Promise<void> {
     log.info("starting storage cache sync");
 
@@ -297,7 +301,10 @@ export class StorageCache {
         count = msgCountResult.value;
       }
 
-      this._counts.set(key, count - 1);
+      // Really, if we just queried the count fresh from the db we don't want to subtract 1 here because the queried count already incorporates the remove. The case where the count is negative is particularly bad, though because it causes a crash for clients so we protect against this case.
+      if (count - 1 >= 0) {
+        this._counts.set(key, count - 1);
+      }
 
       const tsHashResult = makeTsHash(message.data.timestamp, message.hash);
       if (!tsHashResult.isOk()) {

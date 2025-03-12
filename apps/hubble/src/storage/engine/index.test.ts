@@ -39,7 +39,7 @@ import Engine from "../engine/index.js";
 import { sleep } from "../../utils/crypto.js";
 import { getMessage, makeTsHash, typeToSetPostfix } from "../db/message.js";
 import { StoreEvents } from "../stores/storeEventHandler.js";
-import { IdRegisterOnChainEvent, makeVerificationAddressClaim } from "@farcaster/core";
+import { IdRegisterOnChainEvent, makeVerificationAddressClaim, StoreType } from "@farcaster/core";
 import { setReferenceDateForTest } from "../../utils/versions.js";
 import { publicClient } from "../../test/utils.js";
 import { jest } from "@jest/globals";
@@ -843,6 +843,29 @@ describe("mergeMessage", () => {
       expect(usernameProofEvents.length).toBe(1);
       expect(usernameProofEvents[0]?.usernameProof).toMatchObject(message.data.usernameProofBody);
       expect(usernameProofEvents[0]?.deletedUsernameProof).toBeUndefined();
+    });
+
+    test("storage usage is accurate when username proof is revoked", async () => {
+      const custodyAddress = bytesToHexString(custodyEvent.idRegisterEventBody.to)._unsafeUnwrap();
+      jest.spyOn(publicClient, "getEnsAddress").mockImplementation(() => {
+        return Promise.resolve(custodyAddress);
+      });
+      const message = await createProof("test.eth", null, custodyAddress);
+      const result = await engine.mergeMessage(message);
+      expect(result.isOk()).toBeTruthy();
+
+      expect(
+        (await engine.eventHandler.getUsage(message.data.fid, StoreType.USERNAME_PROOFS))._unsafeUnwrap().used,
+      ).toEqual(1);
+
+      // Clear storage cache so that we have to scan the db when incorporating the revoke
+      engine.clearCaches();
+
+      await engine.revokeMessagesBySigner(fid, signerKey);
+      await sleep(1000);
+
+      // We had a bug where usage could be negative here
+      expect((await engine.eventHandler.getUsage(fid, StoreType.USERNAME_PROOFS))._unsafeUnwrap().used).toEqual(0);
     });
 
     test("succeeds for valid proof for verified eth address", async () => {
