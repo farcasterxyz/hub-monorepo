@@ -270,6 +270,7 @@ class Engine extends TypedEmitter<EngineEvents> {
 
   clearCaches() {
     this._onchainEventsStore.clearCaches();
+    this.eventHandler.clearCaches();
   }
 
   get solanaVerificationsEnabled(): boolean {

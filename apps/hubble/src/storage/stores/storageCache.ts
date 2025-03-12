@@ -62,6 +62,10 @@ export class StorageCache {
     this._db = db;
   }
 
+  clearCache() {
+    this._counts.clear();
+  }
+
   async syncFromDb(): Promise<void> {
     log.info("starting storage cache sync");
 
