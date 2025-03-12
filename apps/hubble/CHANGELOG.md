@@ -1,5 +1,11 @@
 # @farcaster/hubble
 
+## 1.19.1
+
+### Patch Changes
+
+- b13e650c: fix: stop producing negative storage usage
+
 ## 1.19.0
 
 ### Minor Changes
