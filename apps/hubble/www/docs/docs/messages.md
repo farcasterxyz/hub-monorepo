@@ -30,7 +30,7 @@ A MessageData object contains properties common to all MessageTypes and wraps a 
 
 ### 1.2 HashScheme
 
-Type of hashing scheme used to produce a digest of MessageData
+Type of a hashing scheme used to produce a digest of MessageData
 
 | Name               | Number | Description                            |
 | ------------------ | ------ | -------------------------------------- |
@@ -179,7 +179,7 @@ Adds or removes a Link
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| type | [string](#string) |  | Type of link, &lt;= 8 characters |
+| type | [string](#string) |  | Type of link, <= characters |
 | displayTimestamp | [uint32](#uint32) | optional | User-defined timestamp that preserves original timestamp when message.data.timestamp needs to be updated for compaction |
 | target_fid | [uint64](#uint64) |  | The fid the link relates to |
 
