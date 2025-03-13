@@ -168,7 +168,7 @@ export const rsDbSnapshotBackup = async (mainDb: RustDb, trieDb: RustDb, timesta
  * dropped right after the iterator is finished.
 
   This specifically means that we need to use iterators as callbacks. The way the iterators are set up is:
-  - Call the `forEachIteartor` method with your callback (Either in JS or Rust)
+  - Call the `forEachIterator` method with your callback (Either in JS or Rust)
   - Perform all actions in the callback
   - At the end of the iteration, the iterator is returned and closed by Rust
 
