@@ -6,9 +6,10 @@ export const up = async (db: Kysely<any>) => {
   await db.schema
     .createTable("onchain_events")
     .addColumn("id", "uuid", (col) => col.defaultTo(sql`generate_ulid()`))
+    .addColumn("chainId", "bigint", (col) => col.notNull())
     .addColumn("createdAt", "timestamptz", (col) => col.notNull().defaultTo(sql`current_timestamp`))
     .addColumn("updatedAt", "timestamptz", (col) => col.notNull().defaultTo(sql`current_timestamp`))
-    .addColumn("timestamp", "timestamptz", (col) => col.notNull())
+    .addColumn("blockTimestamp", "timestamptz", (col) => col.notNull())
     .addColumn("fid", "bigint", (col) => col.notNull())
     .addColumn("blockNumber", "bigint", (col) => col.notNull())
     .addColumn("logIndex", "integer", (col) => col.notNull())
