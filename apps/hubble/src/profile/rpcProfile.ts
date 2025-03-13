@@ -55,7 +55,7 @@ async function profileSubmitMessages(
   fid: number,
   username?: string | Metadata,
   password?: string,
-): Promise<string[]> {
+): Promise<string[][]> {
   const submitMessage = async (
     msg: Message,
     metadata: Metadata,
