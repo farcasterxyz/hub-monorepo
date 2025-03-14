@@ -251,7 +251,7 @@ class Engine extends TypedEmitter<EngineEvents> {
     this.eventHandler.off("mergeUsernameProofEvent", this.handleMergeUsernameProofEvent);
     this.eventHandler.off("mergeOnChainEvent", this.handleMergeOnChainEvent);
 
-    this._revokeSignerWorker.start();
+    this._revokeSignerWorker.stop();
 
     if (this._validationWorkers) {
       for (const worker of this._validationWorkers) {
