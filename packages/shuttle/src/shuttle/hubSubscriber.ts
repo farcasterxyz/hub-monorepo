@@ -115,7 +115,7 @@ export class BaseHubSubscriber extends HubSubscriber {
     if (fromId) {
       this.log.info(`HubSubscriber ${this.label} Found last hub event ID: ${fromId}`);
     } else {
-      this.log.warn("No last hub event ID found, starting from beginning");
+      this.log.warn("No last hub event ID found, starting from the beginning");
     }
 
     const subscribeParams = {
