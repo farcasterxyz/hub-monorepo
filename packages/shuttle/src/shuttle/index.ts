@@ -9,6 +9,7 @@ export * from "./hubEventProcessor";
 export * from "./messageProcessor";
 export * from "./messageReconciliation";
 export * from "./onChainEventReconciliation";
+export * from "./usernameProofReconciliation";
 export * from "./eventStream";
 
 export type StoreMessageOperation = "merge" | "delete" | "revoke" | "prune";
