@@ -21,7 +21,7 @@ install_jq() {
         if command -v brew >/dev/null 2>&1; then
             brew install jq
         else
-            echo "Homebrew is not installed. Please install Homebrew first."
+            echo "❌ Homebrew is not installed. Please install Homebrew first."
             return 1
         fi
 
@@ -47,7 +47,7 @@ install_jq() {
         sudo pacman -S jq
 
     else
-        echo "Unsupported operating system. Please install jq manually."
+        echo "❌ Unsupported operating system. Please install jq manually."
         return 1
     fi
 
@@ -64,27 +64,27 @@ fetch_file_from_repo() {
 
     # Download the file using curl, and save it to the local filename. If the download fails,
     # exit with an error.
-    curl -sS -o "$local_filename" "$download_url" || { echo "Failed to fetch $download_url."; exit 1; }
+    curl -sS -o "$local_filename" "$download_url" || { echo "❌ Failed to fetch $download_url. Check your internet connection or the file path."; exit 1; }
 }
 
 do_bootstrap() {
     # Make the ~/hubble directory if it doesn't exist
-    mkdir -p ~/hubble
+    mkdir -p ~/hubble || { echo "❌ Failed to create ~/hubble directory."; exit 1; }
     
     local tmp_file
     tmp_file=$(mktemp)
     fetch_file_from_repo "$SCRIPT_FILE_PATH" "$tmp_file"
 
-    mv "$tmp_file" ~/hubble/hubble.sh
-    chmod +x ~/hubble/hubble.sh
+    mv "$tmp_file" ~/hubble/hubble.sh || { echo "❌ Failed to move $tmp_file to ~/hubble/hubble.sh."; exit 1; }
+    chmod +x ~/hubble/hubble.sh || { echo "❌ Failed to make ~/hubble/hubble.sh executable."; exit 1; }
 
     # Run the hubble.sh script
     cd ~/hubble
-    exec ./hubble.sh "upgrade" < /dev/tty
+    ./hubble.sh "upgrade" < /dev/tty || { echo "❌ Failed to run ~/hubble/hubble.sh."; exit 1; }
 }
 
 # Install jq
-install_jq
+install_jq || { echo "❌ jq installation failed. Exiting."; exit 1; }
 
 # Bootstrap
 do_bootstrap
