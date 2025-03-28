@@ -1,0 +1,20 @@
+[package]
+name = "addon"
+version = "0.1.0"
+license = "ISC"
+edition = "2021"
+exclude = ["index.node"]
+
+[lib]
+crate-type = ["cdylib"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+snapchain = { version = "0.2.1", path = "../../../../../snapchain" }
+prost = "0.13.3"
+
+[dependencies.neon]
+version = "1.0.0"
+default-features = false
+features = [ "futures", "napi-6"]

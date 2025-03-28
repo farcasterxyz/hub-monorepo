@@ -28,7 +28,11 @@
     "viem": "^2.17.4"
   },
   "scripts": {
-    "build": "tsup --config tsup.config.ts",
+    "copy:rust": "mkdir -p dist/addon && cp src/addon/index.node dist/addon/index.node",
+    "build:rust": "cargo-cp-artifact -ac addon src/addon/index.node -- cargo build --manifest-path ./src/addon/Cargo.toml --message-format=json-render-diagnostics --release",
+    "build:ts": "tsup --config tsup.config.ts",
+    "build:all": "yarn build:rust && yarn build:ts && yarn copy:rust",
+    "build": "yarn build:all",
     "clean": "rimraf ./dist",
     "protoc": "docker run --rm --user $(id -u):$(id -g) -v $(pwd)/../../node_modules:/node_modules -v $(pwd)/../../protobufs/schemas:/defs -v $(pwd)/src/protobufs/generated:/out namely/protoc:1.50_1 --plugin=/node_modules/ts-proto/protoc-gen-ts_proto --ts_proto_out=/out --ts_proto_opt=esModuleInterop=true,exportCommonSymbols=false,outputServices=false,useOptionals=none,unrecognizedEnum=false,removeEnumPrefix=true --proto_path=/defs $(ls ../../protobufs/schemas/*.proto | xargs -n 1 basename | xargs -I{} echo '/defs/{}' | tr '\n' ' ')",
     "lint": "biome format src/ --write && biome check src/ --apply",
