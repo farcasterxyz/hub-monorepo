@@ -244,12 +244,20 @@ export const validateMessage = async (
 ): HubAsyncResult<protobufs.Message> => {
   try {
     let dataBytes;
+    let data;
     if (!message.data && !message.dataBytes) {
       return err(new HubError("bad_request.validation_failure", "Invalid message"));
     }
     if (!message.data) {
       dataBytes = message.dataBytes;
+
+      if (!dataBytes) {
+        return err(new HubError("bad_request.validation_failure", "Invalid message"));
+      }
+
+      data = protobufs.MessageData.decode(dataBytes);
     } else {
+      data = message.data;
       dataBytes = protobufs.MessageData.encode(message.data).finish();
     }
 
@@ -268,6 +276,22 @@ export const validateMessage = async (
 
     if (!isValid) {
       return err(new HubError("bad_request.validation_failure", "Invalid message"));
+    }
+
+    // Specific case from original validateMessage -> validateMessageData flow.
+    // We retain this because snapchain delegates validation requiring rpcs to
+    // ingestion rather than p2p validation:
+    if (data.type === protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS && !!data.verificationAddAddressBody) {
+      const result = await validateVerificationAddAddressBody(
+        data.verificationAddAddressBody,
+        data.fid,
+        data.network,
+        publicClients,
+      );
+
+      if (result.isErr()) {
+        return err(new HubError("bad_request.validation_failure", "Invalid message"));
+      }
     }
 
     return ok(message);
