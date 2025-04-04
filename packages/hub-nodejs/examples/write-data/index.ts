@@ -25,7 +25,7 @@ const SIGNER = "<REQUIRED>";
 const FID = -1; // <REQUIRED>
 
 // Testnet Configuration
-const HUB_URL = "testnet1.farcaster.xyz:2283"; // URL + Port of the Hub
+const HUB_URL = "juno.farcaster.xyz:3383"; // URL + Port of the Hub
 const NETWORK = FarcasterNetwork.TESTNET; // Network of the Hub
 
 (async () => {

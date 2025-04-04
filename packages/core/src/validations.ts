@@ -292,10 +292,11 @@ export const validateMessage = async (
   publicClients: PublicClients = defaultPublicClients,
 ): HubAsyncResult<protobufs.Message> => {
   // 1. Check the message data
-  const data = message.data;
-  if (!data) {
+  if (!message.data && !message.dataBytes) {
     return err(new HubError("bad_request.validation_failure", "data is missing"));
   }
+  // biome-ignore lint/style/noNonNullAssertion: data or dataBytes must be set or it will be caught above
+  const data = message.data || protobufs.MessageData.decode(Buffer.from(message.dataBytes!));
   const validData = await validateMessageData(data, publicClients);
   if (validData.isErr()) {
     return err(validData.error);
