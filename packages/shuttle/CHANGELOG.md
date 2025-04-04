@@ -1,5 +1,12 @@
 # @farcaster/hub-shuttle
 
+## 0.6.14
+
+### Patch Changes
+
+- Updated dependencies [846336ea]
+  - @farcaster/hub-nodejs@0.13.0
+
 ## 0.6.13
 
 ### Patch Changes

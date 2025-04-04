@@ -1,5 +1,16 @@
 # @farcaster/hub-nodejs
 
+## 0.13.0
+
+### Minor Changes
+
+- 846336ea: feat: Update packages to support snapchain
+
+### Patch Changes
+
+- Updated dependencies [846336ea]
+  - @farcaster/core@0.16.0
+
 ## 0.12.7
 
 ### Patch Changes

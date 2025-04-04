@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.16.0
+
+### Minor Changes
+
+- 846336ea: feat: Update packages to support snapchain
+
 ## 0.15.6
 
 ### Patch Changes
