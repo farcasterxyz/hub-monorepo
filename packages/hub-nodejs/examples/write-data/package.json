@@ -9,7 +9,7 @@
     "typecheck": "yarn tsc --noEmit"
   },
   "dependencies": {
-    "@farcaster/hub-nodejs": "^0.10.13"
+    "@farcaster/hub-nodejs": "^0.13.0"
   },
   "devDependencies": {
     "tsx": "^3.12.5",
