@@ -93,7 +93,7 @@
     "@noble/curves": "^1.0.0",
     "abitype": "^0.8.3",
     "async-lock": "^1.4.0",
-    "axios": "^1.6.0",
+    "axios": "^1.8.2",
     "bs58": "^5.0.0",
     "cli-progress": "^3.12.0",
     "commander": "~10.0.0",
