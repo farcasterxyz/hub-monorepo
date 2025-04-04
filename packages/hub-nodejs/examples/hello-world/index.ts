@@ -54,11 +54,11 @@ const SIGNER_PRIVATE_KEY: Hex = zeroAddress; // Optional, using the default mean
 
 // Note: nemes is the Farcaster team's mainnet hub, which is password protected to prevent abuse. Use a 3rd party hub
 // provider like https://neynar.com/ Or, run your own mainnet hub and broadcast to it permissionlessly.
-const HUB_URL = "nemes.farcaster.xyz:2283"; // URL + Port of the Hub
+const HUB_URL = "juno.farcaster.xyz:3383"; // URL + Port of the Hub
 const HUB_USERNAME = ""; // Username for auth, leave blank if not using TLS
 const HUB_PASS = ""; // Password for auth, leave blank if not using TLS
 const USE_SSL = false; // set to true if talking to a hub that uses SSL (3rd party hosted hubs or hubs that require auth)
-const FC_NETWORK = FarcasterNetwork.MAINNET; // Network of the Hub
+const FC_NETWORK = FarcasterNetwork.TESTNET; // Network of the Hub
 
 const CHAIN = optimism;
 const IdGateway = { abi: idGatewayABI, address: ID_GATEWAY_ADDRESS, chain: CHAIN };
@@ -201,7 +201,7 @@ const registerFname = async (fid: number) => {
       fid: fid, // Fid making the request (must match from or to)
       owner: account.address, // Custody address of fid making the request
       timestamp: timestamp, // Current timestamp in seconds
-      signature: bytesToHex(userNameProofSignature.value), // EIP-712 signature signed by the current custody address of the fid
+      signature: bytesToHex(userNameProofSignature._unsafeUnwrap()), // EIP-712 signature signed by the current custody address of the fid
     });
     return fname;
   } catch (e) {
