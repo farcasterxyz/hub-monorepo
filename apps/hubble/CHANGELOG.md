@@ -1,5 +1,13 @@
 # @farcaster/hubble
 
+## 1.19.2
+
+### Patch Changes
+
+- 8a34a18b: fix: Defer version expiry to April 30
+- Updated dependencies [846336ea]
+  - @farcaster/hub-nodejs@0.13.0
+
 ## 1.19.1
 
 ### Patch Changes

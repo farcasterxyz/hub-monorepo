@@ -1,5 +1,12 @@
 # @farcaster/hub-web
 
+## 0.9.6
+
+### Patch Changes
+
+- Updated dependencies [846336ea]
+  - @farcaster/core@0.16.0
+
 ## 0.9.5
 
 ### Patch Changes
