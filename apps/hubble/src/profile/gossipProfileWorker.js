@@ -7,39 +7,44 @@ import { multiaddr } from "@multiformats/multiaddr";
 parentPort?.on("message", (data) => {
   (async () => {
     const { id, action, args } = data;
-    if (action === ProfileWorkerAction.Start) {
-      await start();
-      parentPort?.postMessage({ id, action });
-    } else if (action === ProfileWorkerAction.SendMessage) {
-      await sendMessage();
-      parentPort?.postMessage({ id, action });
-    } else if (action === ProfileWorkerAction.WaitForMessages) {
-      const { count, timeout } = args;
-      await Promise.all(nodes.map((node) => node.waitForMessages(count, timeout)));
-      parentPort?.postMessage({ id, action });
-    } else if (action === ProfileWorkerAction.Stop) {
-      await Promise.all(nodes.map((node) => node.stop()));
-      // Collect the data from the nodes
-      const datas = nodes.map((node) => node.getData());
-      const peerIds = nodes.map((node) => node.gossipNode.peerId?.toString());
-      parentPort?.postMessage({ id, action, response: { peerIds, datas } });
-    } else if (action === ProfileWorkerAction.GetMultiAddres) {
-      const response = getMultiAddrs();
-      parentPort?.postMessage({ id, action, response });
-    } else if (action === ProfileWorkerAction.ConnectToMutliAddr) {
-      const { multiAddr } = args;
-      connectToMultiAddr(multiAddr);
-      parentPort?.postMessage({ id, action });
-    } else if (action === ProfileWorkerAction.ReportPeers) {
-      for (const node of nodes) {
-        const allPeers = node.gossipNode.allPeerIds();
-        console.log(`Node ${node.gossipNode.peerId?.toString()} has ${allPeers.length} peers`);
-        console.log(allPeers);
-        node.gossipNode.gossip?.subscribe(node.gossipNode.primaryTopic());
+    try {
+      if (action === ProfileWorkerAction.Start) {
+        await start();
+        parentPort?.postMessage({ id, action });
+      } else if (action === ProfileWorkerAction.SendMessage) {
+        await sendMessage();
+        parentPort?.postMessage({ id, action });
+      } else if (action === ProfileWorkerAction.WaitForMessages) {
+        const { count, timeout } = args;
+        await Promise.all(nodes.map((node) => node.waitForMessages(count, timeout)));
+        parentPort?.postMessage({ id, action });
+      } else if (action === ProfileWorkerAction.Stop) {
+        await Promise.all(nodes.map((node) => node.stop()));
+        // Collect the data from the nodes
+        const datas = nodes.map((node) => node.getData());
+        const peerIds = nodes.map((node) => node.gossipNode.peerId?.toString());
+        parentPort?.postMessage({ id, action, response: { peerIds, datas } });
+      } else if (action === ProfileWorkerAction.GetMultiAddres) {
+        const response = getMultiAddrs();
+        parentPort?.postMessage({ id, action, response });
+      } else if (action === ProfileWorkerAction.ConnectToMutliAddr) {
+        const { multiAddr } = args;
+        await connectToMultiAddr(multiAddr);
+        parentPort?.postMessage({ id, action });
+      } else if (action === ProfileWorkerAction.ReportPeers) {
+        for (const node of nodes) {
+          const allPeers = node.gossipNode.allPeerIds();
+          console.log(`Node ${node.gossipNode.peerId?.toString()} has ${allPeers.length} peers`);
+          console.log(allPeers);
+          node.gossipNode.gossip?.subscribe(node.gossipNode.primaryTopic());
         const a = node.gossipNode.gossip?.getTopics();
         console.log("------TOPICS---", a);
+        }
+        parentPort?.postMessage({ id, action });
       }
-      parentPort?.postMessage({ id, action });
+    } catch (error) {
+      console.error("Error handling action:", action, error);
+      parentPort?.postMessage({ id, action, error: error.message });
     }
   })();
 });
@@ -72,12 +77,11 @@ async function start() {
 function getMultiAddrs() {
   const peerIds = nodes.map((node) => node.gossipNode.peerId?.toString() ?? "unknown");
   const multiAddrs = nodes
-    .map((node) => node.gossipNode.multiaddrs)
-    .map((addrs) => addrs?.map((addr) => addr.toString())[0] ?? "");
+    .map((node) => node.gossipNode.multiaddrs?.[0]?.toString() ?? "unknown");
   return { peerIds, multiAddrs };
 }
 async function connectToMultiAddr(multiAddrs) {
-  // We'll connect the ith node to the ith multiaddr
+  // Connect the ith node to the ith multiaddr
   for (let i = 0; i < multiAddrs.length; i++) {
     const node = nodes[i];
     const multiAddr = multiAddrs[i];
@@ -171,14 +175,14 @@ class GossipTestNode {
       const id = parseInt(split?.[0] ?? "-1");
       const delay = Date.now() - parseInt(split?.[1] ?? "-1");
       this.receivedMessages.set(id, delay);
-      console.log("Received message ", id, " - ", delay);
+      console.log("Received message", id, " - ", delay);
     });
-    this.gossipNode.on("peerConnect", (peer) => {
-      // console.log("Peer connected", peer);
+
+    this.gossipNode.on("peerConnect", () => {
       this.connectedPeers++;
     });
-    this.gossipNode.on("peerDisconnect", (peer) => {
-      // console.log("Peer disconnected", peer);
+
+    this.gossipNode.on("peerDisconnect", () => {
       this.connectedPeers--;
     });
   }
