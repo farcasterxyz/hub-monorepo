@@ -124,7 +124,7 @@ describe("getLink", () => {
     );
 
     expect(result._unsafeUnwrapErr()).toEqual(
-      new HubError("bad_request.validation_failure", "targetId provided without type"),
+      new HubError("bad_request.validation_failure", "targetFid provided without type"),
     );
   });
 
