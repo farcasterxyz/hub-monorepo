@@ -502,13 +502,13 @@ describe("SyncEngine", () => {
         expect((await syncEngine.getDbStats()).numFnames).toEqual(0);
       });
       test("removes deleted fname proofs", async () => {
-        const supercedingUserNameProof = Factories.UserNameProof.build({
+        const supersedingUserNameProof = Factories.UserNameProof.build({
           name: userNameProof.name,
           timestamp: userNameProof.timestamp + 10,
         });
 
         expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeFalsy();
-        expect(await syncEngine.trie.exists(SyncId.fromFName(supercedingUserNameProof))).toBeFalsy();
+        expect(await syncEngine.trie.exists(SyncId.fromFName(supersedingUserNameProof))).toBeFalsy();
         expect((await syncEngine.getDbStats()).numFnames).toEqual(0);
 
         await engine.mergeUserNameProof(userNameProof);
@@ -517,11 +517,11 @@ describe("SyncEngine", () => {
         expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeTruthy();
         expect((await syncEngine.getDbStats()).numFnames).toEqual(1);
 
-        await engine.mergeUserNameProof(supercedingUserNameProof);
+        await engine.mergeUserNameProof(supersedingUserNameProof);
         await sleepWhile(() => syncEngine.syncTrieQSize > 0, SLEEPWHILE_TIMEOUT);
 
         expect(await syncEngine.trie.exists(SyncId.fromFName(userNameProof))).toBeFalsy();
-        expect(await syncEngine.trie.exists(SyncId.fromFName(supercedingUserNameProof))).toBeTruthy();
+        expect(await syncEngine.trie.exists(SyncId.fromFName(supersedingUserNameProof))).toBeTruthy();
         expect((await syncEngine.getDbStats()).numFnames).toEqual(1);
       });
 
