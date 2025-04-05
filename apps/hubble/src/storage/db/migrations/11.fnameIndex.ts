@@ -8,7 +8,7 @@ import { ResultAsync } from "neverthrow";
 const log = logger.child({ component: "fnameIndex" });
 
 /**
- * Up untill now, we were accidentally writing the fid index for the fname messages as Little Endian
+ * Up until now, we were accidentally writing the fid index for the fname messages as Little Endian
  * instead of Big Endian in name_registry_events.rs:make_fname_username_proof_by_fid_key.
  * This migration will fix that to be big endian, and also remove the little endian index keys
  */
