@@ -17,7 +17,8 @@ const fromServiceError = (err: ServiceError): HubError => {
   if (err.code === 14 && err.details === "No connection established") {
     context = `Connection failed: please check that the hub’s address, ports and authentication config are correct. ${context}`;
   }
-  return new HubError(err.metadata.get("errCode")[0] as HubErrorCode, context);
+  const hubErrorCode = err.metadata.get("errCode")[0] || err.metadata.get("x-err-code")[0];
+  return new HubError(hubErrorCode as HubErrorCode, context);
 };
 
 // grpc-js generates a Client stub that uses callbacks for async calls. Callbacks are
