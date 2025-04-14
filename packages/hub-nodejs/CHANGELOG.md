@@ -1,5 +1,11 @@
 # @farcaster/hub-nodejs
 
+## 0.13.1
+
+### Patch Changes
+
+- b39166ec: fix: Ensure snapchain error codes are passed through
+
 ## 0.13.0
 
 ### Minor Changes
