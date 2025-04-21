@@ -17,11 +17,18 @@ enum HubEventType {
 //  HUB_EVENT_TYPE_MERGE_RENT_REGISTRY_EVENT = 7;
 //  HUB_EVENT_TYPE_MERGE_STORAGE_ADMIN_REGISTRY_EVENT = 8;
   HUB_EVENT_TYPE_MERGE_ON_CHAIN_EVENT = 9;
+  HUB_EVENT_TYPE_MERGE_FAILURE = 10;
 }
 
 message MergeMessageBody {
   Message message = 1;
   repeated Message deleted_messages = 2;
+}
+
+message MergeFailureBody {
+  Message message = 1;
+  string code = 2;
+  string reason = 3;
 }
 
 message PruneMessageBody {
@@ -58,5 +65,8 @@ message HubEvent {
 //    MergeRentRegistryEventBody merge_rent_registry_event_body = 9;
 //    MergeStorageAdminRegistryEventBody merge_storage_admin_registry_event_body = 10;
     MergeOnChainEventBody merge_on_chain_event_body = 11;
+    MergeFailureBody merge_failure = 13;
   };
+  uint64 block_number = 12;
+  uint32 shard_index = 14;
 }
