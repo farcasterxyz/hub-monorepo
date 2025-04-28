@@ -1026,16 +1026,22 @@ export const validateUserDataAddBody = (body: protobufs.UserDataBody): HubResult
       break;
     }
     case protobufs.UserDataType.TWITTER: {
-      const validatedTwitterUsername = validateTwitterUsername(value);
-      if (validatedTwitterUsername.isErr()) {
-        return err(validatedTwitterUsername.error);
+      // Users can remove their username
+      if (value !== "") {
+        const validatedTwitterUsername = validateTwitterUsername(value);
+        if (validatedTwitterUsername.isErr()) {
+          return err(validatedTwitterUsername.error);
+        }
       }
       break;
     }
     case protobufs.UserDataType.GITHUB: {
-      const validatedGithubUsername = validateGithubUsername(value);
-      if (validatedGithubUsername.isErr()) {
-        return err(validatedGithubUsername.error);
+      // Users can remove their username
+      if (value !== "") {
+        const validatedGithubUsername = validateGithubUsername(value);
+        if (validatedGithubUsername.isErr()) {
+          return err(validatedGithubUsername.error);
+        }
       }
       break;
     }

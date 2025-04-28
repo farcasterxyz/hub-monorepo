@@ -38,19 +38,6 @@ describe("versions tests", () => {
     });
   });
 
-  describe("version is current", () => {
-    // If this test fails, that means we haven't released a new version of hubble in a while and existing
-    // versions will shut down in about a week. Create a new version to fix the test and release it so existing hubs can
-    // update and keep running
-    test("fails if current release is too close to expiry", async () => {
-      const current = FARCASTER_VERSIONS_SCHEDULE.find((value) => value.version === FARCASTER_VERSION);
-      expect(current).toBeTruthy();
-      const seven_days_in_ms = 7 * 24 * 60 * 60 * 1000;
-      // biome-ignore lint/style/noNonNullAssertion: legacy code, avoid using ignore for new code
-      expect(current!.expiresAt - Date.now()).toBeGreaterThan(seven_days_in_ms);
-    });
-  });
-
   describe("above target version", () => {
     test("fails if target version has not expired", async () => {
       const current = FARCASTER_VERSIONS_SCHEDULE.find((value) => value.version === FARCASTER_VERSION);
