@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.16.2
+
+### Patch Changes
+
+- a4070feb: fix: support removals for social usernames, already supported upstream
+
 ## 0.16.1
 
 ### Patch Changes
