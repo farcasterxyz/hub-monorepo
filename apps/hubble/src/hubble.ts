@@ -138,7 +138,7 @@ export const FARCASTER_VERSIONS_SCHEDULE: VersionSchedule[] = [
   { version: "2024.10.16", expiresAt: 1733875200000 }, // expires at 12/11/24 00:00 UTC
   { version: "2024.11.27", expiresAt: 1737504000000 }, // expires at 1/22/25 00:00 UTC
   { version: "2025.1.8", expiresAt: 1741132800000 }, // expires at 1/22/25 00:00 UTC
-  { version: "2025.2.19", expiresAt: 1745971200000 }, // expires at 4/30/25 00:00 UTC
+  { version: "2025.2.19", expiresAt: 1747353600000 }, // expires at 5/16/25 00:00 UTC
 ];
 
 const MAX_CONTACT_INFO_AGE_MS = 1000 * 60 * 60; // 60 minutes
