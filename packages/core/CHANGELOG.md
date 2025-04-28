@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.16.1
+
+### Patch Changes
+
+- 7079230a: fix: support removals for social usernames, already supported upstream
+
 ## 0.16.0
 
 ### Minor Changes
