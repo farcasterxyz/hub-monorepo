@@ -1,5 +1,12 @@
 # @farcaster/hubble
 
+## 1.19.3
+
+### Patch Changes
+
+- f63c0197: chore: Extend hubble expiry by a few weeks
+  - @farcaster/hub-nodejs@0.13.3
+
 ## 1.19.2
 
 ### Patch Changes
