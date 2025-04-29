@@ -1,5 +1,12 @@
 # @farcaster/core
 
+## 0.16.3
+
+### Patch Changes
+
+- e26f69bf: feat: Add snapchain fields to hub event
+- e26f69bf: fix: Populate data and dataBytes for better compatibility
+
 ## 0.16.2
 
 ### Patch Changes

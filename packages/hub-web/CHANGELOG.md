@@ -1,5 +1,15 @@
 # @farcaster/hub-web
 
+## 0.9.7
+
+### Patch Changes
+
+- e26f69bf: feat: Add snapchain fields to hub event
+- e26f69bf: fix: Populate data and dataBytes for better compatibility
+- Updated dependencies [e26f69bf]
+- Updated dependencies [e26f69bf]
+  - @farcaster/core@0.16.3
+
 ## 0.9.6
 
 ### Patch Changes
