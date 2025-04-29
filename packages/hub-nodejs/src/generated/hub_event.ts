@@ -22,6 +22,7 @@ export enum HubEventType {
    *  HUB_EVENT_TYPE_MERGE_STORAGE_ADMIN_REGISTRY_EVENT = 8;
    */
   MERGE_ON_CHAIN_EVENT = 9,
+  MERGE_FAILURE = 10,
 }
 
 export function hubEventTypeFromJSON(object: any): HubEventType {
@@ -44,6 +45,9 @@ export function hubEventTypeFromJSON(object: any): HubEventType {
     case 9:
     case "HUB_EVENT_TYPE_MERGE_ON_CHAIN_EVENT":
       return HubEventType.MERGE_ON_CHAIN_EVENT;
+    case 10:
+    case "HUB_EVENT_TYPE_MERGE_FAILURE":
+      return HubEventType.MERGE_FAILURE;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum HubEventType");
   }
@@ -63,6 +67,8 @@ export function hubEventTypeToJSON(object: HubEventType): string {
       return "HUB_EVENT_TYPE_MERGE_USERNAME_PROOF";
     case HubEventType.MERGE_ON_CHAIN_EVENT:
       return "HUB_EVENT_TYPE_MERGE_ON_CHAIN_EVENT";
+    case HubEventType.MERGE_FAILURE:
+      return "HUB_EVENT_TYPE_MERGE_FAILURE";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum HubEventType");
   }
@@ -75,6 +81,12 @@ export interface MergeMessageBody {
 
 export interface PruneMessageBody {
   message: Message | undefined;
+}
+
+export interface MergeFailureBody {
+  message: Message | undefined;
+  code: string;
+  reason: string;
 }
 
 export interface RevokeMessageBody {
@@ -114,6 +126,10 @@ export interface HubEvent {
    *    MergeStorageAdminRegistryEventBody merge_storage_admin_registry_event_body = 10;
    */
   mergeOnChainEventBody?: MergeOnChainEventBody | undefined;
+  mergeFailure?: MergeFailureBody | undefined;
+  blockNumber: number;
+  shardIndex: number;
+  timestamp: number;
 }
 
 function createBaseMergeMessageBody(): MergeMessageBody {
@@ -249,6 +265,92 @@ export const PruneMessageBody = {
     message.message = (object.message !== undefined && object.message !== null)
       ? Message.fromPartial(object.message)
       : undefined;
+    return message;
+  },
+};
+
+function createBaseMergeFailureBody(): MergeFailureBody {
+  return { message: undefined, code: "", reason: "" };
+}
+
+export const MergeFailureBody = {
+  encode(message: MergeFailureBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.message !== undefined) {
+      Message.encode(message.message, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.code !== "") {
+      writer.uint32(18).string(message.code);
+    }
+    if (message.reason !== "") {
+      writer.uint32(26).string(message.reason);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): MergeFailureBody {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseMergeFailureBody();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.message = Message.decode(reader, reader.uint32());
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.code = reader.string();
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.reason = reader.string();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): MergeFailureBody {
+    return {
+      message: isSet(object.message) ? Message.fromJSON(object.message) : undefined,
+      code: isSet(object.code) ? String(object.code) : "",
+      reason: isSet(object.reason) ? String(object.reason) : "",
+    };
+  },
+
+  toJSON(message: MergeFailureBody): unknown {
+    const obj: any = {};
+    message.message !== undefined && (obj.message = message.message ? Message.toJSON(message.message) : undefined);
+    message.code !== undefined && (obj.code = message.code);
+    message.reason !== undefined && (obj.reason = message.reason);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MergeFailureBody>, I>>(base?: I): MergeFailureBody {
+    return MergeFailureBody.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<MergeFailureBody>, I>>(object: I): MergeFailureBody {
+    const message = createBaseMergeFailureBody();
+    message.message = (object.message !== undefined && object.message !== null)
+      ? Message.fromPartial(object.message)
+      : undefined;
+    message.code = object.code ?? "";
+    message.reason = object.reason ?? "";
     return message;
   },
 };
@@ -504,6 +606,10 @@ function createBaseHubEvent(): HubEvent {
     revokeMessageBody: undefined,
     mergeUsernameProofBody: undefined,
     mergeOnChainEventBody: undefined,
+    mergeFailure: undefined,
+    blockNumber: 0,
+    shardIndex: 0,
+    timestamp: 0,
   };
 }
 
@@ -529,6 +635,18 @@ export const HubEvent = {
     }
     if (message.mergeOnChainEventBody !== undefined) {
       MergeOnChainEventBody.encode(message.mergeOnChainEventBody, writer.uint32(90).fork()).ldelim();
+    }
+    if (message.mergeFailure !== undefined) {
+      MergeFailureBody.encode(message.mergeFailure, writer.uint32(106).fork()).ldelim();
+    }
+    if (message.blockNumber !== 0) {
+      writer.uint32(96).uint64(message.blockNumber);
+    }
+    if (message.shardIndex !== 0) {
+      writer.uint32(112).uint32(message.shardIndex);
+    }
+    if (message.timestamp !== 0) {
+      writer.uint32(120).uint64(message.timestamp);
     }
     return writer;
   },
@@ -589,6 +707,34 @@ export const HubEvent = {
 
           message.mergeOnChainEventBody = MergeOnChainEventBody.decode(reader, reader.uint32());
           continue;
+        case 13:
+          if (tag != 106) {
+            break;
+          }
+
+          message.mergeFailure = MergeFailureBody.decode(reader, reader.uint32());
+          continue;
+        case 12:
+          if (tag != 96) {
+            break;
+          }
+
+          message.blockNumber = longToNumber(reader.uint64() as Long);
+          continue;
+        case 14:
+          if (tag != 112) {
+            break;
+          }
+
+          message.shardIndex = reader.uint32();
+          continue;
+        case 15:
+          if (tag != 120) {
+            break;
+          }
+
+          message.timestamp = longToNumber(reader.uint64() as Long);
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -613,6 +759,10 @@ export const HubEvent = {
       mergeOnChainEventBody: isSet(object.mergeOnChainEventBody)
         ? MergeOnChainEventBody.fromJSON(object.mergeOnChainEventBody)
         : undefined,
+      mergeFailure: isSet(object.mergeFailure) ? MergeFailureBody.fromJSON(object.mergeFailure) : undefined,
+      blockNumber: isSet(object.blockNumber) ? Number(object.blockNumber) : 0,
+      shardIndex: isSet(object.shardIndex) ? Number(object.shardIndex) : 0,
+      timestamp: isSet(object.timestamp) ? Number(object.timestamp) : 0,
     };
   },
 
@@ -633,6 +783,11 @@ export const HubEvent = {
     message.mergeOnChainEventBody !== undefined && (obj.mergeOnChainEventBody = message.mergeOnChainEventBody
       ? MergeOnChainEventBody.toJSON(message.mergeOnChainEventBody)
       : undefined);
+    message.mergeFailure !== undefined &&
+      (obj.mergeFailure = message.mergeFailure ? MergeFailureBody.toJSON(message.mergeFailure) : undefined);
+    message.blockNumber !== undefined && (obj.blockNumber = Math.round(message.blockNumber));
+    message.shardIndex !== undefined && (obj.shardIndex = Math.round(message.shardIndex));
+    message.timestamp !== undefined && (obj.timestamp = Math.round(message.timestamp));
     return obj;
   },
 
@@ -661,6 +816,12 @@ export const HubEvent = {
       (object.mergeOnChainEventBody !== undefined && object.mergeOnChainEventBody !== null)
         ? MergeOnChainEventBody.fromPartial(object.mergeOnChainEventBody)
         : undefined;
+    message.mergeFailure = (object.mergeFailure !== undefined && object.mergeFailure !== null)
+      ? MergeFailureBody.fromPartial(object.mergeFailure)
+      : undefined;
+    message.blockNumber = object.blockNumber ?? 0;
+    message.shardIndex = object.shardIndex ?? 0;
+    message.timestamp = object.timestamp ?? 0;
     return message;
   },
 };
