@@ -298,6 +298,9 @@ impl StoreDef for UsernameProofStoreDef {
                 },
             )),
             id: 0,
+            block_number: 0,
+            shard_index: 0,
+            timestamp: 0,
         }
     }
 
@@ -338,6 +341,9 @@ impl StoreDef for UsernameProofStoreDef {
                 },
             )),
             id: 0,
+            block_number: 0,
+            shard_index: 0,
+            timestamp: 0,
         }
     }
 
