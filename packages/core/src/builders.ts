@@ -67,7 +67,7 @@ export const makeMessage = async <TMessage extends protobufs.Message>(
   if (signerKey.isErr()) return err(signerKey.error);
 
   const message = protobufs.Message.create({
-    // data: messageData,
+    data: messageData,
     dataBytes: dataBytes, // Messages for snapchain must use dataBytes because of serialization differences between js and rust
     hash,
     hashScheme: protobufs.HashScheme.BLAKE3,
@@ -93,7 +93,7 @@ export const makeMessageWithSignature = async (
   const hash = blake3(dataBytes, { dkLen: 20 });
 
   const message = protobufs.Message.create({
-    // data: messageData,
+    data: messageData,
     dataBytes: dataBytes,
     hash,
     hashScheme: protobufs.HashScheme.BLAKE3,

@@ -218,6 +218,14 @@ export const isPruneMessageHubEvent = (event: hubEventProtobufs.HubEvent): event
   );
 };
 
+export const isMergeFailureHubEvent = (event: hubEventProtobufs.HubEvent): event is types.MergeMessageHubEvent => {
+  return (
+    event.type === hubEventProtobufs.HubEventType.MERGE_FAILURE &&
+    typeof event.mergeFailure !== "undefined" &&
+    typeof event.mergeFailure.message !== "undefined"
+  );
+};
+
 export const isMergeOnChainHubEvent = (event: hubEventProtobufs.HubEvent): event is types.MergeOnChainEventHubEvent => {
   return (
     event.type === hubEventProtobufs.HubEventType.MERGE_ON_CHAIN_EVENT &&

@@ -117,7 +117,7 @@ export type StoreEvents = {
   mergeOnChainEvent: (event: MergeOnChainEventHubEvent) => void;
 };
 
-export type HubEventArgs = Omit<HubEvent, "id">;
+export type HubEventArgs = Omit<HubEvent, "id" | "blockNumber" | "shardIndex" | "timestamp">;
 
 const makeEventKey = (id?: number): Buffer => {
   const buffer = Buffer.alloc(1 + (id ? 8 : 0));

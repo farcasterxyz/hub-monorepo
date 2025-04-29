@@ -19,6 +19,7 @@ import {
   getStorageUnitExpiry,
   getStorageUnitType,
   HubEvent,
+  HubInfoRequest,
   isCastAddMessage,
   isCastRemoveMessage,
   isIdRegisterOnChainEvent,
@@ -247,15 +248,19 @@ export class App implements MessageHandler {
   async backfillFids(fids: number[], backfillQueue: Queue) {
     const startedAt = Date.now();
     if (fids.length === 0) {
-      const maxFidResult = await this.hubSubscriber.hubClient.getFids({ pageSize: 1, reverse: true });
-      if (maxFidResult.isErr()) {
-        log.error("Failed to get max fid", maxFidResult.error);
-        throw maxFidResult.error;
-      }
-      const maxFid = MAX_FID ? parseInt(MAX_FID) : maxFidResult.value.fids[0];
+      let maxFid = MAX_FID ? parseInt(MAX_FID) : undefined;
       if (!maxFid) {
-        log.error("Max fid was undefined");
-        throw new Error("Max fid was undefined");
+        const getInfoResult = await this.hubSubscriber.hubClient?.getInfo(HubInfoRequest.create({}));
+        if (getInfoResult?.isErr()) {
+          log.error("Failed to get max fid", getInfoResult.error);
+          throw getInfoResult.error;
+        } else {
+          maxFid = getInfoResult?._unsafeUnwrap()?.dbStats?.numFidEvents;
+          if (!maxFid) {
+            log.error("Failed to get max fid");
+            throw new Error("Failed to get max fid");
+          }
+        }
       }
       log.info(`Queuing up fids upto: ${maxFid}`);
       // create an array of arrays in batches of 100 upto maxFid
