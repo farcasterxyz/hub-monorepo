@@ -1,5 +1,15 @@
 # @farcaster/hub-nodejs
 
+## 0.13.4
+
+### Patch Changes
+
+- e26f69bf: feat: Add snapchain fields to hub event
+- e26f69bf: fix: Populate data and dataBytes for better compatibility
+- Updated dependencies [e26f69bf]
+- Updated dependencies [e26f69bf]
+  - @farcaster/core@0.16.3
+
 ## 0.13.3
 
 ### Patch Changes

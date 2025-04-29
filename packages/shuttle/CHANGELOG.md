@@ -1,5 +1,15 @@
 # @farcaster/hub-shuttle
 
+## 0.6.15
+
+### Patch Changes
+
+- e26f69bf: feat: Add snapchain fields to hub event
+- e26f69bf: fix: Populate data and dataBytes for better compatibility
+- Updated dependencies [e26f69bf]
+- Updated dependencies [e26f69bf]
+  - @farcaster/hub-nodejs@0.13.4
+
 ## 0.6.14
 
 ### Patch Changes
