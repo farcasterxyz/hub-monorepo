@@ -19,7 +19,7 @@ export const ALLOWED_CLOCK_SKEW_SECONDS = 10 * 60;
 
 export const FNAME_REGEX = /^[a-z0-9][a-z0-9-]{0,15}$/;
 export const HEX_REGEX = /^(0x)?[0-9A-Fa-f]+$/;
-export const TWITTER_REGEX = /^[a-z0-9_]{0,15}$/;
+export const TWITTER_REGEX = /^[a-zA-Z0-9_]{0,15}$/;
 export const GITHUB_REGEX = /^[a-z\d](?:[a-z\d]|-(?!-)){0,38}$/i;
 
 export const USERNAME_MAX_LENGTH = 20;
