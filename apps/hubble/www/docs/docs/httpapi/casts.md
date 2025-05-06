@@ -46,7 +46,7 @@ curl http://127.0.0.1:2281/v1/castById?fid=2&hash=0xd2b1ddc6c88e865a33cb1a565e00
 ```
 
 ## castsByFid
-Fetch all casts for authored by an FID. 
+Fetch all casts authored by a user with an FID.
 
 
 **Query Parameters**
