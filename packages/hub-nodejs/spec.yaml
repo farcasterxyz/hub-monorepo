@@ -1303,14 +1303,7 @@ components:
         - type: object
           properties:
             data:
-              allOf:
-                - $ref: '#/components/schemas/MessageDataLink'
-                - type: object
-                  properties:
-                    type:
-                      $ref: '#/components/schemas/MessageType'
-                  required:
-                    - type
+              $ref: '#/components/schemas/MessageDataLink'
           required:
             - data
     LinkType:
@@ -1318,9 +1311,11 @@ components:
       description: |-
         Type of Link.
         - follow: Follow another user
+        - mentor: Indicate another user as mentor
       default: follow
       enum:
         - follow
+        - mentor
     MergeMessageBody:
       type: object
       properties:
