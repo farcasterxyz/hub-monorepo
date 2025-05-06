@@ -13,8 +13,6 @@ Given a custody address with ~10$ worth of funds on OP Mainnet, this example wil
 
 We do not recommend running this example in a cloud environment because it requires your custody address.
 
-You can try out a web version of this at https://farcaster-signup-demo-wkulikowski.vercel.app. Source: https://github.com/wojtekwtf/farcaster-signup-demo by [@woj.eth](https://warpcast.com/woj.eth).
-
 ### Run locally
 
 1. Clone the repo locally
