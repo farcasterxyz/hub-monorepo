@@ -180,3 +180,8 @@ export type MergeUsernameProofHubEvent = hubEventProtobufs.HubEvent & {
   type: hubEventProtobufs.HubEventType.MERGE_USERNAME_PROOF;
   mergeUsernameProofBody: hubEventProtobufs.MergeUserNameProofBody;
 };
+
+export type MergeFailureHubEvent = hubEventProtobufs.HubEvent & {
+  type: hubEventProtobufs.HubEventType.MERGE_FAILURE;
+  mergeFailure: hubEventProtobufs.MergeFailureBody;
+};

@@ -218,7 +218,7 @@ export const isPruneMessageHubEvent = (event: hubEventProtobufs.HubEvent): event
   );
 };
 
-export const isMergeFailureHubEvent = (event: hubEventProtobufs.HubEvent): event is types.MergeMessageHubEvent => {
+export const isMergeFailureHubEvent = (event: hubEventProtobufs.HubEvent): event is types.MergeFailureHubEvent => {
   return (
     event.type === hubEventProtobufs.HubEventType.MERGE_FAILURE &&
     typeof event.mergeFailure !== "undefined" &&
