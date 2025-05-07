@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.16.4
+
+### Patch Changes
+
+- 7ec9ad4b: fix: Update isMergeFailureHubEvent type guard to return correct type
+
 ## 0.16.3
 
 ### Patch Changes
