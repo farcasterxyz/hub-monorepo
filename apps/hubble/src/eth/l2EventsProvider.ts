@@ -620,7 +620,7 @@ export class L2EventsProvider<chain extends Chain = Chain, transport extends Tra
 
     log.info({ latestBlock: latestBlock }, "connected to optimism node");
 
-    // Find how how much we need to sync
+    // Find how much we need to sync
     let lastSyncedBlock = this._firstBlock;
 
     const hubState = await this._hub.getHubState();
