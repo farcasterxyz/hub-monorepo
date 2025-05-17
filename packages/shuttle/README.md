@@ -20,6 +20,35 @@ and provide it to the system. The system will call your `handleMessageMerge` met
 where the message is written to the db. The function is always expected to succeed, it is not possible to instruct it to "skip"  a message.
 If your function fails, the message will not be written to the db and will be retried at a later time.
 
+## Configuration
+
+### Event Rewinding
+
+Shuttle now supports rewinding the event stream by a specified number of seconds on restart. This helps prevent missing events that might have been emitted out of order.
+
+When initializing the `EventStreamHubSubscriber`, you can provide a `rewindSeconds` option:
+
+```javascript
+const subscriber = new EventStreamHubSubscriber(
+  "myLabel",
+  hubClient,
+  eventStream,
+  redis,
+  shardKey,
+  logger,
+  eventTypes,
+  totalShards,
+  shardIndex,
+  connectionTimeout,
+  {
+    beforeProcess: myBeforeProcessHandler,
+    afterProcess: myAfterProcessHandler,
+    rewindSeconds: 5, // Rewind 5 seconds when restarting
+  }
+);
+```
+
+This will cause Shuttle to rewind in the event stream by the specified number of seconds when it restarts, ensuring it doesn't miss any events that might have been emitted out of order.
 
 ## Usage
 The package is meant to be used as a library. The app provided is just an example.
