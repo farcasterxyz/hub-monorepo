@@ -196,6 +196,7 @@ type PostProcessHandler = (events: HubEvent[], eventBytes: Uint8Array[]) => Prom
 type EventStreamHubSubscriberOptions = {
   beforeProcess?: PreProcessHandler;
   afterProcess?: PostProcessHandler;
+  rewindSeconds?: number; // New option to rewind in the event stream on restart
 };
 
 export class EventStreamHubSubscriber extends BaseHubSubscriber {
@@ -213,6 +214,7 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
   private beforeProcess?: PreProcessHandler;
   private afterProcess?: PostProcessHandler;
   private hub: string;
+  private rewindSeconds: number; // Number of seconds to rewind in the event stream on restart
 
   constructor(
     label: string,
@@ -237,6 +239,7 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
     this.beforeProcess = options?.beforeProcess;
     this.afterProcess = options?.afterProcess;
     this.shardKey = shardKey;
+    this.rewindSeconds = options?.rewindSeconds ?? 0; // Default to 0 (no rewind) if not specified
   }
 
   public override async getLastEventId(): Promise<number | undefined> {
@@ -246,7 +249,37 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
       await this.redis.setLastProcessedEvent(this.redisKey, labelBasedKey);
       await this.redis.setLastProcessedEvent(this.label, 0);
     }
-    return await this.redis.getLastProcessedEvent(this.redisKey);
+
+    const lastEventId = await this.redis.getLastProcessedEvent(this.redisKey);
+
+    // If rewindSeconds is set and we have a valid event ID, rewind the ID by the specified number of seconds
+    if (this.rewindSeconds > 0 && lastEventId > 0) {
+      try {
+        // Extract timestamp from the event ID
+        const lastEventTimestamp = extractEventTimestamp(lastEventId);
+
+        // Calculate the new timestamp by rewinding the specified number of seconds
+        const rewindTimestamp = lastEventTimestamp - this.rewindSeconds * 1000;
+
+        // Create a new event ID based on the rewound timestamp
+        // The event ID format is: timestamp << 16 | sequence
+        // We'll set sequence to 0 to ensure we don't miss any events
+        const rewindEventId = rewindTimestamp << 16;
+
+        this.log.info(
+          `Rewinding event stream by ${this.rewindSeconds} seconds from ID ${lastEventId} (timestamp: ${new Date(
+            lastEventTimestamp,
+          ).toISOString()}) to ID ${rewindEventId} (timestamp: ${new Date(rewindTimestamp).toISOString()})`,
+        );
+
+        return rewindEventId;
+      } catch (error) {
+        this.log.error(`Error rewinding event stream: ${error}. Using original event ID: ${lastEventId}`);
+        return lastEventId;
+      }
+    }
+
+    return lastEventId;
   }
 
   public override async processHubEvent(event: HubEvent): Promise<boolean> {
