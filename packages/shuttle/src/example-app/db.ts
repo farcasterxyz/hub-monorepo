@@ -35,12 +35,12 @@ export const migrateToLatest = async (
     if (it.status === "Success") {
       log.info(`Migration "${it.migrationName}" was executed successfully`);
     } else if (it.status === "Error") {
-      log.error(`failed to execute migration "${it.migrationName}"`);
+      log.error(`Migration "${it.migrationName}" failed. Check the migration file at: ${path.join(currentDir, 'migrations', it.migrationName)}. Possible reasons: syntax error, incompatible schema, or missing dependencies. Please review the migration and try again.`);
     }
   });
 
   if (error) {
-    log.error("Failed to apply all database migrations");
+    log.error("Failed to apply all database migrations. Please check previous error logs for details and ensure your migration files are valid and compatible with the current schema.");
     log.error(error);
     return err(error);
   }
