@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.6.16
+
+### Patch Changes
+
+- feature: Add rewindSeconds option to EventStreamHubSubscriber to avoid missing events emitted out of order
+
 ## 0.6.15
 
 ### Patch Changes

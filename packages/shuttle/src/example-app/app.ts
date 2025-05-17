@@ -40,6 +40,7 @@ import {
   POSTGRES_URL,
   POSTGRES_SCHEMA,
   REDIS_URL,
+  REWIND_SECONDS,
   SHARD_INDEX,
   TOTAL_SHARDS,
   USE_STREAMING_RPCS_FOR_BACKFILL,
@@ -103,6 +104,9 @@ export class App implements MessageHandler {
       totalShards,
       shardIndex,
       SUBSCRIBE_RPC_TIMEOUT,
+      {
+        rewindSeconds: REWIND_SECONDS,
+      },
     );
     const streamConsumer = new HubEventStreamConsumer(hub, eventStreamForRead, shardKey);
 
