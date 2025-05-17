@@ -18,7 +18,7 @@ export const getFarcasterTime = (): HubResult<number> => {
  */
 export const toFarcasterTime = (time: number): HubResult<number> => {
   if (time < FARCASTER_EPOCH) {
-    return err(new HubError("bad_request.invalid_param", "time must be after Farcaster epoch (01/01/2022)"));
+    return err(new HubError("bad_request.invalid_param", "time must be after Farcaster epoch (01/01/2021)"));
   }
   const secondsSinceEpoch = Math.round((time - FARCASTER_EPOCH) / 1000);
   if (secondsSinceEpoch > 2 ** 32 - 1) {
