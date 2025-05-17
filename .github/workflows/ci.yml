@@ -18,15 +18,10 @@ jobs:
 
     strategy:
       matrix:
-        include:
-          - arch: 'arm64'
-            node_version: 22.4.1
-            runs_on: ['runs-on=${{ github.run_id }}', 'runner=4cpu-linux-arm64']
-          - arch: 'x64'
-            node_version: 22.4.1
-            runs_on: ['runs-on=${{ github.run_id }}', 'runner=4cpu-linux-x64']
+        arch: ['arm64', 'x64']
+        node_version: [22, 24]
 
-    runs-on: ${{ matrix.runs_on }}
+    runs-on: ['runs-on=${{ github.run_id }}', 'runner=4cpu-linux-${{ matrix.arch }}']
     name: test (Node ${{ matrix.node_version }}, ${{ matrix.arch }})
 
     services:
