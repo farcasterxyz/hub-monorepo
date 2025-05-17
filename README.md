@@ -1,22 +1,14 @@
-# Hubble Monorepo
+# Hub Monorepo
 
-This monorepo contains [Hubble](https://docs.farcaster.xyz/hubble/hubble), a Farcaster Hub implementation, and other packages used to communicate with Hubble.
+This monorepo contains packages used to communicate with a Farcaster Hub.
 
 ## Getting Started
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) to set up your developer environment and learn about how to contribute. 
+See [CONTRIBUTING.md](./CONTRIBUTING.md) to set up your developer environment and learn about how to contribute.
 
 ## Code Organization
 
 The repository is a monorepo with a primary application in the `/apps/` folder that imports several packages `/packages/`. It is written primarily in [Typescript](https://www.typescriptlang.org/) and uses [Yarn](https://yarnpkg.com/) to orchestrate tasks and [TurboRepo](https://turbo.build/) as its build system. Some performance intensive code is written in Rust and compiled with Cargo.
-
-### Applications
-
-| App Name                                      | Description                                                                    |
-| --------------------------------------------- | ------------------------------------------------------------------------------ |
-| [@farcaster/hubble](./apps/hubble)             | A Farcaster Hub implementation |
-
-To run Hubble, please see the [Hubble docs](https://docs.farcaster.xyz/hubble/hubble).
 
 ### Packages
 
