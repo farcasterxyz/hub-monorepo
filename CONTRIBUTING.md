@@ -52,7 +52,7 @@ First, ensure that the following are installed globally on your machine:
 Then, from the root folder run:
 
 - `yarn install` to install dependencies
-- `yarn build` to build Hubble and its dependencies
+- `yarn build` to build packages
 - `yarn test` to ensure that the test suite runs correctly
 
 NOTE: Running `yarn test` currently fails due to an environment issue with shuttle. you can still run `yarn test` successfully from all the other repositories.
@@ -104,8 +104,6 @@ All changes that involve features or bugfixes should be accompanied by tests, an
 - Critical code paths should have 100% test coverage, which you can check in the Coveralls CI.
 
 ### 3.2 Writing Docs
-
-If your PR has changes to gRPC or protobuf files, you must update the [public documentation website](./apps/hubble/www/). See the [Protobuf README](./protobufs/README.md) for instructions on how to auto-gen the documentation.
 
 All PRs should have supporting documentation that makes reviewing and understanding the code easy. You should:
 
@@ -280,7 +278,7 @@ when the repo manager runs a release process.
 ### 3.6 Releasing Versions
 
 Permission to publish to the @farcaster organization in NPM is necessary. This is a non-reversible process so if you
-are at all unsure about how to proceed, please reach out to Varun ([Github](https://github.com/varunsrin) | [Warpcast](https://warpcast.com/v))
+are at all unsure about how to proceed, please reach out to Varun ([Github](https://github.com/varunsrin) | [Farcaster](https://farcaster.xyz/v))
 
 1. Checkout a new branch and run `yarn changeset version`
 2. Review CHANGELOG.md and confirm that it is accurate
@@ -291,10 +289,7 @@ are at all unsure about how to proceed, please reach out to Varun ([Github](http
 6. Fetch and update tags with `git fetch origin --tags && yarn changeset tag && git tag -f @latest`
 7. Delete the biome tags `git tag -d biome-config-custom@0.0.1`
 8. Push tags with `git push origin HEAD --tags -f`
-9. If docker build does not start `git push upstream --delete @farcaster/hubble@<version> && git push upstream --tags @farcaster/hubble@<version>` to re-trigger it.
-10. Create a GitHub Release for Hubble, copying over the changelog and marking it as the latest.
-11. If this is a non-patch change, create an NFT for the release.
-12. Make sure that the Docker image for the latest release gets built and published to [Docker hub](https://hub.docker.com/r/farcasterxyz/hubble/tags).
+9. If this is a non-patch change, create an NFT for the release.
 
 ### 3.7 Working in Rust
 
@@ -305,26 +300,7 @@ To add new code to Rust,
 2. Add a bridge implementation and types into `packages/core/src/addon/addon.js` and `packages/core/src/addon/addon.d.ts`
 3. Export the callable typescript function in `packages/core/src/rustfunctions.ts`. This function can then be used throughout the project to transparently call into Rust from Typescript
 
-### 3.8 DB Migrations
-
-One-time changes to RocksDB and the data stored can be made as a part of migrations. Migrations are scripts that are run once, at startup. They are run blocking, so you can safely make big changes before the Hub starts running.
-
-1. Create a new function in `apps/hubble/src/db/migrations/` that executes the change and its associated tests
-2. Increment `LATEST_DB_SCHEMA_VERSION` in `migrations.ts`
-3. Add a new entry to the `migrations` constant with the migration number and the function to execute the migration in `migrations.ts`
-
-When users upgrade their hub and restart, the migration is executed at startup.
-
 ## 4. Troubleshooting
-
-### Upgrading Libp2p
-
-1. Pick a [libp2p release](https://github.com/libp2p/js-libp2p/releases) and navigate to its [package.json](https://github.com/libp2p/js-libp2p/blob/master/package.json) file
-2. Copy the required versions of `libp2p`, `@libp2p/*`, `@chainsafe/*` `@multiformats/*` packages to our package.json
-3. For unspecified packages read their changelog and make a best guess about versions (e.g. `@chainsafe/libp2p-gossipsub` and `@libp2p/pubsub-peer-discovery`)
-4. Follow the [migration guide](https://github.com/libp2p/js-libp2p/tree/master/doc/migrations) for the versions you are upgrading to
-
-If you run into any unexpected issues open a discussion in the [libp2p forum](https://discuss.libp2p.io/). @achingbrain on the Filecoin slack maintains this project and can be helpful with major issues.
 
 ### Releasing to NPM
 
