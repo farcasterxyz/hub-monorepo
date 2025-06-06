@@ -6,6 +6,7 @@ enum OnChainEventType {
   EVENT_TYPE_SIGNER_MIGRATED = 2;
   EVENT_TYPE_ID_REGISTER = 3;
   EVENT_TYPE_STORAGE_RENT = 4;
+  EVENT_TYPE_TIER_PURCHASE = 5;
 }
 
 message OnChainEvent {
@@ -22,9 +23,21 @@ message OnChainEvent {
     SignerMigratedEventBody signer_migrated_event_body = 10;
     IdRegisterEventBody id_register_event_body = 11;
     StorageRentEventBody storage_rent_event_body = 12;
+    TierPurchaseBody tier_purchase_event_body = 15;
   }
   uint32 tx_index = 13;
   uint32 version = 14;
+}
+
+enum TierType {
+  None = 0;
+  Pro = 1;
+}
+
+message TierPurchaseBody {
+  TierType tier_type = 1;
+  uint64 for_days = 2;
+  bytes payer = 3;
 }
 
 enum SignerEventType {

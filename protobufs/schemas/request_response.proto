@@ -181,10 +181,16 @@ message OnChainEventResponse {
   optional bytes next_page_token = 2;
 }
 
+message TierDetails {
+  TierType tier_type = 1;
+  uint64 expires_at = 2;
+}
+
 message StorageLimitsResponse {
   repeated StorageLimit limits = 1;
   uint32 units = 2;
   repeated StorageUnitDetails unit_details = 3;
+  repeated TierDetails tier_subscriptions = 4;
 }
 
 enum StoreType {

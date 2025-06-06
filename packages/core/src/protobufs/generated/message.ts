@@ -248,6 +248,12 @@ export enum UserDataType {
   TWITTER = 8,
   /** GITHUB - Username of user on github */
   GITHUB = 9,
+  /** BANNER - Banner image for the user */
+  BANNER = 10,
+  /** USER_DATA_PRIMARY_ADDRESS_ETHEREUM - Primary address for the user on Ethereum */
+  USER_DATA_PRIMARY_ADDRESS_ETHEREUM = 11,
+  /** USER_DATA_PRIMARY_ADDRESS_SOLANA - Primary address for the user on Solana */
+  USER_DATA_PRIMARY_ADDRESS_SOLANA = 12,
 }
 
 export function userDataTypeFromJSON(object: any): UserDataType {
@@ -279,6 +285,15 @@ export function userDataTypeFromJSON(object: any): UserDataType {
     case 9:
     case "USER_DATA_TYPE_GITHUB":
       return UserDataType.GITHUB;
+    case 10:
+    case "USER_DATA_TYPE_BANNER":
+      return UserDataType.BANNER;
+    case 11:
+    case "USER_DATA_PRIMARY_ADDRESS_ETHEREUM":
+      return UserDataType.USER_DATA_PRIMARY_ADDRESS_ETHEREUM;
+    case 12:
+    case "USER_DATA_PRIMARY_ADDRESS_SOLANA":
+      return UserDataType.USER_DATA_PRIMARY_ADDRESS_SOLANA;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum UserDataType");
   }
@@ -304,6 +319,12 @@ export function userDataTypeToJSON(object: UserDataType): string {
       return "USER_DATA_TYPE_TWITTER";
     case UserDataType.GITHUB:
       return "USER_DATA_TYPE_GITHUB";
+    case UserDataType.BANNER:
+      return "USER_DATA_TYPE_BANNER";
+    case UserDataType.USER_DATA_PRIMARY_ADDRESS_ETHEREUM:
+      return "USER_DATA_PRIMARY_ADDRESS_ETHEREUM";
+    case UserDataType.USER_DATA_PRIMARY_ADDRESS_SOLANA:
+      return "USER_DATA_PRIMARY_ADDRESS_SOLANA";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum UserDataType");
   }
@@ -313,6 +334,7 @@ export function userDataTypeToJSON(object: UserDataType): string {
 export enum CastType {
   CAST = 0,
   LONG_CAST = 1,
+  TEN_K_CAST = 2,
 }
 
 export function castTypeFromJSON(object: any): CastType {
@@ -323,6 +345,9 @@ export function castTypeFromJSON(object: any): CastType {
     case 1:
     case "LONG_CAST":
       return CastType.LONG_CAST;
+    case 2:
+    case "TEN_K_CAST":
+      return CastType.TEN_K_CAST;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum CastType");
   }
@@ -334,6 +359,8 @@ export function castTypeToJSON(object: CastType): string {
       return "CAST";
     case CastType.LONG_CAST:
       return "LONG_CAST";
+    case CastType.TEN_K_CAST:
+      return "TEN_K_CAST";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum CastType");
   }
