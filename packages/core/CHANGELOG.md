@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.16.5
+
+### Patch Changes
+
+- 7e742a8d: chore: bring protos to parity with Snapchain for client library
+
 ## 0.16.4
 
 ### Patch Changes
