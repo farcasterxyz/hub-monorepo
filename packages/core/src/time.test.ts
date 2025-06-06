@@ -12,7 +12,7 @@ describe("toFarcasterTime", () => {
 
   test("fails for time before 01/01/2021", () => {
     expect(toFarcasterTime(FARCASTER_EPOCH - 1)).toEqual(
-      err(new HubError("bad_request.invalid_param", "time must be after Farcaster epoch (01/01/2022)")),
+      err(new HubError("bad_request.invalid_param", "time must be after Farcaster epoch (01/01/2021)")),
     );
   });
 

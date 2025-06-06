@@ -4,6 +4,7 @@ enum UserNameType {
   USERNAME_TYPE_NONE = 0;
   USERNAME_TYPE_FNAME = 1;
   USERNAME_TYPE_ENS_L1 = 2;
+  USERNAME_TYPE_BASENAME = 3;
 }
 
 message UserNameProof {

@@ -6,6 +6,7 @@ export enum UserNameType {
   USERNAME_TYPE_NONE = 0,
   USERNAME_TYPE_FNAME = 1,
   USERNAME_TYPE_ENS_L1 = 2,
+  USERNAME_TYPE_BASENAME = 3,
 }
 
 export function userNameTypeFromJSON(object: any): UserNameType {
@@ -19,6 +20,9 @@ export function userNameTypeFromJSON(object: any): UserNameType {
     case 2:
     case "USERNAME_TYPE_ENS_L1":
       return UserNameType.USERNAME_TYPE_ENS_L1;
+    case 3:
+    case "USERNAME_TYPE_BASENAME":
+      return UserNameType.USERNAME_TYPE_BASENAME;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum UserNameType");
   }
@@ -32,6 +36,8 @@ export function userNameTypeToJSON(object: UserNameType): string {
       return "USERNAME_TYPE_FNAME";
     case UserNameType.USERNAME_TYPE_ENS_L1:
       return "USERNAME_TYPE_ENS_L1";
+    case UserNameType.USERNAME_TYPE_BASENAME:
+      return "USERNAME_TYPE_BASENAME";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum UserNameType");
   }
