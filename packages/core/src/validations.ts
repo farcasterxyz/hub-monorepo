@@ -612,7 +612,7 @@ export const validateCastAddBody = (
   }
 
   if (body.embeds.length > 4) {
-    return err(new HubError("bad_request.validation_failure", "embeds > 2"));
+    return err(new HubError("bad_request.validation_failure", "embeds > 4"));
   }
 
   if (allowEmbedsDeprecated && body.embedsDeprecated.length > 2) {

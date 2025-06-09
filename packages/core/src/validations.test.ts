@@ -435,11 +435,17 @@ describe("validateCastAddBody", () => {
       hubErrorMessage = "text > 320 bytes";
     });
 
-    test("with more than 2 embeds", () => {
+    test("with more than 4 embeds", () => {
       body = Factories.CastAddBody.build({
-        embeds: [Factories.Embed.build(), Factories.Embed.build(), Factories.Embed.build()],
+        embeds: [
+          Factories.Embed.build(),
+          Factories.Embed.build(),
+          Factories.Embed.build(),
+          Factories.Embed.build(),
+          Factories.Embed.build(),
+        ],
       });
-      hubErrorMessage = "embeds > 2";
+      hubErrorMessage = "embeds > 4";
     });
 
     test("with an empty embed url string", () => {
