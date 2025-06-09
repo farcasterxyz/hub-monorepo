@@ -599,11 +599,11 @@ export const validateCastAddBody = (
     return err(new HubError("bad_request.validation_failure", "text too short for long cast"));
   }
 
-  if (body.type !== CastType.CAST && body.type !== CastType.LONG_CAST) {
+  if (body.type !== CastType.CAST && body.type !== CastType.LONG_CAST && body.type !== CastType.TEN_K_CAST) {
     return err(new HubError("bad_request.validation_failure", "invalid cast type"));
   }
 
-  if (body.embeds.length > 2) {
+  if (body.embeds.length > 4) {
     return err(new HubError("bad_request.validation_failure", "embeds > 2"));
   }
 
@@ -1042,6 +1042,12 @@ export const validateUserDataAddBody = (body: protobufs.UserDataBody): HubResult
         if (validatedGithubUsername.isErr()) {
           return err(validatedGithubUsername.error);
         }
+      }
+      break;
+    }
+    case protobufs.UserDataType.BANNER: {
+      if (valueBytes.length > 256) {
+        return err(new HubError("bad_request.validation_failure", "banner value > 256"));
       }
       break;
     }

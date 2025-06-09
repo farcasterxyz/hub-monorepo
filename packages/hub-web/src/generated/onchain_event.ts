@@ -8,6 +8,7 @@ export enum OnChainEventType {
   EVENT_TYPE_SIGNER_MIGRATED = 2,
   EVENT_TYPE_ID_REGISTER = 3,
   EVENT_TYPE_STORAGE_RENT = 4,
+  EVENT_TYPE_TIER_PURCHASE = 5,
 }
 
 export function onChainEventTypeFromJSON(object: any): OnChainEventType {
@@ -27,6 +28,9 @@ export function onChainEventTypeFromJSON(object: any): OnChainEventType {
     case 4:
     case "EVENT_TYPE_STORAGE_RENT":
       return OnChainEventType.EVENT_TYPE_STORAGE_RENT;
+    case 5:
+    case "EVENT_TYPE_TIER_PURCHASE":
+      return OnChainEventType.EVENT_TYPE_TIER_PURCHASE;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum OnChainEventType");
   }
@@ -44,8 +48,39 @@ export function onChainEventTypeToJSON(object: OnChainEventType): string {
       return "EVENT_TYPE_ID_REGISTER";
     case OnChainEventType.EVENT_TYPE_STORAGE_RENT:
       return "EVENT_TYPE_STORAGE_RENT";
+    case OnChainEventType.EVENT_TYPE_TIER_PURCHASE:
+      return "EVENT_TYPE_TIER_PURCHASE";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum OnChainEventType");
+  }
+}
+
+export enum TierType {
+  None = 0,
+  Pro = 1,
+}
+
+export function tierTypeFromJSON(object: any): TierType {
+  switch (object) {
+    case 0:
+    case "None":
+      return TierType.None;
+    case 1:
+    case "Pro":
+      return TierType.Pro;
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum TierType");
+  }
+}
+
+export function tierTypeToJSON(object: TierType): string {
+  switch (object) {
+    case TierType.None:
+      return "None";
+    case TierType.Pro:
+      return "Pro";
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum TierType");
   }
 }
 
@@ -144,8 +179,15 @@ export interface OnChainEvent {
   signerMigratedEventBody?: SignerMigratedEventBody | undefined;
   idRegisterEventBody?: IdRegisterEventBody | undefined;
   storageRentEventBody?: StorageRentEventBody | undefined;
+  tierPurchaseEventBody?: TierPurchaseBody | undefined;
   txIndex: number;
   version: number;
+}
+
+export interface TierPurchaseBody {
+  tierType: TierType;
+  forDays: number;
+  payer: Uint8Array;
 }
 
 export interface SignerEventBody {
@@ -187,6 +229,7 @@ function createBaseOnChainEvent(): OnChainEvent {
     signerMigratedEventBody: undefined,
     idRegisterEventBody: undefined,
     storageRentEventBody: undefined,
+    tierPurchaseEventBody: undefined,
     txIndex: 0,
     version: 0,
   };
@@ -229,6 +272,9 @@ export const OnChainEvent = {
     }
     if (message.storageRentEventBody !== undefined) {
       StorageRentEventBody.encode(message.storageRentEventBody, writer.uint32(98).fork()).ldelim();
+    }
+    if (message.tierPurchaseEventBody !== undefined) {
+      TierPurchaseBody.encode(message.tierPurchaseEventBody, writer.uint32(122).fork()).ldelim();
     }
     if (message.txIndex !== 0) {
       writer.uint32(104).uint32(message.txIndex);
@@ -330,6 +376,13 @@ export const OnChainEvent = {
 
           message.storageRentEventBody = StorageRentEventBody.decode(reader, reader.uint32());
           continue;
+        case 15:
+          if (tag != 122) {
+            break;
+          }
+
+          message.tierPurchaseEventBody = TierPurchaseBody.decode(reader, reader.uint32());
+          continue;
         case 13:
           if (tag != 104) {
             break;
@@ -373,6 +426,9 @@ export const OnChainEvent = {
       storageRentEventBody: isSet(object.storageRentEventBody)
         ? StorageRentEventBody.fromJSON(object.storageRentEventBody)
         : undefined,
+      tierPurchaseEventBody: isSet(object.tierPurchaseEventBody)
+        ? TierPurchaseBody.fromJSON(object.tierPurchaseEventBody)
+        : undefined,
       txIndex: isSet(object.txIndex) ? Number(object.txIndex) : 0,
       version: isSet(object.version) ? Number(object.version) : 0,
     };
@@ -402,6 +458,9 @@ export const OnChainEvent = {
       : undefined);
     message.storageRentEventBody !== undefined && (obj.storageRentEventBody = message.storageRentEventBody
       ? StorageRentEventBody.toJSON(message.storageRentEventBody)
+      : undefined);
+    message.tierPurchaseEventBody !== undefined && (obj.tierPurchaseEventBody = message.tierPurchaseEventBody
+      ? TierPurchaseBody.toJSON(message.tierPurchaseEventBody)
       : undefined);
     message.txIndex !== undefined && (obj.txIndex = Math.round(message.txIndex));
     message.version !== undefined && (obj.version = Math.round(message.version));
@@ -435,8 +494,97 @@ export const OnChainEvent = {
     message.storageRentEventBody = (object.storageRentEventBody !== undefined && object.storageRentEventBody !== null)
       ? StorageRentEventBody.fromPartial(object.storageRentEventBody)
       : undefined;
+    message.tierPurchaseEventBody =
+      (object.tierPurchaseEventBody !== undefined && object.tierPurchaseEventBody !== null)
+        ? TierPurchaseBody.fromPartial(object.tierPurchaseEventBody)
+        : undefined;
     message.txIndex = object.txIndex ?? 0;
     message.version = object.version ?? 0;
+    return message;
+  },
+};
+
+function createBaseTierPurchaseBody(): TierPurchaseBody {
+  return { tierType: 0, forDays: 0, payer: new Uint8Array() };
+}
+
+export const TierPurchaseBody = {
+  encode(message: TierPurchaseBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.tierType !== 0) {
+      writer.uint32(8).int32(message.tierType);
+    }
+    if (message.forDays !== 0) {
+      writer.uint32(16).uint64(message.forDays);
+    }
+    if (message.payer.length !== 0) {
+      writer.uint32(26).bytes(message.payer);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): TierPurchaseBody {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseTierPurchaseBody();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.tierType = reader.int32() as any;
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.forDays = longToNumber(reader.uint64() as Long);
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.payer = reader.bytes();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): TierPurchaseBody {
+    return {
+      tierType: isSet(object.tierType) ? tierTypeFromJSON(object.tierType) : 0,
+      forDays: isSet(object.forDays) ? Number(object.forDays) : 0,
+      payer: isSet(object.payer) ? bytesFromBase64(object.payer) : new Uint8Array(),
+    };
+  },
+
+  toJSON(message: TierPurchaseBody): unknown {
+    const obj: any = {};
+    message.tierType !== undefined && (obj.tierType = tierTypeToJSON(message.tierType));
+    message.forDays !== undefined && (obj.forDays = Math.round(message.forDays));
+    message.payer !== undefined &&
+      (obj.payer = base64FromBytes(message.payer !== undefined ? message.payer : new Uint8Array()));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<TierPurchaseBody>, I>>(base?: I): TierPurchaseBody {
+    return TierPurchaseBody.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<TierPurchaseBody>, I>>(object: I): TierPurchaseBody {
+    const message = createBaseTierPurchaseBody();
+    message.tierType = object.tierType ?? 0;
+    message.forDays = object.forDays ?? 0;
+    message.payer = object.payer ?? new Uint8Array();
     return message;
   },
 };
