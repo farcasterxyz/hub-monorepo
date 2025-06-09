@@ -599,6 +599,14 @@ export const validateCastAddBody = (
     return err(new HubError("bad_request.validation_failure", "text too short for long cast"));
   }
 
+  if (body.type === CastType.TEN_K_CAST && textBytes.length > 10_000) {
+    return err(new HubError("bad_request.validation_failure", "text > 10,000 bytes for 10k cast"));
+  }
+
+  if (body.type === CastType.TEN_K_CAST && textBytes.length <= 1024) {
+    return err(new HubError("bad_request.validation_failure", "text too short for 10k cast"));
+  }
+
   if (body.type !== CastType.CAST && body.type !== CastType.LONG_CAST && body.type !== CastType.TEN_K_CAST) {
     return err(new HubError("bad_request.validation_failure", "invalid cast type"));
   }

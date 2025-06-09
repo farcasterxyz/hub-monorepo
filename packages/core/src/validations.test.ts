@@ -327,7 +327,7 @@ describe("validateCastAddBody", () => {
     test("fails with unrecognized type", () => {
       const body = Factories.CastAddBody.build({
         text: "Hello",
-        type: 2,
+        type: 3,
       });
       expect(validations.validateCastAddBody(body)).toEqual(
         err(new HubError("bad_request.validation_failure", "invalid cast type")),
