@@ -1,6 +1,6 @@
 {
   "name": "@farcaster/core",
-  "version": "0.16.5",
+  "version": "0.17.0",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",

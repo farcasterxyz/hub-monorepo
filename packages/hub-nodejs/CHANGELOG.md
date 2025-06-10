@@ -1,5 +1,16 @@
 # @farcaster/hub-nodejs
 
+## 0.14.0
+
+### Minor Changes
+
+- 6307171a: feat: Support snapchain 0.3 protocol features: pro, basenames and primary address
+
+### Patch Changes
+
+- Updated dependencies [6307171a]
+  - @farcaster/core@0.17.0
+
 ## 0.13.6
 
 ### Patch Changes
