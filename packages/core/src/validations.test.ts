@@ -122,8 +122,8 @@ describe("validateENSname", () => {
     expect(validations.validateEnsName(ensName)).toEqual(ok(ensName));
   });
 
-  test("fails when greater than 20 characters", () => {
-    const ensName = faker.random.alpha(17).concat(".eth");
+  test("fails when greater than 25 characters", () => {
+    const ensName = faker.random.alpha(22).concat(".eth");
     expect(validations.validateEnsName(ensName)).toEqual(
       err(new HubError("bad_request.validation_failure", `ensName "${ensName}" > 20 characters`)),
     );
@@ -1048,6 +1048,50 @@ describe("validateUserDataAddBody", () => {
     expect(validations.validateUserDataAddBody(body)).toEqual(ok(body));
   });
 
+  test("succeeds for base names", async () => {
+    const body = Factories.UserDataBody.build({
+      type: UserDataType.USERNAME,
+      value: "averylongname.base.eth",
+    });
+    expect(validations.validateUserDataAddBody(body)).toEqual(ok(body));
+  });
+
+  test("succeeds for primary address", async () => {
+    const eth = Factories.UserDataBody.build({
+      type: UserDataType.USER_DATA_PRIMARY_ADDRESS_ETHEREUM,
+      value: "0xdadB0d80178819F2319190D340ce9A924f783711",
+    });
+    expect(validations.validateUserDataAddBody(eth)).toEqual(ok(eth));
+    const sol = Factories.UserDataBody.build({
+      type: UserDataType.USER_DATA_PRIMARY_ADDRESS_SOLANA,
+      value: "8TPWakvWw4xQbk7uAYdNjZiDKKHgv9GE5GebzsbtUaHr",
+    });
+    expect(validations.validateUserDataAddBody(sol)).toEqual(ok(sol));
+    const empty = Factories.UserDataBody.build({
+      type: UserDataType.USER_DATA_PRIMARY_ADDRESS_ETHEREUM,
+      value: "",
+    });
+    expect(validations.validateUserDataAddBody(empty)).toEqual(ok(empty));
+
+    const invalidEth = Factories.UserDataBody.build({
+      type: UserDataType.USER_DATA_PRIMARY_ADDRESS_ETHEREUM,
+      value: "0xdadB0d80178819F2319190D340ce9A924f783711123",
+    });
+    let result = validations.validateUserDataAddBody(invalidEth);
+    expect(result._unsafeUnwrapErr()).toEqual(
+      new HubError("bad_request.validation_failure", "invalid length for eth address"),
+    );
+
+    const invalidSol = Factories.UserDataBody.build({
+      type: UserDataType.USER_DATA_PRIMARY_ADDRESS_SOLANA,
+      value: "8TPWakvWw4xQbk7uAYdNjZiDKKHgv9GE5GebzsbtUaHrasd",
+    });
+    result = validations.validateUserDataAddBody(invalidSol);
+    expect(result._unsafeUnwrapErr()).toEqual(
+      new HubError("bad_request.validation_failure", "invalid length for sol address"),
+    );
+  });
+
   test("succeeds for empty location", async () => {
     const body = Factories.UserDataBody.build({
       type: UserDataType.LOCATION,
@@ -1308,6 +1352,32 @@ describe("validateUsernameProof", () => {
     const proof = await Factories.UsernameProofMessage.create();
     const result = await validations.validateUsernameProofBody(proof.data.usernameProofBody, proof.data);
     expect(result.isOk()).toBeTruthy();
+  });
+  test("succeeds for basenames", async () => {
+    const proof = await Factories.UsernameProofMessage.create({
+      data: {
+        usernameProofBody: {
+          name: utf8StringToBytes("alongname.base.eth")._unsafeUnwrap(),
+          type: UserNameType.USERNAME_TYPE_BASENAME,
+        },
+      },
+    });
+    const result = validations.validateUsernameProofBody(proof.data.usernameProofBody, proof.data);
+    expect(result.isOk()).toBeTruthy();
+  });
+  test("fails for non base name", async () => {
+    const proof = await Factories.UsernameProofMessage.create({
+      data: {
+        usernameProofBody: {
+          name: utf8StringToBytes("alongname.esab.eth")._unsafeUnwrap(),
+          type: UserNameType.USERNAME_TYPE_BASENAME,
+        },
+      },
+    });
+    const result = validations.validateUsernameProofBody(proof.data.usernameProofBody, proof.data);
+    expect(result._unsafeUnwrapErr()).toEqual(
+      new HubError("bad_request.validation_failure", 'ensName "alongname.esab.eth" unsupported subdomain'),
+    );
   });
 });
 
