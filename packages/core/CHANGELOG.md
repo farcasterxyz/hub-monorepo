@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.17.0
+
+### Minor Changes
+
+- 6307171a: feat: Support snapchain 0.3 protocol features: pro, basenames and primary address
+
 ## 0.16.5
 
 ### Patch Changes
