@@ -13,7 +13,15 @@ import {
   userDataTypeFromJSON,
   userDataTypeToJSON,
 } from "./message";
-import { OnChainEvent, OnChainEventType, onChainEventTypeFromJSON, onChainEventTypeToJSON } from "./onchain_event";
+import {
+  OnChainEvent,
+  OnChainEventType,
+  onChainEventTypeFromJSON,
+  onChainEventTypeToJSON,
+  TierType,
+  tierTypeFromJSON,
+  tierTypeToJSON,
+} from "./onchain_event";
 import { UserNameProof } from "./username_proof";
 
 export enum StoreType {
@@ -274,10 +282,16 @@ export interface OnChainEventResponse {
   nextPageToken?: Uint8Array | undefined;
 }
 
+export interface TierDetails {
+  tierType: TierType;
+  expiresAt: number;
+}
+
 export interface StorageLimitsResponse {
   limits: StorageLimit[];
   units: number;
   unitDetails: StorageUnitDetails[];
+  tierSubscriptions: TierDetails[];
 }
 
 export interface StorageUnitDetails {
@@ -2881,8 +2895,79 @@ export const OnChainEventResponse = {
   },
 };
 
+function createBaseTierDetails(): TierDetails {
+  return { tierType: 0, expiresAt: 0 };
+}
+
+export const TierDetails = {
+  encode(message: TierDetails, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.tierType !== 0) {
+      writer.uint32(8).int32(message.tierType);
+    }
+    if (message.expiresAt !== 0) {
+      writer.uint32(16).uint64(message.expiresAt);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): TierDetails {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseTierDetails();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.tierType = reader.int32() as any;
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.expiresAt = longToNumber(reader.uint64() as Long);
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): TierDetails {
+    return {
+      tierType: isSet(object.tierType) ? tierTypeFromJSON(object.tierType) : 0,
+      expiresAt: isSet(object.expiresAt) ? Number(object.expiresAt) : 0,
+    };
+  },
+
+  toJSON(message: TierDetails): unknown {
+    const obj: any = {};
+    message.tierType !== undefined && (obj.tierType = tierTypeToJSON(message.tierType));
+    message.expiresAt !== undefined && (obj.expiresAt = Math.round(message.expiresAt));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<TierDetails>, I>>(base?: I): TierDetails {
+    return TierDetails.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<TierDetails>, I>>(object: I): TierDetails {
+    const message = createBaseTierDetails();
+    message.tierType = object.tierType ?? 0;
+    message.expiresAt = object.expiresAt ?? 0;
+    return message;
+  },
+};
+
 function createBaseStorageLimitsResponse(): StorageLimitsResponse {
-  return { limits: [], units: 0, unitDetails: [] };
+  return { limits: [], units: 0, unitDetails: [], tierSubscriptions: [] };
 }
 
 export const StorageLimitsResponse = {
@@ -2895,6 +2980,9 @@ export const StorageLimitsResponse = {
     }
     for (const v of message.unitDetails) {
       StorageUnitDetails.encode(v!, writer.uint32(26).fork()).ldelim();
+    }
+    for (const v of message.tierSubscriptions) {
+      TierDetails.encode(v!, writer.uint32(34).fork()).ldelim();
     }
     return writer;
   },
@@ -2927,6 +3015,13 @@ export const StorageLimitsResponse = {
 
           message.unitDetails.push(StorageUnitDetails.decode(reader, reader.uint32()));
           continue;
+        case 4:
+          if (tag != 34) {
+            break;
+          }
+
+          message.tierSubscriptions.push(TierDetails.decode(reader, reader.uint32()));
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -2942,6 +3037,9 @@ export const StorageLimitsResponse = {
       units: isSet(object.units) ? Number(object.units) : 0,
       unitDetails: Array.isArray(object?.unitDetails)
         ? object.unitDetails.map((e: any) => StorageUnitDetails.fromJSON(e))
+        : [],
+      tierSubscriptions: Array.isArray(object?.tierSubscriptions)
+        ? object.tierSubscriptions.map((e: any) => TierDetails.fromJSON(e))
         : [],
     };
   },
@@ -2959,6 +3057,11 @@ export const StorageLimitsResponse = {
     } else {
       obj.unitDetails = [];
     }
+    if (message.tierSubscriptions) {
+      obj.tierSubscriptions = message.tierSubscriptions.map((e) => e ? TierDetails.toJSON(e) : undefined);
+    } else {
+      obj.tierSubscriptions = [];
+    }
     return obj;
   },
 
@@ -2971,6 +3074,7 @@ export const StorageLimitsResponse = {
     message.limits = object.limits?.map((e) => StorageLimit.fromPartial(e)) || [];
     message.units = object.units ?? 0;
     message.unitDetails = object.unitDetails?.map((e) => StorageUnitDetails.fromPartial(e)) || [];
+    message.tierSubscriptions = object.tierSubscriptions?.map((e) => TierDetails.fromPartial(e)) || [];
     return message;
   },
 };

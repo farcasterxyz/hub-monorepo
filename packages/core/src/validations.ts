@@ -22,7 +22,7 @@ export const HEX_REGEX = /^(0x)?[0-9A-Fa-f]+$/;
 export const TWITTER_REGEX = /^[a-z0-9_]{0,15}$/;
 export const GITHUB_REGEX = /^[a-z\d](?:[a-z\d]|-(?!-)){0,38}$/i;
 
-export const USERNAME_MAX_LENGTH = 20;
+export const USERNAME_MAX_LENGTH = 25;
 
 export const EMBEDS_V1_CUTOFF = 73612800; // 5/3/23 00:00 UTC
 
@@ -599,12 +599,20 @@ export const validateCastAddBody = (
     return err(new HubError("bad_request.validation_failure", "text too short for long cast"));
   }
 
-  if (body.type !== CastType.CAST && body.type !== CastType.LONG_CAST) {
+  if (body.type === CastType.TEN_K_CAST && textBytes.length > 10_000) {
+    return err(new HubError("bad_request.validation_failure", "text > 10,000 bytes for 10k cast"));
+  }
+
+  if (body.type === CastType.TEN_K_CAST && textBytes.length <= 1024) {
+    return err(new HubError("bad_request.validation_failure", "text too short for 10k cast"));
+  }
+
+  if (body.type !== CastType.CAST && body.type !== CastType.LONG_CAST && body.type !== CastType.TEN_K_CAST) {
     return err(new HubError("bad_request.validation_failure", "invalid cast type"));
   }
 
-  if (body.embeds.length > 2) {
-    return err(new HubError("bad_request.validation_failure", "embeds > 2"));
+  if (body.embeds.length > 4) {
+    return err(new HubError("bad_request.validation_failure", "embeds > 4"));
   }
 
   if (allowEmbedsDeprecated && body.embedsDeprecated.length > 2) {
@@ -892,7 +900,7 @@ export const validateUsernameProofBody = (
   data: protobufs.MessageData,
 ): HubResult<protobufs.UserNameProof> => {
   // Gossiped username proofs must only have an ENS type
-  if (body.type !== UserNameType.USERNAME_TYPE_ENS_L1) {
+  if (!(body.type === UserNameType.USERNAME_TYPE_ENS_L1 || body.type === UserNameType.USERNAME_TYPE_BASENAME)) {
     return err(new HubError("bad_request.validation_failure", `invalid username type: ${body.type}`));
   }
   const validateName = validateEnsName(body.name);
@@ -1045,6 +1053,26 @@ export const validateUserDataAddBody = (body: protobufs.UserDataBody): HubResult
       }
       break;
     }
+    case protobufs.UserDataType.USER_DATA_PRIMARY_ADDRESS_ETHEREUM: {
+      // Users can remove their primary address
+      if (valueBytes.length > 42) {
+        return err(new HubError("bad_request.validation_failure", "invalid length for eth address"));
+      }
+      break;
+    }
+    case protobufs.UserDataType.USER_DATA_PRIMARY_ADDRESS_SOLANA: {
+      // Users can remove their primary address
+      if (valueBytes.length > 44) {
+        return err(new HubError("bad_request.validation_failure", "invalid length for sol address"));
+      }
+      break;
+    }
+    case protobufs.UserDataType.BANNER: {
+      if (valueBytes.length > 256) {
+        return err(new HubError("bad_request.validation_failure", "banner value > 256"));
+      }
+      break;
+    }
     default:
       return err(new HubError("bad_request.validation_failure", "invalid user data type"));
   }
@@ -1116,7 +1144,11 @@ export const validateEnsName = <T extends string | Uint8Array>(ensNameP?: T | nu
   }
 
   const nameParts = ensName.split(".");
-  if (nameParts[0] === undefined || nameParts.length !== 2) {
+  if (nameParts[0] === undefined || !(nameParts.length === 2 || nameParts.length === 3)) {
+    return err(new HubError("bad_request.validation_failure", `ensName "${ensName}" unsupported subdomain`));
+  }
+
+  if (nameParts.length === 3 && nameParts[1] !== "base") {
     return err(new HubError("bad_request.validation_failure", `ensName "${ensName}" unsupported subdomain`));
   }
 
