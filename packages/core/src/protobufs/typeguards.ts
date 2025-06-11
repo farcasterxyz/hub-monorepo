@@ -192,6 +192,15 @@ export const isStorageRentOnChainEvent = (
   );
 };
 
+export const isTierPurchaseOnChainEvent = (
+  event: onChainEventProtobufs.OnChainEvent,
+): event is types.TierPurchaseOnChainEvent => {
+  return (
+    event.type === onChainEventProtobufs.OnChainEventType.EVENT_TYPE_TIER_PURCHASE &&
+    typeof event.tierPurchaseEventBody !== "undefined"
+  );
+};
+
 /** Hub event typeguards */
 
 export const isMergeMessageHubEvent = (event: hubEventProtobufs.HubEvent): event is types.MergeMessageHubEvent => {

@@ -146,6 +146,11 @@ export type StorageRentOnChainEvent = onchainEventProtobufs.OnChainEvent & {
   storageRentEventBody: onchainEventProtobufs.StorageRentEventBody;
 };
 
+export type TierPurchaseOnChainEvent = onchainEventProtobufs.OnChainEvent & {
+  type: onchainEventProtobufs.OnChainEventType.EVENT_TYPE_TIER_PURCHASE;
+  tierPurchaseEventBody: onchainEventProtobufs.TierPurchaseBody;
+};
+
 /** Hub event types */
 
 export type MergeMessageHubEvent = hubEventProtobufs.HubEvent & {
