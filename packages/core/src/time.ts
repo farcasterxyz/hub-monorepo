@@ -40,14 +40,24 @@ export const fromFarcasterTime = (time: number): HubResult<number> => {
 const TIMESTAMP_BITS = 41;
 const SEQUENCE_BITS = 12;
 
-/** Extracts a unix timestamp (ms resolution) from an event ID. */
+/** Extracts a unix timestamp (ms resolution) from an event ID.
+ * @deprecated: Snapchain event ids use block numbers. Use the timestamp field in the event instead.
+ * */
 export const extractEventTimestamp = (eventId: number): number => {
   const binaryEventId = eventId.toString(2);
   const binaryTimestamp = binaryEventId.slice(0, binaryEventId.length - SEQUENCE_BITS);
   return parseInt(binaryTimestamp, 2) + FARCASTER_EPOCH;
 };
 
-/** Generates a hub event id from a unix timestamp (ms resolution) and an optional sequence number */
+/** Extracts a unix timestamp (ms resolution) from an hub event. */
+export const extractTimestampFromEvent = (event: { timestamp: number }): number => {
+  // Hub event timestamp is in seconds since the Farcaster epoch
+  return event.timestamp * 1000 + FARCASTER_EPOCH;
+};
+
+/** Generates a hub event id from a unix timestamp (ms resolution) and an optional sequence number
+ * @deprecated: Event ids are now based on block numbers. Do not use this function to generate event ids.
+ * */
 export const makeEventId = (timestamp: number, seq = 0): number => {
   const binaryTimestamp = (timestamp - FARCASTER_EPOCH).toString(2);
   let binarySeq = seq.toString(2);

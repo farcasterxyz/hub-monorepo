@@ -1,6 +1,6 @@
 import {
   ClientReadableStream,
-  extractEventTimestamp,
+  extractTimestampFromEvent,
   HubEvent,
   HubEventType,
   HubRpcClient,
@@ -291,7 +291,7 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
       const processTime = Date.now() - startTime;
 
       if (events[0]) {
-        const startEventTimestamp = extractEventTimestamp(events[0].id);
+        const startEventTimestamp = extractTimestampFromEvent(events[0]);
         statsd.gauge("hub.event.subscriber.last_batch_earliest_event_timestamp", startEventTimestamp, {
           source: this.shardKey,
           hub: this.hub,
