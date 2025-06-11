@@ -2,7 +2,7 @@ import { Cluster, ClusterOptions, Redis, RedisOptions, ReplyError } from "ioredi
 import { getHubEventCacheKey, HubClient } from "./hub";
 import { inBatchesOf, sleep } from "../utils";
 import { statsd } from "../statsd";
-import { extractEventTimestamp, HubEvent } from "@farcaster/hub-nodejs";
+import { extractTimestampFromEvent, HubEvent } from "@farcaster/hub-nodejs";
 import { log } from "../log";
 import { pino } from "pino";
 import { ProcessResult } from "./index";
@@ -359,7 +359,7 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
                   }
 
                   if (!result.value.skipped) {
-                    const e2eTime = Date.now() - extractEventTimestamp(hubEvent.id);
+                    const e2eTime = Date.now() - extractTimestampFromEvent(hubEvent);
                     statsd.timing("hub.event.stream.e2e_time", e2eTime, {
                       hub: this.hub.host,
                       source: this.shardKey,
@@ -465,7 +465,7 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
 
               eventIdsProcessed.push(streamEvent.id);
 
-              statsd.timing("hub.event.stream.e2e_time", Date.now() - extractEventTimestamp(hubEvent.id), {
+              statsd.timing("hub.event.stream.e2e_time", Date.now() - extractTimestampFromEvent(hubEvent), {
                 hub: this.hub.host,
                 source: this.shardKey,
                 hubEventType: hubEvent.type.toString(),
