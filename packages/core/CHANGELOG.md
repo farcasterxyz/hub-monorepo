@@ -1,5 +1,12 @@
 # @farcaster/core
 
+## 0.17.1
+
+### Patch Changes
+
+- 1290c93c: fix: Fix event timestamp calculation for snapchain
+- 05733a44: fix: add typeguards for TierPurchase onchain event
+
 ## 0.17.0
 
 ### Minor Changes

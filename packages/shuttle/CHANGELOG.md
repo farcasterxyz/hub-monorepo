@@ -1,5 +1,12 @@
 # @farcaster/hub-shuttle
 
+## 0.6.17
+
+### Patch Changes
+
+- 1290c93c: fix: Fix event timestamp calculation for snapchain
+  - @farcaster/hub-nodejs@0.14.1
+
 ## 0.6.16
 
 ### Patch Changes
