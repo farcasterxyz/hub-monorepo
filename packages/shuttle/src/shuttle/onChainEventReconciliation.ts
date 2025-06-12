@@ -9,6 +9,7 @@ import {
   fromFarcasterTime,
   HubResult,
   OnChainEventResponse,
+  TierPurchaseBody,
 } from "@farcaster/hub-nodejs";
 import { type DB } from "./db";
 import { pino } from "pino";
@@ -28,7 +29,7 @@ export type DBOnChainEvent = {
   logIndex: number;
   type: OnChainEventType;
   txHash: Uint8Array;
-  body: IdRegisterEventBody | SignerEventBody | StorageRentEventBody | SignerMigratedEventBody;
+  body: IdRegisterEventBody | SignerEventBody | StorageRentEventBody | SignerMigratedEventBody | TierPurchaseBody;
 };
 
 type EventKeySource = Pick<OnChainEvent | DBOnChainEvent, "chainId" | "blockNumber" | "logIndex">;
@@ -83,6 +84,7 @@ export class OnChainEventReconciliation {
       OnChainEventType.EVENT_TYPE_SIGNER,
       OnChainEventType.EVENT_TYPE_SIGNER_MIGRATED,
       OnChainEventType.EVENT_TYPE_STORAGE_RENT,
+      OnChainEventType.EVENT_TYPE_TIER_PURCHASE,
     ]) {
       this.log.debug({ fid, type }, "Reconciling on-chain events for FID");
       await this.reconcileOnChainEventsOfTypeForFid(
