@@ -30,6 +30,7 @@ import {
   SignerEventBody,
   StorageRentEventBody,
   SignerMigratedEventBody,
+  TierPurchaseBody,
 } from "@farcaster/hub-nodejs";
 import { DrainOuterGeneric, SimplifySingleResult } from "kysely/dist/cjs/util/type-utils.js";
 
@@ -164,7 +165,7 @@ export type OnChainEventsTable = {
   txHash: Uint8Array;
   type: OnChainEventType;
   fid: Fid;
-  body: IdRegisterEventBody | SignerEventBody | StorageRentEventBody | SignerMigratedEventBody;
+  body: IdRegisterEventBody | SignerEventBody | StorageRentEventBody | SignerMigratedEventBody | TierPurchaseBody;
 };
 
 type UsernamesTable = {
