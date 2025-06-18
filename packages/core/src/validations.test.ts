@@ -1423,7 +1423,7 @@ describe("validateMessage", () => {
     });
 
     const result = await validations.validateMessage(message);
-    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "Unrecognized hash scheme")));
+    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid hashScheme")));
   });
 
   test("fails with invalid hash", async () => {
@@ -1635,6 +1635,6 @@ describe("validateSingleBody", () => {
 
     const result = await validations.validateMessage(msg);
     expect(result.isErr()).toBeTruthy();
-    expect(result._unsafeUnwrapErr().message).toMatch("Unrecognized hash scheme");
+    expect(result._unsafeUnwrapErr().message).toMatch("invalid hashScheme");
   });
 });
