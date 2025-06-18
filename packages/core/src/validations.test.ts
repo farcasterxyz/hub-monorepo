@@ -1414,7 +1414,7 @@ describe("validateMessage", () => {
     // Default message type is CastAdd
     const message = await Factories.Message.create({}, { transient: { signer: ethSigner } });
     const result = await validations.validateMessage(message);
-    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid signature scheme")));
+    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid signatureScheme")));
   });
 
   test("fails with invalid hashScheme", async () => {
@@ -1456,7 +1456,7 @@ describe("validateMessage", () => {
     });
 
     const result = await validations.validateMessage(message);
-    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid signature scheme")));
+    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid signatureScheme")));
   });
 
   test("fails with invalid signature", async () => {
@@ -1466,7 +1466,7 @@ describe("validateMessage", () => {
     });
 
     const result = await validations.validateMessage(message);
-    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "signature is invalid")));
+    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid signature")));
   });
 
   test("fails with invalid signature data", async () => {
@@ -1476,7 +1476,7 @@ describe("validateMessage", () => {
     });
 
     const result = await validations.validateMessage(message);
-    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "signature is invalid")));
+    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid signature")));
   });
 
   test("fails with invalid signer data", async () => {
@@ -1486,7 +1486,7 @@ describe("validateMessage", () => {
     });
 
     const result = await validations.validateMessage(message);
-    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "signature is invalid")));
+    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid signature")));
   });
 });
 

@@ -289,7 +289,7 @@ describe("makeMessageWithSignature", () => {
       signatureScheme: ed25519Signer.scheme,
       signature,
     });
-    expect(message).toEqual(err(new HubError("bad_request.validation_failure", "signature is invalid")));
+    expect(message).toEqual(err(new HubError("bad_request.validation_failure", "invalid signature")));
   });
 });
 
