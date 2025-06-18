@@ -1,22 +1,22 @@
 import pg from "pg";
 import {
   CamelCasePlugin,
-  WithSchemaPlugin,
-  DeleteQueryBuilder,
-  Generated,
-  InsertQueryBuilder,
+  type DeleteQueryBuilder,
+  type Generated,
+  type Insertable,
+  type InsertQueryBuilder,
   Kysely,
-  NoResultErrorConstructor,
+  type NoResultErrorConstructor,
   PostgresDialect,
-  QueryNode,
-  Selectable,
-  Insertable,
-  SelectQueryBuilder,
+  type QueryNode,
+  type Selectable,
+  type SelectQueryBuilder,
   sql,
-  Transaction,
-  UpdateQueryBuilder,
+  type Transaction,
+  type UpdateQueryBuilder,
+  WithSchemaPlugin,
 } from "kysely";
-import {
+import type {
   CastType,
   HashScheme,
   MessageType,
@@ -32,10 +32,10 @@ import {
   SignerMigratedEventBody,
   TierPurchaseBody,
 } from "@farcaster/hub-nodejs";
-import { DrainOuterGeneric, SimplifySingleResult } from "kysely/dist/cjs/util/type-utils.js";
+// import type { DrainOuterGeneric, SimplifySingleResult } from "kysely/dist/cjs/util/type-utils.js";
 
 import Cursor from "pg-cursor";
-import { extendStackTrace } from "../utils";
+import { extendStackTrace } from "../utils.ts";
 
 // BigInts will not exceed Number.MAX_SAFE_INTEGER for our use case.
 // Return as JavaScript's `number` type so it's easier to work with.
@@ -206,50 +206,63 @@ export const getDbClient = (connectionString?: string, schema = "public") => {
   });
 };
 
-export async function execute<DB, UT extends keyof DB, TB extends keyof DB, O>(
-  query:
-    | SelectQueryBuilder<DB, TB, O>
-    | InsertQueryBuilder<DB, TB, O>
-    | UpdateQueryBuilder<DB, UT, TB, O>
-    | DeleteQueryBuilder<DB, TB, O>,
-): Promise<DrainOuterGeneric<{ [K in keyof O]: O[K] }>[]> {
-  try {
-    return await query.execute();
-  } catch (e) {
-    throw extendStackTrace(e, new Error(), query);
-  }
-}
+// export async function execute<DB, UT extends keyof DB, TB extends keyof DB, O>(
+//   query:
+//     | SelectQueryBuilder<DB, TB, O>
+//     | InsertQueryBuilder<DB, TB, O>
+//     | UpdateQueryBuilder<DB, UT, TB, O>
+//     | DeleteQueryBuilder<DB, TB, O>,
+// ): Promise<DrainOuterGeneric<{ [K in keyof O]: O[K] }>[]> {
+//   try {
+//     return await query.execute();
+//   } catch (e) {
+//     throw extendStackTrace(e, new Error(), query);
+//   }
+// }
 
-export async function executeTakeFirst<DB, UT extends keyof DB, TB extends keyof DB, O>(
-  query:
-    | SelectQueryBuilder<DB, TB, O>
-    | InsertQueryBuilder<DB, TB, O>
-    | UpdateQueryBuilder<DB, UT, TB, O>
-    | DeleteQueryBuilder<DB, TB, O>,
-): Promise<SimplifySingleResult<O>> {
-  try {
-    return await query.executeTakeFirst();
-  } catch (e) {
-    // Include additional stack context when an error occurs
-    throw extendStackTrace(e, new Error(), query);
-  }
-}
+// export async function executeTakeFirst<
+//   DB,
+//   UT extends keyof DB,
+//   TB extends keyof DB,
+//   O,
+// >(
+//   query:
+//     | SelectQueryBuilder<DB, TB, O>
+//     | InsertQueryBuilder<DB, TB, O>
+//     | UpdateQueryBuilder<DB, UT, TB, O>
+//     | DeleteQueryBuilder<DB, TB, O>,
+// ): Promise<SimplifySingleResult<O>> {
+//   try {
+//     return await query.executeTakeFirst();
+//   } catch (e) {
+//     // Include additional stack context when an error occurs
+//     throw extendStackTrace(e, new Error(), query);
+//   }
+// }
 
-export async function executeTakeFirstOrThrow<DB, UT extends keyof DB, TB extends keyof DB, O>(
-  query:
-    | SelectQueryBuilder<DB, TB, O>
-    | InsertQueryBuilder<DB, TB, O>
-    | UpdateQueryBuilder<DB, UT, TB, O>
-    | DeleteQueryBuilder<DB, TB, O>,
-  errorConstructor?: NoResultErrorConstructor | ((node: QueryNode) => Error) | undefined,
-): Promise<DrainOuterGeneric<{ [K in keyof O]: O[K] }>> {
-  try {
-    return await query.executeTakeFirstOrThrow(errorConstructor);
-  } catch (e) {
-    // Include additional stack context when an error occurs
-    throw extendStackTrace(e, new Error(), query);
-  }
-}
+// export async function executeTakeFirstOrThrow<
+//   DB,
+//   UT extends keyof DB,
+//   TB extends keyof DB,
+//   O,
+// >(
+//   query:
+//     | SelectQueryBuilder<DB, TB, O>
+//     | InsertQueryBuilder<DB, TB, O>
+//     | UpdateQueryBuilder<DB, UT, TB, O>
+//     | DeleteQueryBuilder<DB, TB, O>,
+//   errorConstructor?:
+//     | NoResultErrorConstructor
+//     | ((node: QueryNode) => Error)
+//     | undefined,
+// ): Promise<DrainOuterGeneric<{ [K in keyof O]: O[K] }>> {
+//   try {
+//     return await query.executeTakeFirstOrThrow(errorConstructor);
+//   } catch (e) {
+//     // Include additional stack context when an error occurs
+//     throw extendStackTrace(e, new Error(), query);
+//   }
+// }
 
 export async function executeTx<T>(db: DB, callback: (trx: DBTransaction) => Promise<T>): Promise<T> {
   try {

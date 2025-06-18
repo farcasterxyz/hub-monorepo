@@ -1,20 +1,20 @@
 import {
-  HubRpcClient,
-  OnChainEvent,
+  type HubRpcClient,
+  type OnChainEvent,
   OnChainEventType,
-  IdRegisterEventBody,
-  SignerEventBody,
-  StorageRentEventBody,
-  SignerMigratedEventBody,
+  type IdRegisterEventBody,
+  type SignerEventBody,
+  type StorageRentEventBody,
+  type SignerMigratedEventBody,
   fromFarcasterTime,
-  HubResult,
-  OnChainEventResponse,
-  TierPurchaseBody,
+  type HubResult,
+  type OnChainEventResponse,
+  type TierPurchaseBody,
 } from "@farcaster/hub-nodejs";
-import { type DB } from "./db";
-import { pino } from "pino";
+import type { DB } from "./db.ts";
+import type { pino } from "pino";
 import { err, ok } from "neverthrow";
-import { extendStackTrace } from "../utils";
+import { extendStackTrace } from "../utils.ts";
 
 const MAX_PAGE_SIZE = 500;
 

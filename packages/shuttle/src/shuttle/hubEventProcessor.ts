@@ -1,5 +1,5 @@
 import {
-  HubEvent,
+  type HubEvent,
   isCastAddMessage,
   isCastRemoveMessage,
   isLinkAddMessage,
@@ -12,12 +12,12 @@ import {
   isRevokeMessageHubEvent,
   isVerificationAddAddressMessage,
   isVerificationRemoveMessage,
-  Message,
+  type Message,
 } from "@farcaster/hub-nodejs";
-import { DB, DBTransaction } from "./db";
-import { MessageProcessor } from "./messageProcessor";
-import { MessageHandler, MessageState, StoreMessageOperation } from "./";
-import { log } from "../log";
+import { log } from "../log.ts";
+import type { DB, DBTransaction } from "./db.ts";
+import type { MessageHandler, MessageState, StoreMessageOperation } from "./index.ts";
+import { MessageProcessor } from "./messageProcessor.ts";
 
 export class HubEventProcessor {
   static async processHubEvent(db: DB, event: HubEvent, handler: MessageHandler) {

@@ -4,11 +4,14 @@
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
+  "type": "module",
   "exports": {
     ".": {
-      "require": "./dist/index.js",
-      "import": "./dist/index.mjs",
-      "types": "./dist/index.d.ts"
+      "import": {
+        "@neynar/interpreted-typescript": "./src/index.ts",
+        "default": "./dist/index.js",
+        "types": "./dist/index.d.ts"
+      }
     }
   },
   "files": [
@@ -31,7 +34,7 @@
     "tiny-typed-emitter": "^2.1.0"
   },
   "scripts": {
-    "build": "tsup --config tsup.config.ts && tsc --emitDeclarationOnly --declarationMap --outDir dist",
+    "build": "yarn run clean && tsc",
     "start": "tsx src/example-app/app.ts",
     "clean": "bash -c 'rm -rf dist/*'",
     "lint": "biome format src/ --write && biome check src/ --apply",

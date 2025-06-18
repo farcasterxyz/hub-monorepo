@@ -1,19 +1,19 @@
 import {
-  ClientReadableStream,
+  type ClientReadableStream,
   extractTimestampFromEvent,
   HubEvent,
   HubEventType,
-  HubRpcClient,
+  type HubRpcClient,
 } from "@farcaster/hub-nodejs";
-import { err, ok, Result } from "neverthrow";
-import { Logger } from "../log";
+import { err, ok, type Result } from "neverthrow";
+import type { Logger } from "../log.ts";
 import { TypedEmitter } from "tiny-typed-emitter";
-import { EventStreamConnection } from "./eventStream";
-import { sleep } from "../utils";
-import { RedisClient } from "./redis";
-import { HubClient } from "./hub";
-import { ProcessResult } from "./index";
-import { statsd } from "../statsd";
+import type { EventStreamConnection } from "./eventStream.ts";
+import { sleep } from "../utils.ts";
+import type { RedisClient } from "./redis.ts";
+import type { HubClient } from "./hub.ts";
+import type { ProcessResult } from "./index.ts";
+import { statsd } from "../statsd.ts";
 import { clearTimeout } from "timers";
 
 interface HubEventsEmitter {

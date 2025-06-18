@@ -1,7 +1,3 @@
-import { Cluster, Redis, ReplyError } from "ioredis";
-import { HubClient } from "./hub";
-import { inBatchesOf, sleep } from "../utils";
-import { statsd } from "../statsd";
 import {
   BlockConfirmedHubEvent,
   extractTimestampFromEvent,
@@ -9,11 +5,15 @@ import {
   HubEventType,
   isBlockConfirmedHubEvent,
 } from "@farcaster/hub-nodejs";
-import { log } from "../log";
-import { pino } from "pino";
-import { ProcessResult } from "./index";
-import { Result } from "neverthrow";
+import { type Cluster, type Redis, ReplyError } from "ioredis";
+import type { Result } from "neverthrow";
+import type { pino } from "pino";
 import { TypedEmitter } from "tiny-typed-emitter";
+import { log } from "../log.ts";
+import { statsd } from "../statsd.ts";
+import { inBatchesOf, sleep } from "../utils.ts";
+import { type HubClient } from "./hub.ts";
+import type { ProcessResult } from "./index.ts";
 
 // Dummy name since we don't need unique names to get desired semantics
 const DUMMY_CONSUMER_GROUP = "x";
@@ -319,7 +319,11 @@ export class EventStreamMonitor {
           host: this.host,
         });
         this.log.error(
-          { lastBlock: currentBlockNumber, currentBlock: event.blockNumber, eventShardId: event.shardIndex },
+          {
+            lastBlock: currentBlockNumber,
+            currentBlock: event.blockNumber,
+            eventShardId: event.shardIndex,
+          },
           "Skipped events in block range",
         );
       }
@@ -450,7 +454,10 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
           hub: this.hub.host,
           source: this.shardKey,
         });
-        statsd.increment("hub.event.stream.reserve", { hub: this.hub.host, source: this.shardKey });
+        statsd.increment("hub.event.stream.reserve", {
+          hub: this.hub.host,
+          source: this.shardKey,
+        });
 
         eventsRead += events.length;
 
@@ -523,7 +530,10 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
                     });
                   }
                 } catch (e: unknown) {
-                  statsd.increment("hub.event.stream.errors", { hub: this.hub.host, source: this.shardKey });
+                  statsd.increment("hub.event.stream.errors", {
+                    hub: this.hub.host,
+                    source: this.shardKey,
+                  });
                   this.log.error(e); // Report and move on to next event
                 }
               })(id, hubEvt, evtBytes),
@@ -627,7 +637,10 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
                 whenReceived,
               });
             } catch (e: unknown) {
-              statsd.increment("hub.event.stream.errors", { hub: this.hub.host, source: this.shardKey });
+              statsd.increment("hub.event.stream.errors", {
+                hub: this.hub.host,
+                source: this.shardKey,
+              });
               this.log.error(e, "Error processing stale event"); // Report and move on to next event
             }
           })(event),

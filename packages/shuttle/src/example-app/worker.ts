@@ -1,7 +1,7 @@
-import { Cluster, Redis } from "ioredis";
-import { Job, Queue, Worker } from "bullmq";
-import { App } from "./app";
-import { pino } from "pino";
+import type { Cluster, Redis } from "ioredis";
+import { type Job, Queue, Worker } from "bullmq";
+import type { App } from "./app.ts";
+import type { pino } from "pino";
 
 const QUEUE_NAME = "default";
 

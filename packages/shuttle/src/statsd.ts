@@ -1,8 +1,9 @@
-import dns, { LookupOptions } from "node:dns";
+import dns, { type LookupOptions } from "node:dns";
 import { isIP } from "node:net";
 
 import StatsD from "@farcaster/hot-shots";
 
+// @ts-ignore: Library's type declarations don't work with ESM apparently
 export const statsd = new StatsD({
   host: process.env["STATSD_HOST"] || "127.0.0.1",
   cacheDns: true,

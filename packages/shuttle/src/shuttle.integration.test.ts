@@ -1,34 +1,34 @@
-import { migrateToLatest } from "./example-app/db";
-import { log } from "./log";
+import { migrateToLatest } from "./example-app/db.ts";
+import { log } from "./log.ts";
 import { sql } from "kysely";
 import {
-  CallOptions,
+  type CallOptions,
   Factories,
-  FidRequest,
+  type FidRequest,
   HubError,
   HubEvent,
   HubEventType,
-  HubRpcClient,
-  LinkCompactStateBody,
-  Message,
+  type HubRpcClient,
+  type LinkCompactStateBody,
+  type Message,
   MessageType,
   MessagesResponse,
-  Metadata,
+  type Metadata,
   getFarcasterTime,
 } from "@farcaster/hub-nodejs";
 import {
   RedisClient,
   HubSubscriber,
-  DB,
+  type DB,
   getDbClient,
-  MessageHandler,
-  StoreMessageOperation,
+  type MessageHandler,
+  type StoreMessageOperation,
   HubEventProcessor,
-  MessageState,
+  type MessageState,
   MessageReconciliation,
 } from "./shuttle";
 import { err, ok } from "neverthrow";
-import { bytesToHex } from "./utils";
+import { bytesToHex } from "./utils.ts";
 
 let db: DB;
 let subscriber: FakeHubSubscriber;

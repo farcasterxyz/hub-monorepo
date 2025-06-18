@@ -1,15 +1,15 @@
 import {
   getInsecureHubRpcClient,
   getSSLHubRpcClient,
-  HubEvent,
-  HubRpcClient,
+  type HubEvent,
+  type HubRpcClient,
   isMergeOnChainHubEvent,
   isMergeUsernameProofHubEvent,
   isPruneMessageHubEvent,
   isRevokeMessageHubEvent,
   isMergeMessageHubEvent,
 } from "@farcaster/hub-nodejs";
-import { bytesToHex } from "../utils";
+import { bytesToHex } from "../utils.ts";
 
 export type HubClient = {
   host: string;

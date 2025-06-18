@@ -1,18 +1,19 @@
 import {
-  FidTimestampRequest,
+  type ClientDuplexStream,
+  type FidTimestampRequest,
   fromFarcasterTime,
   HubError,
-  HubErrorCode,
-  HubResult,
-  HubRpcClient,
-  Message,
-  MessagesResponse,
+  type HubErrorCode,
+  type HubResult,
+  type HubRpcClient,
+  type Message,
+  type MessagesResponse,
   MessageType,
 } from "@farcaster/hub-nodejs";
-import { DB, MessageRow, sql } from "./db";
-import { pino } from "pino";
-import { ok, err } from "neverthrow";
 import { randomUUID } from "crypto";
+import { err, ok } from "neverthrow";
+import type { pino } from "pino";
+import { type DB, type MessageRow, sql } from "./db.ts";
 
 const MAX_PAGE_SIZE = 500;
 
@@ -186,7 +187,12 @@ export class MessageReconciliation {
     startTimestamp?: number,
     stopTimestamp?: number,
   ) {
-    let result = await this.getAllCastMessagesByFid({ pageSize, fid, startTimestamp, stopTimestamp });
+    let result = await this.getAllCastMessagesByFid({
+      pageSize,
+      fid,
+      startTimestamp,
+      stopTimestamp,
+    });
     for (;;) {
       if (result.isErr()) {
         throw new Error(`Unable to get all casts for FID ${fid}: ${result.error?.message}`);
@@ -197,7 +203,13 @@ export class MessageReconciliation {
       yield messages;
 
       if (!pageToken?.length) break;
-      result = await this.getAllCastMessagesByFid({ pageSize, pageToken, fid, startTimestamp, stopTimestamp });
+      result = await this.getAllCastMessagesByFid({
+        pageSize,
+        pageToken,
+        fid,
+        startTimestamp,
+        stopTimestamp,
+      });
     }
   }
 
@@ -207,7 +219,12 @@ export class MessageReconciliation {
     startTimestamp?: number,
     stopTimestamp?: number,
   ) {
-    let result = await this.getAllReactionMessagesByFid({ pageSize, fid, startTimestamp, stopTimestamp });
+    let result = await this.getAllReactionMessagesByFid({
+      pageSize,
+      fid,
+      startTimestamp,
+      stopTimestamp,
+    });
     for (;;) {
       if (result.isErr()) {
         throw new Error(`Unable to get all reactions for FID ${fid}: ${result.error?.message}`);
@@ -234,7 +251,12 @@ export class MessageReconciliation {
     startTimestamp?: number,
     stopTimestamp?: number,
   ) {
-    let result = await this.getAllLinkMessagesByFid({ pageSize, fid, startTimestamp, stopTimestamp });
+    let result = await this.getAllLinkMessagesByFid({
+      pageSize,
+      fid,
+      startTimestamp,
+      stopTimestamp,
+    });
     for (;;) {
       if (result.isErr()) {
         throw new Error(`Unable to get all links for FID ${fid}: ${result.error?.message}`);
@@ -245,10 +267,19 @@ export class MessageReconciliation {
       yield messages;
 
       if (!pageToken?.length) break;
-      result = await this.getAllLinkMessagesByFid({ pageSize, pageToken, fid, startTimestamp, stopTimestamp });
+      result = await this.getAllLinkMessagesByFid({
+        pageSize,
+        pageToken,
+        fid,
+        startTimestamp,
+        stopTimestamp,
+      });
     }
 
-    let deltaResult = await this.client.getLinkCompactStateMessageByFid({ fid, pageSize });
+    let deltaResult = await this.client.getLinkCompactStateMessageByFid({
+      fid,
+      pageSize,
+    });
     for (;;) {
       if (deltaResult.isErr()) {
         throw new Error(`Unable to get all link compact results for FID ${fid}: ${deltaResult.error?.message}`);
@@ -259,7 +290,11 @@ export class MessageReconciliation {
       yield messages;
 
       if (!pageToken?.length) break;
-      deltaResult = await this.client.getLinkCompactStateMessageByFid({ pageSize, pageToken, fid });
+      deltaResult = await this.client.getLinkCompactStateMessageByFid({
+        pageSize,
+        pageToken,
+        fid,
+      });
     }
   }
 
@@ -269,7 +304,12 @@ export class MessageReconciliation {
     startTimestamp?: number,
     stopTimestamp?: number,
   ) {
-    let result = await this.getAllVerificationMessagesByFid({ pageSize, fid, startTimestamp, stopTimestamp });
+    let result = await this.getAllVerificationMessagesByFid({
+      pageSize,
+      fid,
+      startTimestamp,
+      stopTimestamp,
+    });
     for (;;) {
       if (result.isErr()) {
         throw new Error(`Unable to get all verifications for FID ${fid}: ${result.error?.message}`);
@@ -296,7 +336,12 @@ export class MessageReconciliation {
     startTimestamp?: number,
     stopTimestamp?: number,
   ) {
-    let result = await this.getAllUserDataMessagesByFid({ pageSize, fid, startTimestamp, stopTimestamp });
+    let result = await this.getAllUserDataMessagesByFid({
+      pageSize,
+      fid,
+      startTimestamp,
+      stopTimestamp,
+    });
     for (;;) {
       if (result.isErr()) {
         throw new Error(`Unable to get all user data messages for FID ${fid}: ${result.error?.message}`);

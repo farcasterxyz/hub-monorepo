@@ -5,9 +5,9 @@ import {
   bytesToHexString,
   fromFarcasterTime,
 } from "@farcaster/hub-nodejs";
-import { type DB } from "./db";
-import { Logger } from "pino";
-import { ok, err, Result } from "neverthrow";
+import type { DB } from "./db.ts";
+import type { Logger } from "pino";
+import { ok, err, type Result } from "neverthrow";
 
 export class UsernameProofReconciliation {
   private readonly hubClient: HubRpcClient;
