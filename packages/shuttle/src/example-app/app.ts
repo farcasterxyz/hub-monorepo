@@ -3,9 +3,9 @@ import {
   bytesToHexString,
   getStorageUnitExpiry,
   getStorageUnitType,
-  HubEvent,
+  type HubEvent,
   GetInfoRequest,
-  IdRegisterEventBody,
+  type IdRegisterEventBody,
   isCastAddMessage,
   isCastRemoveMessage,
   isIdRegisterOnChainEvent,
@@ -13,33 +13,33 @@ import {
   isSignerMigratedOnChainEvent,
   isSignerOnChainEvent,
   isStorageRentOnChainEvent,
-  Message,
-  SignerEventBody,
-  SignerMigratedEventBody,
-  StorageRentEventBody,
+  type Message,
+  type SignerEventBody,
+  type SignerMigratedEventBody,
+  type StorageRentEventBody,
 } from "@farcaster/hub-nodejs";
-import { Queue } from "bullmq";
+import type { Queue } from "bullmq";
 import { readFileSync } from "fs";
 import { ok } from "neverthrow";
 import * as process from "node:process";
 import url from "node:url";
 import {
-  DB,
+  type DB,
   EventStreamConnection,
   EventStreamHubSubscriber,
   getDbClient,
   getHubClient,
   HubEventProcessor,
   HubEventStreamConsumer,
-  HubSubscriber,
-  MessageHandler,
+  type HubSubscriber,
+  type MessageHandler,
   MessageReconciliation,
-  MessageState,
+  type MessageState,
   RedisClient,
-  StoreMessageOperation,
-} from "../index"; // If you want to use this as a standalone app, replace this import with "@farcaster/shuttle"
-import { bytesToHex, farcasterTimeToDate } from "../utils";
-import { AppDb, migrateToLatest, Tables } from "./db";
+  type StoreMessageOperation,
+} from "../index.ts"; // If you want to use this as a standalone app, replace this import with "@farcaster/shuttle"
+import { bytesToHex, farcasterTimeToDate } from "../utils.ts";
+import { type AppDb, migrateToLatest, Tables } from "./db.ts";
 import {
   BACKFILL_FIDS,
   CONCURRENCY,
@@ -54,8 +54,8 @@ import {
   TOTAL_SHARDS,
   USE_STREAMING_RPCS_FOR_BACKFILL,
 } from "./env";
-import { log } from "./log";
-import { getQueue, getWorker } from "./worker";
+import { log } from "./log.ts";
+import { getQueue, getWorker } from "./worker.ts";
 
 const hubId = "shuttle";
 

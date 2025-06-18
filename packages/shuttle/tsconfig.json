@@ -3,10 +3,11 @@
   "compilerOptions": {
     "declaration": true,
     "baseUrl": "./src",
-    "outDir": "build",
+    "outDir": "dist",
     "rootDir": "./src",
     "isolatedModules": true,
     "exactOptionalPropertyTypes": false,
+    "rewriteRelativeImportExtensions": true
   },
   "include": ["src/**/*.ts", "src/**/*.d.ts"],
   "exclude": ["build", "node_modules", "jest.config.ts"]

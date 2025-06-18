@@ -1,16 +1,16 @@
-import { HubEvent, Message } from "@farcaster/hub-nodejs";
-import { DB } from "./db";
+import type { HubEvent, Message } from "@farcaster/hub-nodejs";
+import type { DB } from "./db.ts";
 
-export * from "./db";
-export * from "./redis";
-export * from "./hub";
-export * from "./hubSubscriber";
-export * from "./hubEventProcessor";
-export * from "./messageProcessor";
-export * from "./messageReconciliation";
-export * from "./onChainEventReconciliation";
-export * from "./usernameProofReconciliation";
-export * from "./eventStream";
+export * from "./db.ts";
+export * from "./redis.ts";
+export * from "./hub.ts";
+export * from "./hubSubscriber.ts";
+export * from "./hubEventProcessor.ts";
+export * from "./messageProcessor.ts";
+export * from "./messageReconciliation.ts";
+export * from "./onChainEventReconciliation.ts";
+export * from "./usernameProofReconciliation.ts";
+export * from "./eventStream.ts";
 
 export type StoreMessageOperation = "merge" | "delete" | "revoke" | "prune";
 export type MessageState = "created" | "deleted";

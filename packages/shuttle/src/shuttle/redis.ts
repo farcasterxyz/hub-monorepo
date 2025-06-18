@@ -1,4 +1,4 @@
-import { Redis, Cluster, RedisOptions } from "ioredis";
+import { Redis, type Cluster, type RedisOptions } from "ioredis";
 
 export const getRedisClient = (redisUrl: string, redisOpts?: RedisOptions) => {
   const client = new Redis(redisUrl, {

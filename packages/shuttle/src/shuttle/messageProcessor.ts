@@ -1,9 +1,9 @@
 import { Message, MessageType, isLinkCompactStateMessage, validations } from "@farcaster/hub-nodejs";
-import { DB, InsertableMessageRow, HubTables } from "./db";
-import { bytesToHex, convertProtobufMessageBodyToJson, farcasterTimeToDate } from "../utils";
-import { pino } from "pino";
-import { StoreMessageOperation } from "./";
-import { Expression, ExpressionBuilder, SqlBool, sql } from "kysely";
+import { type Expression, type ExpressionBuilder, type SqlBool, sql } from "kysely";
+import type { pino } from "pino";
+import { bytesToHex, convertProtobufMessageBodyToJson, farcasterTimeToDate } from "../utils.ts";
+import type { DB, HubTables, InsertableMessageRow } from "./db.ts";
+import type { StoreMessageOperation } from "./index.ts";
 
 export class MessageProcessor {
   static async storeMessage(
