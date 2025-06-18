@@ -8,7 +8,7 @@ import { Factories } from "./factories";
 import { fromFarcasterTime, getFarcasterTime } from "./time";
 import * as validations from "./validations";
 import { makeVerificationAddressClaim } from "./verifications";
-import { UserDataType, UserNameType } from "@farcaster/hub-nodejs";
+import { CastId, UserDataType, UserNameType } from "@farcaster/hub-nodejs";
 import { defaultL1PublicClient } from "./eth/clients";
 import { jest } from "@jest/globals";
 
@@ -67,7 +67,7 @@ describe("validateFname", () => {
   test("fails when greater than 16 characters", () => {
     const fname = faker.random.alpha(17);
     expect(validations.validateFname(fname)).toEqual(
-      err(new HubError("bad_request.validation_failure", "Invalid fname")),
+      err(new HubError("bad_request.validation_failure", `fname "${fname}" > 16 characters`)),
     );
   });
 
@@ -87,14 +87,24 @@ describe("validateFname", () => {
   test("fails with invalid characters", () => {
     const fname = "@fname";
     expect(validations.validateFname(fname)).toEqual(
-      err(new HubError("bad_request.validation_failure", "Invalid fname")),
+      err(
+        new HubError(
+          "bad_request.validation_failure",
+          `fname "${fname}" doesn't match ${validations.FNAME_REGEX.source}`,
+        ),
+      ),
     );
   });
 
   test("does not allow names ending with .eth", () => {
     const fname = "fname.eth";
     expect(validations.validateFname(fname)).toEqual(
-      err(new HubError("bad_request.validation_failure", "Invalid fname")),
+      err(
+        new HubError(
+          "bad_request.validation_failure",
+          `fname "${fname}" doesn't match ${validations.FNAME_REGEX.source}`,
+        ),
+      ),
     );
   });
 });
@@ -125,7 +135,7 @@ describe("validateENSname", () => {
   test("fails when greater than 25 characters", () => {
     const ensName = faker.random.alpha(22).concat(".eth");
     expect(validations.validateEnsName(ensName)).toEqual(
-      err(new HubError("bad_request.validation_failure", "Invalid ENS name")),
+      err(new HubError("bad_request.validation_failure", `ensName "${ensName}" > 20 characters`)),
     );
   });
 
@@ -145,28 +155,33 @@ describe("validateENSname", () => {
   test("fails with invalid characters", () => {
     const ensName = "-fname.eth";
     expect(validations.validateEnsName(ensName)).toEqual(
-      err(new HubError("bad_request.validation_failure", "Invalid ENS name")),
+      err(
+        new HubError(
+          "bad_request.validation_failure",
+          `ensName "${ensName}" doesn't match ${validations.FNAME_REGEX.source}`,
+        ),
+      ),
     );
   });
 
   test("fails when name does not end with .eth", () => {
     const ensName = "ensname";
     expect(validations.validateEnsName(ensName)).toEqual(
-      err(new HubError("bad_request.validation_failure", "Invalid ENS name")),
+      err(new HubError("bad_request.validation_failure", `ensName "${ensName}" doesn't end with .eth`)),
     );
   });
 
   test("fails with subdomains", () => {
     const ensName = "abc.def.eth";
     expect(validations.validateEnsName(ensName)).toEqual(
-      err(new HubError("bad_request.validation_failure", "Invalid ENS name")),
+      err(new HubError("bad_request.validation_failure", `ensName "${ensName}" unsupported subdomain`)),
     );
   });
 
   test("fails when unable to normalize ens names", () => {
     const ensName = "2l--3-6b-mi-d-b.eth";
     expect(validations.validateEnsName(ensName)).toEqual(
-      err(new HubError("bad_request.validation_failure", "Invalid ENS name")),
+      err(new HubError("bad_request.validation_failure", `ensName "${ensName}" is not a valid ENS name`)),
     );
   });
 });
@@ -310,7 +325,7 @@ describe("validateCastAddBody", () => {
         type: CastType.LONG_CAST,
       });
       expect(validations.validateCastAddBody(body)).toEqual(
-        err(new HubError("bad_request.validation_failure", "Invalid cast add body")),
+        err(new HubError("bad_request.validation_failure", "text > 1024 bytes for long cast")),
       );
     });
     test("fails with less than 320 ASCII characters", () => {
@@ -319,7 +334,7 @@ describe("validateCastAddBody", () => {
         type: CastType.LONG_CAST,
       });
       expect(validations.validateCastAddBody(body)).toEqual(
-        err(new HubError("bad_request.validation_failure", "Invalid cast add body")),
+        err(new HubError("bad_request.validation_failure", "text too short for long cast")),
       );
     });
     test("fails with unrecognized type", () => {
@@ -328,7 +343,7 @@ describe("validateCastAddBody", () => {
         type: 3,
       });
       expect(validations.validateCastAddBody(body)).toEqual(
-        err(new HubError("bad_request.validation_failure", "Invalid cast add body")),
+        err(new HubError("bad_request.validation_failure", "invalid cast type")),
       );
     });
   });
@@ -357,7 +372,7 @@ describe("validateCastAddBody", () => {
           embedsDeprecated: [faker.internet.url(), faker.internet.url(), faker.internet.url()],
           embeds: [],
         });
-        hubErrorMessage = "Invalid cast add body";
+        hubErrorMessage = "string embeds > 2";
       });
 
       test("with an empty embed url string", () => {
@@ -365,7 +380,7 @@ describe("validateCastAddBody", () => {
           embedsDeprecated: [""],
           embeds: [],
         });
-        hubErrorMessage = "Invalid cast add body";
+        hubErrorMessage = "url < 1 byte";
       });
 
       test("with an embed url string over 256 ASCII characters", () => {
@@ -373,7 +388,7 @@ describe("validateCastAddBody", () => {
           embeds: [],
           embedsDeprecated: [faker.random.alphaNumeric(257)],
         });
-        hubErrorMessage = "Invalid cast add body";
+        hubErrorMessage = "url > 256 bytes";
       });
 
       test("with an embed url string over 256 bytes", () => {
@@ -381,7 +396,7 @@ describe("validateCastAddBody", () => {
           embeds: [],
           embedsDeprecated: [`${faker.random.alphaNumeric(254)}🤓`],
         });
-        hubErrorMessage = "Invalid cast add body";
+        hubErrorMessage = "url > 256 bytes";
       });
 
       test("when cast is empty", () => {
@@ -392,7 +407,7 @@ describe("validateCastAddBody", () => {
           embeds: [],
           embedsDeprecated: [],
         });
-        hubErrorMessage = "Invalid cast add body";
+        hubErrorMessage = "cast is empty";
       });
     });
   });
@@ -409,28 +424,28 @@ describe("validateCastAddBody", () => {
 
     test("when text is undefined", () => {
       body = Factories.CastAddBody.build({ text: undefined });
-      hubErrorMessage = "Invalid cast add body";
+      hubErrorMessage = "text is missing";
     });
 
     test("when text is null", () => {
       body = Factories.CastAddBody.build({
         text: null as unknown as undefined,
       });
-      hubErrorMessage = "Invalid cast add body";
+      hubErrorMessage = "text is missing";
     });
 
     test("when text is longer than 320 ASCII characters", () => {
       body = Factories.CastAddBody.build({
         text: faker.random.alphaNumeric(321),
       });
-      hubErrorMessage = "Invalid cast add body";
+      hubErrorMessage = "text > 320 bytes";
     });
 
     test("when text is longer than 320 bytes", () => {
       const text = `${faker.random.alphaNumeric(318)}🤓`;
       expect(text.length).toEqual(320);
       body = Factories.CastAddBody.build({ text });
-      hubErrorMessage = "Invalid cast add body";
+      hubErrorMessage = "text > 320 bytes";
     });
 
     test("with more than 4 embeds", () => {
@@ -450,21 +465,21 @@ describe("validateCastAddBody", () => {
       body = Factories.CastAddBody.build({
         embeds: [{ url: "" }],
       });
-      hubErrorMessage = "Invalid cast add body";
+      hubErrorMessage = "url < 1 byte";
     });
 
     test("with an embed url string over 256 ASCII characters", () => {
       body = Factories.CastAddBody.build({
         embeds: [{ url: faker.random.alphaNumeric(257) }],
       });
-      hubErrorMessage = "Invalid cast add body";
+      hubErrorMessage = "url > 256 bytes";
     });
 
     test("with an embed url string over 256 bytes", () => {
       body = Factories.CastAddBody.build({
         embeds: [{ url: `${faker.random.alphaNumeric(254)}🤓` }],
       });
-      hubErrorMessage = "Invalid cast add body";
+      hubErrorMessage = "url > 256 bytes";
     });
 
     test("with embedsDeprecated", () => {
@@ -472,7 +487,7 @@ describe("validateCastAddBody", () => {
         embeds: [],
         embedsDeprecated: [faker.internet.url(), faker.internet.url()],
       });
-      hubErrorMessage = "Invalid cast add body";
+      hubErrorMessage = "string embeds have been deprecated";
     });
 
     test("with an invalid embed CastId", () => {
@@ -501,7 +516,7 @@ describe("validateCastAddBody", () => {
         parentUrl: faker.random.alphaNumeric(257),
         parentCastId: undefined,
       });
-      hubErrorMessage = "Invalid cast add body";
+      hubErrorMessage = "url > 256 bytes";
     });
 
     test("with a parentUrl of empty string", () => {
@@ -509,7 +524,7 @@ describe("validateCastAddBody", () => {
         parentUrl: "",
         parentCastId: undefined,
       });
-      hubErrorMessage = "Invalid cast add body";
+      hubErrorMessage = "url < 1 byte";
     });
 
     test("with both parentUrl and parentCastId", () => {
@@ -517,7 +532,7 @@ describe("validateCastAddBody", () => {
         parentUrl: faker.internet.url(),
         parentCastId: Factories.CastId.build(),
       });
-      hubErrorMessage = "Invalid cast add body";
+      hubErrorMessage = "cannot use both parentUrl and parentCastId";
     });
 
     test("with up to 10 mentions", () => {
@@ -556,7 +571,7 @@ describe("validateCastAddBody", () => {
           Factories.Fid.build(),
         ],
       });
-      hubErrorMessage = "Invalid cast add body";
+      hubErrorMessage = "mentions > 10";
     });
 
     test("with more mentions than mentionsPositions", () => {
@@ -564,7 +579,7 @@ describe("validateCastAddBody", () => {
         mentions: [Factories.Fid.build(), Factories.Fid.build()],
         mentionsPositions: [0],
       });
-      hubErrorMessage = "Invalid cast add body";
+      hubErrorMessage = "mentions and mentionsPositions must match";
     });
 
     test("with out of range mentionsPositions", () => {
@@ -573,7 +588,7 @@ describe("validateCastAddBody", () => {
         mentions: [Factories.Fid.build()],
         mentionsPositions: [2],
       });
-      hubErrorMessage = "Invalid cast add body";
+      hubErrorMessage = "mentionsPositions must be a position in text";
     });
 
     test("with mentionsPositions within byte length of text", () => {
@@ -591,7 +606,7 @@ describe("validateCastAddBody", () => {
         mentions: [Factories.Fid.build()],
         mentionsPositions: [5],
       });
-      hubErrorMessage = "Invalid cast add body";
+      hubErrorMessage = "mentionsPositions must be a position in text";
     });
 
     // this test is no longer viable as messages are encoded first into protobufs where the offending position is removed
@@ -608,7 +623,7 @@ describe("validateCastAddBody", () => {
         mentions: [Factories.Fid.build(), Factories.Fid.build()],
         mentionsPositions: [2, 1],
       });
-      hubErrorMessage = "Invalid cast add body";
+      hubErrorMessage = "mentionsPositions must be sorted in ascending order";
     });
   });
 });
@@ -647,7 +662,7 @@ describe("validateReactionBody", () => {
       body = Factories.ReactionBody.build({
         type: 100 as unknown as protobufs.ReactionType,
       });
-      hubErrorMessage = "Invalid reaction body";
+      hubErrorMessage = "invalid reaction type";
     });
 
     test("without target", () => {
@@ -655,7 +670,7 @@ describe("validateReactionBody", () => {
         targetCastId: undefined,
         targetUrl: undefined,
       });
-      hubErrorMessage = "Invalid reaction body";
+      hubErrorMessage = "target is missing";
     });
 
     test("when cast fid is missing", () => {
@@ -677,7 +692,7 @@ describe("validateReactionBody", () => {
         targetUrl: faker.random.alphaNumeric(257),
         targetCastId: undefined,
       });
-      hubErrorMessage = "Invalid reaction body";
+      hubErrorMessage = "url > 256 bytes";
     });
 
     test("with a targetUrl of empty string", () => {
@@ -685,7 +700,7 @@ describe("validateReactionBody", () => {
         targetUrl: "",
         targetCastId: undefined,
       });
-      hubErrorMessage = "Invalid reaction body";
+      hubErrorMessage = "url < 1 byte";
     });
 
     test("with both targetUrl and targetCastId", () => {
@@ -693,7 +708,7 @@ describe("validateReactionBody", () => {
         targetUrl: faker.internet.url(),
         targetCastId: Factories.CastId.build(),
       });
-      hubErrorMessage = "Invalid reaction body";
+      hubErrorMessage = "cannot use both targetUrl and targetCastId";
     });
   });
 });
@@ -1130,7 +1145,7 @@ describe("validateUserDataAddBody", () => {
         type: protobufs.UserDataType.PFP,
         value: faker.random.alphaNumeric(257),
       });
-      hubErrorMessage = "Invalid user data body";
+      hubErrorMessage = "pfp value > 256";
     });
 
     test("when display > 32", () => {
@@ -1138,7 +1153,7 @@ describe("validateUserDataAddBody", () => {
         type: protobufs.UserDataType.DISPLAY,
         value: faker.random.alphaNumeric(33),
       });
-      hubErrorMessage = "Invalid user data body";
+      hubErrorMessage = "display value > 32";
     });
 
     test("when bio > 256", () => {
@@ -1146,7 +1161,7 @@ describe("validateUserDataAddBody", () => {
         type: protobufs.UserDataType.BIO,
         value: faker.random.alphaNumeric(257),
       });
-      hubErrorMessage = "Invalid user data body";
+      hubErrorMessage = "bio value > 256";
     });
 
     test("when url > 256", () => {
@@ -1154,7 +1169,7 @@ describe("validateUserDataAddBody", () => {
         type: protobufs.UserDataType.URL,
         value: faker.random.alphaNumeric(257),
       });
-      hubErrorMessage = "Invalid user data body";
+      hubErrorMessage = "url value > 256";
     });
 
     test("when latitude is too low", () => {
@@ -1162,7 +1177,7 @@ describe("validateUserDataAddBody", () => {
         type: protobufs.UserDataType.LOCATION,
         value: "geo:-90.01,12.34",
       });
-      hubErrorMessage = "Invalid user data body";
+      hubErrorMessage = "Latitude value outside valid range";
     });
 
     test("when latitude is too high", () => {
@@ -1170,7 +1185,7 @@ describe("validateUserDataAddBody", () => {
         type: protobufs.UserDataType.LOCATION,
         value: "geo:90.01,12.34",
       });
-      hubErrorMessage = "Invalid user data body";
+      hubErrorMessage = "Latitude value outside valid range";
     });
 
     test("when longitude is too low", () => {
@@ -1178,7 +1193,7 @@ describe("validateUserDataAddBody", () => {
         type: protobufs.UserDataType.LOCATION,
         value: "geo:12.34,-180.01",
       });
-      hubErrorMessage = "Invalid user data body";
+      hubErrorMessage = "Longitude value outside valid range";
     });
 
     test("when longitude is too high", () => {
@@ -1186,7 +1201,7 @@ describe("validateUserDataAddBody", () => {
         type: protobufs.UserDataType.LOCATION,
         value: "geo:12.34,180.01",
       });
-      hubErrorMessage = "Invalid user data body";
+      hubErrorMessage = "Longitude value outside valid range";
     });
 
     test("when latitude has too much precision", () => {
@@ -1194,7 +1209,7 @@ describe("validateUserDataAddBody", () => {
         type: protobufs.UserDataType.LOCATION,
         value: "geo:12.345,12.34",
       });
-      hubErrorMessage = "Invalid user data body";
+      hubErrorMessage = "Invalid location string";
     });
 
     test("when latitude has insufficient precision", () => {
@@ -1202,7 +1217,7 @@ describe("validateUserDataAddBody", () => {
         type: protobufs.UserDataType.LOCATION,
         value: "geo:12,12.34",
       });
-      hubErrorMessage = "Invalid user data body";
+      hubErrorMessage = "Invalid location string";
     });
 
     test("when longitude has too much precision", () => {
@@ -1210,7 +1225,7 @@ describe("validateUserDataAddBody", () => {
         type: protobufs.UserDataType.LOCATION,
         value: "geo:12.34,12.345",
       });
-      hubErrorMessage = "Invalid user data body";
+      hubErrorMessage = "Invalid location string";
     });
 
     test("when longitude has insufficient precision", () => {
@@ -1218,7 +1233,7 @@ describe("validateUserDataAddBody", () => {
         type: protobufs.UserDataType.LOCATION,
         value: "geo:12.34,12",
       });
-      hubErrorMessage = "Invalid user data body";
+      hubErrorMessage = "Invalid location string";
     });
 
     test("when latitude is an invalid number", () => {
@@ -1226,7 +1241,7 @@ describe("validateUserDataAddBody", () => {
         type: protobufs.UserDataType.LOCATION,
         value: "geo:xx,12.34",
       });
-      hubErrorMessage = "Invalid user data body";
+      hubErrorMessage = "Invalid location string";
     });
 
     test("when longitude is an invalid number", () => {
@@ -1234,7 +1249,7 @@ describe("validateUserDataAddBody", () => {
         type: protobufs.UserDataType.LOCATION,
         value: "geo:12.34,xx",
       });
-      hubErrorMessage = "Invalid user data body";
+      hubErrorMessage = "Invalid location string";
     });
 
     test("when location is missing geo prefix", () => {
@@ -1242,7 +1257,7 @@ describe("validateUserDataAddBody", () => {
         type: protobufs.UserDataType.LOCATION,
         value: "12.34,12.34",
       });
-      hubErrorMessage = "Invalid user data body";
+      hubErrorMessage = "Invalid location string";
     });
 
     test("when location is missing both coordinates", () => {
@@ -1250,7 +1265,7 @@ describe("validateUserDataAddBody", () => {
         type: protobufs.UserDataType.LOCATION,
         value: "geo:",
       });
-      hubErrorMessage = "Invalid user data body";
+      hubErrorMessage = "Invalid location string";
     });
 
     test("when location is missing a coordinate", () => {
@@ -1258,7 +1273,7 @@ describe("validateUserDataAddBody", () => {
         type: protobufs.UserDataType.LOCATION,
         value: "geo:12.34,",
       });
-      hubErrorMessage = "Invalid user data body";
+      hubErrorMessage = "Invalid location string";
     });
 
     test("when location contains a space", () => {
@@ -1266,7 +1281,7 @@ describe("validateUserDataAddBody", () => {
         type: protobufs.UserDataType.LOCATION,
         value: "geo:12.34, 12.34",
       });
-      hubErrorMessage = "Invalid user data body";
+      hubErrorMessage = "Invalid location string";
     });
 
     test("succeeds for twitter usernames", async () => {
@@ -1283,14 +1298,24 @@ describe("validateUserDataAddBody", () => {
         value: "-wrong-info",
       });
       expect(validations.validateUserDataAddBody(body1)).toEqual(
-        err(new HubError("bad_request.validation_failure", "Invalid user data body")),
+        err(
+          new HubError(
+            "bad_request.validation_failure",
+            `username "-wrong-info" doesn't match ${validations.TWITTER_REGEX.source}`,
+          ),
+        ),
       );
       const body2 = Factories.UserDataBody.build({
         type: UserDataType.TWITTER,
         value: "too_many_characters_for_a_username",
       });
       expect(validations.validateUserDataAddBody(body2)).toEqual(
-        err(new HubError("bad_request.validation_failure", "Invalid user data body")),
+        err(
+          new HubError(
+            "bad_request.validation_failure",
+            `username "too_many_characters_for_a_username" > 15 characters`,
+          ),
+        ),
       );
     });
   });
@@ -1317,7 +1342,7 @@ describe("validateUsernameProof", () => {
     const result = await validations.validateUsernameProofBody(proof.data.usernameProofBody, proof.data);
     const hubError = result._unsafeUnwrapErr();
     expect(hubError.errCode).toEqual("bad_request.validation_failure");
-    expect(hubError.message).toMatch("Invalid ENS name");
+    expect(hubError.message).toMatch('ensName "aname" doesn\'t end with .eth');
   });
   test("when type is unsupported", async () => {
     const proof = await Factories.UsernameProofMessage.create({
@@ -1389,7 +1414,7 @@ describe("validateMessage", () => {
     // Default message type is CastAdd
     const message = await Factories.Message.create({}, { transient: { signer: ethSigner } });
     const result = await validations.validateMessage(message);
-    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "Invalid message")));
+    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid signature scheme")));
   });
 
   test("fails with invalid hashScheme", async () => {
@@ -1398,7 +1423,7 @@ describe("validateMessage", () => {
     });
 
     const result = await validations.validateMessage(message);
-    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "Invalid message")));
+    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "Unrecognized hash scheme")));
   });
 
   test("fails with invalid hash", async () => {
@@ -1409,7 +1434,7 @@ describe("validateMessage", () => {
     const result = await validations.validateMessage(message);
     expect(result.isErr()).toBeTruthy();
     expect(result._unsafeUnwrapErr().errCode).toEqual("bad_request.validation_failure");
-    expect(result._unsafeUnwrapErr().message).toContain("Invalid message");
+    expect(result._unsafeUnwrapErr().message).toContain("invalid hash");
   });
 
   test("fails with invalid hash and data_bytes", async () => {
@@ -1422,7 +1447,7 @@ describe("validateMessage", () => {
     const result = await validations.validateMessage(message);
     expect(result.isErr()).toBeTruthy();
     expect(result._unsafeUnwrapErr().errCode).toEqual("bad_request.validation_failure");
-    expect(result._unsafeUnwrapErr().message).toContain("Invalid message");
+    expect(result._unsafeUnwrapErr().message).toContain("invalid hash");
   });
 
   test("fails with invalid signatureScheme", async () => {
@@ -1431,7 +1456,7 @@ describe("validateMessage", () => {
     });
 
     const result = await validations.validateMessage(message);
-    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "Invalid message")));
+    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid signature scheme")));
   });
 
   test("fails with invalid signature", async () => {
@@ -1441,7 +1466,7 @@ describe("validateMessage", () => {
     });
 
     const result = await validations.validateMessage(message);
-    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "Invalid message")));
+    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "signature is invalid")));
   });
 
   test("fails with invalid signature data", async () => {
@@ -1451,7 +1476,7 @@ describe("validateMessage", () => {
     });
 
     const result = await validations.validateMessage(message);
-    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "Invalid message")));
+    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "signature is invalid")));
   });
 
   test("fails with invalid signer data", async () => {
@@ -1461,7 +1486,7 @@ describe("validateMessage", () => {
     });
 
     const result = await validations.validateMessage(message);
-    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "Invalid message")));
+    expect(result).toEqual(err(new HubError("bad_request.validation_failure", "signature is invalid")));
   });
 });
 
@@ -1497,7 +1522,7 @@ describe("validateMessageData", () => {
         }),
       });
       const result = await validations.validateMessageData(data);
-      expect(result).toEqual(err(new HubError("bad_request.validation_failure", "Invalid cast add body")));
+      expect(result).toEqual(err(new HubError("bad_request.validation_failure", "string embeds have been deprecated")));
     });
 
     test("fails with embedsDeprecated when timestamp is at cut-off", async () => {
@@ -1509,7 +1534,7 @@ describe("validateMessageData", () => {
         }),
       });
       const result = await validations.validateMessageData(data);
-      expect(result).toEqual(err(new HubError("bad_request.validation_failure", "Invalid cast add body")));
+      expect(result).toEqual(err(new HubError("bad_request.validation_failure", "string embeds have been deprecated")));
     });
 
     test("succeeds with embedsDeprecated when timestamp is before cut-off", async () => {
@@ -1610,6 +1635,6 @@ describe("validateSingleBody", () => {
 
     const result = await validations.validateMessage(msg);
     expect(result.isErr()).toBeTruthy();
-    expect(result._unsafeUnwrapErr().message).toMatch("Invalid message");
+    expect(result._unsafeUnwrapErr().message).toMatch("Unrecognized hash scheme");
   });
 });

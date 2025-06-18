@@ -124,8 +124,8 @@ export const validateUserLocation = (location: string) => {
 
     const isValid = addon.validateUserLocation(location);
 
-    if (!isValid) {
-      return err(new HubError("bad_request.validation_failure", "Invalid location"));
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
     }
 
     return ok(location);
@@ -274,8 +274,8 @@ export const validateMessage = async (
 
     const isValid = addon.validateMessage(Buffer.from(encodedMessage), message.data?.network);
 
-    if (!isValid) {
-      return err(new HubError("bad_request.validation_failure", "Invalid message"));
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
     }
 
     // Specific case from original validateMessage -> validateMessageData flow.
@@ -500,8 +500,8 @@ export const validateParent = (parent: protobufs.CastId | string): HubResult<pro
 
     const isValid = addon.validateParent(Buffer.from(encodedParent));
 
-    if (!isValid) {
-      return err(new HubError("bad_request.validation_failure", "Invalid parent"));
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
     }
 
     return ok(parent);
@@ -516,8 +516,8 @@ export const validateEmbed = (embed: protobufs.Embed): HubResult<protobufs.Embed
 
     const isValid = addon.validateEmbed(Buffer.from(encodedEmbed));
 
-    if (!isValid) {
-      return err(new HubError("bad_request.validation_failure", "Invalid embed"));
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
     }
 
     return ok(embed);
@@ -531,16 +531,24 @@ export const validateCastAddBody = (
   allowEmbedsDeprecated = false,
 ): HubResult<protobufs.CastAddBody> => {
   try {
+    if (body.text === undefined || body.text === null) {
+      return err(new HubError("bad_request.validation_failure", "text is missing"));
+    }
+
     const encodedBody = protobufs.CastAddBody.encode(body).finish();
 
     const isValid = addon.validateCastAddBody(Buffer.from(encodedBody), allowEmbedsDeprecated);
 
-    if (!isValid || (body.parentCastId && body.parentUrl)) {
-      return err(new HubError("bad_request.validation_failure", "Invalid cast add body"));
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
+    }
+
+    if (body.parentCastId && body.parentUrl) {
+      return err(new HubError("bad_request.validation_failure", "cannot use both parentUrl and parentCastId"));
     }
 
     return ok(body);
-  } catch (error: unknown) {
+  } catch (error) {
     return err(new HubError("bad_request.validation_failure", "Invalid cast add body"));
   }
 };
@@ -551,8 +559,8 @@ export const validateCastRemoveBody = (body: protobufs.CastRemoveBody): HubResul
 
     const isValid = addon.validateCastRemoveBody(Buffer.from(encodedBody));
 
-    if (!isValid) {
-      return err(new HubError("bad_request.validation_failure", "Invalid cast remove body"));
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
     }
 
     return ok(body);
@@ -569,8 +577,8 @@ export const validateLinkType = (type: string): HubResult<string> => {
 
     const isValid = addon.validateLinkType(type);
 
-    if (!isValid) {
-      return err(new HubError("bad_request.validation_failure", "Invalid link type"));
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
     }
 
     return ok(type);
@@ -580,11 +588,21 @@ export const validateLinkType = (type: string): HubResult<string> => {
 };
 
 export const validateReactionType = (type: number): HubResult<protobufs.ReactionType> => {
-  if (!Object.values(protobufs.ReactionType).includes(type)) {
-    return err(new HubError("bad_request.validation_failure", "invalid reaction type"));
-  }
+  try {
+    if (typeof type !== "number") {
+      return err(new HubError("bad_request.validation_failure", "reaction type must be a number"));
+    }
 
-  return ok(type);
+    const isValid = addon.validateReactionType(type);
+
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
+    }
+
+    return ok(type);
+  } catch (error: unknown) {
+    return err(new HubError("bad_request.validation_failure", (error as { message: string }).message));
+  }
 };
 
 export const validateTarget = (
@@ -607,8 +625,8 @@ export const validateMessageType = (type: number): HubResult<protobufs.MessageTy
 
     const isValid = addon.validateMessageType(type);
 
-    if (!isValid) {
-      return err(new HubError("bad_request.validation_failure", "Invalid message type"));
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
     }
 
     return ok(type);
@@ -625,8 +643,8 @@ export const validateNetwork = (network: number): HubResult<protobufs.FarcasterN
 
     const isValid = addon.validateNetwork(network);
 
-    if (!isValid) {
-      return err(new HubError("bad_request.validation_failure", "Invalid network"));
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
     }
 
     return ok(network);
@@ -643,8 +661,8 @@ export const validateLinkCompactStateBody = (
 
     const isValid = addon.validateLinkCompactStateBody(Buffer.from(encodedBody));
 
-    if (!isValid) {
-      return err(new HubError("bad_request.validation_failure", "Invalid link compact state body"));
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
     }
 
     return ok(body);
@@ -659,8 +677,8 @@ export const validateLinkBody = (body: protobufs.LinkBody): HubResult<protobufs.
 
     const isValid = addon.validateLinkBody(Buffer.from(encodedBody));
 
-    if (!isValid) {
-      return err(new HubError("bad_request.validation_failure", "Invalid link body"));
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
     }
 
     return ok(body);
@@ -675,8 +693,12 @@ export const validateReactionBody = (body: protobufs.ReactionBody): HubResult<pr
 
     const isValid = addon.validateReactionBody(Buffer.from(encodedBody));
 
-    if (!isValid || (body.targetCastId && body.targetUrl)) {
-      return err(new HubError("bad_request.validation_failure", "Invalid reaction body"));
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
+    }
+
+    if (body.targetCastId && body.targetUrl) {
+      return err(new HubError("bad_request.validation_failure", "cannot use both targetUrl and targetCastId"));
     }
 
     return ok(body);
@@ -858,8 +880,8 @@ export const validateUserDataAddBody = (body: protobufs.UserDataBody): HubResult
 
     const isValid = addon.validateUserDataAddBody(Buffer.from(encodedBody));
 
-    if (!isValid) {
-      return err(new HubError("bad_request.validation_failure", "Invalid user data body"));
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
     }
 
     return ok(body);
@@ -887,8 +909,8 @@ export const validateFname = <T extends string | Uint8Array>(fnameP?: T | null):
 
     const isValid = addon.validateFname(fname);
 
-    if (!isValid) {
-      return err(new HubError("bad_request.validation_failure", "Invalid fname"));
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
     }
 
     return ok(fnameP);
@@ -902,8 +924,8 @@ export const validateEnsName = <T extends string | Uint8Array>(ensNameP?: T | nu
     return err(new HubError("bad_request.validation_failure", "ensName is missing"));
   }
 
+  let ensName;
   try {
-    let ensName;
     if (ensNameP instanceof Uint8Array) {
       const fromBytes = bytesToUtf8String(ensNameP);
       if (fromBytes.isErr()) {
@@ -918,13 +940,13 @@ export const validateEnsName = <T extends string | Uint8Array>(ensNameP?: T | nu
 
     const isValid = addon.validateEnsName(ensName);
 
-    if (!isValid) {
-      return err(new HubError("bad_request.validation_failure", "Invalid ENS name"));
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
     }
 
     return ok(ensNameP);
   } catch (error: unknown) {
-    return err(new HubError("bad_request.validation_failure", "Invalid ENS name"));
+    return err(new HubError("bad_request.validation_failure", `ensName \"${ensName}\" is not a valid ENS name`));
   }
 };
 
@@ -936,8 +958,8 @@ export const validateTwitterUsername = <T extends string | Uint8Array>(username?
 
     const isValid = addon.validateTwitterUsername(username);
 
-    if (!isValid) {
-      return err(new HubError("bad_request.validation_failure", "Invalid Twitter username"));
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
     }
 
     return ok(username);
@@ -954,8 +976,8 @@ export const validateGithubUsername = <T extends string | Uint8Array>(username?:
 
     const isValid = addon.validateGithubUsername(username);
 
-    if (!isValid) {
-      return err(new HubError("bad_request.validation_failure", "Invalid GitHub username"));
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
     }
 
     return ok(username);
