@@ -109,6 +109,10 @@ jobs:
         working-directory: ./hub
         run: yarn install
 
+      - name: Install cargo-cp-artifact
+        working-directory: ./hub
+        run: cargo install cargo-cp-artifact
+
       - name: Run build
         working-directory: ./hub
         run: yarn build
