@@ -9,6 +9,7 @@
     "indentStyle": "space",
     "lineWidth": 120,
     "ignore": [
+      "src/addon/target/*",
       "src/abstract-leveldown.d.ts",
       "src/rocksdb.d.ts",
       "packages/core/src/protobufs/generated/*",
@@ -25,6 +26,7 @@
       }
     },
     "ignore": [
+      "src/addon/target/*",
       "src/abstract-leveldown.d.ts",
       "src/rocksdb.d.ts",
       "packages/core/src/protobufs/generated/*",
