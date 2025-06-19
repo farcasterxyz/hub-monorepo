@@ -75,37 +75,35 @@ jobs:
 
       - name: Restore cached dependencies for Node modules.
         id: module-cache
-        working-directory: ./hub
         uses: actions/cache@v4
         with:
-          path: ${{ github.workspace }}/node_modules
-          key: ${{ runner.os }}-${{ runner.arch }}--node--${{ matrix.node_version}}--${{ hashFiles('yarn.lock') }}
+          path: ./hub/node_modules
+          key: ${{ runner.os }}-${{ runner.arch }}--node--${{ matrix.node_version}}--${{ hashFiles('./hub/yarn.lock') }}
 
       - name: Cache Cargo registry and git
-        working-directory: ./hub
         uses: actions/cache@v4
         with:
           path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: ${{ runner.os }}-${{ runner.arch }}-cargo-registry-${{ hashFiles('apps/hubble/src/addon/Cargo.lock') }}
+            ./hub/.cargo/registry
+            ./hub/.cargo/git
+          key: ${{ runner.os }}-${{ runner.arch }}-cargo-registry-${{ hashFiles('./hub/apps/hubble/src/addon/Cargo.lock') }}
 
       - name: Cache Cargo build artifacts
-        working-directory: ./hub
         uses: actions/cache@v4
         with:
-          path: ${{ github.workspace }}/apps/hubble/src/addon/target
-          key: ${{ runner.os }}-${{ runner.arch }}-cargo-build-${{ hashFiles('apps/hubble/src/addon/Cargo.lock') }}
+          path: ./hub/apps/hubble/src/addon/target
+          key: ${{ runner.os }}-${{ runner.arch }}-cargo-build-${{ hashFiles('./hub/apps/hubble/src/addon/Cargo.lock') }}
 
       - name: Install Protocol Buffer Compiler
-        working-directory: ./hub
         uses: arduino/setup-protoc@v3
         with:
+          path: ./hub
           version: "24.4"
 
       - name: Install Foundry
-        working-directory: ./hub
         uses: foundry-rs/foundry-toolchain@v1
+        with:
+          path: ./hub
 
       - name: Install dependencies
         working-directory: ./hub
@@ -124,8 +122,9 @@ jobs:
         run: yarn test:ci
 
       - name: Upload coverage results
-        working-directory: ./hub
-        uses: codecov/codecov-action@v4
         continue-on-error: true # Don't fail the build if codecov fails
         timeout-minutes: 1
+        uses: codecov/codecov-action@v4
+        with:
+          path: ./hub
 
