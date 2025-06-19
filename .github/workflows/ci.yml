@@ -71,12 +71,11 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          path: ./hub
           node-version: ${{ matrix.node_version }}
 
       - name: Restore cached dependencies for Node modules.
-        working-directory: ./hub
         id: module-cache
+        working-directory: ./hub
         uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}/node_modules
