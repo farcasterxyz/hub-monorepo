@@ -938,7 +938,12 @@ export const validateEnsName = <T extends string | Uint8Array>(ensNameP?: T | nu
 
     normalize(ensName);
 
-    const isValid = addon.validateEnsName(ensName);
+    let isValid;
+    if (ensName.endsWith(".base.eth")) {
+      isValid = addon.validateBaseName(ensName);
+    } else {
+      isValid = addon.validateEnsName(ensName);
+    }
 
     if (!isValid.ok) {
       return err(new HubError("bad_request.validation_failure", isValid.error));

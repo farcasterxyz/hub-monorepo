@@ -8,9 +8,9 @@ use snapchain::core::validations::link::{
     validate_link_body, validate_link_compact_state_body, validate_link_type,
 };
 use snapchain::core::validations::message::{
-    validate_ens_name, validate_fname, validate_github_username, validate_message,
-    validate_message_type, validate_twitter_username, validate_user_data_add_body,
-    validate_user_location,
+    validate_base_name, validate_ens_name, validate_fname, validate_github_username,
+    validate_message, validate_message_type, validate_twitter_username,
+    validate_user_data_add_body, validate_user_location,
 };
 use snapchain::core::validations::reaction::{
     validate_network, validate_reaction_body, validate_reaction_type,
@@ -194,6 +194,12 @@ fn js_validate_ens_name(mut cx: FunctionContext) -> JsResult<JsObject> {
     validation_result_to_js_object(cx, validate_ens_name(&ens_name))
 }
 
+fn js_validate_base_name(mut cx: FunctionContext) -> JsResult<JsObject> {
+    let base_name = cx.argument::<JsString>(0)?.value(&mut cx);
+
+    validation_result_to_js_object(cx, validate_base_name(&base_name))
+}
+
 fn js_validate_twitter_username(mut cx: FunctionContext) -> JsResult<JsObject> {
     let username = cx.argument::<JsString>(0)?.value(&mut cx);
 
@@ -265,6 +271,7 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("validateUserDataAddBody", js_validate_user_data_add_body)?;
     cx.export_function("validateFname", js_validate_fname)?;
     cx.export_function("validateEnsName", js_validate_ens_name)?;
+    cx.export_function("validateBaseName", js_validate_base_name)?;
     cx.export_function("validateTwitterUsername", js_validate_twitter_username)?;
     cx.export_function("validateGithubUsername", js_validate_github_username)?;
     cx.export_function("validateUserLocation", js_validate_user_location)?;
