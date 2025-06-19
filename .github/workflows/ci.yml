@@ -69,9 +69,9 @@ jobs:
         with:
           path: ./hub
 
-      - working-directory: ./hub
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
+          path: ./hub
           node-version: ${{ matrix.node_version }}
 
       - name: Restore cached dependencies for Node modules.
