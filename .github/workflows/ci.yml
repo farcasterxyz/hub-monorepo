@@ -102,16 +102,14 @@ jobs:
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
-        with:
-          path: ./hub
 
       - name: Install dependencies
         working-directory: ./hub
         run: yarn install
 
-      - name: Install cargo-cp-artifact
+      - name: Install Neon CLI
         working-directory: ./hub
-        run: cargo install cargo-cp-artifact
+        run: npm install neon-cli
 
       - name: Run build
         working-directory: ./hub
