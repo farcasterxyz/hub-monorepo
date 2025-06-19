@@ -107,10 +107,6 @@ jobs:
         working-directory: ./hub
         run: yarn install
 
-      - name: Install Neon CLI
-        working-directory: ./hub
-        run: npm install neon-cli
-
       - name: Run build
         working-directory: ./hub
         run: yarn build
