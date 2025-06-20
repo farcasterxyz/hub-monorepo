@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.6.18
+
+### Patch Changes
+
+- 1af3e7de: fix: Shuttle should respect validate messages flag everywhere
+
 ## 0.6.17
 
 ### Patch Changes

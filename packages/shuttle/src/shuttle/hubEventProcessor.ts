@@ -66,7 +66,7 @@ export class HubEventProcessor {
         }),
       );
     } else if (operation === "merge" && MessageProcessor.isCompactStateMessage(message)) {
-      const affectedMessages = await MessageProcessor.deleteDifferenceMessages(message, trx, log);
+      const affectedMessages = await MessageProcessor.deleteDifferenceMessages(message, trx, log, shouldValidate);
       await Promise.all(
         affectedMessages.map(async (deletedMessage) => {
           const state = this.getMessageState(deletedMessage, "delete");
