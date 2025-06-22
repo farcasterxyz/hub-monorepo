@@ -1,11 +1,6 @@
-import {
-  HubService,
-  HubServiceClientImpl,
-  GrpcWebError,
-  GrpcWebImpl,
-  AdminService,
-  AdminServiceClientImpl,
-} from "./generated/rpc";
+import { HubService, HubServiceClientImpl, GrpcWebError, GrpcWebImpl } from "./generated/rpc";
+
+import { AdminService, AdminServiceClientImpl } from "./generated/admin_rpc";
 
 import grpcWeb from "@improbable-eng/grpc-web";
 import { err, ok } from "neverthrow";

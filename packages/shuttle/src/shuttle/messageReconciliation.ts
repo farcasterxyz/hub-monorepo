@@ -1,5 +1,4 @@
 import {
-  ClientDuplexStream,
   FidTimestampRequest,
   fromFarcasterTime,
   HubError,
@@ -9,8 +8,6 @@ import {
   Message,
   MessagesResponse,
   MessageType,
-  StreamFetchRequest,
-  StreamFetchResponse,
 } from "@farcaster/hub-nodejs";
 import { DB, MessageRow, sql } from "./db";
 import { pino } from "pino";
@@ -32,35 +29,15 @@ type DBMessage = {
 // Ensures that all messages for a given FID are present in the database. Can be used for both backfilling and reconciliation.
 export class MessageReconciliation {
   private client: HubRpcClient;
-  private stream: ClientDuplexStream<StreamFetchRequest, StreamFetchResponse> | undefined;
   private db: DB;
   private log: pino.Logger;
   private connectionTimeout: number; // milliseconds
 
-  constructor(client: HubRpcClient, db: DB, log: pino.Logger, connectionTimeout = 30000, useStreamingRpcs = true) {
+  constructor(client: HubRpcClient, db: DB, log: pino.Logger, connectionTimeout = 30000) {
     this.client = client;
     this.db = db;
     this.log = log;
     this.connectionTimeout = connectionTimeout;
-    if (useStreamingRpcs) {
-      this.establishStream();
-    }
-  }
-
-  async establishStream() {
-    const maybeStream = await this.client.streamFetch();
-    if (maybeStream.isOk()) {
-      this.stream = maybeStream.value;
-    } else {
-      this.log.warn(maybeStream.error, "could not establish stream");
-    }
-  }
-
-  async close() {
-    if (this.stream) {
-      this.stream.cancel();
-      this.stream = undefined;
-    }
   }
 
   async reconcileMessagesForFid(
@@ -179,88 +156,24 @@ export class MessageReconciliation {
     }
   }
 
-  private async doCallWithFailover(
-    request: Partial<StreamFetchRequest>,
-    fallback: () => Promise<HubResult<MessagesResponse>>,
-  ) {
-    const id = randomUUID();
-    const result = new Promise<HubResult<MessagesResponse>>((resolve) => {
-      if (!this.stream) {
-        fallback().then((result) => resolve(result));
-        return;
-      }
-      const process = async (response: StreamFetchResponse) => {
-        // Do not allow hanging unresponsive connections to linger:
-        const cancel = setTimeout(() => {
-          this.log.warn("Stream fetch timed out, falling back to RPC");
-          this.stream?.cancel();
-          this.stream = undefined;
-          fallback().then((result) => resolve(result));
-        }, this.connectionTimeout);
-
-        if (!this.stream) {
-          clearTimeout(cancel);
-          this.log.warn("Stream unavailable, falling back to RPC");
-          fallback().then((result) => resolve(result));
-          return;
-        }
-        this.stream.off("data", process);
-        if (response.idempotencyKey !== id || !response.messages) {
-          if (response?.error) {
-            clearTimeout(cancel);
-            resolve(err(new HubError(response.error.errCode as HubErrorCode, { message: response.error.message })));
-            return;
-          }
-
-          this.stream.cancel();
-          this.stream = undefined;
-          fallback()
-            .then((result) => resolve(result))
-            .finally(() => clearTimeout(cancel));
-        } else {
-          clearTimeout(cancel);
-          resolve(ok(response.messages));
-        }
-      };
-      this.stream.on("data", process);
-    });
-
-    this.stream?.write({
-      ...request,
-      idempotencyKey: id,
-    });
-
-    return await result;
-  }
-
   private async getAllCastMessagesByFid(request: FidTimestampRequest) {
-    return await this.doCallWithFailover({ castMessagesByFid: request }, () =>
-      this.client.getAllCastMessagesByFid(request),
-    );
+    return await this.client.getAllCastMessagesByFid(request);
   }
 
   private async getAllReactionMessagesByFid(request: FidTimestampRequest) {
-    return await this.doCallWithFailover({ reactionMessagesByFid: request }, () =>
-      this.client.getAllReactionMessagesByFid(request),
-    );
+    return await this.client.getAllReactionMessagesByFid(request);
   }
 
   private async getAllLinkMessagesByFid(request: FidTimestampRequest) {
-    return await this.doCallWithFailover({ linkMessagesByFid: request }, () =>
-      this.client.getAllLinkMessagesByFid(request),
-    );
+    return await this.client.getAllLinkMessagesByFid(request);
   }
 
   private async getAllVerificationMessagesByFid(request: FidTimestampRequest) {
-    return await this.doCallWithFailover({ verificationMessagesByFid: request }, () =>
-      this.client.getAllVerificationMessagesByFid(request),
-    );
+    return await this.client.getAllVerificationMessagesByFid(request);
   }
 
   private async getAllUserDataMessagesByFid(request: FidTimestampRequest) {
-    return await this.doCallWithFailover({ userDataMessagesByFid: request }, () =>
-      this.client.getAllUserDataMessagesByFid(request),
-    );
+    return await this.client.getAllUserDataMessagesByFid(request);
   }
 
   private async *getAllCastMessagesByFidInBatchesOf(
@@ -331,20 +244,18 @@ export class MessageReconciliation {
       result = await this.getAllLinkMessagesByFid({ pageSize, pageToken, fid, startTimestamp, stopTimestamp });
     }
 
-    if (!this.stream) {
-      let deltaResult = await this.client.getLinkCompactStateMessageByFid({ fid, pageSize });
-      for (;;) {
-        if (deltaResult.isErr()) {
-          throw new Error(`Unable to get all link compact results for FID ${fid}: ${deltaResult.error?.message}`);
-        }
-
-        const { messages, nextPageToken: pageToken } = deltaResult.value;
-
-        yield messages;
-
-        if (!pageToken?.length) break;
-        deltaResult = await this.client.getLinkCompactStateMessageByFid({ pageSize, pageToken, fid });
+    let deltaResult = await this.client.getLinkCompactStateMessageByFid({ fid, pageSize });
+    for (;;) {
+      if (deltaResult.isErr()) {
+        throw new Error(`Unable to get all link compact results for FID ${fid}: ${deltaResult.error?.message}`);
       }
+
+      const { messages, nextPageToken: pageToken } = deltaResult.value;
+
+      yield messages;
+
+      if (!pageToken?.length) break;
+      deltaResult = await this.client.getLinkCompactStateMessageByFid({ pageSize, pageToken, fid });
     }
   }
 

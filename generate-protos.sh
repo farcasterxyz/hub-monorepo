@@ -15,11 +15,11 @@ if [[ "$LIBRARY" == "core" ]]; then
     OUT_PATH=src/protobufs/generated
     CUSTOM_TS_PROTO_OPTS="outputServices=false"
 elif [[ "$LIBRARY" == "hub-nodejs" ]]; then
-    RELEVANT_PROTOS=/defs/rpc.proto
+    RELEVANT_PROTOS="/defs/rpc.proto /defs/admin_rpc.proto"
     OUT_PATH=src/generated
     CUSTOM_TS_PROTO_OPTS="outputServices=grpc-js"
 elif [[ "$LIBRARY" == "hub-web" ]]; then
-    RELEVANT_PROTOS=/defs/rpc.proto
+    RELEVANT_PROTOS="/defs/rpc.proto /defs/admin_rpc.proto"
     OUT_PATH=src/generated
     CUSTOM_TS_PROTO_OPTS="outputClientImpl=grpc-web,lowerCaseServiceMethods=true"
 fi
