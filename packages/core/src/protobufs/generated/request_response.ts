@@ -1,8 +1,8 @@
 /* eslint-disable */
 import Long from "long";
 import _m0 from "protobufjs/minimal";
-import { ContactInfoContentBody } from "./gossip";
-import { HubEventType, hubEventTypeFromJSON, hubEventTypeToJSON } from "./hub_event";
+import { ShardChunk } from "./blocks";
+import { HubEvent, HubEventType, hubEventTypeFromJSON, hubEventTypeToJSON } from "./hub_event";
 import {
   CastId,
   Message,
@@ -112,84 +112,62 @@ export function storageUnitTypeToJSON(object: StorageUnitType): string {
   }
 }
 
-export interface Empty {
+export interface BlocksRequest {
+  shardId: number;
+  startBlockNumber: number;
+  stopBlockNumber?: number | undefined;
+}
+
+export interface ShardChunksRequest {
+  shardId: number;
+  startBlockNumber: number;
+  stopBlockNumber?: number | undefined;
+}
+
+export interface ShardChunksResponse {
+  shardChunks: ShardChunk[];
 }
 
 export interface SubscribeRequest {
   eventTypes: HubEventType[];
-  fromId?: number | undefined;
-  totalShards?: number | undefined;
+  fromId?:
+    | number
+    | undefined;
+  /** optional uint32 total_shards = 3; // Not required for snapchain */
   shardIndex?: number | undefined;
-}
-
-export interface EventRequest {
-  id: number;
-}
-
-export interface HubInfoRequest {
-  dbStats: boolean;
-}
-
-/** Response Types for the Sync RPC Methods */
-export interface HubInfoResponse {
-  version: string;
-  isSyncing: boolean;
-  nickname: string;
-  rootHash: string;
-  dbStats: DbStats | undefined;
-  peerId: string;
-  hubOperatorFid: number;
 }
 
 export interface DbStats {
   numMessages: number;
-  numFidEvents: number;
-  numFnameEvents: number;
+  numFidRegistrations: number;
   approxSize: number;
 }
 
-export interface SyncStatusRequest {
-  peerId?: string | undefined;
+export interface ShardInfo {
+  shardId: number;
+  maxHeight: number;
+  numMessages: number;
+  numFidRegistrations: number;
+  approxSize: number;
+  blockDelay: number;
+  mempoolSize: number;
 }
 
-export interface SyncStatusResponse {
-  isSyncing: boolean;
-  syncStatus: SyncStatus[];
-  engineStarted: boolean;
+export interface GetInfoRequest {
 }
 
-export interface SyncStatus {
+/** Response Types for the Sync RPC Methods */
+export interface GetInfoResponse {
+  version: string;
+  dbStats: DbStats | undefined;
   peerId: string;
-  inSync: string;
-  shouldSync: boolean;
-  divergencePrefix: string;
-  divergenceSecondsAgo: number;
-  theirMessages: number;
-  ourMessages: number;
-  lastBadSync: number;
-  score: number;
+  numShards: number;
+  shardInfos: ShardInfo[];
 }
 
-export interface TrieNodeMetadataResponse {
-  prefix: Uint8Array;
-  numMessages: number;
-  hash: string;
-  children: TrieNodeMetadataResponse[];
-}
-
-export interface TrieNodeSnapshotResponse {
-  prefix: Uint8Array;
-  excludedHashes: string[];
-  numMessages: number;
-  rootHash: string;
-}
-
-export interface TrieNodePrefix {
-  prefix: Uint8Array;
-}
-
-export interface SyncIds {
-  syncIds: Uint8Array[];
+export interface EventRequest {
+  id: number;
+  shardIndex: number;
 }
 
 export interface FidRequest {
@@ -212,6 +190,7 @@ export interface FidsRequest {
   pageSize?: number | undefined;
   pageToken?: Uint8Array | undefined;
   reverse?: boolean | undefined;
+  shardId: number;
 }
 
 export interface FidsResponse {
@@ -261,14 +240,6 @@ export interface UserDataRequest {
   userDataType: UserDataType;
 }
 
-export interface NameRegistryEventRequest {
-  name: Uint8Array;
-}
-
-export interface RentRegistryEventsRequest {
-  fid: number;
-}
-
 export interface OnChainEventRequest {
   fid: number;
   eventType: OnChainEventType;
@@ -316,6 +287,11 @@ export interface UsernameProofsResponse {
   proofs: UserNameProof[];
 }
 
+export interface ValidationResponse {
+  valid: boolean;
+  message: Message | undefined;
+}
+
 export interface VerificationRequest {
   fid: number;
   address: Uint8Array;
@@ -352,15 +328,6 @@ export interface IdRegistryEventByAddressRequest {
   address: Uint8Array;
 }
 
-export interface ContactInfoResponse {
-  contacts: ContactInfoContentBody[];
-}
-
-export interface ValidationResponse {
-  valid: boolean;
-  message: Message | undefined;
-}
-
 export interface SubmitBulkMessagesRequest {
   messages: Message[];
 }
@@ -380,72 +347,89 @@ export interface SubmitBulkMessagesResponse {
   messages: BulkMessageResponse[];
 }
 
-export interface StreamSyncRequest {
-  getInfo?: HubInfoRequest | undefined;
-  getCurrentPeers?: Empty | undefined;
-  stopSync?: Empty | undefined;
-  forceSync?: SyncStatusRequest | undefined;
-  getSyncStatus?: SyncStatusRequest | undefined;
-  getAllSyncIdsByPrefix?: TrieNodePrefix | undefined;
-  getAllMessagesBySyncIds?: SyncIds | undefined;
-  getSyncMetadataByPrefix?: TrieNodePrefix | undefined;
-  getSyncSnapshotByPrefix?: TrieNodePrefix | undefined;
-  getOnChainEvents?: OnChainEventRequest | undefined;
-  getOnChainSignersByFid?: FidRequest | undefined;
+export interface TrieNodeMetadataRequest {
+  shardId: number;
+  prefix: Uint8Array;
 }
 
-export interface StreamError {
-  errCode: string;
-  message: string;
-  request: string;
+export interface TrieNodeMetadataResponse {
+  prefix: Uint8Array;
+  numMessages: number;
+  hash: string;
+  children: TrieNodeMetadataResponse[];
 }
 
-export interface StreamSyncResponse {
-  getInfo?: HubInfoResponse | undefined;
-  getCurrentPeers?: ContactInfoResponse | undefined;
-  stopSync?: SyncStatusResponse | undefined;
-  forceSync?: SyncStatusResponse | undefined;
-  getSyncStatus?: SyncStatusResponse | undefined;
-  getAllSyncIdsByPrefix?: SyncIds | undefined;
-  getAllMessagesBySyncIds?: MessagesResponse | undefined;
-  getSyncMetadataByPrefix?: TrieNodeMetadataResponse | undefined;
-  getSyncSnapshotByPrefix?: TrieNodeSnapshotResponse | undefined;
-  getOnChainEvents?: OnChainEventResponse | undefined;
-  getOnChainSignersByFid?: OnChainEventResponse | undefined;
-  error?: StreamError | undefined;
+export interface EventsRequest {
+  startId: number;
+  shardIndex?: number | undefined;
+  stopId?: number | undefined;
+  pageSize?: number | undefined;
+  pageToken?: Uint8Array | undefined;
+  reverse?: boolean | undefined;
 }
 
-export interface StreamFetchRequest {
-  idempotencyKey: string;
-  castMessagesByFid?: FidTimestampRequest | undefined;
-  reactionMessagesByFid?: FidTimestampRequest | undefined;
-  verificationMessagesByFid?: FidTimestampRequest | undefined;
-  userDataMessagesByFid?: FidTimestampRequest | undefined;
-  linkMessagesByFid?: FidTimestampRequest | undefined;
+export interface EventsResponse {
+  events: HubEvent[];
+  nextPageToken?: Uint8Array | undefined;
 }
 
-export interface StreamFetchResponse {
-  idempotencyKey: string;
-  messages?: MessagesResponse | undefined;
-  error?: StreamError | undefined;
+export interface FidAddressTypeRequest {
+  fid: number;
+  address: Uint8Array;
 }
 
-function createBaseEmpty(): Empty {
-  return {};
+export interface FidAddressTypeResponse {
+  isCustody: boolean;
+  isAuth: boolean;
+  isVerified: boolean;
 }
 
-export const Empty = {
-  encode(_: Empty, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+function createBaseBlocksRequest(): BlocksRequest {
+  return { shardId: 0, startBlockNumber: 0, stopBlockNumber: undefined };
+}
+
+export const BlocksRequest = {
+  encode(message: BlocksRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.shardId !== 0) {
+      writer.uint32(8).uint32(message.shardId);
+    }
+    if (message.startBlockNumber !== 0) {
+      writer.uint32(16).uint64(message.startBlockNumber);
+    }
+    if (message.stopBlockNumber !== undefined) {
+      writer.uint32(24).uint64(message.stopBlockNumber);
+    }
     return writer;
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): Empty {
+  decode(input: _m0.Reader | Uint8Array, length?: number): BlocksRequest {
     const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseEmpty();
+    const message = createBaseBlocksRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.shardId = reader.uint32();
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.startBlockNumber = longToNumber(reader.uint64() as Long);
+          continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.stopBlockNumber = longToNumber(reader.uint64() as Long);
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -455,27 +439,183 @@ export const Empty = {
     return message;
   },
 
-  fromJSON(_: any): Empty {
-    return {};
+  fromJSON(object: any): BlocksRequest {
+    return {
+      shardId: isSet(object.shardId) ? Number(object.shardId) : 0,
+      startBlockNumber: isSet(object.startBlockNumber) ? Number(object.startBlockNumber) : 0,
+      stopBlockNumber: isSet(object.stopBlockNumber) ? Number(object.stopBlockNumber) : undefined,
+    };
   },
 
-  toJSON(_: Empty): unknown {
+  toJSON(message: BlocksRequest): unknown {
     const obj: any = {};
+    message.shardId !== undefined && (obj.shardId = Math.round(message.shardId));
+    message.startBlockNumber !== undefined && (obj.startBlockNumber = Math.round(message.startBlockNumber));
+    message.stopBlockNumber !== undefined && (obj.stopBlockNumber = Math.round(message.stopBlockNumber));
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<Empty>, I>>(base?: I): Empty {
-    return Empty.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<BlocksRequest>, I>>(base?: I): BlocksRequest {
+    return BlocksRequest.fromPartial(base ?? {});
   },
 
-  fromPartial<I extends Exact<DeepPartial<Empty>, I>>(_: I): Empty {
-    const message = createBaseEmpty();
+  fromPartial<I extends Exact<DeepPartial<BlocksRequest>, I>>(object: I): BlocksRequest {
+    const message = createBaseBlocksRequest();
+    message.shardId = object.shardId ?? 0;
+    message.startBlockNumber = object.startBlockNumber ?? 0;
+    message.stopBlockNumber = object.stopBlockNumber ?? undefined;
+    return message;
+  },
+};
+
+function createBaseShardChunksRequest(): ShardChunksRequest {
+  return { shardId: 0, startBlockNumber: 0, stopBlockNumber: undefined };
+}
+
+export const ShardChunksRequest = {
+  encode(message: ShardChunksRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.shardId !== 0) {
+      writer.uint32(8).uint32(message.shardId);
+    }
+    if (message.startBlockNumber !== 0) {
+      writer.uint32(16).uint64(message.startBlockNumber);
+    }
+    if (message.stopBlockNumber !== undefined) {
+      writer.uint32(24).uint64(message.stopBlockNumber);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ShardChunksRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseShardChunksRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.shardId = reader.uint32();
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.startBlockNumber = longToNumber(reader.uint64() as Long);
+          continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.stopBlockNumber = longToNumber(reader.uint64() as Long);
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ShardChunksRequest {
+    return {
+      shardId: isSet(object.shardId) ? Number(object.shardId) : 0,
+      startBlockNumber: isSet(object.startBlockNumber) ? Number(object.startBlockNumber) : 0,
+      stopBlockNumber: isSet(object.stopBlockNumber) ? Number(object.stopBlockNumber) : undefined,
+    };
+  },
+
+  toJSON(message: ShardChunksRequest): unknown {
+    const obj: any = {};
+    message.shardId !== undefined && (obj.shardId = Math.round(message.shardId));
+    message.startBlockNumber !== undefined && (obj.startBlockNumber = Math.round(message.startBlockNumber));
+    message.stopBlockNumber !== undefined && (obj.stopBlockNumber = Math.round(message.stopBlockNumber));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ShardChunksRequest>, I>>(base?: I): ShardChunksRequest {
+    return ShardChunksRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ShardChunksRequest>, I>>(object: I): ShardChunksRequest {
+    const message = createBaseShardChunksRequest();
+    message.shardId = object.shardId ?? 0;
+    message.startBlockNumber = object.startBlockNumber ?? 0;
+    message.stopBlockNumber = object.stopBlockNumber ?? undefined;
+    return message;
+  },
+};
+
+function createBaseShardChunksResponse(): ShardChunksResponse {
+  return { shardChunks: [] };
+}
+
+export const ShardChunksResponse = {
+  encode(message: ShardChunksResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    for (const v of message.shardChunks) {
+      ShardChunk.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ShardChunksResponse {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseShardChunksResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.shardChunks.push(ShardChunk.decode(reader, reader.uint32()));
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ShardChunksResponse {
+    return {
+      shardChunks: Array.isArray(object?.shardChunks) ? object.shardChunks.map((e: any) => ShardChunk.fromJSON(e)) : [],
+    };
+  },
+
+  toJSON(message: ShardChunksResponse): unknown {
+    const obj: any = {};
+    if (message.shardChunks) {
+      obj.shardChunks = message.shardChunks.map((e) => e ? ShardChunk.toJSON(e) : undefined);
+    } else {
+      obj.shardChunks = [];
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ShardChunksResponse>, I>>(base?: I): ShardChunksResponse {
+    return ShardChunksResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ShardChunksResponse>, I>>(object: I): ShardChunksResponse {
+    const message = createBaseShardChunksResponse();
+    message.shardChunks = object.shardChunks?.map((e) => ShardChunk.fromPartial(e)) || [];
     return message;
   },
 };
 
 function createBaseSubscribeRequest(): SubscribeRequest {
-  return { eventTypes: [], fromId: undefined, totalShards: undefined, shardIndex: undefined };
+  return { eventTypes: [], fromId: undefined, shardIndex: undefined };
 }
 
 export const SubscribeRequest = {
@@ -488,11 +628,8 @@ export const SubscribeRequest = {
     if (message.fromId !== undefined) {
       writer.uint32(16).uint64(message.fromId);
     }
-    if (message.totalShards !== undefined) {
-      writer.uint32(24).uint64(message.totalShards);
-    }
     if (message.shardIndex !== undefined) {
-      writer.uint32(32).uint64(message.shardIndex);
+      writer.uint32(32).uint32(message.shardIndex);
     }
     return writer;
   },
@@ -527,19 +664,12 @@ export const SubscribeRequest = {
 
           message.fromId = longToNumber(reader.uint64() as Long);
           continue;
-        case 3:
-          if (tag != 24) {
-            break;
-          }
-
-          message.totalShards = longToNumber(reader.uint64() as Long);
-          continue;
         case 4:
           if (tag != 32) {
             break;
           }
 
-          message.shardIndex = longToNumber(reader.uint64() as Long);
+          message.shardIndex = reader.uint32();
           continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
@@ -554,7 +684,6 @@ export const SubscribeRequest = {
     return {
       eventTypes: Array.isArray(object?.eventTypes) ? object.eventTypes.map((e: any) => hubEventTypeFromJSON(e)) : [],
       fromId: isSet(object.fromId) ? Number(object.fromId) : undefined,
-      totalShards: isSet(object.totalShards) ? Number(object.totalShards) : undefined,
       shardIndex: isSet(object.shardIndex) ? Number(object.shardIndex) : undefined,
     };
   },
@@ -567,7 +696,6 @@ export const SubscribeRequest = {
       obj.eventTypes = [];
     }
     message.fromId !== undefined && (obj.fromId = Math.round(message.fromId));
-    message.totalShards !== undefined && (obj.totalShards = Math.round(message.totalShards));
     message.shardIndex !== undefined && (obj.shardIndex = Math.round(message.shardIndex));
     return obj;
   },
@@ -580,272 +708,13 @@ export const SubscribeRequest = {
     const message = createBaseSubscribeRequest();
     message.eventTypes = object.eventTypes?.map((e) => e) || [];
     message.fromId = object.fromId ?? undefined;
-    message.totalShards = object.totalShards ?? undefined;
     message.shardIndex = object.shardIndex ?? undefined;
     return message;
   },
 };
 
-function createBaseEventRequest(): EventRequest {
-  return { id: 0 };
-}
-
-export const EventRequest = {
-  encode(message: EventRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.id !== 0) {
-      writer.uint32(8).uint64(message.id);
-    }
-    return writer;
-  },
-
-  decode(input: _m0.Reader | Uint8Array, length?: number): EventRequest {
-    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseEventRequest();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1:
-          if (tag != 8) {
-            break;
-          }
-
-          message.id = longToNumber(reader.uint64() as Long);
-          continue;
-      }
-      if ((tag & 7) == 4 || tag == 0) {
-        break;
-      }
-      reader.skipType(tag & 7);
-    }
-    return message;
-  },
-
-  fromJSON(object: any): EventRequest {
-    return { id: isSet(object.id) ? Number(object.id) : 0 };
-  },
-
-  toJSON(message: EventRequest): unknown {
-    const obj: any = {};
-    message.id !== undefined && (obj.id = Math.round(message.id));
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<EventRequest>, I>>(base?: I): EventRequest {
-    return EventRequest.fromPartial(base ?? {});
-  },
-
-  fromPartial<I extends Exact<DeepPartial<EventRequest>, I>>(object: I): EventRequest {
-    const message = createBaseEventRequest();
-    message.id = object.id ?? 0;
-    return message;
-  },
-};
-
-function createBaseHubInfoRequest(): HubInfoRequest {
-  return { dbStats: false };
-}
-
-export const HubInfoRequest = {
-  encode(message: HubInfoRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.dbStats === true) {
-      writer.uint32(8).bool(message.dbStats);
-    }
-    return writer;
-  },
-
-  decode(input: _m0.Reader | Uint8Array, length?: number): HubInfoRequest {
-    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseHubInfoRequest();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1:
-          if (tag != 8) {
-            break;
-          }
-
-          message.dbStats = reader.bool();
-          continue;
-      }
-      if ((tag & 7) == 4 || tag == 0) {
-        break;
-      }
-      reader.skipType(tag & 7);
-    }
-    return message;
-  },
-
-  fromJSON(object: any): HubInfoRequest {
-    return { dbStats: isSet(object.dbStats) ? Boolean(object.dbStats) : false };
-  },
-
-  toJSON(message: HubInfoRequest): unknown {
-    const obj: any = {};
-    message.dbStats !== undefined && (obj.dbStats = message.dbStats);
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<HubInfoRequest>, I>>(base?: I): HubInfoRequest {
-    return HubInfoRequest.fromPartial(base ?? {});
-  },
-
-  fromPartial<I extends Exact<DeepPartial<HubInfoRequest>, I>>(object: I): HubInfoRequest {
-    const message = createBaseHubInfoRequest();
-    message.dbStats = object.dbStats ?? false;
-    return message;
-  },
-};
-
-function createBaseHubInfoResponse(): HubInfoResponse {
-  return {
-    version: "",
-    isSyncing: false,
-    nickname: "",
-    rootHash: "",
-    dbStats: undefined,
-    peerId: "",
-    hubOperatorFid: 0,
-  };
-}
-
-export const HubInfoResponse = {
-  encode(message: HubInfoResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.version !== "") {
-      writer.uint32(10).string(message.version);
-    }
-    if (message.isSyncing === true) {
-      writer.uint32(16).bool(message.isSyncing);
-    }
-    if (message.nickname !== "") {
-      writer.uint32(26).string(message.nickname);
-    }
-    if (message.rootHash !== "") {
-      writer.uint32(34).string(message.rootHash);
-    }
-    if (message.dbStats !== undefined) {
-      DbStats.encode(message.dbStats, writer.uint32(42).fork()).ldelim();
-    }
-    if (message.peerId !== "") {
-      writer.uint32(50).string(message.peerId);
-    }
-    if (message.hubOperatorFid !== 0) {
-      writer.uint32(56).uint64(message.hubOperatorFid);
-    }
-    return writer;
-  },
-
-  decode(input: _m0.Reader | Uint8Array, length?: number): HubInfoResponse {
-    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseHubInfoResponse();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1:
-          if (tag != 10) {
-            break;
-          }
-
-          message.version = reader.string();
-          continue;
-        case 2:
-          if (tag != 16) {
-            break;
-          }
-
-          message.isSyncing = reader.bool();
-          continue;
-        case 3:
-          if (tag != 26) {
-            break;
-          }
-
-          message.nickname = reader.string();
-          continue;
-        case 4:
-          if (tag != 34) {
-            break;
-          }
-
-          message.rootHash = reader.string();
-          continue;
-        case 5:
-          if (tag != 42) {
-            break;
-          }
-
-          message.dbStats = DbStats.decode(reader, reader.uint32());
-          continue;
-        case 6:
-          if (tag != 50) {
-            break;
-          }
-
-          message.peerId = reader.string();
-          continue;
-        case 7:
-          if (tag != 56) {
-            break;
-          }
-
-          message.hubOperatorFid = longToNumber(reader.uint64() as Long);
-          continue;
-      }
-      if ((tag & 7) == 4 || tag == 0) {
-        break;
-      }
-      reader.skipType(tag & 7);
-    }
-    return message;
-  },
-
-  fromJSON(object: any): HubInfoResponse {
-    return {
-      version: isSet(object.version) ? String(object.version) : "",
-      isSyncing: isSet(object.isSyncing) ? Boolean(object.isSyncing) : false,
-      nickname: isSet(object.nickname) ? String(object.nickname) : "",
-      rootHash: isSet(object.rootHash) ? String(object.rootHash) : "",
-      dbStats: isSet(object.dbStats) ? DbStats.fromJSON(object.dbStats) : undefined,
-      peerId: isSet(object.peerId) ? String(object.peerId) : "",
-      hubOperatorFid: isSet(object.hubOperatorFid) ? Number(object.hubOperatorFid) : 0,
-    };
-  },
-
-  toJSON(message: HubInfoResponse): unknown {
-    const obj: any = {};
-    message.version !== undefined && (obj.version = message.version);
-    message.isSyncing !== undefined && (obj.isSyncing = message.isSyncing);
-    message.nickname !== undefined && (obj.nickname = message.nickname);
-    message.rootHash !== undefined && (obj.rootHash = message.rootHash);
-    message.dbStats !== undefined && (obj.dbStats = message.dbStats ? DbStats.toJSON(message.dbStats) : undefined);
-    message.peerId !== undefined && (obj.peerId = message.peerId);
-    message.hubOperatorFid !== undefined && (obj.hubOperatorFid = Math.round(message.hubOperatorFid));
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<HubInfoResponse>, I>>(base?: I): HubInfoResponse {
-    return HubInfoResponse.fromPartial(base ?? {});
-  },
-
-  fromPartial<I extends Exact<DeepPartial<HubInfoResponse>, I>>(object: I): HubInfoResponse {
-    const message = createBaseHubInfoResponse();
-    message.version = object.version ?? "";
-    message.isSyncing = object.isSyncing ?? false;
-    message.nickname = object.nickname ?? "";
-    message.rootHash = object.rootHash ?? "";
-    message.dbStats = (object.dbStats !== undefined && object.dbStats !== null)
-      ? DbStats.fromPartial(object.dbStats)
-      : undefined;
-    message.peerId = object.peerId ?? "";
-    message.hubOperatorFid = object.hubOperatorFid ?? 0;
-    return message;
-  },
-};
-
 function createBaseDbStats(): DbStats {
-  return { numMessages: 0, numFidEvents: 0, numFnameEvents: 0, approxSize: 0 };
+  return { numMessages: 0, numFidRegistrations: 0, approxSize: 0 };
 }
 
 export const DbStats = {
@@ -853,11 +722,8 @@ export const DbStats = {
     if (message.numMessages !== 0) {
       writer.uint32(8).uint64(message.numMessages);
     }
-    if (message.numFidEvents !== 0) {
-      writer.uint32(16).uint64(message.numFidEvents);
-    }
-    if (message.numFnameEvents !== 0) {
-      writer.uint32(24).uint64(message.numFnameEvents);
+    if (message.numFidRegistrations !== 0) {
+      writer.uint32(16).uint64(message.numFidRegistrations);
     }
     if (message.approxSize !== 0) {
       writer.uint32(32).uint64(message.approxSize);
@@ -884,14 +750,7 @@ export const DbStats = {
             break;
           }
 
-          message.numFidEvents = longToNumber(reader.uint64() as Long);
-          continue;
-        case 3:
-          if (tag != 24) {
-            break;
-          }
-
-          message.numFnameEvents = longToNumber(reader.uint64() as Long);
+          message.numFidRegistrations = longToNumber(reader.uint64() as Long);
           continue;
         case 4:
           if (tag != 32) {
@@ -912,8 +771,7 @@ export const DbStats = {
   fromJSON(object: any): DbStats {
     return {
       numMessages: isSet(object.numMessages) ? Number(object.numMessages) : 0,
-      numFidEvents: isSet(object.numFidEvents) ? Number(object.numFidEvents) : 0,
-      numFnameEvents: isSet(object.numFnameEvents) ? Number(object.numFnameEvents) : 0,
+      numFidRegistrations: isSet(object.numFidRegistrations) ? Number(object.numFidRegistrations) : 0,
       approxSize: isSet(object.approxSize) ? Number(object.approxSize) : 0,
     };
   },
@@ -921,8 +779,7 @@ export const DbStats = {
   toJSON(message: DbStats): unknown {
     const obj: any = {};
     message.numMessages !== undefined && (obj.numMessages = Math.round(message.numMessages));
-    message.numFidEvents !== undefined && (obj.numFidEvents = Math.round(message.numFidEvents));
-    message.numFnameEvents !== undefined && (obj.numFnameEvents = Math.round(message.numFnameEvents));
+    message.numFidRegistrations !== undefined && (obj.numFidRegistrations = Math.round(message.numFidRegistrations));
     message.approxSize !== undefined && (obj.approxSize = Math.round(message.approxSize));
     return obj;
   },
@@ -934,91 +791,54 @@ export const DbStats = {
   fromPartial<I extends Exact<DeepPartial<DbStats>, I>>(object: I): DbStats {
     const message = createBaseDbStats();
     message.numMessages = object.numMessages ?? 0;
-    message.numFidEvents = object.numFidEvents ?? 0;
-    message.numFnameEvents = object.numFnameEvents ?? 0;
+    message.numFidRegistrations = object.numFidRegistrations ?? 0;
     message.approxSize = object.approxSize ?? 0;
     return message;
   },
 };
 
-function createBaseSyncStatusRequest(): SyncStatusRequest {
-  return { peerId: undefined };
+function createBaseShardInfo(): ShardInfo {
+  return {
+    shardId: 0,
+    maxHeight: 0,
+    numMessages: 0,
+    numFidRegistrations: 0,
+    approxSize: 0,
+    blockDelay: 0,
+    mempoolSize: 0,
+  };
 }
 
-export const SyncStatusRequest = {
-  encode(message: SyncStatusRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.peerId !== undefined) {
-      writer.uint32(10).string(message.peerId);
+export const ShardInfo = {
+  encode(message: ShardInfo, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.shardId !== 0) {
+      writer.uint32(8).uint32(message.shardId);
+    }
+    if (message.maxHeight !== 0) {
+      writer.uint32(16).uint64(message.maxHeight);
+    }
+    if (message.numMessages !== 0) {
+      writer.uint32(24).uint64(message.numMessages);
+    }
+    if (message.numFidRegistrations !== 0) {
+      writer.uint32(32).uint64(message.numFidRegistrations);
+    }
+    if (message.approxSize !== 0) {
+      writer.uint32(40).uint64(message.approxSize);
+    }
+    if (message.blockDelay !== 0) {
+      writer.uint32(48).uint64(message.blockDelay);
+    }
+    if (message.mempoolSize !== 0) {
+      writer.uint32(56).uint64(message.mempoolSize);
     }
     return writer;
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): SyncStatusRequest {
+  decode(input: _m0.Reader | Uint8Array, length?: number): ShardInfo {
     const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseSyncStatusRequest();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1:
-          if (tag != 10) {
-            break;
-          }
-
-          message.peerId = reader.string();
-          continue;
-      }
-      if ((tag & 7) == 4 || tag == 0) {
-        break;
-      }
-      reader.skipType(tag & 7);
-    }
-    return message;
-  },
-
-  fromJSON(object: any): SyncStatusRequest {
-    return { peerId: isSet(object.peerId) ? String(object.peerId) : undefined };
-  },
-
-  toJSON(message: SyncStatusRequest): unknown {
-    const obj: any = {};
-    message.peerId !== undefined && (obj.peerId = message.peerId);
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<SyncStatusRequest>, I>>(base?: I): SyncStatusRequest {
-    return SyncStatusRequest.fromPartial(base ?? {});
-  },
-
-  fromPartial<I extends Exact<DeepPartial<SyncStatusRequest>, I>>(object: I): SyncStatusRequest {
-    const message = createBaseSyncStatusRequest();
-    message.peerId = object.peerId ?? undefined;
-    return message;
-  },
-};
-
-function createBaseSyncStatusResponse(): SyncStatusResponse {
-  return { isSyncing: false, syncStatus: [], engineStarted: false };
-}
-
-export const SyncStatusResponse = {
-  encode(message: SyncStatusResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.isSyncing === true) {
-      writer.uint32(8).bool(message.isSyncing);
-    }
-    for (const v of message.syncStatus) {
-      SyncStatus.encode(v!, writer.uint32(18).fork()).ldelim();
-    }
-    if (message.engineStarted === true) {
-      writer.uint32(24).bool(message.engineStarted);
-    }
-    return writer;
-  },
-
-  decode(input: _m0.Reader | Uint8Array, length?: number): SyncStatusResponse {
-    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseSyncStatusResponse();
+    const message = createBaseShardInfo();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -1027,381 +847,14 @@ export const SyncStatusResponse = {
             break;
           }
 
-          message.isSyncing = reader.bool();
-          continue;
-        case 2:
-          if (tag != 18) {
-            break;
-          }
-
-          message.syncStatus.push(SyncStatus.decode(reader, reader.uint32()));
-          continue;
-        case 3:
-          if (tag != 24) {
-            break;
-          }
-
-          message.engineStarted = reader.bool();
-          continue;
-      }
-      if ((tag & 7) == 4 || tag == 0) {
-        break;
-      }
-      reader.skipType(tag & 7);
-    }
-    return message;
-  },
-
-  fromJSON(object: any): SyncStatusResponse {
-    return {
-      isSyncing: isSet(object.isSyncing) ? Boolean(object.isSyncing) : false,
-      syncStatus: Array.isArray(object?.syncStatus) ? object.syncStatus.map((e: any) => SyncStatus.fromJSON(e)) : [],
-      engineStarted: isSet(object.engineStarted) ? Boolean(object.engineStarted) : false,
-    };
-  },
-
-  toJSON(message: SyncStatusResponse): unknown {
-    const obj: any = {};
-    message.isSyncing !== undefined && (obj.isSyncing = message.isSyncing);
-    if (message.syncStatus) {
-      obj.syncStatus = message.syncStatus.map((e) => e ? SyncStatus.toJSON(e) : undefined);
-    } else {
-      obj.syncStatus = [];
-    }
-    message.engineStarted !== undefined && (obj.engineStarted = message.engineStarted);
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<SyncStatusResponse>, I>>(base?: I): SyncStatusResponse {
-    return SyncStatusResponse.fromPartial(base ?? {});
-  },
-
-  fromPartial<I extends Exact<DeepPartial<SyncStatusResponse>, I>>(object: I): SyncStatusResponse {
-    const message = createBaseSyncStatusResponse();
-    message.isSyncing = object.isSyncing ?? false;
-    message.syncStatus = object.syncStatus?.map((e) => SyncStatus.fromPartial(e)) || [];
-    message.engineStarted = object.engineStarted ?? false;
-    return message;
-  },
-};
-
-function createBaseSyncStatus(): SyncStatus {
-  return {
-    peerId: "",
-    inSync: "",
-    shouldSync: false,
-    divergencePrefix: "",
-    divergenceSecondsAgo: 0,
-    theirMessages: 0,
-    ourMessages: 0,
-    lastBadSync: 0,
-    score: 0,
-  };
-}
-
-export const SyncStatus = {
-  encode(message: SyncStatus, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.peerId !== "") {
-      writer.uint32(10).string(message.peerId);
-    }
-    if (message.inSync !== "") {
-      writer.uint32(18).string(message.inSync);
-    }
-    if (message.shouldSync === true) {
-      writer.uint32(24).bool(message.shouldSync);
-    }
-    if (message.divergencePrefix !== "") {
-      writer.uint32(34).string(message.divergencePrefix);
-    }
-    if (message.divergenceSecondsAgo !== 0) {
-      writer.uint32(40).int32(message.divergenceSecondsAgo);
-    }
-    if (message.theirMessages !== 0) {
-      writer.uint32(48).uint64(message.theirMessages);
-    }
-    if (message.ourMessages !== 0) {
-      writer.uint32(56).uint64(message.ourMessages);
-    }
-    if (message.lastBadSync !== 0) {
-      writer.uint32(64).int64(message.lastBadSync);
-    }
-    if (message.score !== 0) {
-      writer.uint32(72).int64(message.score);
-    }
-    return writer;
-  },
-
-  decode(input: _m0.Reader | Uint8Array, length?: number): SyncStatus {
-    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseSyncStatus();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1:
-          if (tag != 10) {
-            break;
-          }
-
-          message.peerId = reader.string();
-          continue;
-        case 2:
-          if (tag != 18) {
-            break;
-          }
-
-          message.inSync = reader.string();
-          continue;
-        case 3:
-          if (tag != 24) {
-            break;
-          }
-
-          message.shouldSync = reader.bool();
-          continue;
-        case 4:
-          if (tag != 34) {
-            break;
-          }
-
-          message.divergencePrefix = reader.string();
-          continue;
-        case 5:
-          if (tag != 40) {
-            break;
-          }
-
-          message.divergenceSecondsAgo = reader.int32();
-          continue;
-        case 6:
-          if (tag != 48) {
-            break;
-          }
-
-          message.theirMessages = longToNumber(reader.uint64() as Long);
-          continue;
-        case 7:
-          if (tag != 56) {
-            break;
-          }
-
-          message.ourMessages = longToNumber(reader.uint64() as Long);
-          continue;
-        case 8:
-          if (tag != 64) {
-            break;
-          }
-
-          message.lastBadSync = longToNumber(reader.int64() as Long);
-          continue;
-        case 9:
-          if (tag != 72) {
-            break;
-          }
-
-          message.score = longToNumber(reader.int64() as Long);
-          continue;
-      }
-      if ((tag & 7) == 4 || tag == 0) {
-        break;
-      }
-      reader.skipType(tag & 7);
-    }
-    return message;
-  },
-
-  fromJSON(object: any): SyncStatus {
-    return {
-      peerId: isSet(object.peerId) ? String(object.peerId) : "",
-      inSync: isSet(object.inSync) ? String(object.inSync) : "",
-      shouldSync: isSet(object.shouldSync) ? Boolean(object.shouldSync) : false,
-      divergencePrefix: isSet(object.divergencePrefix) ? String(object.divergencePrefix) : "",
-      divergenceSecondsAgo: isSet(object.divergenceSecondsAgo) ? Number(object.divergenceSecondsAgo) : 0,
-      theirMessages: isSet(object.theirMessages) ? Number(object.theirMessages) : 0,
-      ourMessages: isSet(object.ourMessages) ? Number(object.ourMessages) : 0,
-      lastBadSync: isSet(object.lastBadSync) ? Number(object.lastBadSync) : 0,
-      score: isSet(object.score) ? Number(object.score) : 0,
-    };
-  },
-
-  toJSON(message: SyncStatus): unknown {
-    const obj: any = {};
-    message.peerId !== undefined && (obj.peerId = message.peerId);
-    message.inSync !== undefined && (obj.inSync = message.inSync);
-    message.shouldSync !== undefined && (obj.shouldSync = message.shouldSync);
-    message.divergencePrefix !== undefined && (obj.divergencePrefix = message.divergencePrefix);
-    message.divergenceSecondsAgo !== undefined && (obj.divergenceSecondsAgo = Math.round(message.divergenceSecondsAgo));
-    message.theirMessages !== undefined && (obj.theirMessages = Math.round(message.theirMessages));
-    message.ourMessages !== undefined && (obj.ourMessages = Math.round(message.ourMessages));
-    message.lastBadSync !== undefined && (obj.lastBadSync = Math.round(message.lastBadSync));
-    message.score !== undefined && (obj.score = Math.round(message.score));
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<SyncStatus>, I>>(base?: I): SyncStatus {
-    return SyncStatus.fromPartial(base ?? {});
-  },
-
-  fromPartial<I extends Exact<DeepPartial<SyncStatus>, I>>(object: I): SyncStatus {
-    const message = createBaseSyncStatus();
-    message.peerId = object.peerId ?? "";
-    message.inSync = object.inSync ?? "";
-    message.shouldSync = object.shouldSync ?? false;
-    message.divergencePrefix = object.divergencePrefix ?? "";
-    message.divergenceSecondsAgo = object.divergenceSecondsAgo ?? 0;
-    message.theirMessages = object.theirMessages ?? 0;
-    message.ourMessages = object.ourMessages ?? 0;
-    message.lastBadSync = object.lastBadSync ?? 0;
-    message.score = object.score ?? 0;
-    return message;
-  },
-};
-
-function createBaseTrieNodeMetadataResponse(): TrieNodeMetadataResponse {
-  return { prefix: new Uint8Array(), numMessages: 0, hash: "", children: [] };
-}
-
-export const TrieNodeMetadataResponse = {
-  encode(message: TrieNodeMetadataResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.prefix.length !== 0) {
-      writer.uint32(10).bytes(message.prefix);
-    }
-    if (message.numMessages !== 0) {
-      writer.uint32(16).uint64(message.numMessages);
-    }
-    if (message.hash !== "") {
-      writer.uint32(26).string(message.hash);
-    }
-    for (const v of message.children) {
-      TrieNodeMetadataResponse.encode(v!, writer.uint32(34).fork()).ldelim();
-    }
-    return writer;
-  },
-
-  decode(input: _m0.Reader | Uint8Array, length?: number): TrieNodeMetadataResponse {
-    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseTrieNodeMetadataResponse();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1:
-          if (tag != 10) {
-            break;
-          }
-
-          message.prefix = reader.bytes();
+          message.shardId = reader.uint32();
           continue;
         case 2:
           if (tag != 16) {
             break;
           }
 
-          message.numMessages = longToNumber(reader.uint64() as Long);
-          continue;
-        case 3:
-          if (tag != 26) {
-            break;
-          }
-
-          message.hash = reader.string();
-          continue;
-        case 4:
-          if (tag != 34) {
-            break;
-          }
-
-          message.children.push(TrieNodeMetadataResponse.decode(reader, reader.uint32()));
-          continue;
-      }
-      if ((tag & 7) == 4 || tag == 0) {
-        break;
-      }
-      reader.skipType(tag & 7);
-    }
-    return message;
-  },
-
-  fromJSON(object: any): TrieNodeMetadataResponse {
-    return {
-      prefix: isSet(object.prefix) ? bytesFromBase64(object.prefix) : new Uint8Array(),
-      numMessages: isSet(object.numMessages) ? Number(object.numMessages) : 0,
-      hash: isSet(object.hash) ? String(object.hash) : "",
-      children: Array.isArray(object?.children)
-        ? object.children.map((e: any) => TrieNodeMetadataResponse.fromJSON(e))
-        : [],
-    };
-  },
-
-  toJSON(message: TrieNodeMetadataResponse): unknown {
-    const obj: any = {};
-    message.prefix !== undefined &&
-      (obj.prefix = base64FromBytes(message.prefix !== undefined ? message.prefix : new Uint8Array()));
-    message.numMessages !== undefined && (obj.numMessages = Math.round(message.numMessages));
-    message.hash !== undefined && (obj.hash = message.hash);
-    if (message.children) {
-      obj.children = message.children.map((e) => e ? TrieNodeMetadataResponse.toJSON(e) : undefined);
-    } else {
-      obj.children = [];
-    }
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<TrieNodeMetadataResponse>, I>>(base?: I): TrieNodeMetadataResponse {
-    return TrieNodeMetadataResponse.fromPartial(base ?? {});
-  },
-
-  fromPartial<I extends Exact<DeepPartial<TrieNodeMetadataResponse>, I>>(object: I): TrieNodeMetadataResponse {
-    const message = createBaseTrieNodeMetadataResponse();
-    message.prefix = object.prefix ?? new Uint8Array();
-    message.numMessages = object.numMessages ?? 0;
-    message.hash = object.hash ?? "";
-    message.children = object.children?.map((e) => TrieNodeMetadataResponse.fromPartial(e)) || [];
-    return message;
-  },
-};
-
-function createBaseTrieNodeSnapshotResponse(): TrieNodeSnapshotResponse {
-  return { prefix: new Uint8Array(), excludedHashes: [], numMessages: 0, rootHash: "" };
-}
-
-export const TrieNodeSnapshotResponse = {
-  encode(message: TrieNodeSnapshotResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.prefix.length !== 0) {
-      writer.uint32(10).bytes(message.prefix);
-    }
-    for (const v of message.excludedHashes) {
-      writer.uint32(18).string(v!);
-    }
-    if (message.numMessages !== 0) {
-      writer.uint32(24).uint64(message.numMessages);
-    }
-    if (message.rootHash !== "") {
-      writer.uint32(34).string(message.rootHash);
-    }
-    return writer;
-  },
-
-  decode(input: _m0.Reader | Uint8Array, length?: number): TrieNodeSnapshotResponse {
-    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseTrieNodeSnapshotResponse();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1:
-          if (tag != 10) {
-            break;
-          }
-
-          message.prefix = reader.bytes();
-          continue;
-        case 2:
-          if (tag != 18) {
-            break;
-          }
-
-          message.excludedHashes.push(reader.string());
+          message.maxHeight = longToNumber(reader.uint64() as Long);
           continue;
         case 3:
           if (tag != 24) {
@@ -1411,11 +864,32 @@ export const TrieNodeSnapshotResponse = {
           message.numMessages = longToNumber(reader.uint64() as Long);
           continue;
         case 4:
-          if (tag != 34) {
+          if (tag != 32) {
             break;
           }
 
-          message.rootHash = reader.string();
+          message.numFidRegistrations = longToNumber(reader.uint64() as Long);
+          continue;
+        case 5:
+          if (tag != 40) {
+            break;
+          }
+
+          message.approxSize = longToNumber(reader.uint64() as Long);
+          continue;
+        case 6:
+          if (tag != 48) {
+            break;
+          }
+
+          message.blockDelay = longToNumber(reader.uint64() as Long);
+          continue;
+        case 7:
+          if (tag != 56) {
+            break;
+          }
+
+          message.mempoolSize = longToNumber(reader.uint64() as Long);
           continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
@@ -1426,69 +900,63 @@ export const TrieNodeSnapshotResponse = {
     return message;
   },
 
-  fromJSON(object: any): TrieNodeSnapshotResponse {
+  fromJSON(object: any): ShardInfo {
     return {
-      prefix: isSet(object.prefix) ? bytesFromBase64(object.prefix) : new Uint8Array(),
-      excludedHashes: Array.isArray(object?.excludedHashes) ? object.excludedHashes.map((e: any) => String(e)) : [],
+      shardId: isSet(object.shardId) ? Number(object.shardId) : 0,
+      maxHeight: isSet(object.maxHeight) ? Number(object.maxHeight) : 0,
       numMessages: isSet(object.numMessages) ? Number(object.numMessages) : 0,
-      rootHash: isSet(object.rootHash) ? String(object.rootHash) : "",
+      numFidRegistrations: isSet(object.numFidRegistrations) ? Number(object.numFidRegistrations) : 0,
+      approxSize: isSet(object.approxSize) ? Number(object.approxSize) : 0,
+      blockDelay: isSet(object.blockDelay) ? Number(object.blockDelay) : 0,
+      mempoolSize: isSet(object.mempoolSize) ? Number(object.mempoolSize) : 0,
     };
   },
 
-  toJSON(message: TrieNodeSnapshotResponse): unknown {
+  toJSON(message: ShardInfo): unknown {
     const obj: any = {};
-    message.prefix !== undefined &&
-      (obj.prefix = base64FromBytes(message.prefix !== undefined ? message.prefix : new Uint8Array()));
-    if (message.excludedHashes) {
-      obj.excludedHashes = message.excludedHashes.map((e) => e);
-    } else {
-      obj.excludedHashes = [];
-    }
+    message.shardId !== undefined && (obj.shardId = Math.round(message.shardId));
+    message.maxHeight !== undefined && (obj.maxHeight = Math.round(message.maxHeight));
     message.numMessages !== undefined && (obj.numMessages = Math.round(message.numMessages));
-    message.rootHash !== undefined && (obj.rootHash = message.rootHash);
+    message.numFidRegistrations !== undefined && (obj.numFidRegistrations = Math.round(message.numFidRegistrations));
+    message.approxSize !== undefined && (obj.approxSize = Math.round(message.approxSize));
+    message.blockDelay !== undefined && (obj.blockDelay = Math.round(message.blockDelay));
+    message.mempoolSize !== undefined && (obj.mempoolSize = Math.round(message.mempoolSize));
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<TrieNodeSnapshotResponse>, I>>(base?: I): TrieNodeSnapshotResponse {
-    return TrieNodeSnapshotResponse.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<ShardInfo>, I>>(base?: I): ShardInfo {
+    return ShardInfo.fromPartial(base ?? {});
   },
 
-  fromPartial<I extends Exact<DeepPartial<TrieNodeSnapshotResponse>, I>>(object: I): TrieNodeSnapshotResponse {
-    const message = createBaseTrieNodeSnapshotResponse();
-    message.prefix = object.prefix ?? new Uint8Array();
-    message.excludedHashes = object.excludedHashes?.map((e) => e) || [];
+  fromPartial<I extends Exact<DeepPartial<ShardInfo>, I>>(object: I): ShardInfo {
+    const message = createBaseShardInfo();
+    message.shardId = object.shardId ?? 0;
+    message.maxHeight = object.maxHeight ?? 0;
     message.numMessages = object.numMessages ?? 0;
-    message.rootHash = object.rootHash ?? "";
+    message.numFidRegistrations = object.numFidRegistrations ?? 0;
+    message.approxSize = object.approxSize ?? 0;
+    message.blockDelay = object.blockDelay ?? 0;
+    message.mempoolSize = object.mempoolSize ?? 0;
     return message;
   },
 };
 
-function createBaseTrieNodePrefix(): TrieNodePrefix {
-  return { prefix: new Uint8Array() };
+function createBaseGetInfoRequest(): GetInfoRequest {
+  return {};
 }
 
-export const TrieNodePrefix = {
-  encode(message: TrieNodePrefix, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.prefix.length !== 0) {
-      writer.uint32(10).bytes(message.prefix);
-    }
+export const GetInfoRequest = {
+  encode(_: GetInfoRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
     return writer;
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): TrieNodePrefix {
+  decode(input: _m0.Reader | Uint8Array, length?: number): GetInfoRequest {
     const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseTrieNodePrefix();
+    const message = createBaseGetInfoRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
-        case 1:
-          if (tag != 10) {
-            break;
-          }
-
-          message.prefix = reader.bytes();
-          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -1498,44 +966,53 @@ export const TrieNodePrefix = {
     return message;
   },
 
-  fromJSON(object: any): TrieNodePrefix {
-    return { prefix: isSet(object.prefix) ? bytesFromBase64(object.prefix) : new Uint8Array() };
+  fromJSON(_: any): GetInfoRequest {
+    return {};
   },
 
-  toJSON(message: TrieNodePrefix): unknown {
+  toJSON(_: GetInfoRequest): unknown {
     const obj: any = {};
-    message.prefix !== undefined &&
-      (obj.prefix = base64FromBytes(message.prefix !== undefined ? message.prefix : new Uint8Array()));
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<TrieNodePrefix>, I>>(base?: I): TrieNodePrefix {
-    return TrieNodePrefix.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<GetInfoRequest>, I>>(base?: I): GetInfoRequest {
+    return GetInfoRequest.fromPartial(base ?? {});
   },
 
-  fromPartial<I extends Exact<DeepPartial<TrieNodePrefix>, I>>(object: I): TrieNodePrefix {
-    const message = createBaseTrieNodePrefix();
-    message.prefix = object.prefix ?? new Uint8Array();
+  fromPartial<I extends Exact<DeepPartial<GetInfoRequest>, I>>(_: I): GetInfoRequest {
+    const message = createBaseGetInfoRequest();
     return message;
   },
 };
 
-function createBaseSyncIds(): SyncIds {
-  return { syncIds: [] };
+function createBaseGetInfoResponse(): GetInfoResponse {
+  return { version: "", dbStats: undefined, peerId: "", numShards: 0, shardInfos: [] };
 }
 
-export const SyncIds = {
-  encode(message: SyncIds, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    for (const v of message.syncIds) {
-      writer.uint32(10).bytes(v!);
+export const GetInfoResponse = {
+  encode(message: GetInfoResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.version !== "") {
+      writer.uint32(10).string(message.version);
+    }
+    if (message.dbStats !== undefined) {
+      DbStats.encode(message.dbStats, writer.uint32(42).fork()).ldelim();
+    }
+    if (message.peerId !== "") {
+      writer.uint32(50).string(message.peerId);
+    }
+    if (message.numShards !== 0) {
+      writer.uint32(64).uint32(message.numShards);
+    }
+    for (const v of message.shardInfos) {
+      ShardInfo.encode(v!, writer.uint32(74).fork()).ldelim();
     }
     return writer;
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): SyncIds {
+  decode(input: _m0.Reader | Uint8Array, length?: number): GetInfoResponse {
     const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseSyncIds();
+    const message = createBaseGetInfoResponse();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -1544,7 +1021,35 @@ export const SyncIds = {
             break;
           }
 
-          message.syncIds.push(reader.bytes());
+          message.version = reader.string();
+          continue;
+        case 5:
+          if (tag != 42) {
+            break;
+          }
+
+          message.dbStats = DbStats.decode(reader, reader.uint32());
+          continue;
+        case 6:
+          if (tag != 50) {
+            break;
+          }
+
+          message.peerId = reader.string();
+          continue;
+        case 8:
+          if (tag != 64) {
+            break;
+          }
+
+          message.numShards = reader.uint32();
+          continue;
+        case 9:
+          if (tag != 74) {
+            break;
+          }
+
+          message.shardInfos.push(ShardInfo.decode(reader, reader.uint32()));
           continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
@@ -1555,27 +1060,114 @@ export const SyncIds = {
     return message;
   },
 
-  fromJSON(object: any): SyncIds {
-    return { syncIds: Array.isArray(object?.syncIds) ? object.syncIds.map((e: any) => bytesFromBase64(e)) : [] };
+  fromJSON(object: any): GetInfoResponse {
+    return {
+      version: isSet(object.version) ? String(object.version) : "",
+      dbStats: isSet(object.dbStats) ? DbStats.fromJSON(object.dbStats) : undefined,
+      peerId: isSet(object.peerId) ? String(object.peerId) : "",
+      numShards: isSet(object.numShards) ? Number(object.numShards) : 0,
+      shardInfos: Array.isArray(object?.shardInfos) ? object.shardInfos.map((e: any) => ShardInfo.fromJSON(e)) : [],
+    };
   },
 
-  toJSON(message: SyncIds): unknown {
+  toJSON(message: GetInfoResponse): unknown {
     const obj: any = {};
-    if (message.syncIds) {
-      obj.syncIds = message.syncIds.map((e) => base64FromBytes(e !== undefined ? e : new Uint8Array()));
+    message.version !== undefined && (obj.version = message.version);
+    message.dbStats !== undefined && (obj.dbStats = message.dbStats ? DbStats.toJSON(message.dbStats) : undefined);
+    message.peerId !== undefined && (obj.peerId = message.peerId);
+    message.numShards !== undefined && (obj.numShards = Math.round(message.numShards));
+    if (message.shardInfos) {
+      obj.shardInfos = message.shardInfos.map((e) => e ? ShardInfo.toJSON(e) : undefined);
     } else {
-      obj.syncIds = [];
+      obj.shardInfos = [];
     }
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<SyncIds>, I>>(base?: I): SyncIds {
-    return SyncIds.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<GetInfoResponse>, I>>(base?: I): GetInfoResponse {
+    return GetInfoResponse.fromPartial(base ?? {});
   },
 
-  fromPartial<I extends Exact<DeepPartial<SyncIds>, I>>(object: I): SyncIds {
-    const message = createBaseSyncIds();
-    message.syncIds = object.syncIds?.map((e) => e) || [];
+  fromPartial<I extends Exact<DeepPartial<GetInfoResponse>, I>>(object: I): GetInfoResponse {
+    const message = createBaseGetInfoResponse();
+    message.version = object.version ?? "";
+    message.dbStats = (object.dbStats !== undefined && object.dbStats !== null)
+      ? DbStats.fromPartial(object.dbStats)
+      : undefined;
+    message.peerId = object.peerId ?? "";
+    message.numShards = object.numShards ?? 0;
+    message.shardInfos = object.shardInfos?.map((e) => ShardInfo.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBaseEventRequest(): EventRequest {
+  return { id: 0, shardIndex: 0 };
+}
+
+export const EventRequest = {
+  encode(message: EventRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.id !== 0) {
+      writer.uint32(8).uint64(message.id);
+    }
+    if (message.shardIndex !== 0) {
+      writer.uint32(40).uint32(message.shardIndex);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): EventRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseEventRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.id = longToNumber(reader.uint64() as Long);
+          continue;
+        case 5:
+          if (tag != 40) {
+            break;
+          }
+
+          message.shardIndex = reader.uint32();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): EventRequest {
+    return {
+      id: isSet(object.id) ? Number(object.id) : 0,
+      shardIndex: isSet(object.shardIndex) ? Number(object.shardIndex) : 0,
+    };
+  },
+
+  toJSON(message: EventRequest): unknown {
+    const obj: any = {};
+    message.id !== undefined && (obj.id = Math.round(message.id));
+    message.shardIndex !== undefined && (obj.shardIndex = Math.round(message.shardIndex));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<EventRequest>, I>>(base?: I): EventRequest {
+    return EventRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<EventRequest>, I>>(object: I): EventRequest {
+    const message = createBaseEventRequest();
+    message.id = object.id ?? 0;
+    message.shardIndex = object.shardIndex ?? 0;
     return message;
   },
 };
@@ -1810,7 +1402,7 @@ export const FidTimestampRequest = {
 };
 
 function createBaseFidsRequest(): FidsRequest {
-  return { pageSize: undefined, pageToken: undefined, reverse: undefined };
+  return { pageSize: undefined, pageToken: undefined, reverse: undefined, shardId: 0 };
 }
 
 export const FidsRequest = {
@@ -1823,6 +1415,9 @@ export const FidsRequest = {
     }
     if (message.reverse !== undefined) {
       writer.uint32(24).bool(message.reverse);
+    }
+    if (message.shardId !== 0) {
+      writer.uint32(32).uint32(message.shardId);
     }
     return writer;
   },
@@ -1855,6 +1450,13 @@ export const FidsRequest = {
 
           message.reverse = reader.bool();
           continue;
+        case 4:
+          if (tag != 32) {
+            break;
+          }
+
+          message.shardId = reader.uint32();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -1869,6 +1471,7 @@ export const FidsRequest = {
       pageSize: isSet(object.pageSize) ? Number(object.pageSize) : undefined,
       pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : undefined,
       reverse: isSet(object.reverse) ? Boolean(object.reverse) : undefined,
+      shardId: isSet(object.shardId) ? Number(object.shardId) : 0,
     };
   },
 
@@ -1878,6 +1481,7 @@ export const FidsRequest = {
     message.pageToken !== undefined &&
       (obj.pageToken = message.pageToken !== undefined ? base64FromBytes(message.pageToken) : undefined);
     message.reverse !== undefined && (obj.reverse = message.reverse);
+    message.shardId !== undefined && (obj.shardId = Math.round(message.shardId));
     return obj;
   },
 
@@ -1890,6 +1494,7 @@ export const FidsRequest = {
     message.pageSize = object.pageSize ?? undefined;
     message.pageToken = object.pageToken ?? undefined;
     message.reverse = object.reverse ?? undefined;
+    message.shardId = object.shardId ?? 0;
     return message;
   },
 };
@@ -2595,119 +2200,6 @@ export const UserDataRequest = {
   },
 };
 
-function createBaseNameRegistryEventRequest(): NameRegistryEventRequest {
-  return { name: new Uint8Array() };
-}
-
-export const NameRegistryEventRequest = {
-  encode(message: NameRegistryEventRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.name.length !== 0) {
-      writer.uint32(10).bytes(message.name);
-    }
-    return writer;
-  },
-
-  decode(input: _m0.Reader | Uint8Array, length?: number): NameRegistryEventRequest {
-    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseNameRegistryEventRequest();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1:
-          if (tag != 10) {
-            break;
-          }
-
-          message.name = reader.bytes();
-          continue;
-      }
-      if ((tag & 7) == 4 || tag == 0) {
-        break;
-      }
-      reader.skipType(tag & 7);
-    }
-    return message;
-  },
-
-  fromJSON(object: any): NameRegistryEventRequest {
-    return { name: isSet(object.name) ? bytesFromBase64(object.name) : new Uint8Array() };
-  },
-
-  toJSON(message: NameRegistryEventRequest): unknown {
-    const obj: any = {};
-    message.name !== undefined &&
-      (obj.name = base64FromBytes(message.name !== undefined ? message.name : new Uint8Array()));
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<NameRegistryEventRequest>, I>>(base?: I): NameRegistryEventRequest {
-    return NameRegistryEventRequest.fromPartial(base ?? {});
-  },
-
-  fromPartial<I extends Exact<DeepPartial<NameRegistryEventRequest>, I>>(object: I): NameRegistryEventRequest {
-    const message = createBaseNameRegistryEventRequest();
-    message.name = object.name ?? new Uint8Array();
-    return message;
-  },
-};
-
-function createBaseRentRegistryEventsRequest(): RentRegistryEventsRequest {
-  return { fid: 0 };
-}
-
-export const RentRegistryEventsRequest = {
-  encode(message: RentRegistryEventsRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.fid !== 0) {
-      writer.uint32(8).uint64(message.fid);
-    }
-    return writer;
-  },
-
-  decode(input: _m0.Reader | Uint8Array, length?: number): RentRegistryEventsRequest {
-    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseRentRegistryEventsRequest();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1:
-          if (tag != 8) {
-            break;
-          }
-
-          message.fid = longToNumber(reader.uint64() as Long);
-          continue;
-      }
-      if ((tag & 7) == 4 || tag == 0) {
-        break;
-      }
-      reader.skipType(tag & 7);
-    }
-    return message;
-  },
-
-  fromJSON(object: any): RentRegistryEventsRequest {
-    return { fid: isSet(object.fid) ? Number(object.fid) : 0 };
-  },
-
-  toJSON(message: RentRegistryEventsRequest): unknown {
-    const obj: any = {};
-    message.fid !== undefined && (obj.fid = Math.round(message.fid));
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<RentRegistryEventsRequest>, I>>(base?: I): RentRegistryEventsRequest {
-    return RentRegistryEventsRequest.fromPartial(base ?? {});
-  },
-
-  fromPartial<I extends Exact<DeepPartial<RentRegistryEventsRequest>, I>>(object: I): RentRegistryEventsRequest {
-    const message = createBaseRentRegistryEventsRequest();
-    message.fid = object.fid ?? 0;
-    return message;
-  },
-};
-
 function createBaseOnChainEventRequest(): OnChainEventRequest {
   return { fid: 0, eventType: 0, pageSize: undefined, pageToken: undefined, reverse: undefined };
 }
@@ -3393,6 +2885,79 @@ export const UsernameProofsResponse = {
   },
 };
 
+function createBaseValidationResponse(): ValidationResponse {
+  return { valid: false, message: undefined };
+}
+
+export const ValidationResponse = {
+  encode(message: ValidationResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.valid === true) {
+      writer.uint32(8).bool(message.valid);
+    }
+    if (message.message !== undefined) {
+      Message.encode(message.message, writer.uint32(18).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ValidationResponse {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseValidationResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.valid = reader.bool();
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.message = Message.decode(reader, reader.uint32());
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ValidationResponse {
+    return {
+      valid: isSet(object.valid) ? Boolean(object.valid) : false,
+      message: isSet(object.message) ? Message.fromJSON(object.message) : undefined,
+    };
+  },
+
+  toJSON(message: ValidationResponse): unknown {
+    const obj: any = {};
+    message.valid !== undefined && (obj.valid = message.valid);
+    message.message !== undefined && (obj.message = message.message ? Message.toJSON(message.message) : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ValidationResponse>, I>>(base?: I): ValidationResponse {
+    return ValidationResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ValidationResponse>, I>>(object: I): ValidationResponse {
+    const message = createBaseValidationResponse();
+    message.valid = object.valid ?? false;
+    message.message = (object.message !== undefined && object.message !== null)
+      ? Message.fromPartial(object.message)
+      : undefined;
+    return message;
+  },
+};
+
 function createBaseVerificationRequest(): VerificationRequest {
   return { fid: 0, address: new Uint8Array() };
 }
@@ -3902,143 +3467,6 @@ export const IdRegistryEventByAddressRequest = {
   },
 };
 
-function createBaseContactInfoResponse(): ContactInfoResponse {
-  return { contacts: [] };
-}
-
-export const ContactInfoResponse = {
-  encode(message: ContactInfoResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    for (const v of message.contacts) {
-      ContactInfoContentBody.encode(v!, writer.uint32(10).fork()).ldelim();
-    }
-    return writer;
-  },
-
-  decode(input: _m0.Reader | Uint8Array, length?: number): ContactInfoResponse {
-    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseContactInfoResponse();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1:
-          if (tag != 10) {
-            break;
-          }
-
-          message.contacts.push(ContactInfoContentBody.decode(reader, reader.uint32()));
-          continue;
-      }
-      if ((tag & 7) == 4 || tag == 0) {
-        break;
-      }
-      reader.skipType(tag & 7);
-    }
-    return message;
-  },
-
-  fromJSON(object: any): ContactInfoResponse {
-    return {
-      contacts: Array.isArray(object?.contacts)
-        ? object.contacts.map((e: any) => ContactInfoContentBody.fromJSON(e))
-        : [],
-    };
-  },
-
-  toJSON(message: ContactInfoResponse): unknown {
-    const obj: any = {};
-    if (message.contacts) {
-      obj.contacts = message.contacts.map((e) => e ? ContactInfoContentBody.toJSON(e) : undefined);
-    } else {
-      obj.contacts = [];
-    }
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<ContactInfoResponse>, I>>(base?: I): ContactInfoResponse {
-    return ContactInfoResponse.fromPartial(base ?? {});
-  },
-
-  fromPartial<I extends Exact<DeepPartial<ContactInfoResponse>, I>>(object: I): ContactInfoResponse {
-    const message = createBaseContactInfoResponse();
-    message.contacts = object.contacts?.map((e) => ContactInfoContentBody.fromPartial(e)) || [];
-    return message;
-  },
-};
-
-function createBaseValidationResponse(): ValidationResponse {
-  return { valid: false, message: undefined };
-}
-
-export const ValidationResponse = {
-  encode(message: ValidationResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.valid === true) {
-      writer.uint32(8).bool(message.valid);
-    }
-    if (message.message !== undefined) {
-      Message.encode(message.message, writer.uint32(18).fork()).ldelim();
-    }
-    return writer;
-  },
-
-  decode(input: _m0.Reader | Uint8Array, length?: number): ValidationResponse {
-    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseValidationResponse();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1:
-          if (tag != 8) {
-            break;
-          }
-
-          message.valid = reader.bool();
-          continue;
-        case 2:
-          if (tag != 18) {
-            break;
-          }
-
-          message.message = Message.decode(reader, reader.uint32());
-          continue;
-      }
-      if ((tag & 7) == 4 || tag == 0) {
-        break;
-      }
-      reader.skipType(tag & 7);
-    }
-    return message;
-  },
-
-  fromJSON(object: any): ValidationResponse {
-    return {
-      valid: isSet(object.valid) ? Boolean(object.valid) : false,
-      message: isSet(object.message) ? Message.fromJSON(object.message) : undefined,
-    };
-  },
-
-  toJSON(message: ValidationResponse): unknown {
-    const obj: any = {};
-    message.valid !== undefined && (obj.valid = message.valid);
-    message.message !== undefined && (obj.message = message.message ? Message.toJSON(message.message) : undefined);
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<ValidationResponse>, I>>(base?: I): ValidationResponse {
-    return ValidationResponse.fromPartial(base ?? {});
-  },
-
-  fromPartial<I extends Exact<DeepPartial<ValidationResponse>, I>>(object: I): ValidationResponse {
-    const message = createBaseValidationResponse();
-    message.valid = object.valid ?? false;
-    message.message = (object.message !== undefined && object.message !== null)
-      ? Message.fromPartial(object.message)
-      : undefined;
-    return message;
-  },
-};
-
 function createBaseSubmitBulkMessagesRequest(): SubmitBulkMessagesRequest {
   return { messages: [] };
 }
@@ -4322,64 +3750,103 @@ export const SubmitBulkMessagesResponse = {
   },
 };
 
-function createBaseStreamSyncRequest(): StreamSyncRequest {
-  return {
-    getInfo: undefined,
-    getCurrentPeers: undefined,
-    stopSync: undefined,
-    forceSync: undefined,
-    getSyncStatus: undefined,
-    getAllSyncIdsByPrefix: undefined,
-    getAllMessagesBySyncIds: undefined,
-    getSyncMetadataByPrefix: undefined,
-    getSyncSnapshotByPrefix: undefined,
-    getOnChainEvents: undefined,
-    getOnChainSignersByFid: undefined,
-  };
+function createBaseTrieNodeMetadataRequest(): TrieNodeMetadataRequest {
+  return { shardId: 0, prefix: new Uint8Array() };
 }
 
-export const StreamSyncRequest = {
-  encode(message: StreamSyncRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.getInfo !== undefined) {
-      HubInfoRequest.encode(message.getInfo, writer.uint32(10).fork()).ldelim();
+export const TrieNodeMetadataRequest = {
+  encode(message: TrieNodeMetadataRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.shardId !== 0) {
+      writer.uint32(8).uint32(message.shardId);
     }
-    if (message.getCurrentPeers !== undefined) {
-      Empty.encode(message.getCurrentPeers, writer.uint32(18).fork()).ldelim();
-    }
-    if (message.stopSync !== undefined) {
-      Empty.encode(message.stopSync, writer.uint32(26).fork()).ldelim();
-    }
-    if (message.forceSync !== undefined) {
-      SyncStatusRequest.encode(message.forceSync, writer.uint32(34).fork()).ldelim();
-    }
-    if (message.getSyncStatus !== undefined) {
-      SyncStatusRequest.encode(message.getSyncStatus, writer.uint32(42).fork()).ldelim();
-    }
-    if (message.getAllSyncIdsByPrefix !== undefined) {
-      TrieNodePrefix.encode(message.getAllSyncIdsByPrefix, writer.uint32(50).fork()).ldelim();
-    }
-    if (message.getAllMessagesBySyncIds !== undefined) {
-      SyncIds.encode(message.getAllMessagesBySyncIds, writer.uint32(58).fork()).ldelim();
-    }
-    if (message.getSyncMetadataByPrefix !== undefined) {
-      TrieNodePrefix.encode(message.getSyncMetadataByPrefix, writer.uint32(66).fork()).ldelim();
-    }
-    if (message.getSyncSnapshotByPrefix !== undefined) {
-      TrieNodePrefix.encode(message.getSyncSnapshotByPrefix, writer.uint32(74).fork()).ldelim();
-    }
-    if (message.getOnChainEvents !== undefined) {
-      OnChainEventRequest.encode(message.getOnChainEvents, writer.uint32(82).fork()).ldelim();
-    }
-    if (message.getOnChainSignersByFid !== undefined) {
-      FidRequest.encode(message.getOnChainSignersByFid, writer.uint32(90).fork()).ldelim();
+    if (message.prefix.length !== 0) {
+      writer.uint32(18).bytes(message.prefix);
     }
     return writer;
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): StreamSyncRequest {
+  decode(input: _m0.Reader | Uint8Array, length?: number): TrieNodeMetadataRequest {
     const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseStreamSyncRequest();
+    const message = createBaseTrieNodeMetadataRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.shardId = reader.uint32();
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.prefix = reader.bytes();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): TrieNodeMetadataRequest {
+    return {
+      shardId: isSet(object.shardId) ? Number(object.shardId) : 0,
+      prefix: isSet(object.prefix) ? bytesFromBase64(object.prefix) : new Uint8Array(),
+    };
+  },
+
+  toJSON(message: TrieNodeMetadataRequest): unknown {
+    const obj: any = {};
+    message.shardId !== undefined && (obj.shardId = Math.round(message.shardId));
+    message.prefix !== undefined &&
+      (obj.prefix = base64FromBytes(message.prefix !== undefined ? message.prefix : new Uint8Array()));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<TrieNodeMetadataRequest>, I>>(base?: I): TrieNodeMetadataRequest {
+    return TrieNodeMetadataRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<TrieNodeMetadataRequest>, I>>(object: I): TrieNodeMetadataRequest {
+    const message = createBaseTrieNodeMetadataRequest();
+    message.shardId = object.shardId ?? 0;
+    message.prefix = object.prefix ?? new Uint8Array();
+    return message;
+  },
+};
+
+function createBaseTrieNodeMetadataResponse(): TrieNodeMetadataResponse {
+  return { prefix: new Uint8Array(), numMessages: 0, hash: "", children: [] };
+}
+
+export const TrieNodeMetadataResponse = {
+  encode(message: TrieNodeMetadataResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.prefix.length !== 0) {
+      writer.uint32(10).bytes(message.prefix);
+    }
+    if (message.numMessages !== 0) {
+      writer.uint32(16).uint64(message.numMessages);
+    }
+    if (message.hash !== "") {
+      writer.uint32(26).string(message.hash);
+    }
+    for (const v of message.children) {
+      TrieNodeMetadataResponse.encode(v!, writer.uint32(34).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): TrieNodeMetadataResponse {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseTrieNodeMetadataResponse();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -4388,77 +3855,28 @@ export const StreamSyncRequest = {
             break;
           }
 
-          message.getInfo = HubInfoRequest.decode(reader, reader.uint32());
+          message.prefix = reader.bytes();
           continue;
         case 2:
-          if (tag != 18) {
+          if (tag != 16) {
             break;
           }
 
-          message.getCurrentPeers = Empty.decode(reader, reader.uint32());
+          message.numMessages = longToNumber(reader.uint64() as Long);
           continue;
         case 3:
           if (tag != 26) {
             break;
           }
 
-          message.stopSync = Empty.decode(reader, reader.uint32());
+          message.hash = reader.string();
           continue;
         case 4:
           if (tag != 34) {
             break;
           }
 
-          message.forceSync = SyncStatusRequest.decode(reader, reader.uint32());
-          continue;
-        case 5:
-          if (tag != 42) {
-            break;
-          }
-
-          message.getSyncStatus = SyncStatusRequest.decode(reader, reader.uint32());
-          continue;
-        case 6:
-          if (tag != 50) {
-            break;
-          }
-
-          message.getAllSyncIdsByPrefix = TrieNodePrefix.decode(reader, reader.uint32());
-          continue;
-        case 7:
-          if (tag != 58) {
-            break;
-          }
-
-          message.getAllMessagesBySyncIds = SyncIds.decode(reader, reader.uint32());
-          continue;
-        case 8:
-          if (tag != 66) {
-            break;
-          }
-
-          message.getSyncMetadataByPrefix = TrieNodePrefix.decode(reader, reader.uint32());
-          continue;
-        case 9:
-          if (tag != 74) {
-            break;
-          }
-
-          message.getSyncSnapshotByPrefix = TrieNodePrefix.decode(reader, reader.uint32());
-          continue;
-        case 10:
-          if (tag != 82) {
-            break;
-          }
-
-          message.getOnChainEvents = OnChainEventRequest.decode(reader, reader.uint32());
-          continue;
-        case 11:
-          if (tag != 90) {
-            break;
-          }
-
-          message.getOnChainSignersByFid = FidRequest.decode(reader, reader.uint32());
+          message.children.push(TrieNodeMetadataResponse.decode(reader, reader.uint32()));
           continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
@@ -4469,346 +3887,127 @@ export const StreamSyncRequest = {
     return message;
   },
 
-  fromJSON(object: any): StreamSyncRequest {
+  fromJSON(object: any): TrieNodeMetadataResponse {
     return {
-      getInfo: isSet(object.getInfo) ? HubInfoRequest.fromJSON(object.getInfo) : undefined,
-      getCurrentPeers: isSet(object.getCurrentPeers) ? Empty.fromJSON(object.getCurrentPeers) : undefined,
-      stopSync: isSet(object.stopSync) ? Empty.fromJSON(object.stopSync) : undefined,
-      forceSync: isSet(object.forceSync) ? SyncStatusRequest.fromJSON(object.forceSync) : undefined,
-      getSyncStatus: isSet(object.getSyncStatus) ? SyncStatusRequest.fromJSON(object.getSyncStatus) : undefined,
-      getAllSyncIdsByPrefix: isSet(object.getAllSyncIdsByPrefix)
-        ? TrieNodePrefix.fromJSON(object.getAllSyncIdsByPrefix)
-        : undefined,
-      getAllMessagesBySyncIds: isSet(object.getAllMessagesBySyncIds)
-        ? SyncIds.fromJSON(object.getAllMessagesBySyncIds)
-        : undefined,
-      getSyncMetadataByPrefix: isSet(object.getSyncMetadataByPrefix)
-        ? TrieNodePrefix.fromJSON(object.getSyncMetadataByPrefix)
-        : undefined,
-      getSyncSnapshotByPrefix: isSet(object.getSyncSnapshotByPrefix)
-        ? TrieNodePrefix.fromJSON(object.getSyncSnapshotByPrefix)
-        : undefined,
-      getOnChainEvents: isSet(object.getOnChainEvents)
-        ? OnChainEventRequest.fromJSON(object.getOnChainEvents)
-        : undefined,
-      getOnChainSignersByFid: isSet(object.getOnChainSignersByFid)
-        ? FidRequest.fromJSON(object.getOnChainSignersByFid)
-        : undefined,
+      prefix: isSet(object.prefix) ? bytesFromBase64(object.prefix) : new Uint8Array(),
+      numMessages: isSet(object.numMessages) ? Number(object.numMessages) : 0,
+      hash: isSet(object.hash) ? String(object.hash) : "",
+      children: Array.isArray(object?.children)
+        ? object.children.map((e: any) => TrieNodeMetadataResponse.fromJSON(e))
+        : [],
     };
   },
 
-  toJSON(message: StreamSyncRequest): unknown {
+  toJSON(message: TrieNodeMetadataResponse): unknown {
     const obj: any = {};
-    message.getInfo !== undefined &&
-      (obj.getInfo = message.getInfo ? HubInfoRequest.toJSON(message.getInfo) : undefined);
-    message.getCurrentPeers !== undefined &&
-      (obj.getCurrentPeers = message.getCurrentPeers ? Empty.toJSON(message.getCurrentPeers) : undefined);
-    message.stopSync !== undefined && (obj.stopSync = message.stopSync ? Empty.toJSON(message.stopSync) : undefined);
-    message.forceSync !== undefined &&
-      (obj.forceSync = message.forceSync ? SyncStatusRequest.toJSON(message.forceSync) : undefined);
-    message.getSyncStatus !== undefined &&
-      (obj.getSyncStatus = message.getSyncStatus ? SyncStatusRequest.toJSON(message.getSyncStatus) : undefined);
-    message.getAllSyncIdsByPrefix !== undefined && (obj.getAllSyncIdsByPrefix = message.getAllSyncIdsByPrefix
-      ? TrieNodePrefix.toJSON(message.getAllSyncIdsByPrefix)
-      : undefined);
-    message.getAllMessagesBySyncIds !== undefined && (obj.getAllMessagesBySyncIds = message.getAllMessagesBySyncIds
-      ? SyncIds.toJSON(message.getAllMessagesBySyncIds)
-      : undefined);
-    message.getSyncMetadataByPrefix !== undefined && (obj.getSyncMetadataByPrefix = message.getSyncMetadataByPrefix
-      ? TrieNodePrefix.toJSON(message.getSyncMetadataByPrefix)
-      : undefined);
-    message.getSyncSnapshotByPrefix !== undefined && (obj.getSyncSnapshotByPrefix = message.getSyncSnapshotByPrefix
-      ? TrieNodePrefix.toJSON(message.getSyncSnapshotByPrefix)
-      : undefined);
-    message.getOnChainEvents !== undefined && (obj.getOnChainEvents = message.getOnChainEvents
-      ? OnChainEventRequest.toJSON(message.getOnChainEvents)
-      : undefined);
-    message.getOnChainSignersByFid !== undefined && (obj.getOnChainSignersByFid = message.getOnChainSignersByFid
-      ? FidRequest.toJSON(message.getOnChainSignersByFid)
-      : undefined);
+    message.prefix !== undefined &&
+      (obj.prefix = base64FromBytes(message.prefix !== undefined ? message.prefix : new Uint8Array()));
+    message.numMessages !== undefined && (obj.numMessages = Math.round(message.numMessages));
+    message.hash !== undefined && (obj.hash = message.hash);
+    if (message.children) {
+      obj.children = message.children.map((e) => e ? TrieNodeMetadataResponse.toJSON(e) : undefined);
+    } else {
+      obj.children = [];
+    }
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<StreamSyncRequest>, I>>(base?: I): StreamSyncRequest {
-    return StreamSyncRequest.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<TrieNodeMetadataResponse>, I>>(base?: I): TrieNodeMetadataResponse {
+    return TrieNodeMetadataResponse.fromPartial(base ?? {});
   },
 
-  fromPartial<I extends Exact<DeepPartial<StreamSyncRequest>, I>>(object: I): StreamSyncRequest {
-    const message = createBaseStreamSyncRequest();
-    message.getInfo = (object.getInfo !== undefined && object.getInfo !== null)
-      ? HubInfoRequest.fromPartial(object.getInfo)
-      : undefined;
-    message.getCurrentPeers = (object.getCurrentPeers !== undefined && object.getCurrentPeers !== null)
-      ? Empty.fromPartial(object.getCurrentPeers)
-      : undefined;
-    message.stopSync = (object.stopSync !== undefined && object.stopSync !== null)
-      ? Empty.fromPartial(object.stopSync)
-      : undefined;
-    message.forceSync = (object.forceSync !== undefined && object.forceSync !== null)
-      ? SyncStatusRequest.fromPartial(object.forceSync)
-      : undefined;
-    message.getSyncStatus = (object.getSyncStatus !== undefined && object.getSyncStatus !== null)
-      ? SyncStatusRequest.fromPartial(object.getSyncStatus)
-      : undefined;
-    message.getAllSyncIdsByPrefix =
-      (object.getAllSyncIdsByPrefix !== undefined && object.getAllSyncIdsByPrefix !== null)
-        ? TrieNodePrefix.fromPartial(object.getAllSyncIdsByPrefix)
-        : undefined;
-    message.getAllMessagesBySyncIds =
-      (object.getAllMessagesBySyncIds !== undefined && object.getAllMessagesBySyncIds !== null)
-        ? SyncIds.fromPartial(object.getAllMessagesBySyncIds)
-        : undefined;
-    message.getSyncMetadataByPrefix =
-      (object.getSyncMetadataByPrefix !== undefined && object.getSyncMetadataByPrefix !== null)
-        ? TrieNodePrefix.fromPartial(object.getSyncMetadataByPrefix)
-        : undefined;
-    message.getSyncSnapshotByPrefix =
-      (object.getSyncSnapshotByPrefix !== undefined && object.getSyncSnapshotByPrefix !== null)
-        ? TrieNodePrefix.fromPartial(object.getSyncSnapshotByPrefix)
-        : undefined;
-    message.getOnChainEvents = (object.getOnChainEvents !== undefined && object.getOnChainEvents !== null)
-      ? OnChainEventRequest.fromPartial(object.getOnChainEvents)
-      : undefined;
-    message.getOnChainSignersByFid =
-      (object.getOnChainSignersByFid !== undefined && object.getOnChainSignersByFid !== null)
-        ? FidRequest.fromPartial(object.getOnChainSignersByFid)
-        : undefined;
+  fromPartial<I extends Exact<DeepPartial<TrieNodeMetadataResponse>, I>>(object: I): TrieNodeMetadataResponse {
+    const message = createBaseTrieNodeMetadataResponse();
+    message.prefix = object.prefix ?? new Uint8Array();
+    message.numMessages = object.numMessages ?? 0;
+    message.hash = object.hash ?? "";
+    message.children = object.children?.map((e) => TrieNodeMetadataResponse.fromPartial(e)) || [];
     return message;
   },
 };
 
-function createBaseStreamError(): StreamError {
-  return { errCode: "", message: "", request: "" };
-}
-
-export const StreamError = {
-  encode(message: StreamError, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.errCode !== "") {
-      writer.uint32(10).string(message.errCode);
-    }
-    if (message.message !== "") {
-      writer.uint32(18).string(message.message);
-    }
-    if (message.request !== "") {
-      writer.uint32(26).string(message.request);
-    }
-    return writer;
-  },
-
-  decode(input: _m0.Reader | Uint8Array, length?: number): StreamError {
-    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseStreamError();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1:
-          if (tag != 10) {
-            break;
-          }
-
-          message.errCode = reader.string();
-          continue;
-        case 2:
-          if (tag != 18) {
-            break;
-          }
-
-          message.message = reader.string();
-          continue;
-        case 3:
-          if (tag != 26) {
-            break;
-          }
-
-          message.request = reader.string();
-          continue;
-      }
-      if ((tag & 7) == 4 || tag == 0) {
-        break;
-      }
-      reader.skipType(tag & 7);
-    }
-    return message;
-  },
-
-  fromJSON(object: any): StreamError {
-    return {
-      errCode: isSet(object.errCode) ? String(object.errCode) : "",
-      message: isSet(object.message) ? String(object.message) : "",
-      request: isSet(object.request) ? String(object.request) : "",
-    };
-  },
-
-  toJSON(message: StreamError): unknown {
-    const obj: any = {};
-    message.errCode !== undefined && (obj.errCode = message.errCode);
-    message.message !== undefined && (obj.message = message.message);
-    message.request !== undefined && (obj.request = message.request);
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<StreamError>, I>>(base?: I): StreamError {
-    return StreamError.fromPartial(base ?? {});
-  },
-
-  fromPartial<I extends Exact<DeepPartial<StreamError>, I>>(object: I): StreamError {
-    const message = createBaseStreamError();
-    message.errCode = object.errCode ?? "";
-    message.message = object.message ?? "";
-    message.request = object.request ?? "";
-    return message;
-  },
-};
-
-function createBaseStreamSyncResponse(): StreamSyncResponse {
+function createBaseEventsRequest(): EventsRequest {
   return {
-    getInfo: undefined,
-    getCurrentPeers: undefined,
-    stopSync: undefined,
-    forceSync: undefined,
-    getSyncStatus: undefined,
-    getAllSyncIdsByPrefix: undefined,
-    getAllMessagesBySyncIds: undefined,
-    getSyncMetadataByPrefix: undefined,
-    getSyncSnapshotByPrefix: undefined,
-    getOnChainEvents: undefined,
-    getOnChainSignersByFid: undefined,
-    error: undefined,
+    startId: 0,
+    shardIndex: undefined,
+    stopId: undefined,
+    pageSize: undefined,
+    pageToken: undefined,
+    reverse: undefined,
   };
 }
 
-export const StreamSyncResponse = {
-  encode(message: StreamSyncResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.getInfo !== undefined) {
-      HubInfoResponse.encode(message.getInfo, writer.uint32(10).fork()).ldelim();
+export const EventsRequest = {
+  encode(message: EventsRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.startId !== 0) {
+      writer.uint32(8).uint64(message.startId);
     }
-    if (message.getCurrentPeers !== undefined) {
-      ContactInfoResponse.encode(message.getCurrentPeers, writer.uint32(18).fork()).ldelim();
+    if (message.shardIndex !== undefined) {
+      writer.uint32(16).uint32(message.shardIndex);
     }
-    if (message.stopSync !== undefined) {
-      SyncStatusResponse.encode(message.stopSync, writer.uint32(26).fork()).ldelim();
+    if (message.stopId !== undefined) {
+      writer.uint32(24).uint64(message.stopId);
     }
-    if (message.forceSync !== undefined) {
-      SyncStatusResponse.encode(message.forceSync, writer.uint32(34).fork()).ldelim();
+    if (message.pageSize !== undefined) {
+      writer.uint32(32).uint32(message.pageSize);
     }
-    if (message.getSyncStatus !== undefined) {
-      SyncStatusResponse.encode(message.getSyncStatus, writer.uint32(42).fork()).ldelim();
+    if (message.pageToken !== undefined) {
+      writer.uint32(42).bytes(message.pageToken);
     }
-    if (message.getAllSyncIdsByPrefix !== undefined) {
-      SyncIds.encode(message.getAllSyncIdsByPrefix, writer.uint32(50).fork()).ldelim();
-    }
-    if (message.getAllMessagesBySyncIds !== undefined) {
-      MessagesResponse.encode(message.getAllMessagesBySyncIds, writer.uint32(58).fork()).ldelim();
-    }
-    if (message.getSyncMetadataByPrefix !== undefined) {
-      TrieNodeMetadataResponse.encode(message.getSyncMetadataByPrefix, writer.uint32(66).fork()).ldelim();
-    }
-    if (message.getSyncSnapshotByPrefix !== undefined) {
-      TrieNodeSnapshotResponse.encode(message.getSyncSnapshotByPrefix, writer.uint32(74).fork()).ldelim();
-    }
-    if (message.getOnChainEvents !== undefined) {
-      OnChainEventResponse.encode(message.getOnChainEvents, writer.uint32(82).fork()).ldelim();
-    }
-    if (message.getOnChainSignersByFid !== undefined) {
-      OnChainEventResponse.encode(message.getOnChainSignersByFid, writer.uint32(90).fork()).ldelim();
-    }
-    if (message.error !== undefined) {
-      StreamError.encode(message.error, writer.uint32(98).fork()).ldelim();
+    if (message.reverse !== undefined) {
+      writer.uint32(48).bool(message.reverse);
     }
     return writer;
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): StreamSyncResponse {
+  decode(input: _m0.Reader | Uint8Array, length?: number): EventsRequest {
     const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseStreamSyncResponse();
+    const message = createBaseEventsRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag != 8) {
             break;
           }
 
-          message.getInfo = HubInfoResponse.decode(reader, reader.uint32());
+          message.startId = longToNumber(reader.uint64() as Long);
           continue;
         case 2:
-          if (tag != 18) {
+          if (tag != 16) {
             break;
           }
 
-          message.getCurrentPeers = ContactInfoResponse.decode(reader, reader.uint32());
+          message.shardIndex = reader.uint32();
           continue;
         case 3:
-          if (tag != 26) {
+          if (tag != 24) {
             break;
           }
 
-          message.stopSync = SyncStatusResponse.decode(reader, reader.uint32());
+          message.stopId = longToNumber(reader.uint64() as Long);
           continue;
         case 4:
-          if (tag != 34) {
+          if (tag != 32) {
             break;
           }
 
-          message.forceSync = SyncStatusResponse.decode(reader, reader.uint32());
+          message.pageSize = reader.uint32();
           continue;
         case 5:
           if (tag != 42) {
             break;
           }
 
-          message.getSyncStatus = SyncStatusResponse.decode(reader, reader.uint32());
+          message.pageToken = reader.bytes();
           continue;
         case 6:
-          if (tag != 50) {
+          if (tag != 48) {
             break;
           }
 
-          message.getAllSyncIdsByPrefix = SyncIds.decode(reader, reader.uint32());
-          continue;
-        case 7:
-          if (tag != 58) {
-            break;
-          }
-
-          message.getAllMessagesBySyncIds = MessagesResponse.decode(reader, reader.uint32());
-          continue;
-        case 8:
-          if (tag != 66) {
-            break;
-          }
-
-          message.getSyncMetadataByPrefix = TrieNodeMetadataResponse.decode(reader, reader.uint32());
-          continue;
-        case 9:
-          if (tag != 74) {
-            break;
-          }
-
-          message.getSyncSnapshotByPrefix = TrieNodeSnapshotResponse.decode(reader, reader.uint32());
-          continue;
-        case 10:
-          if (tag != 82) {
-            break;
-          }
-
-          message.getOnChainEvents = OnChainEventResponse.decode(reader, reader.uint32());
-          continue;
-        case 11:
-          if (tag != 90) {
-            break;
-          }
-
-          message.getOnChainSignersByFid = OnChainEventResponse.decode(reader, reader.uint32());
-          continue;
-        case 12:
-          if (tag != 98) {
-            break;
-          }
-
-          message.error = StreamError.decode(reader, reader.uint32());
+          message.reverse = reader.bool();
           continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
@@ -4819,158 +4018,64 @@ export const StreamSyncResponse = {
     return message;
   },
 
-  fromJSON(object: any): StreamSyncResponse {
+  fromJSON(object: any): EventsRequest {
     return {
-      getInfo: isSet(object.getInfo) ? HubInfoResponse.fromJSON(object.getInfo) : undefined,
-      getCurrentPeers: isSet(object.getCurrentPeers) ? ContactInfoResponse.fromJSON(object.getCurrentPeers) : undefined,
-      stopSync: isSet(object.stopSync) ? SyncStatusResponse.fromJSON(object.stopSync) : undefined,
-      forceSync: isSet(object.forceSync) ? SyncStatusResponse.fromJSON(object.forceSync) : undefined,
-      getSyncStatus: isSet(object.getSyncStatus) ? SyncStatusResponse.fromJSON(object.getSyncStatus) : undefined,
-      getAllSyncIdsByPrefix: isSet(object.getAllSyncIdsByPrefix)
-        ? SyncIds.fromJSON(object.getAllSyncIdsByPrefix)
-        : undefined,
-      getAllMessagesBySyncIds: isSet(object.getAllMessagesBySyncIds)
-        ? MessagesResponse.fromJSON(object.getAllMessagesBySyncIds)
-        : undefined,
-      getSyncMetadataByPrefix: isSet(object.getSyncMetadataByPrefix)
-        ? TrieNodeMetadataResponse.fromJSON(object.getSyncMetadataByPrefix)
-        : undefined,
-      getSyncSnapshotByPrefix: isSet(object.getSyncSnapshotByPrefix)
-        ? TrieNodeSnapshotResponse.fromJSON(object.getSyncSnapshotByPrefix)
-        : undefined,
-      getOnChainEvents: isSet(object.getOnChainEvents)
-        ? OnChainEventResponse.fromJSON(object.getOnChainEvents)
-        : undefined,
-      getOnChainSignersByFid: isSet(object.getOnChainSignersByFid)
-        ? OnChainEventResponse.fromJSON(object.getOnChainSignersByFid)
-        : undefined,
-      error: isSet(object.error) ? StreamError.fromJSON(object.error) : undefined,
+      startId: isSet(object.startId) ? Number(object.startId) : 0,
+      shardIndex: isSet(object.shardIndex) ? Number(object.shardIndex) : undefined,
+      stopId: isSet(object.stopId) ? Number(object.stopId) : undefined,
+      pageSize: isSet(object.pageSize) ? Number(object.pageSize) : undefined,
+      pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : undefined,
+      reverse: isSet(object.reverse) ? Boolean(object.reverse) : undefined,
     };
   },
 
-  toJSON(message: StreamSyncResponse): unknown {
+  toJSON(message: EventsRequest): unknown {
     const obj: any = {};
-    message.getInfo !== undefined &&
-      (obj.getInfo = message.getInfo ? HubInfoResponse.toJSON(message.getInfo) : undefined);
-    message.getCurrentPeers !== undefined &&
-      (obj.getCurrentPeers = message.getCurrentPeers ? ContactInfoResponse.toJSON(message.getCurrentPeers) : undefined);
-    message.stopSync !== undefined &&
-      (obj.stopSync = message.stopSync ? SyncStatusResponse.toJSON(message.stopSync) : undefined);
-    message.forceSync !== undefined &&
-      (obj.forceSync = message.forceSync ? SyncStatusResponse.toJSON(message.forceSync) : undefined);
-    message.getSyncStatus !== undefined &&
-      (obj.getSyncStatus = message.getSyncStatus ? SyncStatusResponse.toJSON(message.getSyncStatus) : undefined);
-    message.getAllSyncIdsByPrefix !== undefined && (obj.getAllSyncIdsByPrefix = message.getAllSyncIdsByPrefix
-      ? SyncIds.toJSON(message.getAllSyncIdsByPrefix)
-      : undefined);
-    message.getAllMessagesBySyncIds !== undefined && (obj.getAllMessagesBySyncIds = message.getAllMessagesBySyncIds
-      ? MessagesResponse.toJSON(message.getAllMessagesBySyncIds)
-      : undefined);
-    message.getSyncMetadataByPrefix !== undefined && (obj.getSyncMetadataByPrefix = message.getSyncMetadataByPrefix
-      ? TrieNodeMetadataResponse.toJSON(message.getSyncMetadataByPrefix)
-      : undefined);
-    message.getSyncSnapshotByPrefix !== undefined && (obj.getSyncSnapshotByPrefix = message.getSyncSnapshotByPrefix
-      ? TrieNodeSnapshotResponse.toJSON(message.getSyncSnapshotByPrefix)
-      : undefined);
-    message.getOnChainEvents !== undefined && (obj.getOnChainEvents = message.getOnChainEvents
-      ? OnChainEventResponse.toJSON(message.getOnChainEvents)
-      : undefined);
-    message.getOnChainSignersByFid !== undefined && (obj.getOnChainSignersByFid = message.getOnChainSignersByFid
-      ? OnChainEventResponse.toJSON(message.getOnChainSignersByFid)
-      : undefined);
-    message.error !== undefined && (obj.error = message.error ? StreamError.toJSON(message.error) : undefined);
+    message.startId !== undefined && (obj.startId = Math.round(message.startId));
+    message.shardIndex !== undefined && (obj.shardIndex = Math.round(message.shardIndex));
+    message.stopId !== undefined && (obj.stopId = Math.round(message.stopId));
+    message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
+    message.pageToken !== undefined &&
+      (obj.pageToken = message.pageToken !== undefined ? base64FromBytes(message.pageToken) : undefined);
+    message.reverse !== undefined && (obj.reverse = message.reverse);
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<StreamSyncResponse>, I>>(base?: I): StreamSyncResponse {
-    return StreamSyncResponse.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<EventsRequest>, I>>(base?: I): EventsRequest {
+    return EventsRequest.fromPartial(base ?? {});
   },
 
-  fromPartial<I extends Exact<DeepPartial<StreamSyncResponse>, I>>(object: I): StreamSyncResponse {
-    const message = createBaseStreamSyncResponse();
-    message.getInfo = (object.getInfo !== undefined && object.getInfo !== null)
-      ? HubInfoResponse.fromPartial(object.getInfo)
-      : undefined;
-    message.getCurrentPeers = (object.getCurrentPeers !== undefined && object.getCurrentPeers !== null)
-      ? ContactInfoResponse.fromPartial(object.getCurrentPeers)
-      : undefined;
-    message.stopSync = (object.stopSync !== undefined && object.stopSync !== null)
-      ? SyncStatusResponse.fromPartial(object.stopSync)
-      : undefined;
-    message.forceSync = (object.forceSync !== undefined && object.forceSync !== null)
-      ? SyncStatusResponse.fromPartial(object.forceSync)
-      : undefined;
-    message.getSyncStatus = (object.getSyncStatus !== undefined && object.getSyncStatus !== null)
-      ? SyncStatusResponse.fromPartial(object.getSyncStatus)
-      : undefined;
-    message.getAllSyncIdsByPrefix =
-      (object.getAllSyncIdsByPrefix !== undefined && object.getAllSyncIdsByPrefix !== null)
-        ? SyncIds.fromPartial(object.getAllSyncIdsByPrefix)
-        : undefined;
-    message.getAllMessagesBySyncIds =
-      (object.getAllMessagesBySyncIds !== undefined && object.getAllMessagesBySyncIds !== null)
-        ? MessagesResponse.fromPartial(object.getAllMessagesBySyncIds)
-        : undefined;
-    message.getSyncMetadataByPrefix =
-      (object.getSyncMetadataByPrefix !== undefined && object.getSyncMetadataByPrefix !== null)
-        ? TrieNodeMetadataResponse.fromPartial(object.getSyncMetadataByPrefix)
-        : undefined;
-    message.getSyncSnapshotByPrefix =
-      (object.getSyncSnapshotByPrefix !== undefined && object.getSyncSnapshotByPrefix !== null)
-        ? TrieNodeSnapshotResponse.fromPartial(object.getSyncSnapshotByPrefix)
-        : undefined;
-    message.getOnChainEvents = (object.getOnChainEvents !== undefined && object.getOnChainEvents !== null)
-      ? OnChainEventResponse.fromPartial(object.getOnChainEvents)
-      : undefined;
-    message.getOnChainSignersByFid =
-      (object.getOnChainSignersByFid !== undefined && object.getOnChainSignersByFid !== null)
-        ? OnChainEventResponse.fromPartial(object.getOnChainSignersByFid)
-        : undefined;
-    message.error = (object.error !== undefined && object.error !== null)
-      ? StreamError.fromPartial(object.error)
-      : undefined;
+  fromPartial<I extends Exact<DeepPartial<EventsRequest>, I>>(object: I): EventsRequest {
+    const message = createBaseEventsRequest();
+    message.startId = object.startId ?? 0;
+    message.shardIndex = object.shardIndex ?? undefined;
+    message.stopId = object.stopId ?? undefined;
+    message.pageSize = object.pageSize ?? undefined;
+    message.pageToken = object.pageToken ?? undefined;
+    message.reverse = object.reverse ?? undefined;
     return message;
   },
 };
 
-function createBaseStreamFetchRequest(): StreamFetchRequest {
-  return {
-    idempotencyKey: "",
-    castMessagesByFid: undefined,
-    reactionMessagesByFid: undefined,
-    verificationMessagesByFid: undefined,
-    userDataMessagesByFid: undefined,
-    linkMessagesByFid: undefined,
-  };
+function createBaseEventsResponse(): EventsResponse {
+  return { events: [], nextPageToken: undefined };
 }
 
-export const StreamFetchRequest = {
-  encode(message: StreamFetchRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.idempotencyKey !== "") {
-      writer.uint32(10).string(message.idempotencyKey);
+export const EventsResponse = {
+  encode(message: EventsResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    for (const v of message.events) {
+      HubEvent.encode(v!, writer.uint32(10).fork()).ldelim();
     }
-    if (message.castMessagesByFid !== undefined) {
-      FidTimestampRequest.encode(message.castMessagesByFid, writer.uint32(18).fork()).ldelim();
-    }
-    if (message.reactionMessagesByFid !== undefined) {
-      FidTimestampRequest.encode(message.reactionMessagesByFid, writer.uint32(26).fork()).ldelim();
-    }
-    if (message.verificationMessagesByFid !== undefined) {
-      FidTimestampRequest.encode(message.verificationMessagesByFid, writer.uint32(34).fork()).ldelim();
-    }
-    if (message.userDataMessagesByFid !== undefined) {
-      FidTimestampRequest.encode(message.userDataMessagesByFid, writer.uint32(42).fork()).ldelim();
-    }
-    if (message.linkMessagesByFid !== undefined) {
-      FidTimestampRequest.encode(message.linkMessagesByFid, writer.uint32(50).fork()).ldelim();
+    if (message.nextPageToken !== undefined) {
+      writer.uint32(18).bytes(message.nextPageToken);
     }
     return writer;
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): StreamFetchRequest {
+  decode(input: _m0.Reader | Uint8Array, length?: number): EventsResponse {
     const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseStreamFetchRequest();
+    const message = createBaseEventsResponse();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -4979,42 +4084,14 @@ export const StreamFetchRequest = {
             break;
           }
 
-          message.idempotencyKey = reader.string();
+          message.events.push(HubEvent.decode(reader, reader.uint32()));
           continue;
         case 2:
           if (tag != 18) {
             break;
           }
 
-          message.castMessagesByFid = FidTimestampRequest.decode(reader, reader.uint32());
-          continue;
-        case 3:
-          if (tag != 26) {
-            break;
-          }
-
-          message.reactionMessagesByFid = FidTimestampRequest.decode(reader, reader.uint32());
-          continue;
-        case 4:
-          if (tag != 34) {
-            break;
-          }
-
-          message.verificationMessagesByFid = FidTimestampRequest.decode(reader, reader.uint32());
-          continue;
-        case 5:
-          if (tag != 42) {
-            break;
-          }
-
-          message.userDataMessagesByFid = FidTimestampRequest.decode(reader, reader.uint32());
-          continue;
-        case 6:
-          if (tag != 50) {
-            break;
-          }
-
-          message.linkMessagesByFid = FidTimestampRequest.decode(reader, reader.uint32());
+          message.nextPageToken = reader.bytes();
           continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
@@ -5025,123 +4102,72 @@ export const StreamFetchRequest = {
     return message;
   },
 
-  fromJSON(object: any): StreamFetchRequest {
+  fromJSON(object: any): EventsResponse {
     return {
-      idempotencyKey: isSet(object.idempotencyKey) ? String(object.idempotencyKey) : "",
-      castMessagesByFid: isSet(object.castMessagesByFid)
-        ? FidTimestampRequest.fromJSON(object.castMessagesByFid)
-        : undefined,
-      reactionMessagesByFid: isSet(object.reactionMessagesByFid)
-        ? FidTimestampRequest.fromJSON(object.reactionMessagesByFid)
-        : undefined,
-      verificationMessagesByFid: isSet(object.verificationMessagesByFid)
-        ? FidTimestampRequest.fromJSON(object.verificationMessagesByFid)
-        : undefined,
-      userDataMessagesByFid: isSet(object.userDataMessagesByFid)
-        ? FidTimestampRequest.fromJSON(object.userDataMessagesByFid)
-        : undefined,
-      linkMessagesByFid: isSet(object.linkMessagesByFid)
-        ? FidTimestampRequest.fromJSON(object.linkMessagesByFid)
-        : undefined,
+      events: Array.isArray(object?.events) ? object.events.map((e: any) => HubEvent.fromJSON(e)) : [],
+      nextPageToken: isSet(object.nextPageToken) ? bytesFromBase64(object.nextPageToken) : undefined,
     };
   },
 
-  toJSON(message: StreamFetchRequest): unknown {
+  toJSON(message: EventsResponse): unknown {
     const obj: any = {};
-    message.idempotencyKey !== undefined && (obj.idempotencyKey = message.idempotencyKey);
-    message.castMessagesByFid !== undefined && (obj.castMessagesByFid = message.castMessagesByFid
-      ? FidTimestampRequest.toJSON(message.castMessagesByFid)
-      : undefined);
-    message.reactionMessagesByFid !== undefined && (obj.reactionMessagesByFid = message.reactionMessagesByFid
-      ? FidTimestampRequest.toJSON(message.reactionMessagesByFid)
-      : undefined);
-    message.verificationMessagesByFid !== undefined &&
-      (obj.verificationMessagesByFid = message.verificationMessagesByFid
-        ? FidTimestampRequest.toJSON(message.verificationMessagesByFid)
-        : undefined);
-    message.userDataMessagesByFid !== undefined && (obj.userDataMessagesByFid = message.userDataMessagesByFid
-      ? FidTimestampRequest.toJSON(message.userDataMessagesByFid)
-      : undefined);
-    message.linkMessagesByFid !== undefined && (obj.linkMessagesByFid = message.linkMessagesByFid
-      ? FidTimestampRequest.toJSON(message.linkMessagesByFid)
-      : undefined);
+    if (message.events) {
+      obj.events = message.events.map((e) => e ? HubEvent.toJSON(e) : undefined);
+    } else {
+      obj.events = [];
+    }
+    message.nextPageToken !== undefined &&
+      (obj.nextPageToken = message.nextPageToken !== undefined ? base64FromBytes(message.nextPageToken) : undefined);
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<StreamFetchRequest>, I>>(base?: I): StreamFetchRequest {
-    return StreamFetchRequest.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<EventsResponse>, I>>(base?: I): EventsResponse {
+    return EventsResponse.fromPartial(base ?? {});
   },
 
-  fromPartial<I extends Exact<DeepPartial<StreamFetchRequest>, I>>(object: I): StreamFetchRequest {
-    const message = createBaseStreamFetchRequest();
-    message.idempotencyKey = object.idempotencyKey ?? "";
-    message.castMessagesByFid = (object.castMessagesByFid !== undefined && object.castMessagesByFid !== null)
-      ? FidTimestampRequest.fromPartial(object.castMessagesByFid)
-      : undefined;
-    message.reactionMessagesByFid =
-      (object.reactionMessagesByFid !== undefined && object.reactionMessagesByFid !== null)
-        ? FidTimestampRequest.fromPartial(object.reactionMessagesByFid)
-        : undefined;
-    message.verificationMessagesByFid =
-      (object.verificationMessagesByFid !== undefined && object.verificationMessagesByFid !== null)
-        ? FidTimestampRequest.fromPartial(object.verificationMessagesByFid)
-        : undefined;
-    message.userDataMessagesByFid =
-      (object.userDataMessagesByFid !== undefined && object.userDataMessagesByFid !== null)
-        ? FidTimestampRequest.fromPartial(object.userDataMessagesByFid)
-        : undefined;
-    message.linkMessagesByFid = (object.linkMessagesByFid !== undefined && object.linkMessagesByFid !== null)
-      ? FidTimestampRequest.fromPartial(object.linkMessagesByFid)
-      : undefined;
+  fromPartial<I extends Exact<DeepPartial<EventsResponse>, I>>(object: I): EventsResponse {
+    const message = createBaseEventsResponse();
+    message.events = object.events?.map((e) => HubEvent.fromPartial(e)) || [];
+    message.nextPageToken = object.nextPageToken ?? undefined;
     return message;
   },
 };
 
-function createBaseStreamFetchResponse(): StreamFetchResponse {
-  return { idempotencyKey: "", messages: undefined, error: undefined };
+function createBaseFidAddressTypeRequest(): FidAddressTypeRequest {
+  return { fid: 0, address: new Uint8Array() };
 }
 
-export const StreamFetchResponse = {
-  encode(message: StreamFetchResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.idempotencyKey !== "") {
-      writer.uint32(10).string(message.idempotencyKey);
+export const FidAddressTypeRequest = {
+  encode(message: FidAddressTypeRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.fid !== 0) {
+      writer.uint32(8).uint64(message.fid);
     }
-    if (message.messages !== undefined) {
-      MessagesResponse.encode(message.messages, writer.uint32(18).fork()).ldelim();
-    }
-    if (message.error !== undefined) {
-      StreamError.encode(message.error, writer.uint32(26).fork()).ldelim();
+    if (message.address.length !== 0) {
+      writer.uint32(18).bytes(message.address);
     }
     return writer;
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): StreamFetchResponse {
+  decode(input: _m0.Reader | Uint8Array, length?: number): FidAddressTypeRequest {
     const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseStreamFetchResponse();
+    const message = createBaseFidAddressTypeRequest();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag != 8) {
             break;
           }
 
-          message.idempotencyKey = reader.string();
+          message.fid = longToNumber(reader.uint64() as Long);
           continue;
         case 2:
           if (tag != 18) {
             break;
           }
 
-          message.messages = MessagesResponse.decode(reader, reader.uint32());
-          continue;
-        case 3:
-          if (tag != 26) {
-            break;
-          }
-
-          message.error = StreamError.decode(reader, reader.uint32());
+          message.address = reader.bytes();
           continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
@@ -5152,36 +4178,113 @@ export const StreamFetchResponse = {
     return message;
   },
 
-  fromJSON(object: any): StreamFetchResponse {
+  fromJSON(object: any): FidAddressTypeRequest {
     return {
-      idempotencyKey: isSet(object.idempotencyKey) ? String(object.idempotencyKey) : "",
-      messages: isSet(object.messages) ? MessagesResponse.fromJSON(object.messages) : undefined,
-      error: isSet(object.error) ? StreamError.fromJSON(object.error) : undefined,
+      fid: isSet(object.fid) ? Number(object.fid) : 0,
+      address: isSet(object.address) ? bytesFromBase64(object.address) : new Uint8Array(),
     };
   },
 
-  toJSON(message: StreamFetchResponse): unknown {
+  toJSON(message: FidAddressTypeRequest): unknown {
     const obj: any = {};
-    message.idempotencyKey !== undefined && (obj.idempotencyKey = message.idempotencyKey);
-    message.messages !== undefined &&
-      (obj.messages = message.messages ? MessagesResponse.toJSON(message.messages) : undefined);
-    message.error !== undefined && (obj.error = message.error ? StreamError.toJSON(message.error) : undefined);
+    message.fid !== undefined && (obj.fid = Math.round(message.fid));
+    message.address !== undefined &&
+      (obj.address = base64FromBytes(message.address !== undefined ? message.address : new Uint8Array()));
     return obj;
   },
 
-  create<I extends Exact<DeepPartial<StreamFetchResponse>, I>>(base?: I): StreamFetchResponse {
-    return StreamFetchResponse.fromPartial(base ?? {});
+  create<I extends Exact<DeepPartial<FidAddressTypeRequest>, I>>(base?: I): FidAddressTypeRequest {
+    return FidAddressTypeRequest.fromPartial(base ?? {});
   },
 
-  fromPartial<I extends Exact<DeepPartial<StreamFetchResponse>, I>>(object: I): StreamFetchResponse {
-    const message = createBaseStreamFetchResponse();
-    message.idempotencyKey = object.idempotencyKey ?? "";
-    message.messages = (object.messages !== undefined && object.messages !== null)
-      ? MessagesResponse.fromPartial(object.messages)
-      : undefined;
-    message.error = (object.error !== undefined && object.error !== null)
-      ? StreamError.fromPartial(object.error)
-      : undefined;
+  fromPartial<I extends Exact<DeepPartial<FidAddressTypeRequest>, I>>(object: I): FidAddressTypeRequest {
+    const message = createBaseFidAddressTypeRequest();
+    message.fid = object.fid ?? 0;
+    message.address = object.address ?? new Uint8Array();
+    return message;
+  },
+};
+
+function createBaseFidAddressTypeResponse(): FidAddressTypeResponse {
+  return { isCustody: false, isAuth: false, isVerified: false };
+}
+
+export const FidAddressTypeResponse = {
+  encode(message: FidAddressTypeResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.isCustody === true) {
+      writer.uint32(8).bool(message.isCustody);
+    }
+    if (message.isAuth === true) {
+      writer.uint32(16).bool(message.isAuth);
+    }
+    if (message.isVerified === true) {
+      writer.uint32(24).bool(message.isVerified);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): FidAddressTypeResponse {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseFidAddressTypeResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.isCustody = reader.bool();
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.isAuth = reader.bool();
+          continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.isVerified = reader.bool();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): FidAddressTypeResponse {
+    return {
+      isCustody: isSet(object.isCustody) ? Boolean(object.isCustody) : false,
+      isAuth: isSet(object.isAuth) ? Boolean(object.isAuth) : false,
+      isVerified: isSet(object.isVerified) ? Boolean(object.isVerified) : false,
+    };
+  },
+
+  toJSON(message: FidAddressTypeResponse): unknown {
+    const obj: any = {};
+    message.isCustody !== undefined && (obj.isCustody = message.isCustody);
+    message.isAuth !== undefined && (obj.isAuth = message.isAuth);
+    message.isVerified !== undefined && (obj.isVerified = message.isVerified);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<FidAddressTypeResponse>, I>>(base?: I): FidAddressTypeResponse {
+    return FidAddressTypeResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<FidAddressTypeResponse>, I>>(object: I): FidAddressTypeResponse {
+    const message = createBaseFidAddressTypeResponse();
+    message.isCustody = object.isCustody ?? false;
+    message.isAuth = object.isAuth ?? false;
+    message.isVerified = object.isVerified ?? false;
     return message;
   },
 };

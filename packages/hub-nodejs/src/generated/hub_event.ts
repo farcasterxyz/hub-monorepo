@@ -79,14 +79,14 @@ export interface MergeMessageBody {
   deletedMessages: Message[];
 }
 
-export interface PruneMessageBody {
-  message: Message | undefined;
-}
-
 export interface MergeFailureBody {
   message: Message | undefined;
   code: string;
   reason: string;
+}
+
+export interface PruneMessageBody {
+  message: Message | undefined;
 }
 
 export interface RevokeMessageBody {
@@ -211,64 +211,6 @@ export const MergeMessageBody = {
   },
 };
 
-function createBasePruneMessageBody(): PruneMessageBody {
-  return { message: undefined };
-}
-
-export const PruneMessageBody = {
-  encode(message: PruneMessageBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.message !== undefined) {
-      Message.encode(message.message, writer.uint32(10).fork()).ldelim();
-    }
-    return writer;
-  },
-
-  decode(input: _m0.Reader | Uint8Array, length?: number): PruneMessageBody {
-    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBasePruneMessageBody();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1:
-          if (tag != 10) {
-            break;
-          }
-
-          message.message = Message.decode(reader, reader.uint32());
-          continue;
-      }
-      if ((tag & 7) == 4 || tag == 0) {
-        break;
-      }
-      reader.skipType(tag & 7);
-    }
-    return message;
-  },
-
-  fromJSON(object: any): PruneMessageBody {
-    return { message: isSet(object.message) ? Message.fromJSON(object.message) : undefined };
-  },
-
-  toJSON(message: PruneMessageBody): unknown {
-    const obj: any = {};
-    message.message !== undefined && (obj.message = message.message ? Message.toJSON(message.message) : undefined);
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<PruneMessageBody>, I>>(base?: I): PruneMessageBody {
-    return PruneMessageBody.fromPartial(base ?? {});
-  },
-
-  fromPartial<I extends Exact<DeepPartial<PruneMessageBody>, I>>(object: I): PruneMessageBody {
-    const message = createBasePruneMessageBody();
-    message.message = (object.message !== undefined && object.message !== null)
-      ? Message.fromPartial(object.message)
-      : undefined;
-    return message;
-  },
-};
-
 function createBaseMergeFailureBody(): MergeFailureBody {
   return { message: undefined, code: "", reason: "" };
 }
@@ -351,6 +293,64 @@ export const MergeFailureBody = {
       : undefined;
     message.code = object.code ?? "";
     message.reason = object.reason ?? "";
+    return message;
+  },
+};
+
+function createBasePruneMessageBody(): PruneMessageBody {
+  return { message: undefined };
+}
+
+export const PruneMessageBody = {
+  encode(message: PruneMessageBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.message !== undefined) {
+      Message.encode(message.message, writer.uint32(10).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): PruneMessageBody {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBasePruneMessageBody();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.message = Message.decode(reader, reader.uint32());
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): PruneMessageBody {
+    return { message: isSet(object.message) ? Message.fromJSON(object.message) : undefined };
+  },
+
+  toJSON(message: PruneMessageBody): unknown {
+    const obj: any = {};
+    message.message !== undefined && (obj.message = message.message ? Message.toJSON(message.message) : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<PruneMessageBody>, I>>(base?: I): PruneMessageBody {
+    return PruneMessageBody.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<PruneMessageBody>, I>>(object: I): PruneMessageBody {
+    const message = createBasePruneMessageBody();
+    message.message = (object.message !== undefined && object.message !== null)
+      ? Message.fromPartial(object.message)
+      : undefined;
     return message;
   },
 };

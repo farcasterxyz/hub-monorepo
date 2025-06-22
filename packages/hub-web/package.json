@@ -22,7 +22,7 @@
   "scripts": {
     "build": "tsup --config tsup.config.ts",
     "clean": "rimraf ./dist",
-    "protoc": "docker run --rm --user $(id -u):$(id -g) -v $(pwd)/../../node_modules:/node_modules -v $(pwd)/../../protobufs/schemas:/defs -v $(pwd)/src/generated:/out namely/protoc:1.50_1 --plugin=/node_modules/ts-proto/protoc-gen-ts_proto --ts_proto_out=/out --ts_proto_opt=esModuleInterop=true,exportCommonSymbols=false,outputClientImpl=grpc-web,useOptionals=none,unrecognizedEnum=false,removeEnumPrefix=true,lowerCaseServiceMethods=true --proto_path=/defs /defs/rpc.proto",
+    "protoc": "LIBRARY=hub-web ../../generate-protos.sh",
     "lint": "biome format src/ examples/ --write && biome check src/ examples/ --apply",
     "lint:ci": "biome ci src/ examples/",
     "prepublishOnly": "yarn run build"

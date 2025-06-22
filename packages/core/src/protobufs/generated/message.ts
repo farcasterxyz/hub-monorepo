@@ -244,7 +244,7 @@ export enum UserDataType {
   USERNAME = 6,
   /** LOCATION - Current location for the user */
   LOCATION = 7,
-  /** TWITTER - Username of user on x */
+  /** TWITTER - Username of user on twitter */
   TWITTER = 8,
   /** GITHUB - Username of user on github */
   GITHUB = 9,
