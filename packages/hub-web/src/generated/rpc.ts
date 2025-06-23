@@ -3,20 +3,24 @@ import grpcWeb from "@improbable-eng/grpc-web";
 import { BrowserHeaders } from "browser-headers";
 import { Observable } from "rxjs";
 import { share } from "rxjs/operators";
+import { Block } from "./blocks";
 import { HubEvent } from "./hub_event";
 import { CastId, Message } from "./message";
 import { OnChainEvent } from "./onchain_event";
 import {
+  BlocksRequest,
   CastsByParentRequest,
-  ContactInfoResponse,
-  Empty,
   EventRequest,
+  EventsRequest,
+  EventsResponse,
+  FidAddressTypeRequest,
+  FidAddressTypeResponse,
   FidRequest,
   FidsRequest,
   FidsResponse,
   FidTimestampRequest,
-  HubInfoRequest,
-  HubInfoResponse,
+  GetInfoRequest,
+  GetInfoResponse,
   IdRegistryEventByAddressRequest,
   LinkRequest,
   LinksByFidRequest,
@@ -27,21 +31,13 @@ import {
   ReactionRequest,
   ReactionsByFidRequest,
   ReactionsByTargetRequest,
+  ShardChunksRequest,
+  ShardChunksResponse,
   SignerRequest,
   StorageLimitsResponse,
-  StreamFetchRequest,
-  StreamFetchResponse,
-  StreamSyncRequest,
-  StreamSyncResponse,
-  SubmitBulkMessagesRequest,
-  SubmitBulkMessagesResponse,
   SubscribeRequest,
-  SyncIds,
-  SyncStatusRequest,
-  SyncStatusResponse,
+  TrieNodeMetadataRequest,
   TrieNodeMetadataResponse,
-  TrieNodePrefix,
-  TrieNodeSnapshotResponse,
   UserDataRequest,
   UsernameProofRequest,
   UsernameProofsResponse,
@@ -51,29 +47,25 @@ import {
 import { UserNameProof } from "./username_proof";
 
 export interface HubService {
-  /** Submit Methods */
+  /** Write API */
   submitMessage(request: DeepPartial<Message>, metadata?: grpcWeb.grpc.Metadata): Promise<Message>;
   /** Validation Methods */
   validateMessage(request: DeepPartial<Message>, metadata?: grpcWeb.grpc.Metadata): Promise<ValidationResponse>;
-  /**
-   * Event Methods
-   * @http-api: none
-   */
+  /** Block API */
+  getBlocks(request: DeepPartial<BlocksRequest>, metadata?: grpcWeb.grpc.Metadata): Observable<Block>;
+  getShardChunks(request: DeepPartial<ShardChunksRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<ShardChunksResponse>;
+  getInfo(request: DeepPartial<GetInfoRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<GetInfoResponse>;
+  getFids(request: DeepPartial<FidsRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<FidsResponse>;
+  /** Events */
   subscribe(request: DeepPartial<SubscribeRequest>, metadata?: grpcWeb.grpc.Metadata): Observable<HubEvent>;
-  /** @http-api: events */
   getEvent(request: DeepPartial<EventRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<HubEvent>;
-  /**
-   * Casts
-   * @http-api: castById
-   */
+  getEvents(request: DeepPartial<EventsRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<EventsResponse>;
+  /** Casts */
   getCast(request: DeepPartial<CastId>, metadata?: grpcWeb.grpc.Metadata): Promise<Message>;
   getCastsByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
   getCastsByParent(request: DeepPartial<CastsByParentRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
   getCastsByMention(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
-  /**
-   * Reactions
-   * @http-api: reactionById
-   */
+  /** Reactions */
   getReaction(request: DeepPartial<ReactionRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<Message>;
   getReactionsByFid(request: DeepPartial<ReactionsByFidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
   /** To be deprecated */
@@ -85,129 +77,65 @@ export interface HubService {
     request: DeepPartial<ReactionsByTargetRequest>,
     metadata?: grpcWeb.grpc.Metadata,
   ): Promise<MessagesResponse>;
-  /**
-   * User Data
-   * @http-api: none
-   */
+  /** User Data */
   getUserData(request: DeepPartial<UserDataRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<Message>;
   getUserDataByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
-  /**
-   * Username Proof
-   * @http-api: userNameProofByName
-   */
+  /** Username Proof */
   getUsernameProof(request: DeepPartial<UsernameProofRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<UserNameProof>;
   getUserNameProofsByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<UsernameProofsResponse>;
-  /**
-   * Verifications
-   * @http-api: none
-   */
+  /** Verifications */
   getVerification(request: DeepPartial<VerificationRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<Message>;
   getVerificationsByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
-  /**
-   * OnChain Events
-   * @http-api: none
-   */
+  /** OnChain Events */
   getOnChainSigner(request: DeepPartial<SignerRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEvent>;
   getOnChainSignersByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEventResponse>;
-  /** @http-api: none */
   getOnChainEvents(request: DeepPartial<OnChainEventRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEventResponse>;
-  /** @http-api: none */
   getIdRegistryOnChainEvent(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEvent>;
-  /** @http-api: onChainIdRegistryEventByAddress */
   getIdRegistryOnChainEventByAddress(
     request: DeepPartial<IdRegistryEventByAddressRequest>,
     metadata?: grpcWeb.grpc.Metadata,
   ): Promise<OnChainEvent>;
-  /** @http-api: storageLimitsByFid */
   getCurrentStorageLimitsByFid(
     request: DeepPartial<FidRequest>,
     metadata?: grpcWeb.grpc.Metadata,
   ): Promise<StorageLimitsResponse>;
-  getFids(request: DeepPartial<FidsRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<FidsResponse>;
-  /**
-   * Links
-   * @http-api: linkById
-   */
+  getFidAddressType(
+    request: DeepPartial<FidAddressTypeRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<FidAddressTypeResponse>;
+  /** Links */
   getLink(request: DeepPartial<LinkRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<Message>;
   getLinksByFid(request: DeepPartial<LinksByFidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
-  /** @http-api: linksByTargetFid */
   getLinksByTarget(request: DeepPartial<LinksByTargetRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
-  /**
-   * Bulk Methods
-   * The Bulk methods don't have corresponding HTTP API endpoints because the
-   * regular endpoints can be used to get all the messages
-   * @http-api: none
-   */
-  getAllCastMessagesByFid(
-    request: DeepPartial<FidTimestampRequest>,
-    metadata?: grpcWeb.grpc.Metadata,
-  ): Promise<MessagesResponse>;
-  /** @http-api: none */
-  getAllReactionMessagesByFid(
-    request: DeepPartial<FidTimestampRequest>,
-    metadata?: grpcWeb.grpc.Metadata,
-  ): Promise<MessagesResponse>;
-  /** @http-api: none */
-  getAllVerificationMessagesByFid(
-    request: DeepPartial<FidTimestampRequest>,
-    metadata?: grpcWeb.grpc.Metadata,
-  ): Promise<MessagesResponse>;
-  /** @http-api: none */
-  getAllUserDataMessagesByFid(
-    request: DeepPartial<FidTimestampRequest>,
-    metadata?: grpcWeb.grpc.Metadata,
-  ): Promise<MessagesResponse>;
-  /** @http-api: none */
-  getAllLinkMessagesByFid(
-    request: DeepPartial<FidTimestampRequest>,
-    metadata?: grpcWeb.grpc.Metadata,
-  ): Promise<MessagesResponse>;
-  /** @http-api: none */
   getLinkCompactStateMessageByFid(
     request: DeepPartial<FidRequest>,
     metadata?: grpcWeb.grpc.Metadata,
   ): Promise<MessagesResponse>;
-  /** @http-api: none */
-  submitBulkMessages(
-    request: DeepPartial<SubmitBulkMessagesRequest>,
+  /** Bulk Methods */
+  getAllCastMessagesByFid(
+    request: DeepPartial<FidTimestampRequest>,
     metadata?: grpcWeb.grpc.Metadata,
-  ): Promise<SubmitBulkMessagesResponse>;
-  /** Sync Methods */
-  getInfo(request: DeepPartial<HubInfoRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<HubInfoResponse>;
-  getCurrentPeers(request: DeepPartial<Empty>, metadata?: grpcWeb.grpc.Metadata): Promise<ContactInfoResponse>;
-  /** @http-api: none */
-  stopSync(request: DeepPartial<Empty>, metadata?: grpcWeb.grpc.Metadata): Promise<SyncStatusResponse>;
-  /**
-   * This is experimental, do not rely on this endpoint existing in the future
-   * @http-api: none
-   */
-  forceSync(request: DeepPartial<SyncStatusRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<SyncStatusResponse>;
-  /** @http-api: none */
-  getSyncStatus(request: DeepPartial<SyncStatusRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<SyncStatusResponse>;
-  /** @http-api: none */
-  getAllSyncIdsByPrefix(request: DeepPartial<TrieNodePrefix>, metadata?: grpcWeb.grpc.Metadata): Promise<SyncIds>;
-  /** @http-api: none */
-  getAllMessagesBySyncIds(request: DeepPartial<SyncIds>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
-  /** @http-api: none */
-  getSyncMetadataByPrefix(
-    request: DeepPartial<TrieNodePrefix>,
+  ): Promise<MessagesResponse>;
+  getAllReactionMessagesByFid(
+    request: DeepPartial<FidTimestampRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<MessagesResponse>;
+  getAllVerificationMessagesByFid(
+    request: DeepPartial<FidTimestampRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<MessagesResponse>;
+  getAllUserDataMessagesByFid(
+    request: DeepPartial<FidTimestampRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<MessagesResponse>;
+  getAllLinkMessagesByFid(
+    request: DeepPartial<FidTimestampRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<MessagesResponse>;
+  getTrieMetadataByPrefix(
+    request: DeepPartial<TrieNodeMetadataRequest>,
     metadata?: grpcWeb.grpc.Metadata,
   ): Promise<TrieNodeMetadataResponse>;
-  /** @http-api: none */
-  getSyncSnapshotByPrefix(
-    request: DeepPartial<TrieNodePrefix>,
-    metadata?: grpcWeb.grpc.Metadata,
-  ): Promise<TrieNodeSnapshotResponse>;
-  /** @http-api: none */
-  streamSync(
-    request: Observable<DeepPartial<StreamSyncRequest>>,
-    metadata?: grpcWeb.grpc.Metadata,
-  ): Observable<StreamSyncResponse>;
-  /** @http-api: none */
-  streamFetch(
-    request: Observable<DeepPartial<StreamFetchRequest>>,
-    metadata?: grpcWeb.grpc.Metadata,
-  ): Observable<StreamFetchResponse>;
 }
 
 export class HubServiceClientImpl implements HubService {
@@ -217,8 +145,13 @@ export class HubServiceClientImpl implements HubService {
     this.rpc = rpc;
     this.submitMessage = this.submitMessage.bind(this);
     this.validateMessage = this.validateMessage.bind(this);
+    this.getBlocks = this.getBlocks.bind(this);
+    this.getShardChunks = this.getShardChunks.bind(this);
+    this.getInfo = this.getInfo.bind(this);
+    this.getFids = this.getFids.bind(this);
     this.subscribe = this.subscribe.bind(this);
     this.getEvent = this.getEvent.bind(this);
+    this.getEvents = this.getEvents.bind(this);
     this.getCast = this.getCast.bind(this);
     this.getCastsByFid = this.getCastsByFid.bind(this);
     this.getCastsByParent = this.getCastsByParent.bind(this);
@@ -239,28 +172,17 @@ export class HubServiceClientImpl implements HubService {
     this.getIdRegistryOnChainEvent = this.getIdRegistryOnChainEvent.bind(this);
     this.getIdRegistryOnChainEventByAddress = this.getIdRegistryOnChainEventByAddress.bind(this);
     this.getCurrentStorageLimitsByFid = this.getCurrentStorageLimitsByFid.bind(this);
-    this.getFids = this.getFids.bind(this);
+    this.getFidAddressType = this.getFidAddressType.bind(this);
     this.getLink = this.getLink.bind(this);
     this.getLinksByFid = this.getLinksByFid.bind(this);
     this.getLinksByTarget = this.getLinksByTarget.bind(this);
+    this.getLinkCompactStateMessageByFid = this.getLinkCompactStateMessageByFid.bind(this);
     this.getAllCastMessagesByFid = this.getAllCastMessagesByFid.bind(this);
     this.getAllReactionMessagesByFid = this.getAllReactionMessagesByFid.bind(this);
     this.getAllVerificationMessagesByFid = this.getAllVerificationMessagesByFid.bind(this);
     this.getAllUserDataMessagesByFid = this.getAllUserDataMessagesByFid.bind(this);
     this.getAllLinkMessagesByFid = this.getAllLinkMessagesByFid.bind(this);
-    this.getLinkCompactStateMessageByFid = this.getLinkCompactStateMessageByFid.bind(this);
-    this.submitBulkMessages = this.submitBulkMessages.bind(this);
-    this.getInfo = this.getInfo.bind(this);
-    this.getCurrentPeers = this.getCurrentPeers.bind(this);
-    this.stopSync = this.stopSync.bind(this);
-    this.forceSync = this.forceSync.bind(this);
-    this.getSyncStatus = this.getSyncStatus.bind(this);
-    this.getAllSyncIdsByPrefix = this.getAllSyncIdsByPrefix.bind(this);
-    this.getAllMessagesBySyncIds = this.getAllMessagesBySyncIds.bind(this);
-    this.getSyncMetadataByPrefix = this.getSyncMetadataByPrefix.bind(this);
-    this.getSyncSnapshotByPrefix = this.getSyncSnapshotByPrefix.bind(this);
-    this.streamSync = this.streamSync.bind(this);
-    this.streamFetch = this.streamFetch.bind(this);
+    this.getTrieMetadataByPrefix = this.getTrieMetadataByPrefix.bind(this);
   }
 
   submitMessage(request: DeepPartial<Message>, metadata?: grpcWeb.grpc.Metadata): Promise<Message> {
@@ -271,12 +193,32 @@ export class HubServiceClientImpl implements HubService {
     return this.rpc.unary(HubServiceValidateMessageDesc, Message.fromPartial(request), metadata);
   }
 
+  getBlocks(request: DeepPartial<BlocksRequest>, metadata?: grpcWeb.grpc.Metadata): Observable<Block> {
+    return this.rpc.invoke(HubServiceGetBlocksDesc, BlocksRequest.fromPartial(request), metadata);
+  }
+
+  getShardChunks(request: DeepPartial<ShardChunksRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<ShardChunksResponse> {
+    return this.rpc.unary(HubServiceGetShardChunksDesc, ShardChunksRequest.fromPartial(request), metadata);
+  }
+
+  getInfo(request: DeepPartial<GetInfoRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<GetInfoResponse> {
+    return this.rpc.unary(HubServiceGetInfoDesc, GetInfoRequest.fromPartial(request), metadata);
+  }
+
+  getFids(request: DeepPartial<FidsRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<FidsResponse> {
+    return this.rpc.unary(HubServiceGetFidsDesc, FidsRequest.fromPartial(request), metadata);
+  }
+
   subscribe(request: DeepPartial<SubscribeRequest>, metadata?: grpcWeb.grpc.Metadata): Observable<HubEvent> {
     return this.rpc.invoke(HubServiceSubscribeDesc, SubscribeRequest.fromPartial(request), metadata);
   }
 
   getEvent(request: DeepPartial<EventRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<HubEvent> {
     return this.rpc.unary(HubServiceGetEventDesc, EventRequest.fromPartial(request), metadata);
+  }
+
+  getEvents(request: DeepPartial<EventsRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<EventsResponse> {
+    return this.rpc.unary(HubServiceGetEventsDesc, EventsRequest.fromPartial(request), metadata);
   }
 
   getCast(request: DeepPartial<CastId>, metadata?: grpcWeb.grpc.Metadata): Promise<Message> {
@@ -375,8 +317,11 @@ export class HubServiceClientImpl implements HubService {
     return this.rpc.unary(HubServiceGetCurrentStorageLimitsByFidDesc, FidRequest.fromPartial(request), metadata);
   }
 
-  getFids(request: DeepPartial<FidsRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<FidsResponse> {
-    return this.rpc.unary(HubServiceGetFidsDesc, FidsRequest.fromPartial(request), metadata);
+  getFidAddressType(
+    request: DeepPartial<FidAddressTypeRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<FidAddressTypeResponse> {
+    return this.rpc.unary(HubServiceGetFidAddressTypeDesc, FidAddressTypeRequest.fromPartial(request), metadata);
   }
 
   getLink(request: DeepPartial<LinkRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<Message> {
@@ -389,6 +334,13 @@ export class HubServiceClientImpl implements HubService {
 
   getLinksByTarget(request: DeepPartial<LinksByTargetRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse> {
     return this.rpc.unary(HubServiceGetLinksByTargetDesc, LinksByTargetRequest.fromPartial(request), metadata);
+  }
+
+  getLinkCompactStateMessageByFid(
+    request: DeepPartial<FidRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<MessagesResponse> {
+    return this.rpc.unary(HubServiceGetLinkCompactStateMessageByFidDesc, FidRequest.fromPartial(request), metadata);
   }
 
   getAllCastMessagesByFid(
@@ -438,74 +390,15 @@ export class HubServiceClientImpl implements HubService {
     return this.rpc.unary(HubServiceGetAllLinkMessagesByFidDesc, FidTimestampRequest.fromPartial(request), metadata);
   }
 
-  getLinkCompactStateMessageByFid(
-    request: DeepPartial<FidRequest>,
-    metadata?: grpcWeb.grpc.Metadata,
-  ): Promise<MessagesResponse> {
-    return this.rpc.unary(HubServiceGetLinkCompactStateMessageByFidDesc, FidRequest.fromPartial(request), metadata);
-  }
-
-  submitBulkMessages(
-    request: DeepPartial<SubmitBulkMessagesRequest>,
-    metadata?: grpcWeb.grpc.Metadata,
-  ): Promise<SubmitBulkMessagesResponse> {
-    return this.rpc.unary(HubServiceSubmitBulkMessagesDesc, SubmitBulkMessagesRequest.fromPartial(request), metadata);
-  }
-
-  getInfo(request: DeepPartial<HubInfoRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<HubInfoResponse> {
-    return this.rpc.unary(HubServiceGetInfoDesc, HubInfoRequest.fromPartial(request), metadata);
-  }
-
-  getCurrentPeers(request: DeepPartial<Empty>, metadata?: grpcWeb.grpc.Metadata): Promise<ContactInfoResponse> {
-    return this.rpc.unary(HubServiceGetCurrentPeersDesc, Empty.fromPartial(request), metadata);
-  }
-
-  stopSync(request: DeepPartial<Empty>, metadata?: grpcWeb.grpc.Metadata): Promise<SyncStatusResponse> {
-    return this.rpc.unary(HubServiceStopSyncDesc, Empty.fromPartial(request), metadata);
-  }
-
-  forceSync(request: DeepPartial<SyncStatusRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<SyncStatusResponse> {
-    return this.rpc.unary(HubServiceForceSyncDesc, SyncStatusRequest.fromPartial(request), metadata);
-  }
-
-  getSyncStatus(request: DeepPartial<SyncStatusRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<SyncStatusResponse> {
-    return this.rpc.unary(HubServiceGetSyncStatusDesc, SyncStatusRequest.fromPartial(request), metadata);
-  }
-
-  getAllSyncIdsByPrefix(request: DeepPartial<TrieNodePrefix>, metadata?: grpcWeb.grpc.Metadata): Promise<SyncIds> {
-    return this.rpc.unary(HubServiceGetAllSyncIdsByPrefixDesc, TrieNodePrefix.fromPartial(request), metadata);
-  }
-
-  getAllMessagesBySyncIds(request: DeepPartial<SyncIds>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse> {
-    return this.rpc.unary(HubServiceGetAllMessagesBySyncIdsDesc, SyncIds.fromPartial(request), metadata);
-  }
-
-  getSyncMetadataByPrefix(
-    request: DeepPartial<TrieNodePrefix>,
+  getTrieMetadataByPrefix(
+    request: DeepPartial<TrieNodeMetadataRequest>,
     metadata?: grpcWeb.grpc.Metadata,
   ): Promise<TrieNodeMetadataResponse> {
-    return this.rpc.unary(HubServiceGetSyncMetadataByPrefixDesc, TrieNodePrefix.fromPartial(request), metadata);
-  }
-
-  getSyncSnapshotByPrefix(
-    request: DeepPartial<TrieNodePrefix>,
-    metadata?: grpcWeb.grpc.Metadata,
-  ): Promise<TrieNodeSnapshotResponse> {
-    return this.rpc.unary(HubServiceGetSyncSnapshotByPrefixDesc, TrieNodePrefix.fromPartial(request), metadata);
-  }
-
-  streamSync(
-    request: Observable<DeepPartial<StreamSyncRequest>>,
-    metadata?: grpcWeb.grpc.Metadata,
-  ): Observable<StreamSyncResponse> {
-    throw new Error("ts-proto does not yet support client streaming!");
-  }
-
-  streamFetch(
-    request: Observable<DeepPartial<StreamFetchRequest>>,
-    metadata?: grpcWeb.grpc.Metadata,
-  ): Observable<StreamFetchResponse> {
-    throw new Error("ts-proto does not yet support client streaming!");
+    return this.rpc.unary(
+      HubServiceGetTrieMetadataByPrefixDesc,
+      TrieNodeMetadataRequest.fromPartial(request),
+      metadata,
+    );
   }
 }
 
@@ -557,6 +450,98 @@ export const HubServiceValidateMessageDesc: UnaryMethodDefinitionish = {
   } as any,
 };
 
+export const HubServiceGetBlocksDesc: UnaryMethodDefinitionish = {
+  methodName: "GetBlocks",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: true,
+  requestType: {
+    serializeBinary() {
+      return BlocksRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = Block.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetShardChunksDesc: UnaryMethodDefinitionish = {
+  methodName: "GetShardChunks",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return ShardChunksRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = ShardChunksResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetInfoDesc: UnaryMethodDefinitionish = {
+  methodName: "GetInfo",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return GetInfoRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = GetInfoResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetFidsDesc: UnaryMethodDefinitionish = {
+  methodName: "GetFids",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return FidsRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = FidsResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
 export const HubServiceSubscribeDesc: UnaryMethodDefinitionish = {
   methodName: "Subscribe",
   service: HubServiceDesc,
@@ -593,6 +578,29 @@ export const HubServiceGetEventDesc: UnaryMethodDefinitionish = {
   responseType: {
     deserializeBinary(data: Uint8Array) {
       const value = HubEvent.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetEventsDesc: UnaryMethodDefinitionish = {
+  methodName: "GetEvents",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return EventsRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = EventsResponse.decode(data);
       return {
         ...value,
         toObject() {
@@ -1063,19 +1071,19 @@ export const HubServiceGetCurrentStorageLimitsByFidDesc: UnaryMethodDefinitionis
   } as any,
 };
 
-export const HubServiceGetFidsDesc: UnaryMethodDefinitionish = {
-  methodName: "GetFids",
+export const HubServiceGetFidAddressTypeDesc: UnaryMethodDefinitionish = {
+  methodName: "GetFidAddressType",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
   requestType: {
     serializeBinary() {
-      return FidsRequest.encode(this).finish();
+      return FidAddressTypeRequest.encode(this).finish();
     },
   } as any,
   responseType: {
     deserializeBinary(data: Uint8Array) {
-      const value = FidsResponse.decode(data);
+      const value = FidAddressTypeResponse.decode(data);
       return {
         ...value,
         toObject() {
@@ -1140,6 +1148,29 @@ export const HubServiceGetLinksByTargetDesc: UnaryMethodDefinitionish = {
   requestType: {
     serializeBinary() {
       return LinksByTargetRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = MessagesResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetLinkCompactStateMessageByFidDesc: UnaryMethodDefinitionish = {
+  methodName: "GetLinkCompactStateMessageByFid",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return FidRequest.encode(this).finish();
     },
   } as any,
   responseType: {
@@ -1270,349 +1301,19 @@ export const HubServiceGetAllLinkMessagesByFidDesc: UnaryMethodDefinitionish = {
   } as any,
 };
 
-export const HubServiceGetLinkCompactStateMessageByFidDesc: UnaryMethodDefinitionish = {
-  methodName: "GetLinkCompactStateMessageByFid",
+export const HubServiceGetTrieMetadataByPrefixDesc: UnaryMethodDefinitionish = {
+  methodName: "GetTrieMetadataByPrefix",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,
   requestType: {
     serializeBinary() {
-      return FidRequest.encode(this).finish();
-    },
-  } as any,
-  responseType: {
-    deserializeBinary(data: Uint8Array) {
-      const value = MessagesResponse.decode(data);
-      return {
-        ...value,
-        toObject() {
-          return value;
-        },
-      };
-    },
-  } as any,
-};
-
-export const HubServiceSubmitBulkMessagesDesc: UnaryMethodDefinitionish = {
-  methodName: "SubmitBulkMessages",
-  service: HubServiceDesc,
-  requestStream: false,
-  responseStream: false,
-  requestType: {
-    serializeBinary() {
-      return SubmitBulkMessagesRequest.encode(this).finish();
-    },
-  } as any,
-  responseType: {
-    deserializeBinary(data: Uint8Array) {
-      const value = SubmitBulkMessagesResponse.decode(data);
-      return {
-        ...value,
-        toObject() {
-          return value;
-        },
-      };
-    },
-  } as any,
-};
-
-export const HubServiceGetInfoDesc: UnaryMethodDefinitionish = {
-  methodName: "GetInfo",
-  service: HubServiceDesc,
-  requestStream: false,
-  responseStream: false,
-  requestType: {
-    serializeBinary() {
-      return HubInfoRequest.encode(this).finish();
-    },
-  } as any,
-  responseType: {
-    deserializeBinary(data: Uint8Array) {
-      const value = HubInfoResponse.decode(data);
-      return {
-        ...value,
-        toObject() {
-          return value;
-        },
-      };
-    },
-  } as any,
-};
-
-export const HubServiceGetCurrentPeersDesc: UnaryMethodDefinitionish = {
-  methodName: "GetCurrentPeers",
-  service: HubServiceDesc,
-  requestStream: false,
-  responseStream: false,
-  requestType: {
-    serializeBinary() {
-      return Empty.encode(this).finish();
-    },
-  } as any,
-  responseType: {
-    deserializeBinary(data: Uint8Array) {
-      const value = ContactInfoResponse.decode(data);
-      return {
-        ...value,
-        toObject() {
-          return value;
-        },
-      };
-    },
-  } as any,
-};
-
-export const HubServiceStopSyncDesc: UnaryMethodDefinitionish = {
-  methodName: "StopSync",
-  service: HubServiceDesc,
-  requestStream: false,
-  responseStream: false,
-  requestType: {
-    serializeBinary() {
-      return Empty.encode(this).finish();
-    },
-  } as any,
-  responseType: {
-    deserializeBinary(data: Uint8Array) {
-      const value = SyncStatusResponse.decode(data);
-      return {
-        ...value,
-        toObject() {
-          return value;
-        },
-      };
-    },
-  } as any,
-};
-
-export const HubServiceForceSyncDesc: UnaryMethodDefinitionish = {
-  methodName: "ForceSync",
-  service: HubServiceDesc,
-  requestStream: false,
-  responseStream: false,
-  requestType: {
-    serializeBinary() {
-      return SyncStatusRequest.encode(this).finish();
-    },
-  } as any,
-  responseType: {
-    deserializeBinary(data: Uint8Array) {
-      const value = SyncStatusResponse.decode(data);
-      return {
-        ...value,
-        toObject() {
-          return value;
-        },
-      };
-    },
-  } as any,
-};
-
-export const HubServiceGetSyncStatusDesc: UnaryMethodDefinitionish = {
-  methodName: "GetSyncStatus",
-  service: HubServiceDesc,
-  requestStream: false,
-  responseStream: false,
-  requestType: {
-    serializeBinary() {
-      return SyncStatusRequest.encode(this).finish();
-    },
-  } as any,
-  responseType: {
-    deserializeBinary(data: Uint8Array) {
-      const value = SyncStatusResponse.decode(data);
-      return {
-        ...value,
-        toObject() {
-          return value;
-        },
-      };
-    },
-  } as any,
-};
-
-export const HubServiceGetAllSyncIdsByPrefixDesc: UnaryMethodDefinitionish = {
-  methodName: "GetAllSyncIdsByPrefix",
-  service: HubServiceDesc,
-  requestStream: false,
-  responseStream: false,
-  requestType: {
-    serializeBinary() {
-      return TrieNodePrefix.encode(this).finish();
-    },
-  } as any,
-  responseType: {
-    deserializeBinary(data: Uint8Array) {
-      const value = SyncIds.decode(data);
-      return {
-        ...value,
-        toObject() {
-          return value;
-        },
-      };
-    },
-  } as any,
-};
-
-export const HubServiceGetAllMessagesBySyncIdsDesc: UnaryMethodDefinitionish = {
-  methodName: "GetAllMessagesBySyncIds",
-  service: HubServiceDesc,
-  requestStream: false,
-  responseStream: false,
-  requestType: {
-    serializeBinary() {
-      return SyncIds.encode(this).finish();
-    },
-  } as any,
-  responseType: {
-    deserializeBinary(data: Uint8Array) {
-      const value = MessagesResponse.decode(data);
-      return {
-        ...value,
-        toObject() {
-          return value;
-        },
-      };
-    },
-  } as any,
-};
-
-export const HubServiceGetSyncMetadataByPrefixDesc: UnaryMethodDefinitionish = {
-  methodName: "GetSyncMetadataByPrefix",
-  service: HubServiceDesc,
-  requestStream: false,
-  responseStream: false,
-  requestType: {
-    serializeBinary() {
-      return TrieNodePrefix.encode(this).finish();
+      return TrieNodeMetadataRequest.encode(this).finish();
     },
   } as any,
   responseType: {
     deserializeBinary(data: Uint8Array) {
       const value = TrieNodeMetadataResponse.decode(data);
-      return {
-        ...value,
-        toObject() {
-          return value;
-        },
-      };
-    },
-  } as any,
-};
-
-export const HubServiceGetSyncSnapshotByPrefixDesc: UnaryMethodDefinitionish = {
-  methodName: "GetSyncSnapshotByPrefix",
-  service: HubServiceDesc,
-  requestStream: false,
-  responseStream: false,
-  requestType: {
-    serializeBinary() {
-      return TrieNodePrefix.encode(this).finish();
-    },
-  } as any,
-  responseType: {
-    deserializeBinary(data: Uint8Array) {
-      const value = TrieNodeSnapshotResponse.decode(data);
-      return {
-        ...value,
-        toObject() {
-          return value;
-        },
-      };
-    },
-  } as any,
-};
-
-export interface AdminService {
-  rebuildSyncTrie(request: DeepPartial<Empty>, metadata?: grpcWeb.grpc.Metadata): Promise<Empty>;
-  deleteAllMessagesFromDb(request: DeepPartial<Empty>, metadata?: grpcWeb.grpc.Metadata): Promise<Empty>;
-  submitOnChainEvent(request: DeepPartial<OnChainEvent>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEvent>;
-}
-
-export class AdminServiceClientImpl implements AdminService {
-  private readonly rpc: Rpc;
-
-  constructor(rpc: Rpc) {
-    this.rpc = rpc;
-    this.rebuildSyncTrie = this.rebuildSyncTrie.bind(this);
-    this.deleteAllMessagesFromDb = this.deleteAllMessagesFromDb.bind(this);
-    this.submitOnChainEvent = this.submitOnChainEvent.bind(this);
-  }
-
-  rebuildSyncTrie(request: DeepPartial<Empty>, metadata?: grpcWeb.grpc.Metadata): Promise<Empty> {
-    return this.rpc.unary(AdminServiceRebuildSyncTrieDesc, Empty.fromPartial(request), metadata);
-  }
-
-  deleteAllMessagesFromDb(request: DeepPartial<Empty>, metadata?: grpcWeb.grpc.Metadata): Promise<Empty> {
-    return this.rpc.unary(AdminServiceDeleteAllMessagesFromDbDesc, Empty.fromPartial(request), metadata);
-  }
-
-  submitOnChainEvent(request: DeepPartial<OnChainEvent>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEvent> {
-    return this.rpc.unary(AdminServiceSubmitOnChainEventDesc, OnChainEvent.fromPartial(request), metadata);
-  }
-}
-
-export const AdminServiceDesc = { serviceName: "AdminService" };
-
-export const AdminServiceRebuildSyncTrieDesc: UnaryMethodDefinitionish = {
-  methodName: "RebuildSyncTrie",
-  service: AdminServiceDesc,
-  requestStream: false,
-  responseStream: false,
-  requestType: {
-    serializeBinary() {
-      return Empty.encode(this).finish();
-    },
-  } as any,
-  responseType: {
-    deserializeBinary(data: Uint8Array) {
-      const value = Empty.decode(data);
-      return {
-        ...value,
-        toObject() {
-          return value;
-        },
-      };
-    },
-  } as any,
-};
-
-export const AdminServiceDeleteAllMessagesFromDbDesc: UnaryMethodDefinitionish = {
-  methodName: "DeleteAllMessagesFromDb",
-  service: AdminServiceDesc,
-  requestStream: false,
-  responseStream: false,
-  requestType: {
-    serializeBinary() {
-      return Empty.encode(this).finish();
-    },
-  } as any,
-  responseType: {
-    deserializeBinary(data: Uint8Array) {
-      const value = Empty.decode(data);
-      return {
-        ...value,
-        toObject() {
-          return value;
-        },
-      };
-    },
-  } as any,
-};
-
-export const AdminServiceSubmitOnChainEventDesc: UnaryMethodDefinitionish = {
-  methodName: "SubmitOnChainEvent",
-  service: AdminServiceDesc,
-  requestStream: false,
-  responseStream: false,
-  requestType: {
-    serializeBinary() {
-      return OnChainEvent.encode(this).finish();
-    },
-  } as any,
-  responseType: {
-    deserializeBinary(data: Uint8Array) {
-      const value = OnChainEvent.decode(data);
       return {
         ...value,
         toObject() {

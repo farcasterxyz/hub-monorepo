@@ -190,3 +190,8 @@ export type MergeFailureHubEvent = hubEventProtobufs.HubEvent & {
   type: hubEventProtobufs.HubEventType.MERGE_FAILURE;
   mergeFailure: hubEventProtobufs.MergeFailureBody;
 };
+
+export type BlockConfirmedHubEvent = hubEventProtobufs.HubEvent & {
+  type: hubEventProtobufs.HubEventType.BLOCK_CONFIRMED;
+  mergeFailure: hubEventProtobufs.BlockConfirmedBody;
+};

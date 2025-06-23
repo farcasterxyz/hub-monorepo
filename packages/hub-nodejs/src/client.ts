@@ -1,4 +1,5 @@
-import { AdminServiceClient, HubServiceClient } from "./generated/rpc";
+import { HubServiceClient } from "./generated/rpc";
+import { AdminServiceClient } from "./generated/admin_rpc";
 import * as grpc from "@grpc/grpc-js";
 import { Metadata } from "@grpc/grpc-js";
 import type {

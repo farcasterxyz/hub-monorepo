@@ -23,6 +23,7 @@ export enum HubEventType {
    */
   MERGE_ON_CHAIN_EVENT = 9,
   MERGE_FAILURE = 10,
+  BLOCK_CONFIRMED = 11,
 }
 
 export function hubEventTypeFromJSON(object: any): HubEventType {
@@ -48,6 +49,9 @@ export function hubEventTypeFromJSON(object: any): HubEventType {
     case 10:
     case "HUB_EVENT_TYPE_MERGE_FAILURE":
       return HubEventType.MERGE_FAILURE;
+    case 11:
+    case "HUB_EVENT_TYPE_BLOCK_CONFIRMED":
+      return HubEventType.BLOCK_CONFIRMED;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum HubEventType");
   }
@@ -69,6 +73,8 @@ export function hubEventTypeToJSON(object: HubEventType): string {
       return "HUB_EVENT_TYPE_MERGE_ON_CHAIN_EVENT";
     case HubEventType.MERGE_FAILURE:
       return "HUB_EVENT_TYPE_MERGE_FAILURE";
+    case HubEventType.BLOCK_CONFIRMED:
+      return "HUB_EVENT_TYPE_BLOCK_CONFIRMED";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum HubEventType");
   }
@@ -79,18 +85,26 @@ export interface MergeMessageBody {
   deletedMessages: Message[];
 }
 
-export interface PruneMessageBody {
-  message: Message | undefined;
-}
-
 export interface MergeFailureBody {
   message: Message | undefined;
   code: string;
   reason: string;
 }
 
+export interface PruneMessageBody {
+  message: Message | undefined;
+}
+
 export interface RevokeMessageBody {
   message: Message | undefined;
+}
+
+export interface BlockConfirmedBody {
+  blockNumber: number;
+  shardIndex: number;
+  timestamp: number;
+  blockHash: Uint8Array;
+  totalEvents: number;
 }
 
 export interface MergeOnChainEventBody {
@@ -127,6 +141,7 @@ export interface HubEvent {
    */
   mergeOnChainEventBody?: MergeOnChainEventBody | undefined;
   mergeFailure?: MergeFailureBody | undefined;
+  blockConfirmedBody?: BlockConfirmedBody | undefined;
   blockNumber: number;
   shardIndex: number;
   timestamp: number;
@@ -207,64 +222,6 @@ export const MergeMessageBody = {
       ? Message.fromPartial(object.message)
       : undefined;
     message.deletedMessages = object.deletedMessages?.map((e) => Message.fromPartial(e)) || [];
-    return message;
-  },
-};
-
-function createBasePruneMessageBody(): PruneMessageBody {
-  return { message: undefined };
-}
-
-export const PruneMessageBody = {
-  encode(message: PruneMessageBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.message !== undefined) {
-      Message.encode(message.message, writer.uint32(10).fork()).ldelim();
-    }
-    return writer;
-  },
-
-  decode(input: _m0.Reader | Uint8Array, length?: number): PruneMessageBody {
-    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
-    let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBasePruneMessageBody();
-    while (reader.pos < end) {
-      const tag = reader.uint32();
-      switch (tag >>> 3) {
-        case 1:
-          if (tag != 10) {
-            break;
-          }
-
-          message.message = Message.decode(reader, reader.uint32());
-          continue;
-      }
-      if ((tag & 7) == 4 || tag == 0) {
-        break;
-      }
-      reader.skipType(tag & 7);
-    }
-    return message;
-  },
-
-  fromJSON(object: any): PruneMessageBody {
-    return { message: isSet(object.message) ? Message.fromJSON(object.message) : undefined };
-  },
-
-  toJSON(message: PruneMessageBody): unknown {
-    const obj: any = {};
-    message.message !== undefined && (obj.message = message.message ? Message.toJSON(message.message) : undefined);
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<PruneMessageBody>, I>>(base?: I): PruneMessageBody {
-    return PruneMessageBody.fromPartial(base ?? {});
-  },
-
-  fromPartial<I extends Exact<DeepPartial<PruneMessageBody>, I>>(object: I): PruneMessageBody {
-    const message = createBasePruneMessageBody();
-    message.message = (object.message !== undefined && object.message !== null)
-      ? Message.fromPartial(object.message)
-      : undefined;
     return message;
   },
 };
@@ -355,6 +312,64 @@ export const MergeFailureBody = {
   },
 };
 
+function createBasePruneMessageBody(): PruneMessageBody {
+  return { message: undefined };
+}
+
+export const PruneMessageBody = {
+  encode(message: PruneMessageBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.message !== undefined) {
+      Message.encode(message.message, writer.uint32(10).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): PruneMessageBody {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBasePruneMessageBody();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.message = Message.decode(reader, reader.uint32());
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): PruneMessageBody {
+    return { message: isSet(object.message) ? Message.fromJSON(object.message) : undefined };
+  },
+
+  toJSON(message: PruneMessageBody): unknown {
+    const obj: any = {};
+    message.message !== undefined && (obj.message = message.message ? Message.toJSON(message.message) : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<PruneMessageBody>, I>>(base?: I): PruneMessageBody {
+    return PruneMessageBody.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<PruneMessageBody>, I>>(object: I): PruneMessageBody {
+    const message = createBasePruneMessageBody();
+    message.message = (object.message !== undefined && object.message !== null)
+      ? Message.fromPartial(object.message)
+      : undefined;
+    return message;
+  },
+};
+
 function createBaseRevokeMessageBody(): RevokeMessageBody {
   return { message: undefined };
 }
@@ -409,6 +424,117 @@ export const RevokeMessageBody = {
     message.message = (object.message !== undefined && object.message !== null)
       ? Message.fromPartial(object.message)
       : undefined;
+    return message;
+  },
+};
+
+function createBaseBlockConfirmedBody(): BlockConfirmedBody {
+  return { blockNumber: 0, shardIndex: 0, timestamp: 0, blockHash: new Uint8Array(), totalEvents: 0 };
+}
+
+export const BlockConfirmedBody = {
+  encode(message: BlockConfirmedBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.blockNumber !== 0) {
+      writer.uint32(8).uint64(message.blockNumber);
+    }
+    if (message.shardIndex !== 0) {
+      writer.uint32(16).uint32(message.shardIndex);
+    }
+    if (message.timestamp !== 0) {
+      writer.uint32(24).uint64(message.timestamp);
+    }
+    if (message.blockHash.length !== 0) {
+      writer.uint32(34).bytes(message.blockHash);
+    }
+    if (message.totalEvents !== 0) {
+      writer.uint32(40).uint64(message.totalEvents);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): BlockConfirmedBody {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseBlockConfirmedBody();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.blockNumber = longToNumber(reader.uint64() as Long);
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.shardIndex = reader.uint32();
+          continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.timestamp = longToNumber(reader.uint64() as Long);
+          continue;
+        case 4:
+          if (tag != 34) {
+            break;
+          }
+
+          message.blockHash = reader.bytes();
+          continue;
+        case 5:
+          if (tag != 40) {
+            break;
+          }
+
+          message.totalEvents = longToNumber(reader.uint64() as Long);
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): BlockConfirmedBody {
+    return {
+      blockNumber: isSet(object.blockNumber) ? Number(object.blockNumber) : 0,
+      shardIndex: isSet(object.shardIndex) ? Number(object.shardIndex) : 0,
+      timestamp: isSet(object.timestamp) ? Number(object.timestamp) : 0,
+      blockHash: isSet(object.blockHash) ? bytesFromBase64(object.blockHash) : new Uint8Array(),
+      totalEvents: isSet(object.totalEvents) ? Number(object.totalEvents) : 0,
+    };
+  },
+
+  toJSON(message: BlockConfirmedBody): unknown {
+    const obj: any = {};
+    message.blockNumber !== undefined && (obj.blockNumber = Math.round(message.blockNumber));
+    message.shardIndex !== undefined && (obj.shardIndex = Math.round(message.shardIndex));
+    message.timestamp !== undefined && (obj.timestamp = Math.round(message.timestamp));
+    message.blockHash !== undefined &&
+      (obj.blockHash = base64FromBytes(message.blockHash !== undefined ? message.blockHash : new Uint8Array()));
+    message.totalEvents !== undefined && (obj.totalEvents = Math.round(message.totalEvents));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<BlockConfirmedBody>, I>>(base?: I): BlockConfirmedBody {
+    return BlockConfirmedBody.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<BlockConfirmedBody>, I>>(object: I): BlockConfirmedBody {
+    const message = createBaseBlockConfirmedBody();
+    message.blockNumber = object.blockNumber ?? 0;
+    message.shardIndex = object.shardIndex ?? 0;
+    message.timestamp = object.timestamp ?? 0;
+    message.blockHash = object.blockHash ?? new Uint8Array();
+    message.totalEvents = object.totalEvents ?? 0;
     return message;
   },
 };
@@ -607,6 +733,7 @@ function createBaseHubEvent(): HubEvent {
     mergeUsernameProofBody: undefined,
     mergeOnChainEventBody: undefined,
     mergeFailure: undefined,
+    blockConfirmedBody: undefined,
     blockNumber: 0,
     shardIndex: 0,
     timestamp: 0,
@@ -638,6 +765,9 @@ export const HubEvent = {
     }
     if (message.mergeFailure !== undefined) {
       MergeFailureBody.encode(message.mergeFailure, writer.uint32(106).fork()).ldelim();
+    }
+    if (message.blockConfirmedBody !== undefined) {
+      BlockConfirmedBody.encode(message.blockConfirmedBody, writer.uint32(130).fork()).ldelim();
     }
     if (message.blockNumber !== 0) {
       writer.uint32(96).uint64(message.blockNumber);
@@ -714,6 +844,13 @@ export const HubEvent = {
 
           message.mergeFailure = MergeFailureBody.decode(reader, reader.uint32());
           continue;
+        case 16:
+          if (tag != 130) {
+            break;
+          }
+
+          message.blockConfirmedBody = BlockConfirmedBody.decode(reader, reader.uint32());
+          continue;
         case 12:
           if (tag != 96) {
             break;
@@ -760,6 +897,9 @@ export const HubEvent = {
         ? MergeOnChainEventBody.fromJSON(object.mergeOnChainEventBody)
         : undefined,
       mergeFailure: isSet(object.mergeFailure) ? MergeFailureBody.fromJSON(object.mergeFailure) : undefined,
+      blockConfirmedBody: isSet(object.blockConfirmedBody)
+        ? BlockConfirmedBody.fromJSON(object.blockConfirmedBody)
+        : undefined,
       blockNumber: isSet(object.blockNumber) ? Number(object.blockNumber) : 0,
       shardIndex: isSet(object.shardIndex) ? Number(object.shardIndex) : 0,
       timestamp: isSet(object.timestamp) ? Number(object.timestamp) : 0,
@@ -785,6 +925,9 @@ export const HubEvent = {
       : undefined);
     message.mergeFailure !== undefined &&
       (obj.mergeFailure = message.mergeFailure ? MergeFailureBody.toJSON(message.mergeFailure) : undefined);
+    message.blockConfirmedBody !== undefined && (obj.blockConfirmedBody = message.blockConfirmedBody
+      ? BlockConfirmedBody.toJSON(message.blockConfirmedBody)
+      : undefined);
     message.blockNumber !== undefined && (obj.blockNumber = Math.round(message.blockNumber));
     message.shardIndex !== undefined && (obj.shardIndex = Math.round(message.shardIndex));
     message.timestamp !== undefined && (obj.timestamp = Math.round(message.timestamp));
@@ -819,6 +962,9 @@ export const HubEvent = {
     message.mergeFailure = (object.mergeFailure !== undefined && object.mergeFailure !== null)
       ? MergeFailureBody.fromPartial(object.mergeFailure)
       : undefined;
+    message.blockConfirmedBody = (object.blockConfirmedBody !== undefined && object.blockConfirmedBody !== null)
+      ? BlockConfirmedBody.fromPartial(object.blockConfirmedBody)
+      : undefined;
     message.blockNumber = object.blockNumber ?? 0;
     message.shardIndex = object.shardIndex ?? 0;
     message.timestamp = object.timestamp ?? 0;
@@ -844,6 +990,31 @@ var tsProtoGlobalThis: any = (() => {
   }
   throw "Unable to locate global object";
 })();
+
+function bytesFromBase64(b64: string): Uint8Array {
+  if (tsProtoGlobalThis.Buffer) {
+    return Uint8Array.from(tsProtoGlobalThis.Buffer.from(b64, "base64"));
+  } else {
+    const bin = tsProtoGlobalThis.atob(b64);
+    const arr = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; ++i) {
+      arr[i] = bin.charCodeAt(i);
+    }
+    return arr;
+  }
+}
+
+function base64FromBytes(arr: Uint8Array): string {
+  if (tsProtoGlobalThis.Buffer) {
+    return tsProtoGlobalThis.Buffer.from(arr).toString("base64");
+  } else {
+    const bin: string[] = [];
+    arr.forEach((byte) => {
+      bin.push(String.fromCharCode(byte));
+    });
+    return tsProtoGlobalThis.btoa(bin.join(""));
+  }
+}
 
 type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
 
