@@ -1,5 +1,15 @@
 # @farcaster/core
 
+## 0.18.0
+
+### Minor Changes
+
+- 56cf1302: chore: switch to generating client libraries off snapchain protos
+
+### Patch Changes
+
+- 56cf1302: chore: add typeguards for BlockConfirmed event
+
 ## 0.17.1
 
 ### Patch Changes

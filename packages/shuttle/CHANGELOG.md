@@ -1,5 +1,18 @@
 # @farcaster/hub-shuttle
 
+## 0.7.0
+
+### Minor Changes
+
+- 56cf1302: chore: switch to generating client libraries off snapchain protos
+
+### Patch Changes
+
+- 56cf1302: chore: add typeguards for BlockConfirmed event
+- Updated dependencies [56cf1302]
+- Updated dependencies [56cf1302]
+  - @farcaster/hub-nodejs@0.15.0
+
 ## 0.6.18
 
 ### Patch Changes
