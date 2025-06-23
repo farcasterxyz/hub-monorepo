@@ -253,3 +253,9 @@ export const isMergeUsernameProofHubEvent = (
       typeof event.mergeUsernameProofBody.deletedUsernameProof !== "undefined")
   );
 };
+
+export const isBlockConfirmedHubEvent = (event: hubEventProtobufs.HubEvent): event is types.BlockConfirmedHubEvent => {
+  return (
+    event.type === hubEventProtobufs.HubEventType.BLOCK_CONFIRMED && typeof event.blockConfirmedBody !== "undefined"
+  );
+};
