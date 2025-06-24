@@ -2,10 +2,17 @@ import { Cluster, ClusterOptions, Redis, RedisOptions, ReplyError } from "ioredi
 import { getHubEventCacheKey, HubClient } from "./hub";
 import { inBatchesOf, sleep } from "../utils";
 import { statsd } from "../statsd";
-import { extractTimestampFromEvent, HubEvent } from "@farcaster/hub-nodejs";
+import {
+  BlockConfirmedHubEvent,
+  extractTimestampFromEvent,
+  fromFarcasterTime,
+  HubEvent,
+  HubEventType,
+  isBlockConfirmedHubEvent,
+} from "@farcaster/hub-nodejs";
 import { log } from "../log";
 import { pino } from "pino";
-import { ProcessResult } from "./index";
+import { DEFAULT_EVENT_TYPES, ProcessResult } from "./index";
 import { Result } from "neverthrow";
 import { TypedEmitter } from "tiny-typed-emitter";
 
@@ -18,7 +25,7 @@ const DUMMY_CONSUMER_GROUP = "x";
  * Ideally you should have two connections per purpose: one for reading and one for writing.
  */
 export class EventStreamConnection {
-  private client: Redis | Cluster;
+  client: Redis | Cluster;
 
   constructor(client: Redis | Cluster) {
     this.client = client;
@@ -222,6 +229,69 @@ interface HubEventStreamConsumerEventsEmitter {
   onError: (hubEvent: HubEvent, error: Error) => void;
 }
 
+class EventStreamMonitor {
+  private stream: EventStreamConnection;
+  private relevantEventTypes: HubEventType[];
+  private log: pino.Logger;
+
+  constructor(eventStream: EventStreamConnection, relevantEventTypes: HubEventType[], log: pino.Logger) {
+    this.stream = eventStream;
+    this.relevantEventTypes = relevantEventTypes;
+    this.log = log;
+  }
+
+  public blockCountsKey(blockNumber: number, eventType: number) {
+    return `block-counts:${blockNumber}:${eventType}`;
+  }
+
+  public currentBlockKey() {
+    return "current-block";
+  }
+
+  public async setBlockKeys(event: BlockConfirmedHubEvent) {
+    for (const eventType of this.relevantEventTypes) {
+      const count = event.blockConfirmedBody.eventCountsByType[eventType] ?? 0;
+      await this.stream.client.set(this.blockCountsKey(event.blockConfirmedBody.blockNumber, eventType), count);
+    }
+  }
+
+  public async blockCompleted(blockNumber: number) {
+    for (const eventType of this.relevantEventTypes) {
+      const key = this.blockCountsKey(blockNumber, eventType);
+      const count = await this.stream.client.get(key);
+      if (count === null) {
+        this.log.error({ blockNumber, eventType }, "Missed all events for block");
+      } else if (Number(count) !== 0) {
+        // TODO(aditi): Eventually we will want to retry missed events
+        this.log.error({ blockNumber, eventType, numMissedEvents: count }, "Missed some events for block");
+      }
+      await this.stream.client.del(key);
+    }
+  }
+
+  public async onEvent(event: HubEvent) {
+    const currentBlock = await this.stream.client.get(this.currentBlockKey());
+    if (currentBlock === null || event.blockNumber >= Number(currentBlock)) {
+      if (isBlockConfirmedHubEvent(event)) {
+        await this.setBlockKeys(event);
+        await this.stream.client.set(this.currentBlockKey(), event.blockNumber);
+        this.blockCompleted(event.blockNumber - 1);
+      }
+      await this.stream.client.decr(this.blockCountsKey(event.blockNumber, event.type));
+    } else {
+      this.log.info(
+        {
+          blockNumber: event.blockNumber,
+          eventId: event.id,
+          eventType: event.type,
+          eventTimestamp: extractTimestampFromEvent(event),
+        },
+        "Received event for old block",
+      );
+    }
+  }
+}
+
 export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerEventsEmitter> {
   public hub: HubClient;
   private stream: EventStreamConnection;
@@ -237,6 +307,7 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
   private beforeProcess?: PreProcessHandler;
   private afterProcess?: PostProcessHandler;
   private interval?: NodeJS.Timeout;
+  private monitor: EventStreamMonitor;
 
   constructor(
     hub: HubClient,
@@ -244,6 +315,7 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
     shardKey: string,
     options: EventStreamConsumerOptions = {},
     logger: pino.Logger = log,
+    eventTypes: HubEventType[] = DEFAULT_EVENT_TYPES,
   ) {
     super();
     this.hub = hub;
@@ -258,6 +330,7 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
     this.log = logger;
     this.beforeProcess = options.beforeProcess;
     this.afterProcess = options.afterProcess;
+    this.monitor = new EventStreamMonitor(eventStream, eventTypes, this.log);
   }
 
   async start(onEvent: (event: HubEvent) => Promise<Result<ProcessResult, Error>>) {

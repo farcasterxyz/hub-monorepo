@@ -43,7 +43,7 @@ export abstract class HubSubscriber extends TypedEmitter<HubEventsEmitter> {
   }
 }
 
-const DEFAULT_EVENT_TYPES = [
+export const DEFAULT_EVENT_TYPES = [
   HubEventType.MERGE_ON_CHAIN_EVENT,
   HubEventType.MERGE_MESSAGE,
   HubEventType.MERGE_USERNAME_PROOF,
