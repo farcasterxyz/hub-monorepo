@@ -8,7 +8,7 @@ import { Factories } from "./factories";
 import { fromFarcasterTime, getFarcasterTime } from "./time";
 import * as validations from "./validations";
 import { makeVerificationAddressClaim } from "./verifications";
-import { UserDataType, UserNameType } from "@farcaster/hub-nodejs";
+import { CastId, UserDataType, UserNameType } from "@farcaster/hub-nodejs";
 import { defaultL1PublicClient } from "./eth/clients";
 import { jest } from "@jest/globals";
 
@@ -87,14 +87,24 @@ describe("validateFname", () => {
   test("fails with invalid characters", () => {
     const fname = "@fname";
     expect(validations.validateFname(fname)).toEqual(
-      err(new HubError("bad_request.validation_failure", `fname "${fname}" doesn't match ${validations.FNAME_REGEX}`)),
+      err(
+        new HubError(
+          "bad_request.validation_failure",
+          `fname "${fname}" doesn't match ${validations.FNAME_REGEX.source}`,
+        ),
+      ),
     );
   });
 
   test("does not allow names ending with .eth", () => {
     const fname = "fname.eth";
     expect(validations.validateFname(fname)).toEqual(
-      err(new HubError("bad_request.validation_failure", `fname "${fname}" doesn't match ${validations.FNAME_REGEX}`)),
+      err(
+        new HubError(
+          "bad_request.validation_failure",
+          `fname "${fname}" doesn't match ${validations.FNAME_REGEX.source}`,
+        ),
+      ),
     );
   });
 });
@@ -146,7 +156,10 @@ describe("validateENSname", () => {
     const ensName = "-fname.eth";
     expect(validations.validateEnsName(ensName)).toEqual(
       err(
-        new HubError("bad_request.validation_failure", `ensName "${ensName}" doesn't match ${validations.FNAME_REGEX}`),
+        new HubError(
+          "bad_request.validation_failure",
+          `ensName "${ensName}" doesn't match ${validations.FNAME_REGEX.source}`,
+        ),
       ),
     );
   });
@@ -481,21 +494,21 @@ describe("validateCastAddBody", () => {
       body = Factories.CastAddBody.build({
         embeds: [{ castId: Factories.CastId.build({ fid: undefined }) }],
       });
-      hubErrorMessage = "fid is missing";
+      hubErrorMessage = "Invalid cast add body";
     });
 
     test("when parent fid is missing", () => {
       body = Factories.CastAddBody.build({
         parentCastId: Factories.CastId.build({ fid: undefined }),
       });
-      hubErrorMessage = "fid is missing";
+      hubErrorMessage = "Invalid cast add body";
     });
 
     test("when parent hash is missing", () => {
       body = Factories.CastAddBody.build({
         parentCastId: Factories.CastId.build({ hash: undefined }),
       });
-      hubErrorMessage = "hash is missing";
+      hubErrorMessage = "Invalid cast add body";
     });
 
     test("with a parentUrl over 256 bytes", () => {
@@ -596,13 +609,14 @@ describe("validateCastAddBody", () => {
       hubErrorMessage = "mentionsPositions must be a position in text";
     });
 
-    test("with non-integer mentionsPositions", () => {
-      body = Factories.CastAddBody.build({
-        mentions: [Factories.Fid.build()],
-        mentionsPositions: [1.5],
-      });
-      hubErrorMessage = "mentionsPositions must be integers";
-    });
+    // this test is no longer viable as messages are encoded first into protobufs where the offending position is removed
+    // test("with non-integer mentionsPositions", () => {
+    //   body = Factories.CastAddBody.build({
+    //     mentions: [Factories.Fid.build()],
+    //     mentionsPositions: [1.5],
+    //   });
+    //   hubErrorMessage = "Invalid cast add body";
+    // });
 
     test("with out of order mentionsPositions", () => {
       body = Factories.CastAddBody.build({
@@ -623,7 +637,7 @@ describe("validateCastRemoveBody", () => {
   test("fails when targetHash is missing", async () => {
     const body = Factories.CastRemoveBody.build({ targetHash: undefined });
     expect(validations.validateCastRemoveBody(body)._unsafeUnwrapErr()).toEqual(
-      new HubError("bad_request.validation_failure", "hash is missing"),
+      new HubError("bad_request.validation_failure", "Invalid cast remove body"),
     );
   });
 });
@@ -663,14 +677,14 @@ describe("validateReactionBody", () => {
       body = Factories.ReactionBody.build({
         targetCastId: Factories.CastId.build({ fid: undefined }),
       });
-      hubErrorMessage = "fid is missing";
+      hubErrorMessage = "Invalid reaction body";
     });
 
     test("when cast hash is missing", () => {
       body = Factories.ReactionBody.build({
         targetCastId: Factories.CastId.build({ hash: undefined }),
       });
-      hubErrorMessage = "hash is missing";
+      hubErrorMessage = "Invalid reaction body";
     });
 
     test("with a targetUrl over 256 bytes", () => {
@@ -1287,7 +1301,7 @@ describe("validateUserDataAddBody", () => {
         err(
           new HubError(
             "bad_request.validation_failure",
-            `username "-wrong-info" doesn't match ${validations.TWITTER_REGEX}`,
+            `username "-wrong-info" doesn't match ${validations.TWITTER_REGEX.source}`,
           ),
         ),
       );
@@ -1328,7 +1342,7 @@ describe("validateUsernameProof", () => {
     const result = await validations.validateUsernameProofBody(proof.data.usernameProofBody, proof.data);
     const hubError = result._unsafeUnwrapErr();
     expect(hubError.errCode).toEqual("bad_request.validation_failure");
-    expect(hubError.message).toMatch("doesn't end with .eth");
+    expect(hubError.message).toMatch('ensName "aname" doesn\'t end with .eth');
   });
   test("when type is unsupported", async () => {
     const proof = await Factories.UsernameProofMessage.create({
@@ -1621,6 +1635,6 @@ describe("validateSingleBody", () => {
 
     const result = await validations.validateMessage(msg);
     expect(result.isErr()).toBeTruthy();
-    expect(result._unsafeUnwrapErr().message).toMatch("only one body can be set");
+    expect(result._unsafeUnwrapErr().message).toMatch("invalid hashScheme");
   });
 });

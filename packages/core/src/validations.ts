@@ -1,8 +1,8 @@
 import * as protobufs from "./protobufs";
-import { CastType, Protocol, UserNameType } from "./protobufs";
+import { Protocol, UserNameType } from "./protobufs";
 import { blake3 } from "@noble/hashes/blake3";
 import { err, ok, Result } from "neverthrow";
-import { bytesCompare, bytesToUtf8String, utf8StringToBytes } from "./bytes";
+import { bytesToUtf8String, utf8StringToBytes } from "./bytes";
 import { ed25519, eip712 } from "./crypto";
 import { HubAsyncResult, HubError, HubResult } from "./errors";
 import { fromFarcasterTime, getFarcasterTime, toFarcasterTime } from "./time";
@@ -11,8 +11,11 @@ import {
   recreateSolanaClaimMessage,
   VerificationAddressClaimSolana,
 } from "./verifications";
-import { normalize } from "viem/ens";
 import { defaultPublicClients, PublicClients } from "./eth/clients";
+import { createRequire } from "module";
+import { normalize } from "viem/ens";
+const require = createRequire(import.meta.url);
+const addon = require("./addon/index.node");
 
 /** Number of seconds (10 minutes) that is appropriate for clock skew */
 export const ALLOWED_CLOCK_SKEW_SECONDS = 10 * 60;
@@ -112,75 +115,23 @@ export const validateMessageHash = (hash?: Uint8Array): HubResult<Uint8Array> =>
   return ok(hash);
 };
 
-const validateNumber = (value: string) => {
-  const number = parseFloat(value);
-  if (Number.isNaN(number)) {
-    return err(undefined);
-  }
-  return ok(number);
-};
-
-const validateLatitude = (value: string) => {
-  const number = validateNumber(value);
-
-  if (number.isErr()) {
-    return err(new HubError("bad_request.validation_failure", "Latitude is not a valid number"));
-  }
-
-  if (number.value < -90 || number.value > 90) {
-    return err(new HubError("bad_request.validation_failure", "Latitude value outside valid range"));
-  }
-
-  return ok(value);
-};
-
-const validateLongitude = (value: string) => {
-  const number = validateNumber(value);
-
-  if (number.isErr()) {
-    return err(new HubError("bad_request.validation_failure", "Longitude is not a valid number"));
-  }
-
-  if (number.value < -180 || number.value > 180) {
-    return err(new HubError("bad_request.validation_failure", "Longitude value outside valid range"));
-  }
-
-  return ok(value);
-};
-
 // Expected format is [geo:<lat>,<long>}]
 export const validateUserLocation = (location: string) => {
-  if (location === "") {
-    // This is to support clearing location
+  try {
+    if (typeof location !== "string") {
+      return err(new HubError("bad_request.validation_failure", "Location must be a string"));
+    }
+
+    const isValid = addon.validateUserLocation(location);
+
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
+    }
+
     return ok(location);
+  } catch (error: unknown) {
+    return err(new HubError("bad_request.validation_failure", (error as { message: string }).message));
   }
-
-  // Match any <=2 digit number with 2dp for latitude and <=3 digit number with 3dp for longitude. Perform validation on ranges in code after parsing because doing this in regex is pretty cumbersome.
-  const result = location.match(/^geo:(-?\d{1,2}\.\d{2}),(-?\d{1,3}\.\d{2})$/);
-
-  if (result === null || result[0] !== location) {
-    return err(new HubError("bad_request.validation_failure", "Invalid location string"));
-  }
-
-  if (result[1] === undefined) {
-    return err(new HubError("bad_request.validation_failure", "Location missing latitude"));
-  }
-
-  const latitude = validateLatitude(result[1]);
-  if (latitude.isErr()) {
-    return err(latitude.error);
-  }
-
-  if (result[2] === undefined) {
-    return err(new HubError("bad_request.validation_failure", "Location missing longitude"));
-  }
-
-  const longitude = validateLongitude(result[2]);
-  if (longitude.isErr()) {
-    return err(longitude.error);
-  }
-
-  return ok(location);
 };
 
 export const validateCastId = (castId?: protobufs.CastId): HubResult<protobufs.CastId> => {
@@ -291,75 +242,62 @@ export const validateMessage = async (
   validationMethods: ValidationMethods = pureJSValidationMethods,
   publicClients: PublicClients = defaultPublicClients,
 ): HubAsyncResult<protobufs.Message> => {
-  // 1. Check the message data
-  if (!message.data && !message.dataBytes) {
-    return err(new HubError("bad_request.validation_failure", "data is missing"));
-  }
-  // biome-ignore lint/style/noNonNullAssertion: data or dataBytes must be set or it will be caught above
-  const data = message.data || protobufs.MessageData.decode(Buffer.from(message.dataBytes!));
-  const validData = await validateMessageData(data, publicClients);
-  if (validData.isErr()) {
-    return err(validData.error);
-  }
-
-  // The hash to verify the signature against. This is either the hash of the data_bytes, or the hash
-  // of the data field encoded using ts-proto protobuf
-  const hash = message.hash;
-  if (!hash) {
-    return err(new HubError("bad_request.validation_failure", "hash is missing"));
-  }
-
-  // Computed from the data_bytes if set, otherwise from the data
-  let computedHash;
-
-  // 2. If the data_bytes are set, we'll validate signature against that
-  if (message.dataBytes && message.dataBytes.length > 0) {
-    if (message.dataBytes.length > 2048) {
-      return err(new HubError("bad_request.validation_failure", "dataBytes > 2048 bytes"));
+  try {
+    let dataBytes;
+    let data;
+    if (!message.data && !message.dataBytes) {
+      return err(new HubError("bad_request.validation_failure", "Invalid message"));
     }
-    // 2a. Use the databytes as the hash to check the signature against
-    computedHash = validationMethods.blake3_20(message.dataBytes);
-  } else {
-    // 2b. Use the protobuf encoded data as the hash to check the signature against
-    computedHash = validationMethods.blake3_20(protobufs.MessageData.encode(data).finish());
-  }
+    if (!message.data) {
+      dataBytes = message.dataBytes;
 
-  // 3. Check that the hashScheme and hash are valid
-  if (message.hashScheme === protobufs.HashScheme.BLAKE3) {
-    // we have to use bytesCompare, because TypedArrays cannot be compared directly
-    if (bytesCompare(hash, computedHash) !== 0) {
-      return err(
-        new HubError("bad_request.validation_failure", `invalid hash. Expected=${hash}, computed=${computedHash}`),
+      if (!dataBytes) {
+        return err(new HubError("bad_request.validation_failure", "Invalid message"));
+      }
+
+      data = protobufs.MessageData.decode(dataBytes);
+    } else {
+      data = message.data;
+      dataBytes = protobufs.MessageData.encode(message.data).finish();
+    }
+
+    const encodedMessage = protobufs.Message.encode(
+      protobufs.Message.create({
+        dataBytes: dataBytes,
+        hash: message.hash,
+        hashScheme: message.hashScheme,
+        signature: message.signature,
+        signatureScheme: message.signatureScheme,
+        signer: message.signer,
+      }),
+    ).finish();
+
+    const isValid = addon.validateMessage(Buffer.from(encodedMessage), message.data?.network);
+
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
+    }
+
+    // Specific case from original validateMessage -> validateMessageData flow.
+    // We retain this because snapchain delegates validation requiring rpcs to
+    // ingestion rather than p2p validation:
+    if (data.type === protobufs.MessageType.VERIFICATION_ADD_ETH_ADDRESS && !!data.verificationAddAddressBody) {
+      const result = await validateVerificationAddAddressBody(
+        data.verificationAddAddressBody,
+        data.fid,
+        data.network,
+        publicClients,
       );
+
+      if (result.isErr()) {
+        return err(new HubError("bad_request.validation_failure", "Invalid message"));
+      }
     }
-  } else {
-    return err(new HubError("bad_request.validation_failure", "invalid hashScheme"));
+
+    return ok(message);
+  } catch (error: unknown) {
+    return err(new HubError("bad_request.validation_failure", (error as { message: string }).message));
   }
-
-  // 4. Check that the signatureScheme and signature are valid
-  const signature = message.signature;
-  if (!signature) {
-    return err(new HubError("bad_request.validation_failure", "signature is missing"));
-  }
-
-  // 5. Check that the signer is valid
-  const signer = message.signer;
-  if (!signer) {
-    return err(new HubError("bad_request.validation_failure", "signer is missing"));
-  }
-
-  // 6. Check that the signature is valid
-  if (message.signatureScheme === protobufs.SignatureScheme.ED25519) {
-    const signatureIsValid = await validationMethods.ed25519_verify(signature, hash, signer);
-
-    if (!signatureIsValid) {
-      return err(new HubError("bad_request.validation_failure", "invalid signature"));
-    }
-  } else {
-    return err(new HubError("bad_request.validation_failure", "invalid signatureScheme"));
-  }
-
-  return ok(message);
 };
 
 export const validateMessageData = async <T extends protobufs.MessageData>(
@@ -551,24 +489,40 @@ export const validateUrl = (url: string): HubResult<string> => {
 };
 
 export const validateParent = (parent: protobufs.CastId | string): HubResult<protobufs.CastId | string> => {
-  if (typeof parent === "string") {
-    return validateUrl(parent);
-  } else {
-    return validateCastId(parent);
+  try {
+    let encodedParent;
+
+    if (typeof parent === "string") {
+      encodedParent = new Uint8Array(Buffer.from(parent, "utf-8"));
+    } else {
+      encodedParent = protobufs.CastId.encode(parent).finish();
+    }
+
+    const isValid = addon.validateParent(Buffer.from(encodedParent));
+
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
+    }
+
+    return ok(parent);
+  } catch (error: unknown) {
+    return err(new HubError("bad_request.validation_failure", (error as { message: string }).message));
   }
 };
 
 export const validateEmbed = (embed: protobufs.Embed): HubResult<protobufs.Embed> => {
-  if (embed.url !== undefined && embed.castId !== undefined) {
-    return err(new HubError("bad_request.validation_failure", "cannot use both url and castId"));
-  }
+  try {
+    const encodedEmbed = protobufs.Embed.encode(embed).finish();
 
-  if (embed.url !== undefined) {
-    return validateUrl(embed.url).map(() => embed);
-  } else if (embed.castId !== undefined) {
-    return validateCastId(embed.castId).map(() => embed);
-  } else {
-    return err(new HubError("bad_request.validation_failure", "embed must have either url or castId"));
+    const isValid = addon.validateEmbed(Buffer.from(encodedEmbed));
+
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
+    }
+
+    return ok(embed);
+  } catch (error: unknown) {
+    return err(new HubError("bad_request.validation_failure", (error as { message: string }).message));
   }
 };
 
@@ -576,161 +530,79 @@ export const validateCastAddBody = (
   body: protobufs.CastAddBody,
   allowEmbedsDeprecated = false,
 ): HubResult<protobufs.CastAddBody> => {
-  const text = body.text;
-  if (text === undefined || text === null) {
-    return err(new HubError("bad_request.validation_failure", "text is missing"));
-  }
-
-  const textUtf8BytesResult = utf8StringToBytes(text);
-  if (textUtf8BytesResult.isErr()) {
-    return err(new HubError("bad_request.invalid_param", "text must be encodable as utf8"));
-  }
-  const textBytes = textUtf8BytesResult.value;
-
-  if (body.type === CastType.CAST && textBytes.length > 320) {
-    return err(new HubError("bad_request.validation_failure", "text > 320 bytes"));
-  }
-
-  if (body.type === CastType.LONG_CAST && textBytes.length > 1024) {
-    return err(new HubError("bad_request.validation_failure", "text > 1024 bytes for long cast"));
-  }
-
-  if (body.type === CastType.LONG_CAST && textBytes.length <= 320) {
-    return err(new HubError("bad_request.validation_failure", "text too short for long cast"));
-  }
-
-  if (body.type === CastType.TEN_K_CAST && textBytes.length > 10_000) {
-    return err(new HubError("bad_request.validation_failure", "text > 10,000 bytes for 10k cast"));
-  }
-
-  if (body.type === CastType.TEN_K_CAST && textBytes.length <= 1024) {
-    return err(new HubError("bad_request.validation_failure", "text too short for 10k cast"));
-  }
-
-  if (body.type !== CastType.CAST && body.type !== CastType.LONG_CAST && body.type !== CastType.TEN_K_CAST) {
-    return err(new HubError("bad_request.validation_failure", "invalid cast type"));
-  }
-
-  if (body.embeds.length > 4) {
-    return err(new HubError("bad_request.validation_failure", "embeds > 4"));
-  }
-
-  if (allowEmbedsDeprecated && body.embedsDeprecated.length > 2) {
-    return err(new HubError("bad_request.validation_failure", "string embeds > 2"));
-  }
-
-  if (!allowEmbedsDeprecated && body.embedsDeprecated.length > 0) {
-    return err(new HubError("bad_request.validation_failure", "string embeds have been deprecated"));
-  }
-
-  if (body.mentions.length > 10) {
-    return err(new HubError("bad_request.validation_failure", "mentions > 10"));
-  }
-
-  if (body.mentions.length !== body.mentionsPositions.length) {
-    return err(new HubError("bad_request.validation_failure", "mentions and mentionsPositions must match"));
-  }
-
-  if (body.embeds.length > 0 && body.embedsDeprecated.length > 0) {
-    return err(new HubError("bad_request.validation_failure", "cannot use both embeds and string embeds"));
-  }
-
-  if (body.parentUrl !== undefined && body.parentCastId !== undefined) {
-    return err(new HubError("bad_request.validation_failure", "cannot use both parentUrl and parentCastId"));
-  }
-
-  if (
-    body.text.length === 0 &&
-    body.embeds.length === 0 &&
-    body.embedsDeprecated.length === 0 &&
-    body.mentions.length === 0
-  ) {
-    return err(new HubError("bad_request.validation_failure", "cast is empty"));
-  }
-
-  for (let i = 0; i < body.embeds.length; i++) {
-    const embed = body.embeds[i];
-
-    if (embed === undefined) {
-      return err(new HubError("bad_request.validation_failure", "embed is missing"));
+  try {
+    if (body.text === undefined || body.text === null) {
+      return err(new HubError("bad_request.validation_failure", "text is missing"));
     }
 
-    const embedIsValid = validateEmbed(embed);
-    if (embedIsValid.isErr()) {
-      return err(embedIsValid.error);
+    const encodedBody = protobufs.CastAddBody.encode(body).finish();
+
+    const isValid = addon.validateCastAddBody(Buffer.from(encodedBody), allowEmbedsDeprecated);
+
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
     }
+
+    if (body.parentCastId && body.parentUrl) {
+      return err(new HubError("bad_request.validation_failure", "cannot use both parentUrl and parentCastId"));
+    }
+
+    return ok(body);
+  } catch (error) {
+    return err(new HubError("bad_request.validation_failure", "Invalid cast add body"));
   }
-
-  for (let i = 0; i < body.embedsDeprecated.length; i++) {
-    const embed = body.embedsDeprecated[i];
-
-    if (embed === undefined) {
-      return err(new HubError("bad_request.validation_failure", "string embed is missing"));
-    }
-
-    const embedIsValid = validateUrl(embed);
-    if (embedIsValid.isErr()) {
-      return err(embedIsValid.error);
-    }
-  }
-
-  for (let i = 0; i < body.mentions.length; i++) {
-    const mention = validateFid(body.mentions[i]);
-    if (mention.isErr()) {
-      return err(mention.error);
-    }
-    const position = body.mentionsPositions[i];
-    if (typeof position !== "number" || !Number.isInteger(position)) {
-      return err(new HubError("bad_request.validation_failure", "mentionsPositions must be integers"));
-    }
-    if (position < 0 || position > textBytes.length) {
-      return err(new HubError("bad_request.validation_failure", "mentionsPositions must be a position in text"));
-    }
-    if (i > 0) {
-      // biome-ignore lint/style/noNonNullAssertion: not sure why we do this, legacy when migrating from eslint.
-      const prevPosition = body.mentionsPositions[i - 1]!;
-      if (position < prevPosition) {
-        return err(
-          new HubError("bad_request.validation_failure", "mentionsPositions must be sorted in ascending order"),
-        );
-      }
-    }
-  }
-
-  if (body.parentCastId !== undefined && body.parentUrl !== undefined) {
-    return err(new HubError("bad_request.validation_failure", "cannot use both parentUrl and parentCastId"));
-  }
-
-  const parent = body.parentCastId ?? body.parentUrl;
-  if (parent !== undefined) {
-    const validParent = validateParent(parent);
-    if (validParent.isErr()) {
-      return err(validParent.error);
-    }
-  }
-
-  return ok(body);
 };
 
 export const validateCastRemoveBody = (body: protobufs.CastRemoveBody): HubResult<protobufs.CastRemoveBody> => {
-  return validateMessageHash(body.targetHash).map(() => body);
+  try {
+    const encodedBody = protobufs.CastRemoveBody.encode(body).finish();
+
+    const isValid = addon.validateCastRemoveBody(Buffer.from(encodedBody));
+
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
+    }
+
+    return ok(body);
+  } catch (error: unknown) {
+    return err(new HubError("bad_request.validation_failure", "Invalid cast remove body"));
+  }
 };
 
 export const validateLinkType = (type: string): HubResult<string> => {
-  const typeBuffer = Buffer.from(type);
-  if (type.length === 0 || typeBuffer.length > 8) {
-    return err(new HubError("bad_request.validation_failure", "type must be between 1-8 bytes"));
-  }
+  try {
+    if (typeof type !== "string") {
+      return err(new HubError("bad_request.validation_failure", "link type must be a string"));
+    }
 
-  return ok(type);
+    const isValid = addon.validateLinkType(type);
+
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
+    }
+
+    return ok(type);
+  } catch (error: unknown) {
+    return err(new HubError("bad_request.validation_failure", (error as { message: string }).message));
+  }
 };
 
 export const validateReactionType = (type: number): HubResult<protobufs.ReactionType> => {
-  if (!Object.values(protobufs.ReactionType).includes(type)) {
-    return err(new HubError("bad_request.validation_failure", "invalid reaction type"));
-  }
+  try {
+    if (typeof type !== "number") {
+      return err(new HubError("bad_request.validation_failure", "reaction type must be a number"));
+    }
 
-  return ok(type);
+    const isValid = addon.validateReactionType(type);
+
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
+    }
+
+    return ok(type);
+  } catch (error: unknown) {
+    return err(new HubError("bad_request.validation_failure", (error as { message: string }).message));
+  }
 };
 
 export const validateTarget = (
@@ -746,74 +618,93 @@ export const validateTarget = (
 };
 
 export const validateMessageType = (type: number): HubResult<protobufs.MessageType> => {
-  if (!Object.values(protobufs.MessageType).includes(type)) {
-    return err(new HubError("bad_request.validation_failure", "invalid message type"));
-  }
+  try {
+    if (typeof type !== "number") {
+      return err(new HubError("bad_request.validation_failure", "message type must be a number"));
+    }
 
-  return ok(type);
+    const isValid = addon.validateMessageType(type);
+
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
+    }
+
+    return ok(type);
+  } catch (error: unknown) {
+    return err(new HubError("bad_request.validation_failure", (error as { message: string }).message));
+  }
 };
 
 export const validateNetwork = (network: number): HubResult<protobufs.FarcasterNetwork> => {
-  if (!Object.values(protobufs.FarcasterNetwork).includes(network)) {
-    return err(new HubError("bad_request.validation_failure", "invalid network"));
-  }
+  try {
+    if (typeof network !== "number") {
+      return err(new HubError("bad_request.validation_failure", "network must be a number"));
+    }
 
-  return ok(network);
+    const isValid = addon.validateNetwork(network);
+
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
+    }
+
+    return ok(network);
+  } catch (error: unknown) {
+    return err(new HubError("bad_request.validation_failure", (error as { message: string }).message));
+  }
 };
 
 export const validateLinkCompactStateBody = (
   body: protobufs.LinkCompactStateBody,
 ): HubResult<protobufs.LinkCompactStateBody> => {
-  const validatedType = validateLinkType(body.type);
-  if (validatedType.isErr()) {
-    return err(validatedType.error);
-  }
+  try {
+    const encodedBody = protobufs.LinkCompactStateBody.encode(body).finish();
 
-  const targetFids = body.targetFids;
-  if (targetFids === undefined) {
-    return err(new HubError("bad_request.validation_failure", "targets is missing"));
-  }
+    const isValid = addon.validateLinkCompactStateBody(Buffer.from(encodedBody));
 
-  for (const targetFid of targetFids) {
-    const validFid = validateFid(targetFid);
-    if (validFid.isErr()) {
-      return err(validFid.error);
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
     }
-  }
 
-  return ok(body);
+    return ok(body);
+  } catch (error: unknown) {
+    return err(new HubError("bad_request.validation_failure", (error as { message: string }).message));
+  }
 };
 
 export const validateLinkBody = (body: protobufs.LinkBody): HubResult<protobufs.LinkBody> => {
-  const validatedType = validateLinkType(body.type);
-  if (validatedType.isErr()) {
-    return err(validatedType.error);
-  }
+  try {
+    const encodedBody = protobufs.LinkBody.encode(body).finish();
 
-  const target = body.targetFid;
-  if (target === undefined) {
-    return err(new HubError("bad_request.validation_failure", "target is missing"));
-  }
+    const isValid = addon.validateLinkBody(Buffer.from(encodedBody));
 
-  return validateTarget(target).map(() => body);
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
+    }
+
+    return ok(body);
+  } catch (error: unknown) {
+    return err(new HubError("bad_request.validation_failure", (error as { message: string }).message));
+  }
 };
 
 export const validateReactionBody = (body: protobufs.ReactionBody): HubResult<protobufs.ReactionBody> => {
-  const validatedType = validateReactionType(body.type);
-  if (validatedType.isErr()) {
-    return err(validatedType.error);
-  }
+  try {
+    const encodedBody = protobufs.ReactionBody.encode(body).finish();
 
-  if (body.targetCastId !== undefined && body.targetUrl !== undefined) {
-    return err(new HubError("bad_request.validation_failure", "cannot use both targetUrl and targetCastId"));
-  }
+    const isValid = addon.validateReactionBody(Buffer.from(encodedBody));
 
-  const target = body.targetCastId ?? body.targetUrl;
-  if (target === undefined) {
-    return err(new HubError("bad_request.validation_failure", "target is missing"));
-  }
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
+    }
 
-  return validateTarget(target).map(() => body);
+    if (body.targetCastId && body.targetUrl) {
+      return err(new HubError("bad_request.validation_failure", "cannot use both targetUrl and targetCastId"));
+    }
+
+    return ok(body);
+  } catch (error: unknown) {
+    return err(new HubError("bad_request.validation_failure", "Invalid reaction body"));
+  }
 };
 
 export const validateVerificationAddAddressBody = async (
@@ -984,100 +875,19 @@ export const validateUserDataType = (type: number): HubResult<protobufs.UserData
 };
 
 export const validateUserDataAddBody = (body: protobufs.UserDataBody): HubResult<protobufs.UserDataBody> => {
-  const { type, value } = body;
+  try {
+    const encodedBody = protobufs.UserDataBody.encode(body).finish();
 
-  const textUtf8BytesResult = utf8StringToBytes(value);
-  if (textUtf8BytesResult.isErr()) {
-    return err(new HubError("bad_request.invalid_param", "value cannot be encoded as utf8"));
+    const isValid = addon.validateUserDataAddBody(Buffer.from(encodedBody));
+
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
+    }
+
+    return ok(body);
+  } catch (error: unknown) {
+    return err(new HubError("bad_request.validation_failure", (error as { message: string }).message));
   }
-
-  const valueBytes = textUtf8BytesResult.value;
-
-  switch (type) {
-    case protobufs.UserDataType.PFP:
-      if (valueBytes.length > 256) {
-        return err(new HubError("bad_request.validation_failure", "pfp value > 256"));
-      }
-      break;
-    case protobufs.UserDataType.DISPLAY:
-      if (valueBytes.length > 32) {
-        return err(new HubError("bad_request.validation_failure", "display value > 32"));
-      }
-      break;
-    case protobufs.UserDataType.BIO:
-      if (valueBytes.length > 256) {
-        return err(new HubError("bad_request.validation_failure", "bio value > 256"));
-      }
-      break;
-    case protobufs.UserDataType.URL:
-      if (valueBytes.length > 256) {
-        return err(new HubError("bad_request.validation_failure", "url value > 256"));
-      }
-      break;
-    case protobufs.UserDataType.USERNAME: {
-      // Users are allowed to set fname = '' to remove their fname, otherwise we need a valid fname to add
-      if (value !== "") {
-        const validatedFname = validateFname(value);
-        const validatedEnsName = validateEnsName(value);
-        // At least one of fname or ensName must be valid
-        if (validatedFname.isErr() && validatedEnsName.isErr()) {
-          return err(validatedFname.error);
-        }
-      }
-      break;
-    }
-    case protobufs.UserDataType.LOCATION: {
-      const validatedUserLocation = validateUserLocation(value);
-      if (validatedUserLocation.isErr()) {
-        return err(validatedUserLocation.error);
-      }
-      break;
-    }
-    case protobufs.UserDataType.TWITTER: {
-      // Users can remove their username
-      if (value !== "") {
-        const validatedTwitterUsername = validateTwitterUsername(value);
-        if (validatedTwitterUsername.isErr()) {
-          return err(validatedTwitterUsername.error);
-        }
-      }
-      break;
-    }
-    case protobufs.UserDataType.GITHUB: {
-      // Users can remove their username
-      if (value !== "") {
-        const validatedGithubUsername = validateGithubUsername(value);
-        if (validatedGithubUsername.isErr()) {
-          return err(validatedGithubUsername.error);
-        }
-      }
-      break;
-    }
-    case protobufs.UserDataType.USER_DATA_PRIMARY_ADDRESS_ETHEREUM: {
-      // Users can remove their primary address
-      if (valueBytes.length > 42) {
-        return err(new HubError("bad_request.validation_failure", "invalid length for eth address"));
-      }
-      break;
-    }
-    case protobufs.UserDataType.USER_DATA_PRIMARY_ADDRESS_SOLANA: {
-      // Users can remove their primary address
-      if (valueBytes.length > 44) {
-        return err(new HubError("bad_request.validation_failure", "invalid length for sol address"));
-      }
-      break;
-    }
-    case protobufs.UserDataType.BANNER: {
-      if (valueBytes.length > 256) {
-        return err(new HubError("bad_request.validation_failure", "banner value > 256"));
-      }
-      break;
-    }
-    default:
-      return err(new HubError("bad_request.validation_failure", "invalid user data type"));
-  }
-
-  return ok(body);
 };
 
 export const validateFname = <T extends string | Uint8Array>(fnameP?: T | null): HubResult<T> => {
@@ -1085,32 +895,28 @@ export const validateFname = <T extends string | Uint8Array>(fnameP?: T | null):
     return err(new HubError("bad_request.validation_failure", "fname is missing"));
   }
 
-  let fname;
-  if (fnameP instanceof Uint8Array) {
-    const fromBytes = bytesToUtf8String(fnameP);
-    if (fromBytes.isErr()) {
-      return err(fromBytes.error);
+  try {
+    let fname;
+    if (fnameP instanceof Uint8Array) {
+      const fromBytes = bytesToUtf8String(fnameP);
+      if (fromBytes.isErr()) {
+        return err(fromBytes.error);
+      }
+      fname = fromBytes.value;
+    } else {
+      fname = fnameP;
     }
-    fname = fromBytes.value;
-  } else {
-    fname = fnameP;
-  }
 
-  if (fname === undefined || fname === null || fname === "") {
-    return err(new HubError("bad_request.validation_failure", "fname is missing"));
-  }
+    const isValid = addon.validateFname(fname);
 
-  // FNAME_MAX_LENGTH - ".eth".length
-  if (fname.length > 16) {
-    return err(new HubError("bad_request.validation_failure", `fname "${fname}" > 16 characters`));
-  }
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
+    }
 
-  const hasValidChars = FNAME_REGEX.test(fname);
-  if (hasValidChars === false) {
-    return err(new HubError("bad_request.validation_failure", `fname "${fname}" doesn't match ${FNAME_REGEX}`));
+    return ok(fnameP);
+  } catch (error: unknown) {
+    return err(new HubError("bad_request.validation_failure", (error as { message: string }).message));
   }
-
-  return ok(fnameP);
 };
 
 export const validateEnsName = <T extends string | Uint8Array>(ensNameP?: T | null): HubResult<T> => {
@@ -1119,115 +925,68 @@ export const validateEnsName = <T extends string | Uint8Array>(ensNameP?: T | nu
   }
 
   let ensName;
-  if (ensNameP instanceof Uint8Array) {
-    const fromBytes = bytesToUtf8String(ensNameP);
-    if (fromBytes.isErr()) {
-      return err(fromBytes.error);
-    }
-    ensName = fromBytes.value;
-  } else {
-    ensName = ensNameP;
-  }
-
-  if (ensName === undefined || ensName === null || ensName === "") {
-    return err(new HubError("bad_request.validation_failure", "ensName is missing"));
-  }
-
   try {
+    if (ensNameP instanceof Uint8Array) {
+      const fromBytes = bytesToUtf8String(ensNameP);
+      if (fromBytes.isErr()) {
+        return err(fromBytes.error);
+      }
+      ensName = fromBytes.value;
+    } else {
+      ensName = ensNameP;
+    }
+
     normalize(ensName);
-  } catch (e) {
-    return err(new HubError("bad_request.validation_failure", `ensName "${ensName}" is not a valid ENS name`));
-  }
 
-  if (!ensName.endsWith(".eth")) {
-    return err(new HubError("bad_request.validation_failure", `ensName "${ensName}" doesn't end with .eth`));
-  }
+    let isValid;
+    if (ensName.endsWith(".base.eth")) {
+      isValid = addon.validateBaseName(ensName);
+    } else {
+      isValid = addon.validateEnsName(ensName);
+    }
 
-  const nameParts = ensName.split(".");
-  if (nameParts[0] === undefined || !(nameParts.length === 2 || nameParts.length === 3)) {
-    return err(new HubError("bad_request.validation_failure", `ensName "${ensName}" unsupported subdomain`));
-  }
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
+    }
 
-  if (nameParts.length === 3 && nameParts[1] !== "base") {
-    return err(new HubError("bad_request.validation_failure", `ensName "${ensName}" unsupported subdomain`));
+    return ok(ensNameP);
+  } catch (error: unknown) {
+    return err(new HubError("bad_request.validation_failure", `ensName \"${ensName}\" is not a valid ENS name`));
   }
-
-  if (ensName.length > USERNAME_MAX_LENGTH) {
-    return err(new HubError("bad_request.validation_failure", `ensName "${ensName}" > 20 characters`));
-  }
-
-  const hasValidChars = FNAME_REGEX.test(nameParts[0]);
-  if (!hasValidChars) {
-    return err(new HubError("bad_request.validation_failure", `ensName "${ensName}" doesn't match ${FNAME_REGEX}`));
-  }
-
-  return ok(ensNameP);
 };
 
 export const validateTwitterUsername = <T extends string | Uint8Array>(username?: T | null): HubResult<T> => {
-  if (username === undefined || username === null || username === "") {
-    return err(new HubError("bad_request.validation_failure", "username is missing"));
-  }
-
-  let twitterUsername;
-  if (username instanceof Uint8Array) {
-    const fromBytes = bytesToUtf8String(username);
-    if (fromBytes.isErr()) {
-      return err(fromBytes.error);
+  try {
+    if (typeof username !== "string") {
+      return err(new HubError("bad_request.validation_failure", "Twitter username must be a string"));
     }
-    twitterUsername = fromBytes.value;
-  } else {
-    twitterUsername = username;
-  }
 
-  if (twitterUsername === undefined || twitterUsername === null || twitterUsername === "") {
-    return err(new HubError("bad_request.validation_failure", "username is missing"));
-  }
+    const isValid = addon.validateTwitterUsername(username);
 
-  if (twitterUsername.length > 15) {
-    return err(new HubError("bad_request.validation_failure", `username "${twitterUsername}" > 15 characters`));
-  }
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
+    }
 
-  const hasValidChars = TWITTER_REGEX.test(twitterUsername);
-  if (hasValidChars === false) {
-    return err(
-      new HubError("bad_request.validation_failure", `username "${twitterUsername}" doesn't match ${TWITTER_REGEX}`),
-    );
+    return ok(username);
+  } catch (error: unknown) {
+    return err(new HubError("bad_request.validation_failure", (error as { message: string }).message));
   }
-
-  return ok(username);
 };
 
 export const validateGithubUsername = <T extends string | Uint8Array>(username?: T | null): HubResult<T> => {
-  if (username === undefined || username === null || username === "") {
-    return err(new HubError("bad_request.validation_failure", "username is missing"));
-  }
-
-  let githubUsername;
-  if (username instanceof Uint8Array) {
-    const fromBytes = bytesToUtf8String(username);
-    if (fromBytes.isErr()) {
-      return err(fromBytes.error);
+  try {
+    if (typeof username !== "string") {
+      return err(new HubError("bad_request.validation_failure", "GitHub username must be a string"));
     }
-    githubUsername = fromBytes.value;
-  } else {
-    githubUsername = username;
-  }
 
-  if (githubUsername === undefined || githubUsername === null || githubUsername === "") {
-    return err(new HubError("bad_request.validation_failure", "username is missing"));
-  }
+    const isValid = addon.validateGithubUsername(username);
 
-  if (githubUsername.length > 38) {
-    return err(new HubError("bad_request.validation_failure", `username "${githubUsername}" > 38 characters`));
-  }
+    if (!isValid.ok) {
+      return err(new HubError("bad_request.validation_failure", isValid.error));
+    }
 
-  const hasValidChars = GITHUB_REGEX.test(githubUsername);
-  if (hasValidChars === false) {
-    return err(
-      new HubError("bad_request.validation_failure", `username "${githubUsername}" doesn't match ${GITHUB_REGEX}`),
-    );
+    return ok(username);
+  } catch (error: unknown) {
+    return err(new HubError("bad_request.validation_failure", (error as { message: string }).message));
   }
-
-  return ok(username);
 };
