@@ -105,6 +105,12 @@ export interface BlockConfirmedBody {
   timestamp: number;
   blockHash: Uint8Array;
   totalEvents: number;
+  eventCountsByType: { [key: number]: number };
+}
+
+export interface BlockConfirmedBody_EventCountsByTypeEntry {
+  key: number;
+  value: number;
 }
 
 export interface MergeOnChainEventBody {
@@ -429,7 +435,14 @@ export const RevokeMessageBody = {
 };
 
 function createBaseBlockConfirmedBody(): BlockConfirmedBody {
-  return { blockNumber: 0, shardIndex: 0, timestamp: 0, blockHash: new Uint8Array(), totalEvents: 0 };
+  return {
+    blockNumber: 0,
+    shardIndex: 0,
+    timestamp: 0,
+    blockHash: new Uint8Array(),
+    totalEvents: 0,
+    eventCountsByType: {},
+  };
 }
 
 export const BlockConfirmedBody = {
@@ -449,6 +462,9 @@ export const BlockConfirmedBody = {
     if (message.totalEvents !== 0) {
       writer.uint32(40).uint64(message.totalEvents);
     }
+    Object.entries(message.eventCountsByType).forEach(([key, value]) => {
+      BlockConfirmedBody_EventCountsByTypeEntry.encode({ key: key as any, value }, writer.uint32(50).fork()).ldelim();
+    });
     return writer;
   },
 
@@ -494,6 +510,16 @@ export const BlockConfirmedBody = {
 
           message.totalEvents = longToNumber(reader.uint64() as Long);
           continue;
+        case 6:
+          if (tag != 50) {
+            break;
+          }
+
+          const entry6 = BlockConfirmedBody_EventCountsByTypeEntry.decode(reader, reader.uint32());
+          if (entry6.value !== undefined) {
+            message.eventCountsByType[entry6.key] = entry6.value;
+          }
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -510,6 +536,12 @@ export const BlockConfirmedBody = {
       timestamp: isSet(object.timestamp) ? Number(object.timestamp) : 0,
       blockHash: isSet(object.blockHash) ? bytesFromBase64(object.blockHash) : new Uint8Array(),
       totalEvents: isSet(object.totalEvents) ? Number(object.totalEvents) : 0,
+      eventCountsByType: isObject(object.eventCountsByType)
+        ? Object.entries(object.eventCountsByType).reduce<{ [key: number]: number }>((acc, [key, value]) => {
+          acc[Number(key)] = Number(value);
+          return acc;
+        }, {})
+        : {},
     };
   },
 
@@ -521,6 +553,12 @@ export const BlockConfirmedBody = {
     message.blockHash !== undefined &&
       (obj.blockHash = base64FromBytes(message.blockHash !== undefined ? message.blockHash : new Uint8Array()));
     message.totalEvents !== undefined && (obj.totalEvents = Math.round(message.totalEvents));
+    obj.eventCountsByType = {};
+    if (message.eventCountsByType) {
+      Object.entries(message.eventCountsByType).forEach(([k, v]) => {
+        obj.eventCountsByType[k] = Math.round(v);
+      });
+    }
     return obj;
   },
 
@@ -535,6 +573,87 @@ export const BlockConfirmedBody = {
     message.timestamp = object.timestamp ?? 0;
     message.blockHash = object.blockHash ?? new Uint8Array();
     message.totalEvents = object.totalEvents ?? 0;
+    message.eventCountsByType = Object.entries(object.eventCountsByType ?? {}).reduce<{ [key: number]: number }>(
+      (acc, [key, value]) => {
+        if (value !== undefined) {
+          acc[Number(key)] = Number(value);
+        }
+        return acc;
+      },
+      {},
+    );
+    return message;
+  },
+};
+
+function createBaseBlockConfirmedBody_EventCountsByTypeEntry(): BlockConfirmedBody_EventCountsByTypeEntry {
+  return { key: 0, value: 0 };
+}
+
+export const BlockConfirmedBody_EventCountsByTypeEntry = {
+  encode(message: BlockConfirmedBody_EventCountsByTypeEntry, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.key !== 0) {
+      writer.uint32(8).int32(message.key);
+    }
+    if (message.value !== 0) {
+      writer.uint32(16).uint64(message.value);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): BlockConfirmedBody_EventCountsByTypeEntry {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseBlockConfirmedBody_EventCountsByTypeEntry();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.key = reader.int32();
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.value = longToNumber(reader.uint64() as Long);
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): BlockConfirmedBody_EventCountsByTypeEntry {
+    return { key: isSet(object.key) ? Number(object.key) : 0, value: isSet(object.value) ? Number(object.value) : 0 };
+  },
+
+  toJSON(message: BlockConfirmedBody_EventCountsByTypeEntry): unknown {
+    const obj: any = {};
+    message.key !== undefined && (obj.key = Math.round(message.key));
+    message.value !== undefined && (obj.value = Math.round(message.value));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<BlockConfirmedBody_EventCountsByTypeEntry>, I>>(
+    base?: I,
+  ): BlockConfirmedBody_EventCountsByTypeEntry {
+    return BlockConfirmedBody_EventCountsByTypeEntry.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<BlockConfirmedBody_EventCountsByTypeEntry>, I>>(
+    object: I,
+  ): BlockConfirmedBody_EventCountsByTypeEntry {
+    const message = createBaseBlockConfirmedBody_EventCountsByTypeEntry();
+    message.key = object.key ?? 0;
+    message.value = object.value ?? 0;
     return message;
   },
 };
@@ -1037,6 +1156,10 @@ function longToNumber(long: Long): number {
 if (_m0.util.Long !== Long) {
   _m0.util.Long = Long as any;
   _m0.configure();
+}
+
+function isObject(value: any): boolean {
+  return typeof value === "object" && value !== null;
 }
 
 function isSet(value: any): boolean {
