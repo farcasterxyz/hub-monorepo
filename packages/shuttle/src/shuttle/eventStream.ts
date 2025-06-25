@@ -244,9 +244,7 @@ class EventStreamMonitor {
     return `block-counts:${blockNumber}:${eventType}`;
   }
 
-  public currentBlockKey() {
-    return "current-block";
-  }
+  public currentBlockKey = "current-block";
 
   public async setBlockKeys(event: BlockConfirmedHubEvent) {
     for (const eventType of this.relevantEventTypes) {
@@ -259,25 +257,21 @@ class EventStreamMonitor {
     for (const eventType of this.relevantEventTypes) {
       const key = this.blockCountsKey(blockNumber, eventType);
       const count = await this.stream.client.get(key);
-      if (count === null) {
-        this.log.error({ blockNumber, eventType }, "Missed all events for block");
-      } else if (Number(count) !== 0) {
+      if (count !== null) {
         // TODO(aditi): Eventually we will want to retry missed events
         this.log.error({ blockNumber, eventType, numMissedEvents: count }, "Missed some events for block");
       }
-      await this.stream.client.del(key);
     }
   }
 
-  public async onEvent(event: HubEvent) {
-    const currentBlock = await this.stream.client.get(this.currentBlockKey());
+  public async onEventProcessed(event: HubEvent) {
+    const currentBlock = await this.stream.client.get(this.currentBlockKey);
     if (currentBlock === null || event.blockNumber >= Number(currentBlock)) {
       if (isBlockConfirmedHubEvent(event)) {
+        await this.blockCompleted(event.blockNumber - 1);
         await this.setBlockKeys(event);
-        await this.stream.client.set(this.currentBlockKey(), event.blockNumber);
-        this.blockCompleted(event.blockNumber - 1);
+        await this.stream.client.set(this.currentBlockKey, event.blockNumber);
       }
-      await this.stream.client.decr(this.blockCountsKey(event.blockNumber, event.type));
     } else {
       this.log.info(
         {
@@ -287,6 +281,22 @@ class EventStreamMonitor {
           eventTimestamp: extractTimestampFromEvent(event),
         },
         "Received event for old block",
+      );
+    }
+
+    const key = this.blockCountsKey(event.blockNumber, event.type);
+    const new_count = await this.stream.client.decr(key);
+    if (new_count === 0) {
+      await this.stream.client.del(key);
+      this.log.info(
+        { blockNumber: event.blockNumber, eventType: event.type, eventTimestamp: extractTimestampFromEvent(event) },
+        "Received all events for block",
+      );
+    } else if (new_count < 0) {
+      await this.stream.client.del(key);
+      this.log.info(
+        { blockNumber: event.blockNumber, eventType: event.type, eventTimestamp: extractTimestampFromEvent(event) },
+        "Received unexpected event",
       );
     }
   }
@@ -432,6 +442,7 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
                   }
 
                   if (!result.value.skipped) {
+                    await this.monitor.onEventProcessed(hubEvt);
                     const e2eTime = Date.now() - extractTimestampFromEvent(hubEvent);
                     statsd.timing("hub.event.stream.e2e_time", e2eTime, {
                       hub: this.hub.host,
@@ -464,7 +475,6 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
             });
 
             if (this.afterProcess) {
-              const eventsProcessed = eventChunk.filter(([id, ,]) => !eventIdsSkipped.includes(id));
               const hubEventsProcessed = eventChunk.map(([_id, evt, _evtBytes]) => evt);
               const eventsBytesProcessed = eventChunk.map(([_id, _evt, evtBytes]) => evtBytes);
               await this.afterProcess.call(this, hubEventsProcessed, eventsBytesProcessed);
@@ -537,6 +547,7 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
               if (result.isErr()) throw result.error;
 
               eventIdsProcessed.push(streamEvent.id);
+              await this.monitor.onEventProcessed(hubEvent);
 
               statsd.timing("hub.event.stream.e2e_time", Date.now() - extractTimestampFromEvent(hubEvent), {
                 hub: this.hub.host,
