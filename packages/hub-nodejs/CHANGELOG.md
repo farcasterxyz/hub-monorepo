@@ -1,5 +1,13 @@
 # @farcaster/hub-nodejs
 
+## 0.15.1
+
+### Patch Changes
+
+- 722acc86: feat: set up monitoring for event stream based on snapchain block numbers
+- Updated dependencies [722acc86]
+  - @farcaster/core@0.18.1
+
 ## 0.15.0
 
 ### Minor Changes
