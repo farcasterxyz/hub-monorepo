@@ -259,20 +259,30 @@ class EventStreamMonitor {
       const count = await this.stream.client.get(key);
       if (count !== null) {
         // TODO(aditi): Eventually we will want to retry missed events
-        this.log.error({ blockNumber, eventType, numMissedEvents: count }, "Missed some events for block");
+        this.log.error({ blockNumber, eventType, numMissedEvents: count }, "Missed events for block");
       }
     }
   }
 
   public async onEventProcessed(event: HubEvent) {
     const currentBlock = await this.stream.client.get(this.currentBlockKey);
-    if (currentBlock === null || event.blockNumber >= Number(currentBlock)) {
-      if (isBlockConfirmedHubEvent(event)) {
-        await this.blockCompleted(event.blockNumber - 1);
+    if (isBlockConfirmedHubEvent(event)) {
+      if (currentBlock !== null && event.blockNumber > Number(currentBlock) + 1) {
+        // TODO(aditi): Eventually we'll want to retry here
+        this.log.error({ lastBlock: currentBlock, currentBlock: event.blockNumber }, "Skipped events in block range");
+      }
+
+      if (currentBlock !== null) {
+        await this.blockCompleted(Number(currentBlock));
+      }
+
+      if (currentBlock === null || event.blockNumber >= Number(currentBlock)) {
         await this.setBlockKeys(event);
         await this.stream.client.set(this.currentBlockKey, event.blockNumber);
       }
-    } else {
+    }
+
+    if (event.blockNumber < Number(currentBlock)) {
       this.log.info(
         {
           blockNumber: event.blockNumber,
