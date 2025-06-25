@@ -270,8 +270,10 @@ export class EventStreamMonitor {
 
   public async setBlockCounts(event: BlockConfirmedHubEvent) {
     for (const eventType of this.relevantEventTypes) {
-      const count = event.blockConfirmedBody.eventCountsByType[eventType] ?? 0;
-      await this.redis.set(this.blockCountsKey(event.blockConfirmedBody.blockNumber, eventType), count);
+      const count = event.blockConfirmedBody.eventCountsByType[eventType];
+      if (count !== undefined) {
+        await this.redis.set(this.blockCountsKey(event.blockConfirmedBody.blockNumber, eventType), count);
+      }
     }
   }
 
