@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.7.2
+
+### Patch Changes
+
+- 3cd6a779: fix: add custom redis key prefix for monitoring
+
 ## 0.7.1
 
 ### Patch Changes
