@@ -1,5 +1,14 @@
 # @farcaster/hub-shuttle
 
+## 0.7.1
+
+### Patch Changes
+
+- 77d520af: fix: track event stream stats by host
+- 722acc86: feat: set up monitoring for event stream based on snapchain block numbers
+- Updated dependencies [722acc86]
+  - @farcaster/hub-nodejs@0.15.1
+
 ## 0.7.0
 
 ### Minor Changes
