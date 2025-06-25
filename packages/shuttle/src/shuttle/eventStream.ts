@@ -233,18 +233,31 @@ class EventStreamMonitor {
   private stream: EventStreamConnection;
   private relevantEventTypes: HubEventType[];
   private log: pino.Logger;
+  private shardKey: string; // Shard key should map to snapchain shards
 
-  constructor(eventStream: EventStreamConnection, relevantEventTypes: HubEventType[], log: pino.Logger) {
+  constructor(
+    eventStream: EventStreamConnection,
+    relevantEventTypes: HubEventType[],
+    shardKey: string,
+    log: pino.Logger,
+  ) {
     this.stream = eventStream;
     this.relevantEventTypes = relevantEventTypes;
-    this.log = log;
+    this.log = log.child({ class: "EventStreamMonitor" });
+    this.shardKey = shardKey;
   }
 
   public blockCountsKey(blockNumber: number, eventType: number) {
-    return `block-counts:${blockNumber}:${eventType}`;
+    return `${this.shardKey}:block-counts:${blockNumber}:${eventType}`;
   }
 
-  public currentBlockKey = "current-block";
+  public currentBlockNumberKey() {
+    return `${this.shardKey}:current-block-number`;
+  }
+
+  public currentBlockTimestampKey() {
+    return `${this.shardKey}:current-block-timestamp`;
+  }
 
   public async setBlockKeys(event: BlockConfirmedHubEvent) {
     for (const eventType of this.relevantEventTypes) {
@@ -259,30 +272,56 @@ class EventStreamMonitor {
       const count = await this.stream.client.get(key);
       if (count !== null) {
         // TODO(aditi): Eventually we will want to retry missed events
+        statsd.increment("hub.event.monitor.missed_events", Number(count), {
+          shard: this.shardKey,
+          type: eventType,
+        });
         this.log.error({ blockNumber, eventType, numMissedEvents: count }, "Missed events for block");
       }
     }
   }
 
   public async onEventProcessed(event: HubEvent) {
-    const currentBlock = await this.stream.client.get(this.currentBlockKey);
+    const currentBlockNumber = await this.stream.client.get(this.currentBlockNumberKey());
+    statsd.gauge("hub.event.monitor.current_block", Number(currentBlockNumber ?? "0"), {
+      shard: this.shardKey,
+    });
+
+    const currentBlockTimestamp = await this.stream.client.get(this.currentBlockTimestampKey());
+    if (currentBlockTimestamp !== null) {
+      statsd.gauge("hub.event.monitor.event_delay", Date.now() - Number(currentBlockTimestamp), {
+        shard: this.shardKey,
+      });
+    }
+
     if (isBlockConfirmedHubEvent(event)) {
-      if (currentBlock !== null && event.blockNumber > Number(currentBlock) + 1) {
+      if (currentBlockNumber !== null && event.blockNumber > Number(currentBlockNumber) + 1) {
         // TODO(aditi): Eventually we'll want to retry here
-        this.log.error({ lastBlock: currentBlock, currentBlock: event.blockNumber }, "Skipped events in block range");
+        statsd.increment("hub.event.monitor.missed_blocks", event.blockNumber - Number(currentBlockNumber), {
+          shard: this.shardKey,
+        });
+        this.log.error(
+          { lastBlock: currentBlockNumber, currentBlock: event.blockNumber },
+          "Skipped events in block range",
+        );
       }
 
-      if (currentBlock !== null) {
-        await this.blockCompleted(Number(currentBlock));
+      if (currentBlockNumber !== null) {
+        await this.blockCompleted(Number(currentBlockNumber));
       }
 
-      if (currentBlock === null || event.blockNumber >= Number(currentBlock)) {
+      if (currentBlockNumber === null || event.blockNumber >= Number(currentBlockNumber)) {
         await this.setBlockKeys(event);
-        await this.stream.client.set(this.currentBlockKey, event.blockNumber);
+        await this.stream.client.set(this.currentBlockNumberKey(), event.blockNumber);
+        await this.stream.client.set(this.currentBlockTimestampKey(), extractTimestampFromEvent(event));
       }
     }
 
-    if (event.blockNumber < Number(currentBlock)) {
+    if (event.blockNumber < Number(currentBlockNumber)) {
+      statsd.increment("hub.event.monitor.old_event", 1, {
+        shard: this.shardKey,
+        type: event.type,
+      });
       this.log.info(
         {
           blockNumber: event.blockNumber,
@@ -350,7 +389,7 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
     this.log = logger;
     this.beforeProcess = options.beforeProcess;
     this.afterProcess = options.afterProcess;
-    this.monitor = new EventStreamMonitor(eventStream, eventTypes, this.log);
+    this.monitor = new EventStreamMonitor(eventStream, eventTypes, shardKey, this.log);
   }
 
   async start(onEvent: (event: HubEvent) => Promise<Result<ProcessResult, Error>>) {
