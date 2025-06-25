@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.7.3
+
+### Patch Changes
+
+- 41b1f354: fix: only maintain counts for expected events in event stream monitoring
+
 ## 0.7.2
 
 ### Patch Changes
