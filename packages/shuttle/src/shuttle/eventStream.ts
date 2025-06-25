@@ -253,7 +253,7 @@ export class EventStreamMonitor {
     return `${this.shardKey}:current-block-timestamp`;
   }
 
-  public async setBlockKeys(event: BlockConfirmedHubEvent) {
+  public async setBlockCounts(event: BlockConfirmedHubEvent) {
     for (const eventType of this.relevantEventTypes) {
       const count = event.blockConfirmedBody.eventCountsByType[eventType] ?? 0;
       await this.redis.set(this.blockCountsKey(event.blockConfirmedBody.blockNumber, eventType), count);
@@ -300,12 +300,11 @@ export class EventStreamMonitor {
         );
       }
 
-      if (currentBlockNumber !== null) {
-        await this.blockCompleted(Number(currentBlockNumber));
-      }
-
       if (currentBlockNumber === null || event.blockNumber >= Number(currentBlockNumber)) {
-        await this.setBlockKeys(event);
+        if (currentBlockNumber !== null) {
+          await this.blockCompleted(Number(currentBlockNumber));
+        }
+        await this.setBlockCounts(event);
         await this.redis.set(this.currentBlockNumberKey(), event.blockNumber);
         await this.redis.set(this.currentBlockTimestampKey(), extractTimestampFromEvent(event));
       }
@@ -331,10 +330,6 @@ export class EventStreamMonitor {
     const new_count = await this.redis.decr(key);
     if (new_count === 0) {
       await this.redis.del(key);
-      this.log.info(
-        { blockNumber: event.blockNumber, eventType: event.type, eventTimestamp: extractTimestampFromEvent(event) },
-        "Received all events for block",
-      );
     } else if (new_count < 0) {
       await this.redis.del(key);
       this.log.info(
