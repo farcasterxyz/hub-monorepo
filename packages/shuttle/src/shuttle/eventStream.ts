@@ -252,39 +252,42 @@ export class EventStreamMonitor {
     this.redisPrefix = redisPrefix;
   }
 
-  public streamKey() {
-    return `${this.redisPrefix}:${this.host}:${this.shardKey}`;
+  public streamKey(shardId: number) {
+    return `${this.redisPrefix}:${this.host}:shard-${shardId}`;
   }
 
-  public blockCountsKey(blockNumber: number, eventType: number) {
-    return `${this.streamKey()}:block-counts:${blockNumber}:${eventType}`;
+  public blockCountsKey(blockNumber: number, shardId: number, eventType: number) {
+    return `${this.streamKey(shardId)}:block-counts:${blockNumber}:${eventType}`;
   }
 
-  public currentBlockNumberKey() {
-    return `${this.streamKey()}:current-block-number`;
+  public currentBlockNumberKey(shardId: number) {
+    return `${this.streamKey(shardId)}:current-block-number`;
   }
 
-  public currentBlockTimestampKey() {
-    return `${this.streamKey()}:current-block-timestamp`;
+  public currentBlockTimestampKey(shardId: number) {
+    return `${this.streamKey(shardId)}:current-block-timestamp`;
   }
 
   public async setBlockCounts(event: BlockConfirmedHubEvent) {
     for (const eventType of this.relevantEventTypes) {
       const count = event.blockConfirmedBody.eventCountsByType[eventType];
       if (count !== undefined) {
-        await this.redis.set(this.blockCountsKey(event.blockConfirmedBody.blockNumber, eventType), count);
+        await this.redis.set(
+          this.blockCountsKey(event.blockConfirmedBody.blockNumber, event.shardIndex, eventType),
+          count,
+        );
       }
     }
   }
 
-  public async blockCompleted(blockNumber: number) {
+  public async blockCompleted(shardId: number, blockNumber: number) {
     for (const eventType of this.relevantEventTypes) {
-      const key = this.blockCountsKey(blockNumber, eventType);
+      const key = this.blockCountsKey(blockNumber, shardId, eventType);
       const count = await this.redis.get(key);
       if (count !== null) {
         // TODO(aditi): Eventually we will want to retry missed events
         statsd.increment("hub.event.monitor.missed_events", Number(count), {
-          shard: this.shardKey,
+          shard: shardId,
           host: this.host,
           type: eventType,
         });
@@ -294,16 +297,16 @@ export class EventStreamMonitor {
   }
 
   public async onEventProcessed(event: HubEvent) {
-    const currentBlockNumber = await this.redis.get(this.currentBlockNumberKey());
+    const currentBlockNumber = await this.redis.get(this.currentBlockNumberKey(event.shardIndex));
     statsd.gauge("hub.event.monitor.current_block", Number(currentBlockNumber ?? "0"), {
-      shard: this.shardKey,
+      shard: event.shardIndex,
       host: this.host,
     });
 
-    const currentBlockTimestamp = await this.redis.get(this.currentBlockTimestampKey());
+    const currentBlockTimestamp = await this.redis.get(this.currentBlockTimestampKey(event.shardIndex));
     if (currentBlockTimestamp !== null) {
       statsd.gauge("hub.event.monitor.event_delay", Date.now() - Number(currentBlockTimestamp), {
-        shard: this.shardKey,
+        shard: event.shardIndex,
         host: this.host,
       });
     }
@@ -312,7 +315,7 @@ export class EventStreamMonitor {
       if (currentBlockNumber !== null && event.blockNumber > Number(currentBlockNumber) + 1) {
         // TODO(aditi): Eventually we'll want to retry here
         statsd.increment("hub.event.monitor.missed_blocks", event.blockNumber - Number(currentBlockNumber), {
-          shard: this.shardKey,
+          shard: event.shardIndex,
           host: this.host,
         });
         this.log.error(
@@ -323,17 +326,17 @@ export class EventStreamMonitor {
 
       if (currentBlockNumber === null || event.blockNumber >= Number(currentBlockNumber)) {
         if (currentBlockNumber !== null) {
-          await this.blockCompleted(Number(currentBlockNumber));
+          await this.blockCompleted(event.shardIndex, Number(currentBlockNumber));
         }
         await this.setBlockCounts(event);
-        await this.redis.set(this.currentBlockNumberKey(), event.blockNumber);
-        await this.redis.set(this.currentBlockTimestampKey(), extractTimestampFromEvent(event));
+        await this.redis.set(this.currentBlockNumberKey(event.shardIndex), event.blockNumber);
+        await this.redis.set(this.currentBlockTimestampKey(event.shardIndex), extractTimestampFromEvent(event));
       }
     }
 
     if (event.blockNumber < Number(currentBlockNumber)) {
       statsd.increment("hub.event.monitor.old_event", 1, {
-        shard: this.shardKey,
+        shard: event.shardIndex,
         type: event.type,
         host: this.host,
       });
@@ -348,7 +351,7 @@ export class EventStreamMonitor {
       );
     }
 
-    const key = this.blockCountsKey(event.blockNumber, event.type);
+    const key = this.blockCountsKey(event.blockNumber, event.shardIndex, event.type);
     const new_count = await this.redis.decr(key);
     if (new_count === 0) {
       await this.redis.del(key);
