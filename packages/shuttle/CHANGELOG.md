@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.7.4
+
+### Patch Changes
+
+- 373d3fe8: fix: use shard id from event in stream monitoring
+
 ## 0.7.3
 
 ### Patch Changes
