@@ -234,10 +234,12 @@ export class EventStreamMonitor {
   private log: pino.Logger;
   private shardKey: string; // Shard key should map to snapchain shards
   private host: string;
+  private redisPrefix: string;
 
   constructor(
     redis: Redis | Cluster,
     relevantEventTypes: HubEventType[],
+    redisPrefix: string,
     shardKey: string,
     host: string,
     log: pino.Logger,
@@ -247,10 +249,11 @@ export class EventStreamMonitor {
     this.log = log.child({ class: "EventStreamMonitor" });
     this.shardKey = shardKey;
     this.host = host;
+    this.redisPrefix = redisPrefix;
   }
 
   public streamKey() {
-    return `hub:${this.host}:evt:msg:${this.shardKey}`;
+    return `${this.redisPrefix}:${this.host}:${this.shardKey}`;
   }
 
   public blockCountsKey(blockNumber: number, eventType: number) {
