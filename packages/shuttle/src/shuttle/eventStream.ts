@@ -233,24 +233,36 @@ export class EventStreamMonitor {
   private relevantEventTypes: HubEventType[];
   private log: pino.Logger;
   private shardKey: string; // Shard key should map to snapchain shards
+  private host: string;
 
-  constructor(redis: Redis | Cluster, relevantEventTypes: HubEventType[], shardKey: string, log: pino.Logger) {
+  constructor(
+    redis: Redis | Cluster,
+    relevantEventTypes: HubEventType[],
+    shardKey: string,
+    host: string,
+    log: pino.Logger,
+  ) {
     this.redis = redis;
     this.relevantEventTypes = relevantEventTypes;
     this.log = log.child({ class: "EventStreamMonitor" });
     this.shardKey = shardKey;
+    this.host = host;
+  }
+
+  public streamKey() {
+    return `hub:${this.host}:evt:msg:${this.shardKey}`;
   }
 
   public blockCountsKey(blockNumber: number, eventType: number) {
-    return `${this.shardKey}:block-counts:${blockNumber}:${eventType}`;
+    return `${this.streamKey()}:block-counts:${blockNumber}:${eventType}`;
   }
 
   public currentBlockNumberKey() {
-    return `${this.shardKey}:current-block-number`;
+    return `${this.streamKey()}:current-block-number`;
   }
 
   public currentBlockTimestampKey() {
-    return `${this.shardKey}:current-block-timestamp`;
+    return `${this.streamKey()}:current-block-timestamp`;
   }
 
   public async setBlockCounts(event: BlockConfirmedHubEvent) {
@@ -268,6 +280,7 @@ export class EventStreamMonitor {
         // TODO(aditi): Eventually we will want to retry missed events
         statsd.increment("hub.event.monitor.missed_events", Number(count), {
           shard: this.shardKey,
+          host: this.host,
           type: eventType,
         });
         this.log.error({ blockNumber, eventType, numMissedEvents: count }, "Missed events for block");
@@ -279,12 +292,14 @@ export class EventStreamMonitor {
     const currentBlockNumber = await this.redis.get(this.currentBlockNumberKey());
     statsd.gauge("hub.event.monitor.current_block", Number(currentBlockNumber ?? "0"), {
       shard: this.shardKey,
+      host: this.host,
     });
 
     const currentBlockTimestamp = await this.redis.get(this.currentBlockTimestampKey());
     if (currentBlockTimestamp !== null) {
       statsd.gauge("hub.event.monitor.event_delay", Date.now() - Number(currentBlockTimestamp), {
         shard: this.shardKey,
+        host: this.host,
       });
     }
 
@@ -293,6 +308,7 @@ export class EventStreamMonitor {
         // TODO(aditi): Eventually we'll want to retry here
         statsd.increment("hub.event.monitor.missed_blocks", event.blockNumber - Number(currentBlockNumber), {
           shard: this.shardKey,
+          host: this.host,
         });
         this.log.error(
           { lastBlock: currentBlockNumber, currentBlock: event.blockNumber },
@@ -314,6 +330,7 @@ export class EventStreamMonitor {
       statsd.increment("hub.event.monitor.old_event", 1, {
         shard: this.shardKey,
         type: event.type,
+        host: this.host,
       });
       this.log.info(
         {
@@ -472,6 +489,8 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
                   }
 
                   eventIdsProcessed.push(streamId);
+                  await this.monitor?.onEventProcessed(hubEvt);
+
                   if (result.value.skipped) {
                     statsd.increment("hub.event.stream.skipped", 1, {
                       hub: this.hub.host,
@@ -480,7 +499,6 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
                   }
 
                   if (!result.value.skipped) {
-                    await this.monitor?.onEventProcessed(hubEvt);
                     const e2eTime = Date.now() - extractTimestampFromEvent(hubEvent);
                     statsd.timing("hub.event.stream.e2e_time", e2eTime, {
                       hub: this.hub.host,
