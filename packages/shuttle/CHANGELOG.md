@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.8.1
+
+### Patch Changes
+
+- 54dd939c: fix: revert changes to the event stream to process events in order
+
 ## 0.8.0
 
 ### Minor Changes
