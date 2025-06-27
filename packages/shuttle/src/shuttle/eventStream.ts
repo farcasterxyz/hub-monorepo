@@ -108,7 +108,7 @@ export class EventStreamConnection {
       count,
       "STREAMS",
       key,
-      ">",
+      "0",
     );
 
     return result?.length && result[0].length ? this._extractEntries(result[0][1]) : [];
@@ -153,28 +153,6 @@ export class EventStreamConnection {
           deliveryCount,
         }) as { id: string; idleTime: number; deliveryCount: number },
     );
-  }
-
-  /**
-   * Returns specified number of events (default 1) that have been pending for the
-   * given minimum amount of time.
-   *
-   * Useful for re-processing events that were never `ack`ed by a consumer.
-   */
-  async claimStale(key: string, consumerGroup: string, millis = 0, count = 1) {
-    // Need `as any` since method exists but not in the types
-    // biome-ignore lint/suspicious/noExplicitAny: see above
-    const [, result] = await (this.client as any).xautoclaimBuffer(
-      key,
-      consumerGroup,
-      DUMMY_CONSUMER_GROUP,
-      millis,
-      "0-0",
-      "COUNT",
-      count,
-    );
-
-    return this._extractEntries(result);
   }
 
   /**
@@ -372,7 +350,6 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
   public readonly shardKey: string;
   public readonly maxEventsPerFetch: number;
   public readonly messageProcessingConcurrency: number;
-  public readonly eventProcessingTimeout: number;
   public readonly eventDeletionThreshold: number;
   public stopped = true;
   public readonly groupName: string;
@@ -397,7 +374,6 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
     this.groupName = options.groupName || GROUP_NAME;
     this.maxEventsPerFetch = options.maxEventsPerFetch || MAX_EVENTS_PER_FETCH;
     this.messageProcessingConcurrency = options.messageProcessingConcurrency || MESSAGE_PROCESSING_CONCURRENCY;
-    this.eventProcessingTimeout = options.eventProcessingTimeout || EVENT_PROCESSING_TIMEOUT;
     this.eventDeletionThreshold = options.eventDeletionThreshold || EVENT_DELETION_THRESHOLD;
     this.shardKey = shardKey;
     this.log = logger;
@@ -415,11 +391,6 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
       // Run separately from the run loop since it consumes wall clock time and
       // doesn't need to happen often, as long as it happens at some frequency
       this.clearOldEvents();
-
-      // While we do process stale events regularly, it's possible that a stream
-      // will be so busy that we won't have had an opportunity, so make sure we
-      // guarantee at least one invocation on some cadence.
-      this.processStale(onEvent);
     }, 1000 * 60 /* 1 min */);
 
     void this._runLoop(onEvent);
@@ -462,7 +433,6 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
         const whenReceived = "current";
         await inBatchesOf(eventChunk, this.messageProcessingConcurrency, async (batchedEvents) => {
           const eventIdsProcessed: string[] = [];
-          const eventIdsSkipped: string[] = [];
           await Promise.allSettled(
             batchedEvents.map(([id, hubEvt, evtBytes]) =>
               (async (streamId, hubEvent, eventBytes) => {
@@ -482,6 +452,9 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
 
                   const startTime = Date.now();
                   const result = await onEvent(hubEvent);
+                  eventIdsProcessed.push(streamId);
+                  await this.monitor?.onEventProcessed(hubEvt);
+
                   const processingTime = Date.now() - startTime;
                   statsd.timing("hub.event.stream.time", processingTime, {
                     hub: this.hub.host,
@@ -492,28 +465,23 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
 
                   if (result.isErr()) {
                     this.emit("onError", hubEvent, result.error);
-                    eventIdsSkipped.push(streamId);
-                    throw result.error;
-                  }
+                  } else {
+                    if (result.value.skipped) {
+                      statsd.increment("hub.event.stream.skipped", 1, {
+                        hub: this.hub.host,
+                        source: this.shardKey,
+                      });
+                    }
 
-                  eventIdsProcessed.push(streamId);
-                  await this.monitor?.onEventProcessed(hubEvt);
-
-                  if (result.value.skipped) {
-                    statsd.increment("hub.event.stream.skipped", 1, {
-                      hub: this.hub.host,
-                      source: this.shardKey,
-                    });
-                  }
-
-                  if (!result.value.skipped) {
-                    const e2eTime = Date.now() - extractTimestampFromEvent(hubEvent);
-                    statsd.timing("hub.event.stream.e2e_time", e2eTime, {
-                      hub: this.hub.host,
-                      source: this.shardKey,
-                      hubEventType: hubEvent.type.toString(),
-                      whenReceived,
-                    });
+                    if (!result.value.skipped) {
+                      const e2eTime = Date.now() - extractTimestampFromEvent(hubEvent);
+                      statsd.timing("hub.event.stream.e2e_time", e2eTime, {
+                        hub: this.hub.host,
+                        source: this.shardKey,
+                        hubEventType: hubEvent.type.toString(),
+                        whenReceived,
+                      });
+                    }
                   }
                 } catch (e: unknown) {
                   statsd.increment("hub.event.stream.errors", { hub: this.hub.host, source: this.shardKey });
@@ -548,109 +516,11 @@ export class HubEventStreamConsumer extends TypedEmitter<HubEventStreamConsumerE
 
         if (eventsRead === 0) {
           if (this.stopped) break;
-          const totalProcessed = await this.processStale(onEvent);
-          if (totalProcessed === 0) {
-            await sleep(10); // Don't thrash CPU if there's no events to process
-          }
         }
       } catch (e: unknown) {
         this.log.error(e, "Error processing event, skipping");
       }
     }
-  }
-
-  public async processStale(onEvent: (event: HubEvent) => Promise<Result<ProcessResult, Error>>) {
-    let totalStaleProcessed = 0;
-
-    const startTime = Date.now();
-    const events = await this.stream.claimStale(
-      this.streamKey,
-      this.groupName,
-      this.eventProcessingTimeout,
-      this.maxEventsPerFetch,
-    );
-    statsd.timing("hub.event.stream.claim_stale_time", Date.now() - startTime, {
-      hub: this.hub.host,
-      source: this.shardKey,
-    });
-    statsd.increment("hub.event.stream.claim_stale", 1, {
-      hub: this.hub.host,
-      source: this.shardKey,
-    });
-
-    await inBatchesOf(events, this.messageProcessingConcurrency, async (batchedEvents) => {
-      const eventIdsProcessed: string[] = [];
-      const whenReceived = "stale";
-      await Promise.allSettled(
-        batchedEvents.map((event) =>
-          (async (streamEvent) => {
-            try {
-              const hubEvent = HubEvent.decode(streamEvent.data);
-              statsd.increment("hub.event.stream.stale.attempts", 1, {
-                hub: this.hub.host,
-                source: this.shardKey,
-                hubEventType: hubEvent.type.toString(),
-              });
-
-              const dequeueDelay = Date.now() - Number(streamEvent.id.split("-")[0]);
-              statsd.timing("hub.event.stream.dequeue_delay", dequeueDelay, {
-                hub: this.hub.host,
-                source: this.shardKey,
-                whenReceived,
-              });
-
-              const startTime = Date.now();
-              const result = await onEvent(hubEvent);
-              const processingTime = Date.now() - startTime;
-              statsd.timing("hub.event.stream.time", processingTime, {
-                hub: this.hub.host,
-                source: this.shardKey,
-                hubEventType: hubEvent.type.toString(),
-                whenReceived,
-              });
-              if (result.isErr()) throw result.error;
-
-              eventIdsProcessed.push(streamEvent.id);
-              await this.monitor?.onEventProcessed(hubEvent);
-
-              statsd.timing("hub.event.stream.e2e_time", Date.now() - extractTimestampFromEvent(hubEvent), {
-                hub: this.hub.host,
-                source: this.shardKey,
-                hubEventType: hubEvent.type.toString(),
-                whenReceived,
-              });
-            } catch (e: unknown) {
-              statsd.increment("hub.event.stream.errors", { hub: this.hub.host, source: this.shardKey });
-              this.log.error(e, "Error processing stale event"); // Report and move on to next event
-            }
-          })(event),
-        ),
-      );
-
-      // ACK all processed events in a single call
-      if (eventIdsProcessed.length) {
-        totalStaleProcessed += eventIdsProcessed.length;
-        const startTime = Date.now();
-        await this.stream.ack(this.streamKey, this.groupName, eventIdsProcessed);
-        statsd.timing("hub.event.stream.ack_time", Date.now() - startTime, {
-          hub: this.hub.host,
-          source: this.shardKey,
-          whenReceived,
-        });
-
-        statsd.increment("hub.event.stream.ack", eventIdsProcessed.length, {
-          hub: this.hub.host,
-          source: this.shardKey,
-          whenReceived,
-        });
-        statsd.increment("hub.event.stream.stale.processed", eventIdsProcessed.length, {
-          hub: this.hub.host,
-          source: this.shardKey,
-        });
-      }
-    });
-
-    return totalStaleProcessed;
   }
 
   public async clearOldEvents() {
