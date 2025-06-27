@@ -1,6 +1,6 @@
 {
   "name": "@farcaster/shuttle",
-  "version": "0.7.4",
+  "version": "0.8.0",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",

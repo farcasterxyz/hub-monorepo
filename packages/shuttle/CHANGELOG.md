@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.8.0
+
+### Minor Changes
+
+- 4a2d8e29: feat: process events from stream in order
+
 ## 0.7.4
 
 ### Patch Changes
