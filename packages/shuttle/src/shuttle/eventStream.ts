@@ -291,7 +291,7 @@ export class EventStreamMonitor {
           host: this.host,
           type: eventType,
         });
-        this.log.error({ blockNumber, eventType }, "Missed events for block");
+        this.log.error({ blockNumber, eventType, numMissedEvents: count }, "Missed events for block");
       }
     }
   }
