@@ -319,7 +319,7 @@ export class EventStreamMonitor {
           host: this.host,
         });
         this.log.error(
-          { lastBlock: currentBlockNumber, currentBlock: event.blockNumber },
+          { lastBlock: currentBlockNumber, currentBlock: event.blockNumber, eventShardId: event.shardIndex },
           "Skipped events in block range",
         );
       }
@@ -346,6 +346,8 @@ export class EventStreamMonitor {
           eventId: event.id,
           eventType: event.type,
           eventTimestamp: extractTimestampFromEvent(event),
+          eventShardId: event.shardIndex,
+          currentBlockNumber: Number(currentBlockNumber),
         },
         "Received event for old block",
       );
@@ -358,7 +360,12 @@ export class EventStreamMonitor {
     } else if (new_count < 0) {
       await this.redis.del(key);
       this.log.info(
-        { blockNumber: event.blockNumber, eventType: event.type, eventTimestamp: extractTimestampFromEvent(event) },
+        {
+          blockNumber: event.blockNumber,
+          eventType: event.type,
+          eventTimestamp: extractTimestampFromEvent(event),
+          eventShardId: event.shardIndex,
+        },
         "Received unexpected event",
       );
     }
