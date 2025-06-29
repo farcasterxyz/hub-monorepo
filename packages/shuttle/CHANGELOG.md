@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.8.2
+
+### Patch Changes
+
+- 8877a5f7: chore: add logging for event stream monitor
+
 ## 0.8.1
 
 ### Patch Changes
