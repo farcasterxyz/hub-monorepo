@@ -15,6 +15,11 @@ export interface RetryOnchainEventsRequest {
   blockRange?: RetryBlockNumberRange | undefined;
 }
 
+export interface RetryFnameRequest {
+  fid?: number | undefined;
+  fname?: string | undefined;
+}
+
 export interface UploadSnapshotRequest {
   shardIndexes: number[];
 }
@@ -204,6 +209,77 @@ export const RetryOnchainEventsRequest = {
     message.blockRange = (object.blockRange !== undefined && object.blockRange !== null)
       ? RetryBlockNumberRange.fromPartial(object.blockRange)
       : undefined;
+    return message;
+  },
+};
+
+function createBaseRetryFnameRequest(): RetryFnameRequest {
+  return { fid: undefined, fname: undefined };
+}
+
+export const RetryFnameRequest = {
+  encode(message: RetryFnameRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.fid !== undefined) {
+      writer.uint32(8).uint64(message.fid);
+    }
+    if (message.fname !== undefined) {
+      writer.uint32(18).string(message.fname);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): RetryFnameRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseRetryFnameRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.fid = longToNumber(reader.uint64() as Long);
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.fname = reader.string();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): RetryFnameRequest {
+    return {
+      fid: isSet(object.fid) ? Number(object.fid) : undefined,
+      fname: isSet(object.fname) ? String(object.fname) : undefined,
+    };
+  },
+
+  toJSON(message: RetryFnameRequest): unknown {
+    const obj: any = {};
+    message.fid !== undefined && (obj.fid = Math.round(message.fid));
+    message.fname !== undefined && (obj.fname = message.fname);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<RetryFnameRequest>, I>>(base?: I): RetryFnameRequest {
+    return RetryFnameRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<RetryFnameRequest>, I>>(object: I): RetryFnameRequest {
+    const message = createBaseRetryFnameRequest();
+    message.fid = object.fid ?? undefined;
+    message.fname = object.fname ?? undefined;
     return message;
   },
 };

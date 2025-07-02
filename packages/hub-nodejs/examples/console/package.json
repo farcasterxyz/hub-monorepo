@@ -1,0 +1,18 @@
+{
+  "name": "console-example",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0",
+  "main": "console.ts",
+  "scripts": {
+    "start": "tsx console.ts",
+    "typecheck": "yarn tsc --noEmit"
+  },
+  "dependencies": {
+    "@farcaster/hub-nodejs": "^0.15.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.3",
+    "typescript": "^5.0.0"
+  }
+}
