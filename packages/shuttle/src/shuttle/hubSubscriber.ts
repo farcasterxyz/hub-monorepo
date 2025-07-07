@@ -60,16 +60,16 @@ export class BaseHubSubscriber extends HubSubscriber {
 
   private stream: ClientReadableStream<HubEvent> | null = null;
   private totalShards: number | undefined;
-  private shardIndex: number | undefined;
+  private shardIndex: number;
   private connectionTimeout: number; // milliseconds
 
   constructor(
     label: string,
     hubClient: HubRpcClient,
+    shardIndex: number,
     log: Logger,
     eventTypes?: HubEventType[],
     totalShards?: number,
-    shardIndex?: number,
     connectionTimeout = 30000,
   ) {
     super();
@@ -217,17 +217,17 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
   constructor(
     label: string,
     hubClient: HubClient,
+    shardIndex: number,
     eventStream: EventStreamConnection,
     redis: RedisClient,
     shardKey: string,
     log: Logger,
     eventTypes?: HubEventType[],
     totalShards?: number,
-    shardIndex?: number,
     connectionTimeout?: number,
     options?: EventStreamHubSubscriberOptions,
   ) {
-    super(label, hubClient.client, log, eventTypes, totalShards, shardIndex, connectionTimeout);
+    super(label, hubClient.client, shardIndex, log, eventTypes, totalShards, connectionTimeout);
     this.eventStream = eventStream;
     this.redis = redis;
     this.streamKey = `hub:${hubClient.host}:evt:msg:${shardKey}`;
