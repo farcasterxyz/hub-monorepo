@@ -1,5 +1,13 @@
 # @farcaster/hub-shuttle
 
+## 0.9.0
+
+### Minor Changes
+
+- 83a95868: fix: make shard id required for the hub subscriber
+- Updated dependencies [74149586]
+  - @farcaster/hub-nodejs@0.15.2
+
 ## 0.8.2
 
 ### Patch Changes
