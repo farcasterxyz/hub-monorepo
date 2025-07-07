@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.18.2
+
+### Patch Changes
+
+- 74149586: fix: Add console example and bump protos
+
 ## 0.18.1
 
 ### Patch Changes
