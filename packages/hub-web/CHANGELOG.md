@@ -1,5 +1,13 @@
 # @farcaster/hub-web
 
+## 0.11.2
+
+### Patch Changes
+
+- 74149586: fix: Add console example and bump protos
+- Updated dependencies [74149586]
+  - @farcaster/core@0.18.2
+
 ## 0.11.1
 
 ### Patch Changes
