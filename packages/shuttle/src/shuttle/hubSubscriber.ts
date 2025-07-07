@@ -59,24 +59,21 @@ export class BaseHubSubscriber extends HubSubscriber {
   protected eventTypes: HubEventType[];
 
   private stream: ClientReadableStream<HubEvent> | null = null;
-  private totalShards: number | undefined;
-  private shardIndex: number | undefined;
+  private shardIndex: number;
   private connectionTimeout: number; // milliseconds
 
   constructor(
     label: string,
     hubClient: HubRpcClient,
+    shardIndex: number,
     log: Logger,
     eventTypes?: HubEventType[],
-    totalShards?: number,
-    shardIndex?: number,
     connectionTimeout = 30000,
   ) {
     super();
     this.label = label;
     this.hubClient = hubClient;
     this.log = log;
-    this.totalShards = totalShards;
     this.shardIndex = shardIndex;
     this.eventTypes = eventTypes || DEFAULT_EVENT_TYPES;
     this.connectionTimeout = connectionTimeout;
@@ -120,7 +117,6 @@ export class BaseHubSubscriber extends HubSubscriber {
 
     const subscribeParams = {
       eventTypes: this.eventTypes,
-      totalShards: this.totalShards,
       shardIndex: this.shardIndex,
       fromId,
     };
@@ -131,7 +127,7 @@ export class BaseHubSubscriber extends HubSubscriber {
         this.log.info(
           `HubSubscriber ${this.label} subscribed to hub events (types ${JSON.stringify(this.eventTypes)}, shard: ${
             this.shardIndex
-          }/${this.totalShards})`,
+          })`,
         );
         this.stream = stream;
         this.stopped = false;
@@ -217,17 +213,16 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
   constructor(
     label: string,
     hubClient: HubClient,
+    shardIndex: number,
     eventStream: EventStreamConnection,
     redis: RedisClient,
     shardKey: string,
     log: Logger,
     eventTypes?: HubEventType[],
-    totalShards?: number,
-    shardIndex?: number,
     connectionTimeout?: number,
     options?: EventStreamHubSubscriberOptions,
   ) {
-    super(label, hubClient.client, log, eventTypes, totalShards, shardIndex, connectionTimeout);
+    super(label, hubClient.client, shardIndex, log, eventTypes, connectionTimeout);
     this.eventStream = eventStream;
     this.redis = redis;
     this.streamKey = `hub:${hubClient.host}:evt:msg:${shardKey}`;
