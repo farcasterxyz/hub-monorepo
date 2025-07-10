@@ -18,6 +18,6 @@
         "useLiteralKeys": "off"
       }
     },
-    "ignore": ["src/protobufs/generated/*"]
+    "ignore": ["src/protobufs/generated/*", "src/addon/*"]
   }
 }

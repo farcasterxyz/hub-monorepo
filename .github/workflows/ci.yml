@@ -7,6 +7,9 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  MALACHITE_GIT_REF: "13bca14cd209d985c3adf101a02924acde8723a5"
+
 # prevent multiple simultaneous test runs
 concurrency:
   group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
@@ -44,9 +47,27 @@ jobs:
       # Make sure this matches what we do locally and what we build with our Docker image
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: 1.77.0
+          toolchain: 1.85.1
 
       - uses: actions/checkout@v4
+        with:
+          repository: informalsystems/malachite
+          ref: ${{ env.MALACHITE_GIT_REF }}
+          path: ./malachite
+
+      - uses: actions/checkout@v4
+        with:
+          repository: CassOnMars/eth-signature-verifier
+          path: ./eth-signature-verifier
+
+      - uses: actions/checkout@v4
+        with:
+          repository: farcasterxyz/snapchain
+          path: ./snapchain
+
+      - uses: actions/checkout@v4
+        with:
+          path: ./hub
 
       - uses: actions/setup-node@v4
         with:
@@ -56,31 +77,52 @@ jobs:
         id: module-cache
         uses: actions/cache@v4
         with:
-          path: ${{ github.workspace }}/node_modules
-          key: ${{ runner.os }}-${{ runner.arch }}--node--${{ matrix.node_version}}--${{ hashFiles('yarn.lock') }}
+          path: ./hub/node_modules
+          key: ${{ runner.os }}-${{ runner.arch }}--node--${{ matrix.node_version}}--${{ hashFiles('./hub/yarn.lock') }}
+
+      - name: Cache Cargo registry and git
+        uses: actions/cache@v4
+        with:
+          path: |
+            ./hub/.cargo/registry
+            ./hub/.cargo/git
+          key: ${{ runner.os }}-${{ runner.arch }}-cargo-registry-${{ hashFiles('./hub/apps/hubble/src/addon/Cargo.lock') }}
+
+      - name: Cache Cargo build artifacts
+        uses: actions/cache@v4
+        with:
+          path: ./hub/apps/hubble/src/addon/target
+          key: ${{ runner.os }}-${{ runner.arch }}-cargo-build-${{ hashFiles('./hub/apps/hubble/src/addon/Cargo.lock') }}
 
       - name: Install Protocol Buffer Compiler
         uses: arduino/setup-protoc@v3
         with:
+          path: ./hub
           version: "24.4"
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
 
       - name: Install dependencies
+        working-directory: ./hub
         run: yarn install
 
       - name: Run build
+        working-directory: ./hub
         run: yarn build
 
       - name: Run linter
+        working-directory: ./hub
         run: yarn lint:ci
 
       - name: Run tests
+        working-directory: ./hub
         run: yarn test:ci
 
       - name: Upload coverage results
-        uses: codecov/codecov-action@v4
         continue-on-error: true # Don't fail the build if codecov fails
         timeout-minutes: 1
+        uses: codecov/codecov-action@v4
+        with:
+          path: ./hub
 
