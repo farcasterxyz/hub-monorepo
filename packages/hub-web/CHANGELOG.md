@@ -1,5 +1,13 @@
 # @farcaster/hub-web
 
+## 0.11.3
+
+### Patch Changes
+
+- feat: update protos to support new storage unit type in snapchain v0.4.0
+- Updated dependencies
+  - @farcaster/core@0.18.3
+
 ## 0.11.2
 
 ### Patch Changes
