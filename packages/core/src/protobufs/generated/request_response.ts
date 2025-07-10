@@ -86,7 +86,6 @@ export function storeTypeToJSON(object: StoreType): string {
 export enum StorageUnitType {
   UNIT_TYPE_LEGACY = 0,
   UNIT_TYPE_2024 = 1,
-  UNIT_TYPE_2025 = 2,
 }
 
 export function storageUnitTypeFromJSON(object: any): StorageUnitType {
@@ -97,9 +96,6 @@ export function storageUnitTypeFromJSON(object: any): StorageUnitType {
     case 1:
     case "UNIT_TYPE_2024":
       return StorageUnitType.UNIT_TYPE_2024;
-    case 2:
-    case "UNIT_TYPE_2025":
-      return StorageUnitType.UNIT_TYPE_2025;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum StorageUnitType");
   }
@@ -111,8 +107,6 @@ export function storageUnitTypeToJSON(object: StorageUnitType): string {
       return "UNIT_TYPE_LEGACY";
     case StorageUnitType.UNIT_TYPE_2024:
       return "UNIT_TYPE_2024";
-    case StorageUnitType.UNIT_TYPE_2025:
-      return "UNIT_TYPE_2025";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum StorageUnitType");
   }

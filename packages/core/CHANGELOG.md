@@ -1,11 +1,5 @@
 # @farcaster/core
 
-## 0.18.3
-
-### Patch Changes
-
-- feat: update protos to support new storage unit type in snapchain v0.4.0
-
 ## 0.18.2
 
 ### Patch Changes
