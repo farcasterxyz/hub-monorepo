@@ -173,12 +173,14 @@ export class BaseHubSubscriber extends HubSubscriber {
         // biome-ignore lint/suspicious/noExplicitAny: error catching
       } catch (e: any) {
         this.emit("onError", e, this.stopped);
+        this.log.info(
+          `Hub event stream processing halted unexpectedly: ${e.message}. HubSubscriber will attempt ${this.label} restarting hub event stream in 5 seconds...`,
+        );
+        await sleep(5_000);
+        // It's important to check if the subscription is stopped after sleeping because in cases where the server is unresponsive, we end up in this catch block and the stream is closed some time shortly after. If we attempt to retry anyway then we end up raising due to the stream being closed.
         if (this.stopped) {
-          this.log.info(`Hub event stream processing stopped: ${e.message}`);
+          this.log.info(`Hub event stream processing stopped, aborting retry: ${e.message}`);
         } else {
-          this.log.info(`Hub event stream processing halted unexpectedly: ${e.message}`);
-          this.log.info(`HubSubscriber ${this.label} restarting hub event stream in 5 seconds...`);
-          await sleep(5_000);
           void this.start();
         }
       }
