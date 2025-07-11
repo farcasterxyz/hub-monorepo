@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.9.1
+
+### Patch Changes
+
+- 5460d914: fix: handle retries on server-side termination properly in HubSubscriber
+
 ## 0.9.0
 
 ### Minor Changes
