@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.9.2
+
+### Patch Changes
+
+- e3dc87e5: fix: update where we emit errors on hub subscriber disconnects
+
 ## 0.9.1
 
 ### Patch Changes
