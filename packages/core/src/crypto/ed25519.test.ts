@@ -46,7 +46,7 @@ describe("verifyMessageHashSignature", () => {
     const messageData = Factories.CastAddData.build();
     const bytes = protobufs.MessageData.encode(messageData).finish();
     const hash = blake3(bytes, { dkLen: 20 });
-    const isValid = await ed25519.verifyMessageHashSignature(randomBytes(32), hash, privateKey);
+    const isValid = await ed25519.verifyMessageHashSignature(randomBytes(32), hash, publicKey);
     expect(isValid._unsafeUnwrapErr()).toBeInstanceOf(HubError);
   });
 });
