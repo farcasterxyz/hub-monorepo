@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.18.4
+
+### Patch Changes
+
+- b4e3487b: fix: correctly determine storage unit type
+
 ## 0.18.3
 
 ### Patch Changes
