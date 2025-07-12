@@ -1,7 +1,7 @@
 import { StorageRentOnChainEvent, StorageUnitDetails, StorageUnitType, StoreType } from "./protobufs";
 
 export const LEGACY_STORAGE_UNIT_CUTOFF_TIMESTAMP = 1724889600; // 2024-08-29 00:00:00 UTC
-export const UNIT_TYPE_2025__CUTOFF_TIMESTAMP = 1752685200; // 2025-07-16 17:00:00 UTC
+export const UNIT_TYPE_2024__CUTOFF_TIMESTAMP = 1752685200; // 2025-07-16 17:00:00 UTC
 const ONE_YEAR_IN_SECONDS = 365 * 24 * 60 * 60;
 
 const STORAGE_UNIT_DEFAULTS = {
@@ -84,10 +84,10 @@ export const getDefaultStoreLimit = (storeType: StoreType, unit_type: StorageUni
 export const getStorageUnitType = (event: StorageRentOnChainEvent) => {
   if (event.blockTimestamp < LEGACY_STORAGE_UNIT_CUTOFF_TIMESTAMP) {
     return StorageUnitType.UNIT_TYPE_LEGACY;
-  } else if (event.blockTimestamp < UNIT_TYPE_2025__CUTOFF_TIMESTAMP) {
-    return StorageUnitType.UNIT_TYPE_2025;
-  } else {
+  } else if (event.blockTimestamp < UNIT_TYPE_2024__CUTOFF_TIMESTAMP) {
     return StorageUnitType.UNIT_TYPE_2024;
+  } else {
+    return StorageUnitType.UNIT_TYPE_2025;
   }
 };
 
@@ -95,7 +95,7 @@ export const getStorageUnitExpiry = (event: StorageRentOnChainEvent) => {
   if (event.blockTimestamp < LEGACY_STORAGE_UNIT_CUTOFF_TIMESTAMP) {
     // Legacy storage units expire after 2 years
     return event.blockTimestamp + ONE_YEAR_IN_SECONDS * 3;
-  } else if (event.blockTimestamp < UNIT_TYPE_2025__CUTOFF_TIMESTAMP) {
+  } else if (event.blockTimestamp < UNIT_TYPE_2024__CUTOFF_TIMESTAMP) {
     // 2024 storage units expire after 2 years
     return event.blockTimestamp + ONE_YEAR_IN_SECONDS * 2;
   } else {
