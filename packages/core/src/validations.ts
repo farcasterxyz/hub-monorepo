@@ -314,7 +314,9 @@ export const validateMessage = async (
 
   // 2. If the data_bytes are set, we'll validate signature against that
   if (message.dataBytes && message.dataBytes.length > 0) {
-    if (message.dataBytes.length > 2048) {
+    // This is the max size allowed for a message (link compact) on Snapchain.
+    // On Snapchain, we validate dataBytes specifically by message type and in the client side validations we validate text size for different cast types.
+    if (message.dataBytes.length > 65_536) {
       return err(new HubError("bad_request.validation_failure", "dataBytes > 2048 bytes"));
     }
     // 2a. Use the databytes as the hash to check the signature against
