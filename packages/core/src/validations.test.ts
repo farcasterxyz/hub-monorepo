@@ -8,9 +8,10 @@ import { Factories } from "./factories";
 import { fromFarcasterTime, getFarcasterTime } from "./time";
 import * as validations from "./validations";
 import { makeVerificationAddressClaim } from "./verifications";
-import { UserDataType, UserNameType } from "@farcaster/hub-nodejs";
+import { CastAddBody, makeCastAdd, makeCastAddData, UserDataType, UserNameType } from "@farcaster/hub-nodejs";
 import { defaultL1PublicClient } from "./eth/clients";
 import { jest } from "@jest/globals";
+import { assert } from "console";
 
 const signer = Factories.Ed25519Signer.build();
 const ethSigner = Factories.Eip712Signer.build();
@@ -1473,6 +1474,19 @@ describe("validateMessage", () => {
 
     const result = await validations.validateMessage(message);
     expect(result).toEqual(err(new HubError("bad_request.validation_failure", "invalid signature")));
+  });
+
+  test("passes for 10k cast", async () => {
+    const message = (
+      await makeCastAdd(
+        CastAddBody.create({ text: "z".repeat(10_000), type: CastType.TEN_K_CAST }),
+        { fid: Factories.Fid.build(), network: Factories.FarcasterNetwork.build() },
+        Factories.Ed25519Signer.build(),
+      )
+    )._unsafeUnwrap();
+    expect(message.dataBytes !== undefined).toBeTruthy();
+    const result = await validations.validateMessage(message);
+    expect(result.isOk()).toBeTruthy();
   });
 });
 
