@@ -1,5 +1,12 @@
 # @farcaster/core
 
+## 0.18.5
+
+### Patch Changes
+
+- 83f4721a: fix: update dataBytes length check for 10k casts
+- c37a6370: chore: pull in updated Snapchain protos
+
 ## 0.18.4
 
 ### Patch Changes
