@@ -16,7 +16,7 @@ USER_DATA_TYPE_PFP
 https://i.seadn.io/gae/sYAr036bd0bRpj7OX6B-F-MqLGznVkK3--DSneL_BT5GX4NZJ3Zu91PgjpD9-xuVJtHq0qirJfPZeMKrahz8Us2Tj_X8qdNPYC-imqs?w=500&auto=format
 
 USER_DATA_TYPE_BIO
-Technowatermelon. Elder Millenial. Building Farcaster.
+Technowatermelon. Elder Millennial. Building Farcaster.
 
 nf.td/varun
 
