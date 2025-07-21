@@ -2,6 +2,7 @@
 import Long from "long";
 import _m0 from "protobufjs/minimal";
 import { ShardChunk } from "./blocks";
+import { ContactInfoBody } from "./gossip";
 import { HubEvent, HubEventType, hubEventTypeFromJSON, hubEventTypeToJSON } from "./hub_event";
 import {
   CastId,
@@ -388,6 +389,13 @@ export interface FidAddressTypeResponse {
   isCustody: boolean;
   isAuth: boolean;
   isVerified: boolean;
+}
+
+export interface GetConnectedPeersRequest {
+}
+
+export interface GetConnectedPeersResponse {
+  contacts: ContactInfoBody[];
 }
 
 function createBaseBlocksRequest(): BlocksRequest {
@@ -4291,6 +4299,112 @@ export const FidAddressTypeResponse = {
     message.isCustody = object.isCustody ?? false;
     message.isAuth = object.isAuth ?? false;
     message.isVerified = object.isVerified ?? false;
+    return message;
+  },
+};
+
+function createBaseGetConnectedPeersRequest(): GetConnectedPeersRequest {
+  return {};
+}
+
+export const GetConnectedPeersRequest = {
+  encode(_: GetConnectedPeersRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): GetConnectedPeersRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGetConnectedPeersRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): GetConnectedPeersRequest {
+    return {};
+  },
+
+  toJSON(_: GetConnectedPeersRequest): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GetConnectedPeersRequest>, I>>(base?: I): GetConnectedPeersRequest {
+    return GetConnectedPeersRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<GetConnectedPeersRequest>, I>>(_: I): GetConnectedPeersRequest {
+    const message = createBaseGetConnectedPeersRequest();
+    return message;
+  },
+};
+
+function createBaseGetConnectedPeersResponse(): GetConnectedPeersResponse {
+  return { contacts: [] };
+}
+
+export const GetConnectedPeersResponse = {
+  encode(message: GetConnectedPeersResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    for (const v of message.contacts) {
+      ContactInfoBody.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): GetConnectedPeersResponse {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGetConnectedPeersResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.contacts.push(ContactInfoBody.decode(reader, reader.uint32()));
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): GetConnectedPeersResponse {
+    return {
+      contacts: Array.isArray(object?.contacts) ? object.contacts.map((e: any) => ContactInfoBody.fromJSON(e)) : [],
+    };
+  },
+
+  toJSON(message: GetConnectedPeersResponse): unknown {
+    const obj: any = {};
+    if (message.contacts) {
+      obj.contacts = message.contacts.map((e) => e ? ContactInfoBody.toJSON(e) : undefined);
+    } else {
+      obj.contacts = [];
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GetConnectedPeersResponse>, I>>(base?: I): GetConnectedPeersResponse {
+    return GetConnectedPeersResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<GetConnectedPeersResponse>, I>>(object: I): GetConnectedPeersResponse {
+    const message = createBaseGetConnectedPeersResponse();
+    message.contacts = object.contacts?.map((e) => ContactInfoBody.fromPartial(e)) || [];
     return message;
   },
 };
