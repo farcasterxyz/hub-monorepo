@@ -29,6 +29,8 @@ import {
   FidsRequest,
   FidsResponse,
   FidTimestampRequest,
+  GetConnectedPeersRequest,
+  GetConnectedPeersResponse,
   GetInfoRequest,
   GetInfoResponse,
   IdRegistryEventByAddressRequest,
@@ -114,6 +116,16 @@ export const HubServiceService = {
     requestDeserialize: (value: Buffer) => FidsRequest.decode(value),
     responseSerialize: (value: FidsResponse) => Buffer.from(FidsResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer) => FidsResponse.decode(value),
+  },
+  getConnectedPeers: {
+    path: "/HubService/GetConnectedPeers",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: GetConnectedPeersRequest) => Buffer.from(GetConnectedPeersRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => GetConnectedPeersRequest.decode(value),
+    responseSerialize: (value: GetConnectedPeersResponse) =>
+      Buffer.from(GetConnectedPeersResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => GetConnectedPeersResponse.decode(value),
   },
   /** Events */
   subscribe: {
@@ -445,6 +457,7 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   getShardChunks: handleUnaryCall<ShardChunksRequest, ShardChunksResponse>;
   getInfo: handleUnaryCall<GetInfoRequest, GetInfoResponse>;
   getFids: handleUnaryCall<FidsRequest, FidsResponse>;
+  getConnectedPeers: handleUnaryCall<GetConnectedPeersRequest, GetConnectedPeersResponse>;
   /** Events */
   subscribe: handleServerStreamingCall<SubscribeRequest, HubEvent>;
   getEvent: handleUnaryCall<EventRequest, HubEvent>;
@@ -568,6 +581,21 @@ export interface HubServiceClient extends Client {
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: FidsResponse) => void,
+  ): ClientUnaryCall;
+  getConnectedPeers(
+    request: GetConnectedPeersRequest,
+    callback: (error: ServiceError | null, response: GetConnectedPeersResponse) => void,
+  ): ClientUnaryCall;
+  getConnectedPeers(
+    request: GetConnectedPeersRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: GetConnectedPeersResponse) => void,
+  ): ClientUnaryCall;
+  getConnectedPeers(
+    request: GetConnectedPeersRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: GetConnectedPeersResponse) => void,
   ): ClientUnaryCall;
   /** Events */
   subscribe(request: SubscribeRequest, options?: Partial<CallOptions>): ClientReadableStream<HubEvent>;

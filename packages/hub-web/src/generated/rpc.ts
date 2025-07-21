@@ -19,6 +19,8 @@ import {
   FidsRequest,
   FidsResponse,
   FidTimestampRequest,
+  GetConnectedPeersRequest,
+  GetConnectedPeersResponse,
   GetInfoRequest,
   GetInfoResponse,
   IdRegistryEventByAddressRequest,
@@ -56,6 +58,10 @@ export interface HubService {
   getShardChunks(request: DeepPartial<ShardChunksRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<ShardChunksResponse>;
   getInfo(request: DeepPartial<GetInfoRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<GetInfoResponse>;
   getFids(request: DeepPartial<FidsRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<FidsResponse>;
+  getConnectedPeers(
+    request: DeepPartial<GetConnectedPeersRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<GetConnectedPeersResponse>;
   /** Events */
   subscribe(request: DeepPartial<SubscribeRequest>, metadata?: grpcWeb.grpc.Metadata): Observable<HubEvent>;
   getEvent(request: DeepPartial<EventRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<HubEvent>;
@@ -149,6 +155,7 @@ export class HubServiceClientImpl implements HubService {
     this.getShardChunks = this.getShardChunks.bind(this);
     this.getInfo = this.getInfo.bind(this);
     this.getFids = this.getFids.bind(this);
+    this.getConnectedPeers = this.getConnectedPeers.bind(this);
     this.subscribe = this.subscribe.bind(this);
     this.getEvent = this.getEvent.bind(this);
     this.getEvents = this.getEvents.bind(this);
@@ -207,6 +214,13 @@ export class HubServiceClientImpl implements HubService {
 
   getFids(request: DeepPartial<FidsRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<FidsResponse> {
     return this.rpc.unary(HubServiceGetFidsDesc, FidsRequest.fromPartial(request), metadata);
+  }
+
+  getConnectedPeers(
+    request: DeepPartial<GetConnectedPeersRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<GetConnectedPeersResponse> {
+    return this.rpc.unary(HubServiceGetConnectedPeersDesc, GetConnectedPeersRequest.fromPartial(request), metadata);
   }
 
   subscribe(request: DeepPartial<SubscribeRequest>, metadata?: grpcWeb.grpc.Metadata): Observable<HubEvent> {
@@ -532,6 +546,29 @@ export const HubServiceGetFidsDesc: UnaryMethodDefinitionish = {
   responseType: {
     deserializeBinary(data: Uint8Array) {
       const value = FidsResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetConnectedPeersDesc: UnaryMethodDefinitionish = {
+  methodName: "GetConnectedPeers",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return GetConnectedPeersRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = GetConnectedPeersResponse.decode(data);
       return {
         ...value,
         toObject() {
