@@ -133,9 +133,9 @@ HubErrorCode defines all the types of errors that can be raised in the Hub.
 
 ## Time
 
-Farcaster timestamps are counted as seconds since the Farcaster epoch, which began on Jan 1, 2021 00:00:00 UTC.
+Farcaster timestamps are counted as seconds since the Farcaster epoch, which began on January 1, 2021, at 00:00:00 UTC.
 
-Using a more recent epoch lets Farcaster use shorter 32-bit values to hold times which reduces the size of messages. Timestamps are usually measured as milliseconds since the Unix epoch and can be converted to Farcaster time by following this equation:\
+Using a more recent epoch allows Farcaster to use shorter 32-bit values to represent times, which reduces the size of messages. Timestamps are usually measured as milliseconds since the Unix epoch and can be converted to Farcaster time by following this equation:\
 `Farcaster Time (seconds) = (Unix Time (milliseconds) / 1000) - 1609459200`
 
 ### getFarcasterTime
