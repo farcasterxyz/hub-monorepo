@@ -125,7 +125,7 @@ if (ethereumAddressResult.isOk()) {
 
 | Name    | Type                                                                             | Description                         |
 | :------ | :------------------------------------------------------------------------------- | :---------------------------------- |
-| `claim` | [`VerificationEthAddressClaim`](../modules/types.md#verificationethaddressclaim) | The body of the claim to be signed. |
+| `claim` | [`VerificationEthAddressClaim`](../Messages.md#verificationethaddressclaim) | The body of the claim to be signed. |
 
 ---
 
