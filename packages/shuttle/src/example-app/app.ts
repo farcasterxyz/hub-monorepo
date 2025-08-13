@@ -147,7 +147,7 @@ export class App implements MessageHandler {
 
       if (Object.keys(body).length > 0) {
         try {
-          await (txn as AppDb)
+          await (txn as unknown as AppDb)
             .insertInto("onchain_events")
             .values({
               chainId: BigInt(onChainEvent.chainId),

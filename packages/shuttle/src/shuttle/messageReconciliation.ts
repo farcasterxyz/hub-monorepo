@@ -85,6 +85,7 @@ export class MessageReconciliation {
       const dbMessages = await this.db
         .selectFrom("messages")
         .select(["prunedAt", "revokedAt", "hash", "fid", "type", "raw"])
+        // @ts-ignore
         .where("hash", "=", sql`any(${messageHashes})`)
         .execute();
 
