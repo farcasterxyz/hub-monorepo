@@ -1,4 +1,11 @@
-import { getDefaultStoreLimit, getStoreLimit, getStoreLimits } from "./limits";
+import {
+  getDefaultStoreLimit,
+  getStorageExpiryTimestampFromBlockTimestamp,
+  getStoreLimit,
+  getStoreLimits,
+  LEGACY_STORAGE_UNIT_CUTOFF_TIMESTAMP,
+  UNIT_TYPE_2024__CUTOFF_TIMESTAMP,
+} from "./limits";
 import { StorageUnitType, StoreType } from "./protobufs";
 
 describe("getDefaultStoreLimit", () => {
@@ -20,6 +27,25 @@ describe("getDefaultStoreLimit", () => {
 
     expect(getDefaultStoreLimit(StoreType.VERIFICATIONS, StorageUnitType.UNIT_TYPE_LEGACY)).toEqual(25);
     expect(getDefaultStoreLimit(StoreType.VERIFICATIONS, StorageUnitType.UNIT_TYPE_2024)).toEqual(25);
+  });
+});
+
+describe("getStorageExpiryTimestampFromBlockTimestamp", () => {
+  test("calculates correct expiry timestamp for legacy, 2024, and 2025 storage units", () => {
+    const ONE_YEAR_IN_SECONDS = 365 * 24 * 60 * 60;
+    const legacyTimestamp = LEGACY_STORAGE_UNIT_CUTOFF_TIMESTAMP - 1;
+    const unitType2024Timestamp = UNIT_TYPE_2024__CUTOFF_TIMESTAMP - 1;
+    const unitType2025Timestamp = UNIT_TYPE_2024__CUTOFF_TIMESTAMP + 1;
+
+    expect(getStorageExpiryTimestampFromBlockTimestamp(legacyTimestamp)).toEqual(
+      legacyTimestamp + ONE_YEAR_IN_SECONDS * 3,
+    );
+    expect(getStorageExpiryTimestampFromBlockTimestamp(unitType2024Timestamp)).toEqual(
+      unitType2024Timestamp + ONE_YEAR_IN_SECONDS * 2,
+    );
+    expect(getStorageExpiryTimestampFromBlockTimestamp(unitType2025Timestamp)).toEqual(
+      unitType2025Timestamp + ONE_YEAR_IN_SECONDS,
+    );
   });
 });
 
