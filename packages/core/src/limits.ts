@@ -92,14 +92,18 @@ export const getStorageUnitType = (event: StorageRentOnChainEvent) => {
 };
 
 export const getStorageUnitExpiry = (event: StorageRentOnChainEvent) => {
-  if (event.blockTimestamp < LEGACY_STORAGE_UNIT_CUTOFF_TIMESTAMP) {
+  return getStorageExpiryTimestampFromBlockTimestamp(event.blockTimestamp);
+};
+
+export const getStorageExpiryTimestampFromBlockTimestamp = (blockTimestamp: number) => {
+  if (blockTimestamp < LEGACY_STORAGE_UNIT_CUTOFF_TIMESTAMP) {
     // Legacy storage units expire after 2 years
-    return event.blockTimestamp + ONE_YEAR_IN_SECONDS * 3;
-  } else if (event.blockTimestamp < UNIT_TYPE_2024__CUTOFF_TIMESTAMP) {
+    return blockTimestamp + ONE_YEAR_IN_SECONDS * 3;
+  } else if (blockTimestamp < UNIT_TYPE_2024__CUTOFF_TIMESTAMP) {
     // 2024 storage units expire after 2 years
-    return event.blockTimestamp + ONE_YEAR_IN_SECONDS * 2;
+    return blockTimestamp + ONE_YEAR_IN_SECONDS * 2;
   } else {
     // 2025 storage units expire after 1 year
-    return event.blockTimestamp + ONE_YEAR_IN_SECONDS;
+    return blockTimestamp + ONE_YEAR_IN_SECONDS;
   }
 };

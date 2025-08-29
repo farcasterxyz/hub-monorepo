@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.18.6
+
+### Patch Changes
+
+- feat: Create a new function to calculate storage unit expiry timestamp
+
 ## 0.18.5
 
 ### Patch Changes
