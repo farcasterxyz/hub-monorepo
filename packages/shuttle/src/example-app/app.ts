@@ -101,7 +101,7 @@ export class App implements MessageHandler {
       shardKey,
       log,
       null,
-      connectionTimeout: SUBSCRIBE_RPC_TIMEOUT,
+      SUBSCRIBE_RPC_TIMEOUT,
     );
     const streamConsumer = new HubEventStreamConsumer(hub, eventStreamForRead, shardKey);
 
