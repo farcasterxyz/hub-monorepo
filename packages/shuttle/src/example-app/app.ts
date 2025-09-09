@@ -95,14 +95,13 @@ export class App implements MessageHandler {
     const hubSubscriber = new EventStreamHubSubscriber(
       hubId,
       hub,
+      shardIndex,
       eventStreamForWrite,
       redis,
       shardKey,
       log,
       null,
-      totalShards,
-      shardIndex,
-      SUBSCRIBE_RPC_TIMEOUT,
+      connectionTimeout: SUBSCRIBE_RPC_TIMEOUT,
     );
     const streamConsumer = new HubEventStreamConsumer(hub, eventStreamForRead, shardKey);
 
