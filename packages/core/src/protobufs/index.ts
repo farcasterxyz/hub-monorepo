@@ -1,7 +1,5 @@
-export * from "./generated/gossip";
 export * from "./generated/hub_event";
 export * from "./generated/hub_state";
-export * from "./generated/job";
 export * from "./generated/message";
 export * from "./generated/onchain_event";
 export * from "./generated/username_proof";

@@ -1075,11 +1075,31 @@ export const validateUserDataAddBody = (body: protobufs.UserDataBody): HubResult
       }
       break;
     }
+    case protobufs.UserDataType.PROFILE_TOKEN: {
+      if (value !== "") {
+        if (valueBytes.length > 256) {
+          return err(new HubError("bad_request.validation_failure", "profile token value > 256"));
+        }
+        const validatedProfileToken = validateProfileToken(value);
+        if (validatedProfileToken.isErr()) {
+          return err(validatedProfileToken.error);
+        }
+      }
+      break;
+    }
     default:
       return err(new HubError("bad_request.validation_failure", "invalid user data type"));
   }
 
   return ok(body);
+};
+
+export const validateProfileToken = (token: string): HubResult<string> => {
+  const caip19Regex = new RegExp("^[a-z0-9]+:[a-zA-Z0-9]+/[a-z0-9-]{3,8}:[-.%a-zA-Z0-9]{1,128}(/[a-zA-Z0-9]+)?$");
+  if (!caip19Regex.test(token)) {
+    return err(new HubError("bad_request.validation_failure", "profile token is not a valid CAIP-19 token"));
+  }
+  return ok(token);
 };
 
 export const validateFname = <T extends string | Uint8Array>(fnameP?: T | null): HubResult<T> => {
