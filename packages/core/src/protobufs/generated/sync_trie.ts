@@ -13,6 +13,10 @@ export interface DbTrieNode_ChildHashesEntry {
   value: Uint8Array;
 }
 
+export interface DbMerkleTrieMetadata {
+  outdatedHash: boolean;
+}
+
 function createBaseDbTrieNode(): DbTrieNode {
   return { key: new Uint8Array(), childChars: [], items: 0, childHashes: {} };
 }
@@ -215,6 +219,62 @@ export const DbTrieNode_ChildHashesEntry = {
     const message = createBaseDbTrieNode_ChildHashesEntry();
     message.key = object.key ?? 0;
     message.value = object.value ?? new Uint8Array();
+    return message;
+  },
+};
+
+function createBaseDbMerkleTrieMetadata(): DbMerkleTrieMetadata {
+  return { outdatedHash: false };
+}
+
+export const DbMerkleTrieMetadata = {
+  encode(message: DbMerkleTrieMetadata, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.outdatedHash === true) {
+      writer.uint32(8).bool(message.outdatedHash);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): DbMerkleTrieMetadata {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseDbMerkleTrieMetadata();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.outdatedHash = reader.bool();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): DbMerkleTrieMetadata {
+    return { outdatedHash: isSet(object.outdatedHash) ? Boolean(object.outdatedHash) : false };
+  },
+
+  toJSON(message: DbMerkleTrieMetadata): unknown {
+    const obj: any = {};
+    message.outdatedHash !== undefined && (obj.outdatedHash = message.outdatedHash);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<DbMerkleTrieMetadata>, I>>(base?: I): DbMerkleTrieMetadata {
+    return DbMerkleTrieMetadata.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<DbMerkleTrieMetadata>, I>>(object: I): DbMerkleTrieMetadata {
+    const message = createBaseDbMerkleTrieMetadata();
+    message.outdatedHash = object.outdatedHash ?? false;
     return message;
   },
 };

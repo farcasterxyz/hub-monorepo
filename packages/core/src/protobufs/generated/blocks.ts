@@ -35,6 +35,29 @@ export function voteTypeToJSON(object: VoteType): string {
   }
 }
 
+export enum BlockEventType {
+  HEARTBEAT = 0,
+}
+
+export function blockEventTypeFromJSON(object: any): BlockEventType {
+  switch (object) {
+    case 0:
+    case "BLOCK_EVENT_TYPE_HEARTBEAT":
+      return BlockEventType.HEARTBEAT;
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum BlockEventType");
+  }
+}
+
+export function blockEventTypeToJSON(object: BlockEventType): string {
+  switch (object) {
+    case BlockEventType.HEARTBEAT:
+      return "BLOCK_EVENT_TYPE_HEARTBEAT";
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum BlockEventType");
+  }
+}
+
 export interface Validator {
   fid: number;
   signer: Uint8Array;
@@ -114,6 +137,23 @@ export interface ConsensusMessage {
   signature: Uint8Array;
 }
 
+export interface HeartbeatEventBody {
+}
+
+export interface BlockEventData {
+  seqnum: number;
+  type: BlockEventType;
+  blockNumber: number;
+  eventIndex: number;
+  blockTimestamp: number;
+  heartbeatEventBody?: HeartbeatEventBody | undefined;
+}
+
+export interface BlockEvent {
+  hash: Uint8Array;
+  data: BlockEventData | undefined;
+}
+
 /** Block types */
 export interface BlockHeader {
   height: Height | undefined;
@@ -122,6 +162,8 @@ export interface BlockHeader {
   chainId: FarcasterNetwork;
   shardWitnessesHash: Uint8Array;
   parentHash: Uint8Array;
+  stateRoot: Uint8Array;
+  eventsHash: Uint8Array;
 }
 
 export interface ShardWitness {
@@ -139,6 +181,8 @@ export interface Block {
   hash: Uint8Array;
   shardWitness: ShardWitness | undefined;
   commits: Commits | undefined;
+  transactions: Transaction[];
+  events: BlockEvent[];
 }
 
 export interface ShardHeader {
@@ -175,6 +219,7 @@ export interface FnameTransfer {
 export interface ValidatorMessage {
   onChainEvent: OnChainEvent | undefined;
   fnameTransfer: FnameTransfer | undefined;
+  blockEvent: BlockEvent | undefined;
 }
 
 /** Gossip related messages */
@@ -1280,6 +1325,253 @@ export const ConsensusMessage = {
   },
 };
 
+function createBaseHeartbeatEventBody(): HeartbeatEventBody {
+  return {};
+}
+
+export const HeartbeatEventBody = {
+  encode(_: HeartbeatEventBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): HeartbeatEventBody {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseHeartbeatEventBody();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): HeartbeatEventBody {
+    return {};
+  },
+
+  toJSON(_: HeartbeatEventBody): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<HeartbeatEventBody>, I>>(base?: I): HeartbeatEventBody {
+    return HeartbeatEventBody.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<HeartbeatEventBody>, I>>(_: I): HeartbeatEventBody {
+    const message = createBaseHeartbeatEventBody();
+    return message;
+  },
+};
+
+function createBaseBlockEventData(): BlockEventData {
+  return { seqnum: 0, type: 0, blockNumber: 0, eventIndex: 0, blockTimestamp: 0, heartbeatEventBody: undefined };
+}
+
+export const BlockEventData = {
+  encode(message: BlockEventData, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.seqnum !== 0) {
+      writer.uint32(8).uint64(message.seqnum);
+    }
+    if (message.type !== 0) {
+      writer.uint32(16).int32(message.type);
+    }
+    if (message.blockNumber !== 0) {
+      writer.uint32(24).uint64(message.blockNumber);
+    }
+    if (message.eventIndex !== 0) {
+      writer.uint32(32).uint64(message.eventIndex);
+    }
+    if (message.blockTimestamp !== 0) {
+      writer.uint32(40).uint64(message.blockTimestamp);
+    }
+    if (message.heartbeatEventBody !== undefined) {
+      HeartbeatEventBody.encode(message.heartbeatEventBody, writer.uint32(50).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): BlockEventData {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseBlockEventData();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.seqnum = longToNumber(reader.uint64() as Long);
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.type = reader.int32() as any;
+          continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.blockNumber = longToNumber(reader.uint64() as Long);
+          continue;
+        case 4:
+          if (tag != 32) {
+            break;
+          }
+
+          message.eventIndex = longToNumber(reader.uint64() as Long);
+          continue;
+        case 5:
+          if (tag != 40) {
+            break;
+          }
+
+          message.blockTimestamp = longToNumber(reader.uint64() as Long);
+          continue;
+        case 6:
+          if (tag != 50) {
+            break;
+          }
+
+          message.heartbeatEventBody = HeartbeatEventBody.decode(reader, reader.uint32());
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): BlockEventData {
+    return {
+      seqnum: isSet(object.seqnum) ? Number(object.seqnum) : 0,
+      type: isSet(object.type) ? blockEventTypeFromJSON(object.type) : 0,
+      blockNumber: isSet(object.blockNumber) ? Number(object.blockNumber) : 0,
+      eventIndex: isSet(object.eventIndex) ? Number(object.eventIndex) : 0,
+      blockTimestamp: isSet(object.blockTimestamp) ? Number(object.blockTimestamp) : 0,
+      heartbeatEventBody: isSet(object.heartbeatEventBody)
+        ? HeartbeatEventBody.fromJSON(object.heartbeatEventBody)
+        : undefined,
+    };
+  },
+
+  toJSON(message: BlockEventData): unknown {
+    const obj: any = {};
+    message.seqnum !== undefined && (obj.seqnum = Math.round(message.seqnum));
+    message.type !== undefined && (obj.type = blockEventTypeToJSON(message.type));
+    message.blockNumber !== undefined && (obj.blockNumber = Math.round(message.blockNumber));
+    message.eventIndex !== undefined && (obj.eventIndex = Math.round(message.eventIndex));
+    message.blockTimestamp !== undefined && (obj.blockTimestamp = Math.round(message.blockTimestamp));
+    message.heartbeatEventBody !== undefined && (obj.heartbeatEventBody = message.heartbeatEventBody
+      ? HeartbeatEventBody.toJSON(message.heartbeatEventBody)
+      : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<BlockEventData>, I>>(base?: I): BlockEventData {
+    return BlockEventData.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<BlockEventData>, I>>(object: I): BlockEventData {
+    const message = createBaseBlockEventData();
+    message.seqnum = object.seqnum ?? 0;
+    message.type = object.type ?? 0;
+    message.blockNumber = object.blockNumber ?? 0;
+    message.eventIndex = object.eventIndex ?? 0;
+    message.blockTimestamp = object.blockTimestamp ?? 0;
+    message.heartbeatEventBody = (object.heartbeatEventBody !== undefined && object.heartbeatEventBody !== null)
+      ? HeartbeatEventBody.fromPartial(object.heartbeatEventBody)
+      : undefined;
+    return message;
+  },
+};
+
+function createBaseBlockEvent(): BlockEvent {
+  return { hash: new Uint8Array(), data: undefined };
+}
+
+export const BlockEvent = {
+  encode(message: BlockEvent, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.hash.length !== 0) {
+      writer.uint32(10).bytes(message.hash);
+    }
+    if (message.data !== undefined) {
+      BlockEventData.encode(message.data, writer.uint32(18).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): BlockEvent {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseBlockEvent();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.hash = reader.bytes();
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.data = BlockEventData.decode(reader, reader.uint32());
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): BlockEvent {
+    return {
+      hash: isSet(object.hash) ? bytesFromBase64(object.hash) : new Uint8Array(),
+      data: isSet(object.data) ? BlockEventData.fromJSON(object.data) : undefined,
+    };
+  },
+
+  toJSON(message: BlockEvent): unknown {
+    const obj: any = {};
+    message.hash !== undefined &&
+      (obj.hash = base64FromBytes(message.hash !== undefined ? message.hash : new Uint8Array()));
+    message.data !== undefined && (obj.data = message.data ? BlockEventData.toJSON(message.data) : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<BlockEvent>, I>>(base?: I): BlockEvent {
+    return BlockEvent.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<BlockEvent>, I>>(object: I): BlockEvent {
+    const message = createBaseBlockEvent();
+    message.hash = object.hash ?? new Uint8Array();
+    message.data = (object.data !== undefined && object.data !== null)
+      ? BlockEventData.fromPartial(object.data)
+      : undefined;
+    return message;
+  },
+};
+
 function createBaseBlockHeader(): BlockHeader {
   return {
     height: undefined,
@@ -1288,6 +1580,8 @@ function createBaseBlockHeader(): BlockHeader {
     chainId: 0,
     shardWitnessesHash: new Uint8Array(),
     parentHash: new Uint8Array(),
+    stateRoot: new Uint8Array(),
+    eventsHash: new Uint8Array(),
   };
 }
 
@@ -1310,6 +1604,12 @@ export const BlockHeader = {
     }
     if (message.parentHash.length !== 0) {
       writer.uint32(50).bytes(message.parentHash);
+    }
+    if (message.stateRoot.length !== 0) {
+      writer.uint32(58).bytes(message.stateRoot);
+    }
+    if (message.eventsHash.length !== 0) {
+      writer.uint32(66).bytes(message.eventsHash);
     }
     return writer;
   },
@@ -1363,6 +1663,20 @@ export const BlockHeader = {
 
           message.parentHash = reader.bytes();
           continue;
+        case 7:
+          if (tag != 58) {
+            break;
+          }
+
+          message.stateRoot = reader.bytes();
+          continue;
+        case 8:
+          if (tag != 66) {
+            break;
+          }
+
+          message.eventsHash = reader.bytes();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -1382,6 +1696,8 @@ export const BlockHeader = {
         ? bytesFromBase64(object.shardWitnessesHash)
         : new Uint8Array(),
       parentHash: isSet(object.parentHash) ? bytesFromBase64(object.parentHash) : new Uint8Array(),
+      stateRoot: isSet(object.stateRoot) ? bytesFromBase64(object.stateRoot) : new Uint8Array(),
+      eventsHash: isSet(object.eventsHash) ? bytesFromBase64(object.eventsHash) : new Uint8Array(),
     };
   },
 
@@ -1397,6 +1713,10 @@ export const BlockHeader = {
       ));
     message.parentHash !== undefined &&
       (obj.parentHash = base64FromBytes(message.parentHash !== undefined ? message.parentHash : new Uint8Array()));
+    message.stateRoot !== undefined &&
+      (obj.stateRoot = base64FromBytes(message.stateRoot !== undefined ? message.stateRoot : new Uint8Array()));
+    message.eventsHash !== undefined &&
+      (obj.eventsHash = base64FromBytes(message.eventsHash !== undefined ? message.eventsHash : new Uint8Array()));
     return obj;
   },
 
@@ -1414,6 +1734,8 @@ export const BlockHeader = {
     message.chainId = object.chainId ?? 0;
     message.shardWitnessesHash = object.shardWitnessesHash ?? new Uint8Array();
     message.parentHash = object.parentHash ?? new Uint8Array();
+    message.stateRoot = object.stateRoot ?? new Uint8Array();
+    message.eventsHash = object.eventsHash ?? new Uint8Array();
     return message;
   },
 };
@@ -1571,7 +1893,14 @@ export const ShardChunkWitness = {
 };
 
 function createBaseBlock(): Block {
-  return { header: undefined, hash: new Uint8Array(), shardWitness: undefined, commits: undefined };
+  return {
+    header: undefined,
+    hash: new Uint8Array(),
+    shardWitness: undefined,
+    commits: undefined,
+    transactions: [],
+    events: [],
+  };
 }
 
 export const Block = {
@@ -1587,6 +1916,12 @@ export const Block = {
     }
     if (message.commits !== undefined) {
       Commits.encode(message.commits, writer.uint32(34).fork()).ldelim();
+    }
+    for (const v of message.transactions) {
+      Transaction.encode(v!, writer.uint32(42).fork()).ldelim();
+    }
+    for (const v of message.events) {
+      BlockEvent.encode(v!, writer.uint32(50).fork()).ldelim();
     }
     return writer;
   },
@@ -1626,6 +1961,20 @@ export const Block = {
 
           message.commits = Commits.decode(reader, reader.uint32());
           continue;
+        case 5:
+          if (tag != 42) {
+            break;
+          }
+
+          message.transactions.push(Transaction.decode(reader, reader.uint32()));
+          continue;
+        case 6:
+          if (tag != 50) {
+            break;
+          }
+
+          message.events.push(BlockEvent.decode(reader, reader.uint32()));
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -1641,6 +1990,10 @@ export const Block = {
       hash: isSet(object.hash) ? bytesFromBase64(object.hash) : new Uint8Array(),
       shardWitness: isSet(object.shardWitness) ? ShardWitness.fromJSON(object.shardWitness) : undefined,
       commits: isSet(object.commits) ? Commits.fromJSON(object.commits) : undefined,
+      transactions: Array.isArray(object?.transactions)
+        ? object.transactions.map((e: any) => Transaction.fromJSON(e))
+        : [],
+      events: Array.isArray(object?.events) ? object.events.map((e: any) => BlockEvent.fromJSON(e)) : [],
     };
   },
 
@@ -1652,6 +2005,16 @@ export const Block = {
     message.shardWitness !== undefined &&
       (obj.shardWitness = message.shardWitness ? ShardWitness.toJSON(message.shardWitness) : undefined);
     message.commits !== undefined && (obj.commits = message.commits ? Commits.toJSON(message.commits) : undefined);
+    if (message.transactions) {
+      obj.transactions = message.transactions.map((e) => e ? Transaction.toJSON(e) : undefined);
+    } else {
+      obj.transactions = [];
+    }
+    if (message.events) {
+      obj.events = message.events.map((e) => e ? BlockEvent.toJSON(e) : undefined);
+    } else {
+      obj.events = [];
+    }
     return obj;
   },
 
@@ -1671,6 +2034,8 @@ export const Block = {
     message.commits = (object.commits !== undefined && object.commits !== null)
       ? Commits.fromPartial(object.commits)
       : undefined;
+    message.transactions = object.transactions?.map((e) => Transaction.fromPartial(e)) || [];
+    message.events = object.events?.map((e) => BlockEvent.fromPartial(e)) || [];
     return message;
   },
 };
@@ -2079,7 +2444,7 @@ export const FnameTransfer = {
 };
 
 function createBaseValidatorMessage(): ValidatorMessage {
-  return { onChainEvent: undefined, fnameTransfer: undefined };
+  return { onChainEvent: undefined, fnameTransfer: undefined, blockEvent: undefined };
 }
 
 export const ValidatorMessage = {
@@ -2089,6 +2454,9 @@ export const ValidatorMessage = {
     }
     if (message.fnameTransfer !== undefined) {
       FnameTransfer.encode(message.fnameTransfer, writer.uint32(18).fork()).ldelim();
+    }
+    if (message.blockEvent !== undefined) {
+      BlockEvent.encode(message.blockEvent, writer.uint32(26).fork()).ldelim();
     }
     return writer;
   },
@@ -2114,6 +2482,13 @@ export const ValidatorMessage = {
 
           message.fnameTransfer = FnameTransfer.decode(reader, reader.uint32());
           continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.blockEvent = BlockEvent.decode(reader, reader.uint32());
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -2127,6 +2502,7 @@ export const ValidatorMessage = {
     return {
       onChainEvent: isSet(object.onChainEvent) ? OnChainEvent.fromJSON(object.onChainEvent) : undefined,
       fnameTransfer: isSet(object.fnameTransfer) ? FnameTransfer.fromJSON(object.fnameTransfer) : undefined,
+      blockEvent: isSet(object.blockEvent) ? BlockEvent.fromJSON(object.blockEvent) : undefined,
     };
   },
 
@@ -2136,6 +2512,8 @@ export const ValidatorMessage = {
       (obj.onChainEvent = message.onChainEvent ? OnChainEvent.toJSON(message.onChainEvent) : undefined);
     message.fnameTransfer !== undefined &&
       (obj.fnameTransfer = message.fnameTransfer ? FnameTransfer.toJSON(message.fnameTransfer) : undefined);
+    message.blockEvent !== undefined &&
+      (obj.blockEvent = message.blockEvent ? BlockEvent.toJSON(message.blockEvent) : undefined);
     return obj;
   },
 
@@ -2150,6 +2528,9 @@ export const ValidatorMessage = {
       : undefined;
     message.fnameTransfer = (object.fnameTransfer !== undefined && object.fnameTransfer !== null)
       ? FnameTransfer.fromPartial(object.fnameTransfer)
+      : undefined;
+    message.blockEvent = (object.blockEvent !== undefined && object.blockEvent !== null)
+      ? BlockEvent.fromPartial(object.blockEvent)
       : undefined;
     return message;
   },

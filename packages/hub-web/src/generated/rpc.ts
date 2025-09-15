@@ -37,6 +37,8 @@ import {
   ShardChunksResponse,
   SignerRequest,
   StorageLimitsResponse,
+  SubmitBulkMessagesRequest,
+  SubmitBulkMessagesResponse,
   SubscribeRequest,
   TrieNodeMetadataRequest,
   TrieNodeMetadataResponse,
@@ -51,6 +53,10 @@ import { UserNameProof } from "./username_proof";
 export interface HubService {
   /** Write API */
   submitMessage(request: DeepPartial<Message>, metadata?: grpcWeb.grpc.Metadata): Promise<Message>;
+  submitBulkMessages(
+    request: DeepPartial<SubmitBulkMessagesRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<SubmitBulkMessagesResponse>;
   /** Validation Methods */
   validateMessage(request: DeepPartial<Message>, metadata?: grpcWeb.grpc.Metadata): Promise<ValidationResponse>;
   /** Block API */
@@ -150,6 +156,7 @@ export class HubServiceClientImpl implements HubService {
   constructor(rpc: Rpc) {
     this.rpc = rpc;
     this.submitMessage = this.submitMessage.bind(this);
+    this.submitBulkMessages = this.submitBulkMessages.bind(this);
     this.validateMessage = this.validateMessage.bind(this);
     this.getBlocks = this.getBlocks.bind(this);
     this.getShardChunks = this.getShardChunks.bind(this);
@@ -194,6 +201,13 @@ export class HubServiceClientImpl implements HubService {
 
   submitMessage(request: DeepPartial<Message>, metadata?: grpcWeb.grpc.Metadata): Promise<Message> {
     return this.rpc.unary(HubServiceSubmitMessageDesc, Message.fromPartial(request), metadata);
+  }
+
+  submitBulkMessages(
+    request: DeepPartial<SubmitBulkMessagesRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<SubmitBulkMessagesResponse> {
+    return this.rpc.unary(HubServiceSubmitBulkMessagesDesc, SubmitBulkMessagesRequest.fromPartial(request), metadata);
   }
 
   validateMessage(request: DeepPartial<Message>, metadata?: grpcWeb.grpc.Metadata): Promise<ValidationResponse> {
@@ -431,6 +445,29 @@ export const HubServiceSubmitMessageDesc: UnaryMethodDefinitionish = {
   responseType: {
     deserializeBinary(data: Uint8Array) {
       const value = Message.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceSubmitBulkMessagesDesc: UnaryMethodDefinitionish = {
+  methodName: "SubmitBulkMessages",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return SubmitBulkMessagesRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = SubmitBulkMessagesResponse.decode(data);
       return {
         ...value,
         toObject() {
