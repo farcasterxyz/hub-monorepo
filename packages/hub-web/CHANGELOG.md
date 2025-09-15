@@ -1,5 +1,13 @@
 # @farcaster/hub-web
 
+## 0.11.5
+
+### Patch Changes
+
+- e640c6c4: Update protobufs to pick up new types (support profile tokens)
+- Updated dependencies [e640c6c4]
+  - @farcaster/core@0.18.7
+
 ## 0.11.4
 
 ### Patch Changes
