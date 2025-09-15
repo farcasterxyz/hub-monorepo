@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.18.7
+
+### Patch Changes
+
+- e640c6c4: Update protobufs to pick up new types (support profile tokens)
+
 ## 0.18.6
 
 ### Patch Changes

@@ -1,5 +1,13 @@
 # @farcaster/hub-nodejs
 
+## 0.15.7
+
+### Patch Changes
+
+- e640c6c4: Update protobufs to pick up new types (support profile tokens)
+- Updated dependencies [e640c6c4]
+  - @farcaster/core@0.18.7
+
 ## 0.15.6
 
 ### Patch Changes
