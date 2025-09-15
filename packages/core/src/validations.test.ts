@@ -1117,6 +1117,46 @@ describe("validateUserDataAddBody", () => {
     expect(validations.validateUserDataAddBody(body)).toEqual(ok(body));
   });
 
+  describe("user profile tokens", () => {
+    const isValid = (token: string): boolean => {
+      const body = Factories.UserDataBody.build({
+        type: UserDataType.PROFILE_TOKEN,
+        value: token,
+      });
+      return validations.validateUserDataAddBody(body).isOk();
+    };
+    test("succeeds for valid user profile token", async () => {
+      // Mirrors the rust validation tests
+      expect(isValid("")).toBe(true);
+      expect(isValid("eip155:1/slip44:60")).toBe(true);
+      expect(isValid("solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501")).toBe(true);
+      expect(isValid("eip155:1/erc20:0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")).toBe(true);
+      expect(isValid("eip155:8453/erc20:0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913")).toBe(true);
+      expect(
+        isValid("solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/token:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"),
+      ).toBe(true);
+    });
+
+    test("fails for invalid user profile token", async () => {
+      // Mirrors the rust validation tests
+      // Missing chain id
+      expect(isValid("/erc20:0x6b175474e89094c44da98b954eedeac495271d0f")).toBe(false);
+      // Missing asset namespace
+      expect(isValid("eip155:1/:0x6b175474e89094c44da98b954eedeac495271d0f")).toBe(false);
+      // Missing asset reference
+      expect(isValid("eip155:1/erc20:")).toBe(false);
+      // Invalid chain id (missing reference)
+      expect(isValid("eip155/erc20:0x123")).toBe(false);
+      // Too many slashes
+      expect(isValid("eip155:1/erc721:0x123/456/789")).toBe(false);
+      // Empty token id
+      expect(isValid("eip155:1/erc721:0x123/")).toBe(false);
+      // Too long
+      const long = "eip155:1/erc20:0x123/".padEnd(300, "a");
+      expect(isValid(long)).toBe(false);
+    });
+  });
+
   describe("fails", () => {
     let body: protobufs.UserDataBody;
     let hubErrorMessage: string;

@@ -170,6 +170,7 @@ export interface GetInfoResponse {
   peerId: string;
   numShards: number;
   shardInfos: ShardInfo[];
+  nextEngineVersionTimestamp: number;
 }
 
 export interface EventRequest {
@@ -1000,7 +1001,7 @@ export const GetInfoRequest = {
 };
 
 function createBaseGetInfoResponse(): GetInfoResponse {
-  return { version: "", dbStats: undefined, peerId: "", numShards: 0, shardInfos: [] };
+  return { version: "", dbStats: undefined, peerId: "", numShards: 0, shardInfos: [], nextEngineVersionTimestamp: 0 };
 }
 
 export const GetInfoResponse = {
@@ -1019,6 +1020,9 @@ export const GetInfoResponse = {
     }
     for (const v of message.shardInfos) {
       ShardInfo.encode(v!, writer.uint32(74).fork()).ldelim();
+    }
+    if (message.nextEngineVersionTimestamp !== 0) {
+      writer.uint32(80).uint64(message.nextEngineVersionTimestamp);
     }
     return writer;
   },
@@ -1065,6 +1069,13 @@ export const GetInfoResponse = {
 
           message.shardInfos.push(ShardInfo.decode(reader, reader.uint32()));
           continue;
+        case 10:
+          if (tag != 80) {
+            break;
+          }
+
+          message.nextEngineVersionTimestamp = longToNumber(reader.uint64() as Long);
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -1081,6 +1092,9 @@ export const GetInfoResponse = {
       peerId: isSet(object.peerId) ? String(object.peerId) : "",
       numShards: isSet(object.numShards) ? Number(object.numShards) : 0,
       shardInfos: Array.isArray(object?.shardInfos) ? object.shardInfos.map((e: any) => ShardInfo.fromJSON(e)) : [],
+      nextEngineVersionTimestamp: isSet(object.nextEngineVersionTimestamp)
+        ? Number(object.nextEngineVersionTimestamp)
+        : 0,
     };
   },
 
@@ -1095,6 +1109,8 @@ export const GetInfoResponse = {
     } else {
       obj.shardInfos = [];
     }
+    message.nextEngineVersionTimestamp !== undefined &&
+      (obj.nextEngineVersionTimestamp = Math.round(message.nextEngineVersionTimestamp));
     return obj;
   },
 
@@ -1111,6 +1127,7 @@ export const GetInfoResponse = {
     message.peerId = object.peerId ?? "";
     message.numShards = object.numShards ?? 0;
     message.shardInfos = object.shardInfos?.map((e) => ShardInfo.fromPartial(e)) || [];
+    message.nextEngineVersionTimestamp = object.nextEngineVersionTimestamp ?? 0;
     return message;
   },
 };

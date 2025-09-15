@@ -106,6 +106,7 @@ export interface BlockConfirmedBody {
   blockHash: Uint8Array;
   totalEvents: number;
   eventCountsByType: { [key: number]: number };
+  maxBlockEventSeqnum: number;
 }
 
 export interface BlockConfirmedBody_EventCountsByTypeEntry {
@@ -442,6 +443,7 @@ function createBaseBlockConfirmedBody(): BlockConfirmedBody {
     blockHash: new Uint8Array(),
     totalEvents: 0,
     eventCountsByType: {},
+    maxBlockEventSeqnum: 0,
   };
 }
 
@@ -465,6 +467,9 @@ export const BlockConfirmedBody = {
     Object.entries(message.eventCountsByType).forEach(([key, value]) => {
       BlockConfirmedBody_EventCountsByTypeEntry.encode({ key: key as any, value }, writer.uint32(50).fork()).ldelim();
     });
+    if (message.maxBlockEventSeqnum !== 0) {
+      writer.uint32(56).uint64(message.maxBlockEventSeqnum);
+    }
     return writer;
   },
 
@@ -520,6 +525,13 @@ export const BlockConfirmedBody = {
             message.eventCountsByType[entry6.key] = entry6.value;
           }
           continue;
+        case 7:
+          if (tag != 56) {
+            break;
+          }
+
+          message.maxBlockEventSeqnum = longToNumber(reader.uint64() as Long);
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -542,6 +554,7 @@ export const BlockConfirmedBody = {
           return acc;
         }, {})
         : {},
+      maxBlockEventSeqnum: isSet(object.maxBlockEventSeqnum) ? Number(object.maxBlockEventSeqnum) : 0,
     };
   },
 
@@ -559,6 +572,7 @@ export const BlockConfirmedBody = {
         obj.eventCountsByType[k] = Math.round(v);
       });
     }
+    message.maxBlockEventSeqnum !== undefined && (obj.maxBlockEventSeqnum = Math.round(message.maxBlockEventSeqnum));
     return obj;
   },
 
@@ -582,6 +596,7 @@ export const BlockConfirmedBody = {
       },
       {},
     );
+    message.maxBlockEventSeqnum = object.maxBlockEventSeqnum ?? 0;
     return message;
   },
 };

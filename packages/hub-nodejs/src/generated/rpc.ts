@@ -47,6 +47,8 @@ import {
   ShardChunksResponse,
   SignerRequest,
   StorageLimitsResponse,
+  SubmitBulkMessagesRequest,
+  SubmitBulkMessagesResponse,
   SubscribeRequest,
   TrieNodeMetadataRequest,
   TrieNodeMetadataResponse,
@@ -69,6 +71,17 @@ export const HubServiceService = {
     requestDeserialize: (value: Buffer) => Message.decode(value),
     responseSerialize: (value: Message) => Buffer.from(Message.encode(value).finish()),
     responseDeserialize: (value: Buffer) => Message.decode(value),
+  },
+  submitBulkMessages: {
+    path: "/HubService/SubmitBulkMessages",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: SubmitBulkMessagesRequest) =>
+      Buffer.from(SubmitBulkMessagesRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => SubmitBulkMessagesRequest.decode(value),
+    responseSerialize: (value: SubmitBulkMessagesResponse) =>
+      Buffer.from(SubmitBulkMessagesResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => SubmitBulkMessagesResponse.decode(value),
   },
   /** Validation Methods */
   validateMessage: {
@@ -450,6 +463,7 @@ export const HubServiceService = {
 export interface HubServiceServer extends UntypedServiceImplementation {
   /** Write API */
   submitMessage: handleUnaryCall<Message, Message>;
+  submitBulkMessages: handleUnaryCall<SubmitBulkMessagesRequest, SubmitBulkMessagesResponse>;
   /** Validation Methods */
   validateMessage: handleUnaryCall<Message, ValidationResponse>;
   /** Block API */
@@ -517,6 +531,21 @@ export interface HubServiceClient extends Client {
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: Message) => void,
+  ): ClientUnaryCall;
+  submitBulkMessages(
+    request: SubmitBulkMessagesRequest,
+    callback: (error: ServiceError | null, response: SubmitBulkMessagesResponse) => void,
+  ): ClientUnaryCall;
+  submitBulkMessages(
+    request: SubmitBulkMessagesRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: SubmitBulkMessagesResponse) => void,
+  ): ClientUnaryCall;
+  submitBulkMessages(
+    request: SubmitBulkMessagesRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: SubmitBulkMessagesResponse) => void,
   ): ClientUnaryCall;
   /** Validation Methods */
   validateMessage(

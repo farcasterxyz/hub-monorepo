@@ -254,6 +254,8 @@ export enum UserDataType {
   USER_DATA_PRIMARY_ADDRESS_ETHEREUM = 11,
   /** USER_DATA_PRIMARY_ADDRESS_SOLANA - Primary address for the user on Solana */
   USER_DATA_PRIMARY_ADDRESS_SOLANA = 12,
+  /** PROFILE_TOKEN - Profile token in CAIP-19 format */
+  PROFILE_TOKEN = 13,
 }
 
 export function userDataTypeFromJSON(object: any): UserDataType {
@@ -294,6 +296,9 @@ export function userDataTypeFromJSON(object: any): UserDataType {
     case 12:
     case "USER_DATA_PRIMARY_ADDRESS_SOLANA":
       return UserDataType.USER_DATA_PRIMARY_ADDRESS_SOLANA;
+    case 13:
+    case "USER_DATA_TYPE_PROFILE_TOKEN":
+      return UserDataType.PROFILE_TOKEN;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum UserDataType");
   }
@@ -325,6 +330,8 @@ export function userDataTypeToJSON(object: UserDataType): string {
       return "USER_DATA_PRIMARY_ADDRESS_ETHEREUM";
     case UserDataType.USER_DATA_PRIMARY_ADDRESS_SOLANA:
       return "USER_DATA_PRIMARY_ADDRESS_SOLANA";
+    case UserDataType.PROFILE_TOKEN:
+      return "USER_DATA_TYPE_PROFILE_TOKEN";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum UserDataType");
   }
