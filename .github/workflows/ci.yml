@@ -46,7 +46,7 @@ jobs:
         with:
           toolchain: 1.77.0
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: actions/setup-node@v4
         with:

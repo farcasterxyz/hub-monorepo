@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # Log in so we can push the image layers + tags to Docker Hub
       - uses: docker/login-action@v2
