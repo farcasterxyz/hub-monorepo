@@ -15,6 +15,7 @@ export interface ShardSnapshotMetadata {
   timestamp: number;
   shardChunk?: ShardChunk | undefined;
   block?: Block | undefined;
+  numItems: number;
 }
 
 export interface GetShardSnapshotMetadataResponse {
@@ -64,7 +65,13 @@ export interface ReplicationTriePartStatus {
   shardId: number;
   height: number;
   virtualTrieShard: number;
-  nextPageToken?: string | undefined;
+  nextPageToken?:
+    | string
+    | undefined;
+  /** These fields are used by the client to store the progress in the DB */
+  lastResponse: number;
+  /** The last FID processed (to continue from last pass) */
+  lastFid?: number | undefined;
 }
 
 function createBaseGetShardSnapshotMetadataRequest(): GetShardSnapshotMetadataRequest {
@@ -126,7 +133,7 @@ export const GetShardSnapshotMetadataRequest = {
 };
 
 function createBaseShardSnapshotMetadata(): ShardSnapshotMetadata {
-  return { shardId: 0, height: 0, timestamp: 0, shardChunk: undefined, block: undefined };
+  return { shardId: 0, height: 0, timestamp: 0, shardChunk: undefined, block: undefined, numItems: 0 };
 }
 
 export const ShardSnapshotMetadata = {
@@ -145,6 +152,9 @@ export const ShardSnapshotMetadata = {
     }
     if (message.block !== undefined) {
       Block.encode(message.block, writer.uint32(50).fork()).ldelim();
+    }
+    if (message.numItems !== 0) {
+      writer.uint32(56).uint64(message.numItems);
     }
     return writer;
   },
@@ -191,6 +201,13 @@ export const ShardSnapshotMetadata = {
 
           message.block = Block.decode(reader, reader.uint32());
           continue;
+        case 7:
+          if (tag != 56) {
+            break;
+          }
+
+          message.numItems = longToNumber(reader.uint64() as Long);
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -207,6 +224,7 @@ export const ShardSnapshotMetadata = {
       timestamp: isSet(object.timestamp) ? Number(object.timestamp) : 0,
       shardChunk: isSet(object.shardChunk) ? ShardChunk.fromJSON(object.shardChunk) : undefined,
       block: isSet(object.block) ? Block.fromJSON(object.block) : undefined,
+      numItems: isSet(object.numItems) ? Number(object.numItems) : 0,
     };
   },
 
@@ -218,6 +236,7 @@ export const ShardSnapshotMetadata = {
     message.shardChunk !== undefined &&
       (obj.shardChunk = message.shardChunk ? ShardChunk.toJSON(message.shardChunk) : undefined);
     message.block !== undefined && (obj.block = message.block ? Block.toJSON(message.block) : undefined);
+    message.numItems !== undefined && (obj.numItems = Math.round(message.numItems));
     return obj;
   },
 
@@ -234,6 +253,7 @@ export const ShardSnapshotMetadata = {
       ? ShardChunk.fromPartial(object.shardChunk)
       : undefined;
     message.block = (object.block !== undefined && object.block !== null) ? Block.fromPartial(object.block) : undefined;
+    message.numItems = object.numItems ?? 0;
     return message;
   },
 };
@@ -694,7 +714,7 @@ export const FidAccountRootHash = {
 };
 
 function createBaseReplicationTriePartStatus(): ReplicationTriePartStatus {
-  return { shardId: 0, height: 0, virtualTrieShard: 0, nextPageToken: undefined };
+  return { shardId: 0, height: 0, virtualTrieShard: 0, nextPageToken: undefined, lastResponse: 0, lastFid: undefined };
 }
 
 export const ReplicationTriePartStatus = {
@@ -710,6 +730,12 @@ export const ReplicationTriePartStatus = {
     }
     if (message.nextPageToken !== undefined) {
       writer.uint32(34).string(message.nextPageToken);
+    }
+    if (message.lastResponse !== 0) {
+      writer.uint32(40).uint32(message.lastResponse);
+    }
+    if (message.lastFid !== undefined) {
+      writer.uint32(48).uint64(message.lastFid);
     }
     return writer;
   },
@@ -749,6 +775,20 @@ export const ReplicationTriePartStatus = {
 
           message.nextPageToken = reader.string();
           continue;
+        case 5:
+          if (tag != 40) {
+            break;
+          }
+
+          message.lastResponse = reader.uint32();
+          continue;
+        case 6:
+          if (tag != 48) {
+            break;
+          }
+
+          message.lastFid = longToNumber(reader.uint64() as Long);
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -764,6 +804,8 @@ export const ReplicationTriePartStatus = {
       height: isSet(object.height) ? Number(object.height) : 0,
       virtualTrieShard: isSet(object.virtualTrieShard) ? Number(object.virtualTrieShard) : 0,
       nextPageToken: isSet(object.nextPageToken) ? String(object.nextPageToken) : undefined,
+      lastResponse: isSet(object.lastResponse) ? Number(object.lastResponse) : 0,
+      lastFid: isSet(object.lastFid) ? Number(object.lastFid) : undefined,
     };
   },
 
@@ -773,6 +815,8 @@ export const ReplicationTriePartStatus = {
     message.height !== undefined && (obj.height = Math.round(message.height));
     message.virtualTrieShard !== undefined && (obj.virtualTrieShard = Math.round(message.virtualTrieShard));
     message.nextPageToken !== undefined && (obj.nextPageToken = message.nextPageToken);
+    message.lastResponse !== undefined && (obj.lastResponse = Math.round(message.lastResponse));
+    message.lastFid !== undefined && (obj.lastFid = Math.round(message.lastFid));
     return obj;
   },
 
@@ -786,6 +830,8 @@ export const ReplicationTriePartStatus = {
     message.height = object.height ?? 0;
     message.virtualTrieShard = object.virtualTrieShard ?? 0;
     message.nextPageToken = object.nextPageToken ?? undefined;
+    message.lastResponse = object.lastResponse ?? 0;
+    message.lastFid = object.lastFid ?? undefined;
     return message;
   },
 };

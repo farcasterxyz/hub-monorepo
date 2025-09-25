@@ -10,6 +10,7 @@ export interface ContactInfoBody {
   snapchainVersion: string;
   network: FarcasterNetwork;
   timestamp: number;
+  announceRpcAddress: string;
 }
 
 export interface ContactInfo {
@@ -26,7 +27,14 @@ export interface GossipMessage {
 }
 
 function createBaseContactInfoBody(): ContactInfoBody {
-  return { gossipAddress: "", peerId: new Uint8Array(), snapchainVersion: "", network: 0, timestamp: 0 };
+  return {
+    gossipAddress: "",
+    peerId: new Uint8Array(),
+    snapchainVersion: "",
+    network: 0,
+    timestamp: 0,
+    announceRpcAddress: "",
+  };
 }
 
 export const ContactInfoBody = {
@@ -45,6 +53,9 @@ export const ContactInfoBody = {
     }
     if (message.timestamp !== 0) {
       writer.uint32(40).uint64(message.timestamp);
+    }
+    if (message.announceRpcAddress !== "") {
+      writer.uint32(50).string(message.announceRpcAddress);
     }
     return writer;
   },
@@ -91,6 +102,13 @@ export const ContactInfoBody = {
 
           message.timestamp = longToNumber(reader.uint64() as Long);
           continue;
+        case 6:
+          if (tag != 50) {
+            break;
+          }
+
+          message.announceRpcAddress = reader.string();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -107,6 +125,7 @@ export const ContactInfoBody = {
       snapchainVersion: isSet(object.snapchainVersion) ? String(object.snapchainVersion) : "",
       network: isSet(object.network) ? farcasterNetworkFromJSON(object.network) : 0,
       timestamp: isSet(object.timestamp) ? Number(object.timestamp) : 0,
+      announceRpcAddress: isSet(object.announceRpcAddress) ? String(object.announceRpcAddress) : "",
     };
   },
 
@@ -118,6 +137,7 @@ export const ContactInfoBody = {
     message.snapchainVersion !== undefined && (obj.snapchainVersion = message.snapchainVersion);
     message.network !== undefined && (obj.network = farcasterNetworkToJSON(message.network));
     message.timestamp !== undefined && (obj.timestamp = Math.round(message.timestamp));
+    message.announceRpcAddress !== undefined && (obj.announceRpcAddress = message.announceRpcAddress);
     return obj;
   },
 
@@ -132,6 +152,7 @@ export const ContactInfoBody = {
     message.snapchainVersion = object.snapchainVersion ?? "";
     message.network = object.network ?? 0;
     message.timestamp = object.timestamp ?? 0;
+    message.announceRpcAddress = object.announceRpcAddress ?? "";
     return message;
   },
 };

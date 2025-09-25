@@ -103,6 +103,7 @@ export enum MessageType {
   FRAME_ACTION = 13,
   /** LINK_COMPACT_STATE - Link Compaction State Message */
   LINK_COMPACT_STATE = 14,
+  LEND_STORAGE = 15,
 }
 
 export function messageTypeFromJSON(object: any): MessageType {
@@ -146,6 +147,9 @@ export function messageTypeFromJSON(object: any): MessageType {
     case 14:
     case "MESSAGE_TYPE_LINK_COMPACT_STATE":
       return MessageType.LINK_COMPACT_STATE;
+    case 15:
+    case "MESSAGE_TYPE_LEND_STORAGE":
+      return MessageType.LEND_STORAGE;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum MessageType");
   }
@@ -179,6 +183,8 @@ export function messageTypeToJSON(object: MessageType): string {
       return "MESSAGE_TYPE_FRAME_ACTION";
     case MessageType.LINK_COMPACT_STATE:
       return "MESSAGE_TYPE_LINK_COMPACT_STATE";
+    case MessageType.LEND_STORAGE:
+      return "MESSAGE_TYPE_LEND_STORAGE";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum MessageType");
   }
@@ -441,6 +447,41 @@ export function protocolToJSON(object: Protocol): string {
   }
 }
 
+export enum StorageUnitType {
+  UNIT_TYPE_LEGACY = 0,
+  UNIT_TYPE_2024 = 1,
+  UNIT_TYPE_2025 = 2,
+}
+
+export function storageUnitTypeFromJSON(object: any): StorageUnitType {
+  switch (object) {
+    case 0:
+    case "UNIT_TYPE_LEGACY":
+      return StorageUnitType.UNIT_TYPE_LEGACY;
+    case 1:
+    case "UNIT_TYPE_2024":
+      return StorageUnitType.UNIT_TYPE_2024;
+    case 2:
+    case "UNIT_TYPE_2025":
+      return StorageUnitType.UNIT_TYPE_2025;
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum StorageUnitType");
+  }
+}
+
+export function storageUnitTypeToJSON(object: StorageUnitType): string {
+  switch (object) {
+    case StorageUnitType.UNIT_TYPE_LEGACY:
+      return "UNIT_TYPE_LEGACY";
+    case StorageUnitType.UNIT_TYPE_2024:
+      return "UNIT_TYPE_2024";
+    case StorageUnitType.UNIT_TYPE_2025:
+      return "UNIT_TYPE_2025";
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum StorageUnitType");
+  }
+}
+
 /**
  * A Message is a delta operation on the Farcaster network. The message protobuf is an envelope
  * that wraps a MessageData object and contains a hash and signature which can verify its authenticity.
@@ -496,6 +537,7 @@ export interface MessageData {
     | undefined;
   /** Compaction messages */
   linkCompactStateBody?: LinkCompactStateBody | undefined;
+  lendStorageBody?: LendStorageBody | undefined;
 }
 
 /** Adds metadata about a user */
@@ -622,6 +664,12 @@ export interface FrameActionBody {
   transactionId: Uint8Array;
   /** Chain-specific address for tx actions */
   address: Uint8Array;
+}
+
+export interface LendStorageBody {
+  toFid: number;
+  numUnits: number;
+  unitType: StorageUnitType;
 }
 
 function createBaseMessage(): Message {
@@ -790,6 +838,7 @@ function createBaseMessageData(): MessageData {
     usernameProofBody: undefined,
     frameActionBody: undefined,
     linkCompactStateBody: undefined,
+    lendStorageBody: undefined,
   };
 }
 
@@ -836,6 +885,9 @@ export const MessageData = {
     }
     if (message.linkCompactStateBody !== undefined) {
       LinkCompactStateBody.encode(message.linkCompactStateBody, writer.uint32(138).fork()).ldelim();
+    }
+    if (message.lendStorageBody !== undefined) {
+      LendStorageBody.encode(message.lendStorageBody, writer.uint32(146).fork()).ldelim();
     }
     return writer;
   },
@@ -945,6 +997,13 @@ export const MessageData = {
 
           message.linkCompactStateBody = LinkCompactStateBody.decode(reader, reader.uint32());
           continue;
+        case 18:
+          if (tag != 146) {
+            break;
+          }
+
+          message.lendStorageBody = LendStorageBody.decode(reader, reader.uint32());
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -976,6 +1035,7 @@ export const MessageData = {
       linkCompactStateBody: isSet(object.linkCompactStateBody)
         ? LinkCompactStateBody.fromJSON(object.linkCompactStateBody)
         : undefined,
+      lendStorageBody: isSet(object.lendStorageBody) ? LendStorageBody.fromJSON(object.lendStorageBody) : undefined,
     };
   },
 
@@ -1008,6 +1068,8 @@ export const MessageData = {
     message.linkCompactStateBody !== undefined && (obj.linkCompactStateBody = message.linkCompactStateBody
       ? LinkCompactStateBody.toJSON(message.linkCompactStateBody)
       : undefined);
+    message.lendStorageBody !== undefined &&
+      (obj.lendStorageBody = message.lendStorageBody ? LendStorageBody.toJSON(message.lendStorageBody) : undefined);
     return obj;
   },
 
@@ -1052,6 +1114,9 @@ export const MessageData = {
       : undefined;
     message.linkCompactStateBody = (object.linkCompactStateBody !== undefined && object.linkCompactStateBody !== null)
       ? LinkCompactStateBody.fromPartial(object.linkCompactStateBody)
+      : undefined;
+    message.lendStorageBody = (object.lendStorageBody !== undefined && object.lendStorageBody !== null)
+      ? LendStorageBody.fromPartial(object.lendStorageBody)
       : undefined;
     return message;
   },
@@ -2146,6 +2211,90 @@ export const FrameActionBody = {
     message.state = object.state ?? new Uint8Array();
     message.transactionId = object.transactionId ?? new Uint8Array();
     message.address = object.address ?? new Uint8Array();
+    return message;
+  },
+};
+
+function createBaseLendStorageBody(): LendStorageBody {
+  return { toFid: 0, numUnits: 0, unitType: 0 };
+}
+
+export const LendStorageBody = {
+  encode(message: LendStorageBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.toFid !== 0) {
+      writer.uint32(8).uint64(message.toFid);
+    }
+    if (message.numUnits !== 0) {
+      writer.uint32(16).uint64(message.numUnits);
+    }
+    if (message.unitType !== 0) {
+      writer.uint32(24).int32(message.unitType);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): LendStorageBody {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseLendStorageBody();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.toFid = longToNumber(reader.uint64() as Long);
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.numUnits = longToNumber(reader.uint64() as Long);
+          continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.unitType = reader.int32() as any;
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): LendStorageBody {
+    return {
+      toFid: isSet(object.toFid) ? Number(object.toFid) : 0,
+      numUnits: isSet(object.numUnits) ? Number(object.numUnits) : 0,
+      unitType: isSet(object.unitType) ? storageUnitTypeFromJSON(object.unitType) : 0,
+    };
+  },
+
+  toJSON(message: LendStorageBody): unknown {
+    const obj: any = {};
+    message.toFid !== undefined && (obj.toFid = Math.round(message.toFid));
+    message.numUnits !== undefined && (obj.numUnits = Math.round(message.numUnits));
+    message.unitType !== undefined && (obj.unitType = storageUnitTypeToJSON(message.unitType));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<LendStorageBody>, I>>(base?: I): LendStorageBody {
+    return LendStorageBody.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<LendStorageBody>, I>>(object: I): LendStorageBody {
+    const message = createBaseLendStorageBody();
+    message.toFid = object.toFid ?? 0;
+    message.numUnits = object.numUnits ?? 0;
+    message.unitType = object.unitType ?? 0;
     return message;
   },
 };

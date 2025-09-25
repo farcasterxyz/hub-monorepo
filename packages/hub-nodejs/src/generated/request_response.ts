@@ -10,6 +10,9 @@ import {
   ReactionType,
   reactionTypeFromJSON,
   reactionTypeToJSON,
+  StorageUnitType,
+  storageUnitTypeFromJSON,
+  storageUnitTypeToJSON,
   UserDataType,
   userDataTypeFromJSON,
   userDataTypeToJSON,
@@ -33,6 +36,7 @@ export enum StoreType {
   USER_DATA = 4,
   VERIFICATIONS = 5,
   USERNAME_PROOFS = 6,
+  STORAGE_LENDS = 7,
 }
 
 export function storeTypeFromJSON(object: any): StoreType {
@@ -58,6 +62,9 @@ export function storeTypeFromJSON(object: any): StoreType {
     case 6:
     case "STORE_TYPE_USERNAME_PROOFS":
       return StoreType.USERNAME_PROOFS;
+    case 7:
+    case "STORE_TYPE_STORAGE_LENDS":
+      return StoreType.STORAGE_LENDS;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum StoreType");
   }
@@ -79,43 +86,10 @@ export function storeTypeToJSON(object: StoreType): string {
       return "STORE_TYPE_VERIFICATIONS";
     case StoreType.USERNAME_PROOFS:
       return "STORE_TYPE_USERNAME_PROOFS";
+    case StoreType.STORAGE_LENDS:
+      return "STORE_TYPE_STORAGE_LENDS";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum StoreType");
-  }
-}
-
-export enum StorageUnitType {
-  UNIT_TYPE_LEGACY = 0,
-  UNIT_TYPE_2024 = 1,
-  UNIT_TYPE_2025 = 2,
-}
-
-export function storageUnitTypeFromJSON(object: any): StorageUnitType {
-  switch (object) {
-    case 0:
-    case "UNIT_TYPE_LEGACY":
-      return StorageUnitType.UNIT_TYPE_LEGACY;
-    case 1:
-    case "UNIT_TYPE_2024":
-      return StorageUnitType.UNIT_TYPE_2024;
-    case 2:
-    case "UNIT_TYPE_2025":
-      return StorageUnitType.UNIT_TYPE_2025;
-    default:
-      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum StorageUnitType");
-  }
-}
-
-export function storageUnitTypeToJSON(object: StorageUnitType): string {
-  switch (object) {
-    case StorageUnitType.UNIT_TYPE_LEGACY:
-      return "UNIT_TYPE_LEGACY";
-    case StorageUnitType.UNIT_TYPE_2024:
-      return "UNIT_TYPE_2024";
-    case StorageUnitType.UNIT_TYPE_2025:
-      return "UNIT_TYPE_2025";
-    default:
-      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum StorageUnitType");
   }
 }
 
