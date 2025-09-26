@@ -2,10 +2,12 @@
 import Long from "long";
 import _m0 from "protobufjs/minimal";
 import { ShardChunk } from "./blocks";
-import { ContactInfoBody } from "./gossip";
 import { HubEvent, HubEventType, hubEventTypeFromJSON, hubEventTypeToJSON } from "./hub_event";
 import {
   CastId,
+  FarcasterNetwork,
+  farcasterNetworkFromJSON,
+  farcasterNetworkToJSON,
   Message,
   ReactionType,
   reactionTypeFromJSON,
@@ -364,6 +366,15 @@ export interface FidAddressTypeResponse {
   isCustody: boolean;
   isAuth: boolean;
   isVerified: boolean;
+}
+
+export interface ContactInfoBody {
+  gossipAddress: string;
+  peerId: Uint8Array;
+  snapchainVersion: string;
+  network: FarcasterNetwork;
+  timestamp: number;
+  announceRpcAddress: string;
 }
 
 export interface GetConnectedPeersRequest {
@@ -4290,6 +4301,137 @@ export const FidAddressTypeResponse = {
     message.isCustody = object.isCustody ?? false;
     message.isAuth = object.isAuth ?? false;
     message.isVerified = object.isVerified ?? false;
+    return message;
+  },
+};
+
+function createBaseContactInfoBody(): ContactInfoBody {
+  return {
+    gossipAddress: "",
+    peerId: new Uint8Array(),
+    snapchainVersion: "",
+    network: 0,
+    timestamp: 0,
+    announceRpcAddress: "",
+  };
+}
+
+export const ContactInfoBody = {
+  encode(message: ContactInfoBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.gossipAddress !== "") {
+      writer.uint32(10).string(message.gossipAddress);
+    }
+    if (message.peerId.length !== 0) {
+      writer.uint32(18).bytes(message.peerId);
+    }
+    if (message.snapchainVersion !== "") {
+      writer.uint32(26).string(message.snapchainVersion);
+    }
+    if (message.network !== 0) {
+      writer.uint32(32).int32(message.network);
+    }
+    if (message.timestamp !== 0) {
+      writer.uint32(40).uint64(message.timestamp);
+    }
+    if (message.announceRpcAddress !== "") {
+      writer.uint32(50).string(message.announceRpcAddress);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ContactInfoBody {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseContactInfoBody();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.gossipAddress = reader.string();
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.peerId = reader.bytes();
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.snapchainVersion = reader.string();
+          continue;
+        case 4:
+          if (tag != 32) {
+            break;
+          }
+
+          message.network = reader.int32() as any;
+          continue;
+        case 5:
+          if (tag != 40) {
+            break;
+          }
+
+          message.timestamp = longToNumber(reader.uint64() as Long);
+          continue;
+        case 6:
+          if (tag != 50) {
+            break;
+          }
+
+          message.announceRpcAddress = reader.string();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ContactInfoBody {
+    return {
+      gossipAddress: isSet(object.gossipAddress) ? String(object.gossipAddress) : "",
+      peerId: isSet(object.peerId) ? bytesFromBase64(object.peerId) : new Uint8Array(),
+      snapchainVersion: isSet(object.snapchainVersion) ? String(object.snapchainVersion) : "",
+      network: isSet(object.network) ? farcasterNetworkFromJSON(object.network) : 0,
+      timestamp: isSet(object.timestamp) ? Number(object.timestamp) : 0,
+      announceRpcAddress: isSet(object.announceRpcAddress) ? String(object.announceRpcAddress) : "",
+    };
+  },
+
+  toJSON(message: ContactInfoBody): unknown {
+    const obj: any = {};
+    message.gossipAddress !== undefined && (obj.gossipAddress = message.gossipAddress);
+    message.peerId !== undefined &&
+      (obj.peerId = base64FromBytes(message.peerId !== undefined ? message.peerId : new Uint8Array()));
+    message.snapchainVersion !== undefined && (obj.snapchainVersion = message.snapchainVersion);
+    message.network !== undefined && (obj.network = farcasterNetworkToJSON(message.network));
+    message.timestamp !== undefined && (obj.timestamp = Math.round(message.timestamp));
+    message.announceRpcAddress !== undefined && (obj.announceRpcAddress = message.announceRpcAddress);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ContactInfoBody>, I>>(base?: I): ContactInfoBody {
+    return ContactInfoBody.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ContactInfoBody>, I>>(object: I): ContactInfoBody {
+    const message = createBaseContactInfoBody();
+    message.gossipAddress = object.gossipAddress ?? "";
+    message.peerId = object.peerId ?? new Uint8Array();
+    message.snapchainVersion = object.snapchainVersion ?? "";
+    message.network = object.network ?? 0;
+    message.timestamp = object.timestamp ?? 0;
+    message.announceRpcAddress = object.announceRpcAddress ?? "";
     return message;
   },
 };

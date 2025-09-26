@@ -2,7 +2,7 @@
 import Long from "long";
 import _m0 from "protobufjs/minimal";
 import { ConsensusMessage, FullProposal, MempoolMessage, ReadNodeMessage, StatusMessage } from "./blocks";
-import { FarcasterNetwork, farcasterNetworkFromJSON, farcasterNetworkToJSON } from "./message";
+import { FarcasterNetwork } from "./message";
 
 export interface ContactInfoBody {
   gossipAddress: string;
@@ -118,29 +118,6 @@ export const ContactInfoBody = {
     return message;
   },
 
-  fromJSON(object: any): ContactInfoBody {
-    return {
-      gossipAddress: isSet(object.gossipAddress) ? String(object.gossipAddress) : "",
-      peerId: isSet(object.peerId) ? bytesFromBase64(object.peerId) : new Uint8Array(),
-      snapchainVersion: isSet(object.snapchainVersion) ? String(object.snapchainVersion) : "",
-      network: isSet(object.network) ? farcasterNetworkFromJSON(object.network) : 0,
-      timestamp: isSet(object.timestamp) ? Number(object.timestamp) : 0,
-      announceRpcAddress: isSet(object.announceRpcAddress) ? String(object.announceRpcAddress) : "",
-    };
-  },
-
-  toJSON(message: ContactInfoBody): unknown {
-    const obj: any = {};
-    message.gossipAddress !== undefined && (obj.gossipAddress = message.gossipAddress);
-    message.peerId !== undefined &&
-      (obj.peerId = base64FromBytes(message.peerId !== undefined ? message.peerId : new Uint8Array()));
-    message.snapchainVersion !== undefined && (obj.snapchainVersion = message.snapchainVersion);
-    message.network !== undefined && (obj.network = farcasterNetworkToJSON(message.network));
-    message.timestamp !== undefined && (obj.timestamp = Math.round(message.timestamp));
-    message.announceRpcAddress !== undefined && (obj.announceRpcAddress = message.announceRpcAddress);
-    return obj;
-  },
-
   create<I extends Exact<DeepPartial<ContactInfoBody>, I>>(base?: I): ContactInfoBody {
     return ContactInfoBody.fromPartial(base ?? {});
   },
@@ -190,16 +167,6 @@ export const ContactInfo = {
       reader.skipType(tag & 7);
     }
     return message;
-  },
-
-  fromJSON(object: any): ContactInfo {
-    return { body: isSet(object.body) ? ContactInfoBody.fromJSON(object.body) : undefined };
-  },
-
-  toJSON(message: ContactInfo): unknown {
-    const obj: any = {};
-    message.body !== undefined && (obj.body = message.body ? ContactInfoBody.toJSON(message.body) : undefined);
-    return obj;
   },
 
   create<I extends Exact<DeepPartial<ContactInfo>, I>>(base?: I): ContactInfo {
@@ -307,37 +274,6 @@ export const GossipMessage = {
     return message;
   },
 
-  fromJSON(object: any): GossipMessage {
-    return {
-      consensus: isSet(object.consensus) ? ConsensusMessage.fromJSON(object.consensus) : undefined,
-      fullProposal: isSet(object.fullProposal) ? FullProposal.fromJSON(object.fullProposal) : undefined,
-      mempoolMessage: isSet(object.mempoolMessage) ? MempoolMessage.fromJSON(object.mempoolMessage) : undefined,
-      status: isSet(object.status) ? StatusMessage.fromJSON(object.status) : undefined,
-      readNodeMessage: isSet(object.readNodeMessage) ? ReadNodeMessage.fromJSON(object.readNodeMessage) : undefined,
-      contactInfoMessage: isSet(object.contactInfoMessage)
-        ? ContactInfo.fromJSON(object.contactInfoMessage)
-        : undefined,
-    };
-  },
-
-  toJSON(message: GossipMessage): unknown {
-    const obj: any = {};
-    message.consensus !== undefined &&
-      (obj.consensus = message.consensus ? ConsensusMessage.toJSON(message.consensus) : undefined);
-    message.fullProposal !== undefined &&
-      (obj.fullProposal = message.fullProposal ? FullProposal.toJSON(message.fullProposal) : undefined);
-    message.mempoolMessage !== undefined &&
-      (obj.mempoolMessage = message.mempoolMessage ? MempoolMessage.toJSON(message.mempoolMessage) : undefined);
-    message.status !== undefined && (obj.status = message.status ? StatusMessage.toJSON(message.status) : undefined);
-    message.readNodeMessage !== undefined &&
-      (obj.readNodeMessage = message.readNodeMessage ? ReadNodeMessage.toJSON(message.readNodeMessage) : undefined);
-    message.contactInfoMessage !== undefined &&
-      (obj.contactInfoMessage = message.contactInfoMessage
-        ? ContactInfo.toJSON(message.contactInfoMessage)
-        : undefined);
-    return obj;
-  },
-
   create<I extends Exact<DeepPartial<GossipMessage>, I>>(base?: I): GossipMessage {
     return GossipMessage.fromPartial(base ?? {});
   },
@@ -385,31 +321,6 @@ var tsProtoGlobalThis: any = (() => {
   throw "Unable to locate global object";
 })();
 
-function bytesFromBase64(b64: string): Uint8Array {
-  if (tsProtoGlobalThis.Buffer) {
-    return Uint8Array.from(tsProtoGlobalThis.Buffer.from(b64, "base64"));
-  } else {
-    const bin = tsProtoGlobalThis.atob(b64);
-    const arr = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; ++i) {
-      arr[i] = bin.charCodeAt(i);
-    }
-    return arr;
-  }
-}
-
-function base64FromBytes(arr: Uint8Array): string {
-  if (tsProtoGlobalThis.Buffer) {
-    return tsProtoGlobalThis.Buffer.from(arr).toString("base64");
-  } else {
-    const bin: string[] = [];
-    arr.forEach((byte) => {
-      bin.push(String.fromCharCode(byte));
-    });
-    return tsProtoGlobalThis.btoa(bin.join(""));
-  }
-}
-
 type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
 
 type DeepPartial<T> = T extends Builtin ? T
@@ -431,8 +342,4 @@ function longToNumber(long: Long): number {
 if (_m0.util.Long !== Long) {
   _m0.util.Long = Long as any;
   _m0.configure();
-}
-
-function isSet(value: any): boolean {
-  return value !== null && value !== undefined;
 }
