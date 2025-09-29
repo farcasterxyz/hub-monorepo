@@ -447,7 +447,6 @@ export const validateMessageData = async <T extends protobufs.MessageData>(
   } else if (validType.value === protobufs.MessageType.FRAME_ACTION && !!data.frameActionBody) {
     bodyResult = validateFrameActionBody(data.frameActionBody);
   } else if (validType.value === protobufs.MessageType.LEND_STORAGE && !!data.lendStorageBody) {
-    // TODO(aditi): Validate storage lend
     if (data.timestamp < farcasterTime.value - 60 * 10) {
       bodyResult = err(new HubError("bad_request.validation_failure", "timestamp more than 10 mins in the past"));
     } else {
