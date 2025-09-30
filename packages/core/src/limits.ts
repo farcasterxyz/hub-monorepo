@@ -35,6 +35,11 @@ const STORAGE_UNIT_DEFAULTS = {
     [StorageUnitType.UNIT_TYPE_2024]: 25,
     [StorageUnitType.UNIT_TYPE_2025]: 5,
   },
+  [StoreType.STORAGE_LENDS]: {
+    [StorageUnitType.UNIT_TYPE_LEGACY]: 1,
+    [StorageUnitType.UNIT_TYPE_2024]: 1,
+    [StorageUnitType.UNIT_TYPE_2025]: 1,
+  },
   [StoreType.NONE]: {
     [StorageUnitType.UNIT_TYPE_LEGACY]: 0,
     [StorageUnitType.UNIT_TYPE_2024]: 0,

@@ -446,6 +446,12 @@ export const validateMessageData = async <T extends protobufs.MessageData>(
     bodyResult = validateUsernameProofBody(data.usernameProofBody, data);
   } else if (validType.value === protobufs.MessageType.FRAME_ACTION && !!data.frameActionBody) {
     bodyResult = validateFrameActionBody(data.frameActionBody);
+  } else if (validType.value === protobufs.MessageType.LEND_STORAGE && !!data.lendStorageBody) {
+    if (data.timestamp < farcasterTime.value - 60 * 10) {
+      bodyResult = err(new HubError("bad_request.validation_failure", "timestamp more than 10 mins in the past"));
+    } else {
+      bodyResult = validateLendStorageBody(data.lendStorageBody);
+    }
   } else {
     return err(new HubError("bad_request.invalid_param", "bodyType is invalid"));
   }
@@ -958,6 +964,14 @@ export const validateFrameActionBody = (body: protobufs.FrameActionBody): HubRes
     if (result.isErr()) {
       return err(result.error);
     }
+  }
+
+  return ok(body);
+};
+
+export const validateLendStorageBody = (body: protobufs.LendStorageBody): HubResult<protobufs.LendStorageBody> => {
+  if (body.numUnits > 5000) {
+    return err(new HubError("bad_request.validation_failure", "num storage units too large"));
   }
 
   return ok(body);

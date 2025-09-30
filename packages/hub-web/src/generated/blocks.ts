@@ -37,6 +37,7 @@ export function voteTypeToJSON(object: VoteType): string {
 
 export enum BlockEventType {
   HEARTBEAT = 0,
+  MERGE_MESSAGE = 1,
 }
 
 export function blockEventTypeFromJSON(object: any): BlockEventType {
@@ -44,6 +45,9 @@ export function blockEventTypeFromJSON(object: any): BlockEventType {
     case 0:
     case "BLOCK_EVENT_TYPE_HEARTBEAT":
       return BlockEventType.HEARTBEAT;
+    case 1:
+    case "BLOCK_EVENT_TYPE_MERGE_MESSAGE":
+      return BlockEventType.MERGE_MESSAGE;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum BlockEventType");
   }
@@ -53,6 +57,8 @@ export function blockEventTypeToJSON(object: BlockEventType): string {
   switch (object) {
     case BlockEventType.HEARTBEAT:
       return "BLOCK_EVENT_TYPE_HEARTBEAT";
+    case BlockEventType.MERGE_MESSAGE:
+      return "BLOCK_EVENT_TYPE_MERGE_MESSAGE";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum BlockEventType");
   }
@@ -140,6 +146,10 @@ export interface ConsensusMessage {
 export interface HeartbeatEventBody {
 }
 
+export interface MergeMessageEventBody {
+  message: Message | undefined;
+}
+
 export interface BlockEventData {
   seqnum: number;
   type: BlockEventType;
@@ -147,6 +157,7 @@ export interface BlockEventData {
   eventIndex: number;
   blockTimestamp: number;
   heartbeatEventBody?: HeartbeatEventBody | undefined;
+  mergeMessageEventBody?: MergeMessageEventBody | undefined;
 }
 
 export interface BlockEvent {
@@ -1369,8 +1380,74 @@ export const HeartbeatEventBody = {
   },
 };
 
+function createBaseMergeMessageEventBody(): MergeMessageEventBody {
+  return { message: undefined };
+}
+
+export const MergeMessageEventBody = {
+  encode(message: MergeMessageEventBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.message !== undefined) {
+      Message.encode(message.message, writer.uint32(10).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): MergeMessageEventBody {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseMergeMessageEventBody();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.message = Message.decode(reader, reader.uint32());
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): MergeMessageEventBody {
+    return { message: isSet(object.message) ? Message.fromJSON(object.message) : undefined };
+  },
+
+  toJSON(message: MergeMessageEventBody): unknown {
+    const obj: any = {};
+    message.message !== undefined && (obj.message = message.message ? Message.toJSON(message.message) : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MergeMessageEventBody>, I>>(base?: I): MergeMessageEventBody {
+    return MergeMessageEventBody.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<MergeMessageEventBody>, I>>(object: I): MergeMessageEventBody {
+    const message = createBaseMergeMessageEventBody();
+    message.message = (object.message !== undefined && object.message !== null)
+      ? Message.fromPartial(object.message)
+      : undefined;
+    return message;
+  },
+};
+
 function createBaseBlockEventData(): BlockEventData {
-  return { seqnum: 0, type: 0, blockNumber: 0, eventIndex: 0, blockTimestamp: 0, heartbeatEventBody: undefined };
+  return {
+    seqnum: 0,
+    type: 0,
+    blockNumber: 0,
+    eventIndex: 0,
+    blockTimestamp: 0,
+    heartbeatEventBody: undefined,
+    mergeMessageEventBody: undefined,
+  };
 }
 
 export const BlockEventData = {
@@ -1392,6 +1469,9 @@ export const BlockEventData = {
     }
     if (message.heartbeatEventBody !== undefined) {
       HeartbeatEventBody.encode(message.heartbeatEventBody, writer.uint32(50).fork()).ldelim();
+    }
+    if (message.mergeMessageEventBody !== undefined) {
+      MergeMessageEventBody.encode(message.mergeMessageEventBody, writer.uint32(58).fork()).ldelim();
     }
     return writer;
   },
@@ -1445,6 +1525,13 @@ export const BlockEventData = {
 
           message.heartbeatEventBody = HeartbeatEventBody.decode(reader, reader.uint32());
           continue;
+        case 7:
+          if (tag != 58) {
+            break;
+          }
+
+          message.mergeMessageEventBody = MergeMessageEventBody.decode(reader, reader.uint32());
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -1464,6 +1551,9 @@ export const BlockEventData = {
       heartbeatEventBody: isSet(object.heartbeatEventBody)
         ? HeartbeatEventBody.fromJSON(object.heartbeatEventBody)
         : undefined,
+      mergeMessageEventBody: isSet(object.mergeMessageEventBody)
+        ? MergeMessageEventBody.fromJSON(object.mergeMessageEventBody)
+        : undefined,
     };
   },
 
@@ -1476,6 +1566,9 @@ export const BlockEventData = {
     message.blockTimestamp !== undefined && (obj.blockTimestamp = Math.round(message.blockTimestamp));
     message.heartbeatEventBody !== undefined && (obj.heartbeatEventBody = message.heartbeatEventBody
       ? HeartbeatEventBody.toJSON(message.heartbeatEventBody)
+      : undefined);
+    message.mergeMessageEventBody !== undefined && (obj.mergeMessageEventBody = message.mergeMessageEventBody
+      ? MergeMessageEventBody.toJSON(message.mergeMessageEventBody)
       : undefined);
     return obj;
   },
@@ -1494,6 +1587,10 @@ export const BlockEventData = {
     message.heartbeatEventBody = (object.heartbeatEventBody !== undefined && object.heartbeatEventBody !== null)
       ? HeartbeatEventBody.fromPartial(object.heartbeatEventBody)
       : undefined;
+    message.mergeMessageEventBody =
+      (object.mergeMessageEventBody !== undefined && object.mergeMessageEventBody !== null)
+        ? MergeMessageEventBody.fromPartial(object.mergeMessageEventBody)
+        : undefined;
     return message;
   },
 };

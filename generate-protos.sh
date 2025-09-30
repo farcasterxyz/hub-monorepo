@@ -1,6 +1,6 @@
 PROTO_REPO=https://github.com/farcasterxyz/snapchain
 PROTO_PATH=src/proto
-PROTO_REV=82903473a69e3cb898c4cba85cbe1a71a469355f # Update this if you want to generate off updated snapchain protos
+PROTO_REV=32fa4b1fa7e5ed32e271777d6854ee637678f4a9 # Update this if you want to generate off updated snapchain protos
 
 TMPDIR=tmp-protogen
 git clone $PROTO_REPO $TMPDIR
@@ -11,7 +11,7 @@ cd ..
 
 # Determine which files you care about
 if [[ "$LIBRARY" == "core" ]]; then
-    RELEVANT_PROTOS=$(ls $TMPDIR/$PROTO_PATH/*.proto | xargs -n 1 basename | xargs -I{} echo '/defs/{}' | tr '\n' ' ')
+    RELEVANT_PROTOS="/defs/request_response.proto /defs/rpc.proto /defs/admin_rpc.proto /defs/message.proto /defs/hub_event.proto /defs/onchain_event.proto /defs/username_proof.proto"
     OUT_PATH=src/protobufs/generated
     CUSTOM_TS_PROTO_OPTS="outputServices=false"
 elif [[ "$LIBRARY" == "hub-nodejs" ]]; then
