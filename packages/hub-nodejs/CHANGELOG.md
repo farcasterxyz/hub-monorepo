@@ -1,5 +1,13 @@
 # @farcaster/hub-nodejs
 
+## 0.15.8
+
+### Patch Changes
+
+- 206eb72f: feat: support storage lending
+- Updated dependencies [206eb72f]
+  - @farcaster/core@0.18.8
+
 ## 0.15.7
 
 ### Patch Changes
