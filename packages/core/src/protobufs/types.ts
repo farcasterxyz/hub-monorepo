@@ -126,6 +126,16 @@ export type FrameActionMessage = protobufs.Message & {
   signatureScheme: protobufs.SignatureScheme.ED25519;
 };
 
+export type LendStorageData = protobufs.MessageData & {
+  type: protobufs.MessageType.LEND_STORAGE;
+  lendStorageBody: protobufs.LendStorageBody;
+};
+
+export type LendStorageMessage = protobufs.Message & {
+  data: LendStorageData;
+  signatureScheme: protobufs.SignatureScheme.ED25519;
+};
+
 export type SignerOnChainEvent = onchainEventProtobufs.OnChainEvent & {
   type: onchainEventProtobufs.OnChainEventType.EVENT_TYPE_SIGNER;
   signerEventBody: onchainEventProtobufs.SignerEventBody;

@@ -27,6 +27,7 @@ type MessageBodyOptions = Pick<
   | "linkCompactStateBody"
   | "usernameProofBody"
   | "frameActionBody"
+  | "lendStorageBody"
 >;
 
 /** Generic Methods */
@@ -356,4 +357,23 @@ export const makeFrameActionData = (
   dataOptions: MessageDataOptions,
 ): HubAsyncResult<protobufs.FrameActionData> => {
   return makeMessageData({ frameActionBody: body }, protobufs.MessageType.FRAME_ACTION, dataOptions);
+};
+
+export const makeLendStorageData = async (
+  body: protobufs.LendStorageBody,
+  dataOptions: MessageDataOptions,
+): HubAsyncResult<protobufs.LendStorageData> => {
+  return makeMessageData({ lendStorageBody: body }, protobufs.MessageType.LEND_STORAGE, dataOptions);
+};
+
+export const makeLendStorage = async (
+  body: protobufs.LendStorageBody,
+  dataOptions: MessageDataOptions,
+  signer: Signer,
+): HubAsyncResult<protobufs.LendStorageMessage> => {
+  const data = await makeLendStorageData(body, dataOptions);
+  if (data.isErr()) {
+    return err(data.error);
+  }
+  return makeMessage(data.value, signer);
 };

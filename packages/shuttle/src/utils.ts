@@ -225,6 +225,16 @@ export function convertProtobufMessageBodyToJson(message: Message): MessageBodyJ
       };
       break;
     }
+    case MessageType.LEND_STORAGE: {
+      if (!message.data.lendStorageBody) throw new Error("Missing lendStorageBody");
+      const { toFid, numUnits, unitType } = message.data.lendStorageBody;
+      body = {
+        toFid,
+        numUnits,
+        unitType,
+      };
+      break;
+    }
     default:
       // TODO: Once we update types in upstream @farcaster/hub-nodejs, switch to this
       // assertUnreachable(message.data.type);

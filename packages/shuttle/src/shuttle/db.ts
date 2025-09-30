@@ -22,6 +22,7 @@ import {
   MessageType,
   ReactionType,
   SignatureScheme,
+  StorageUnitType,
   UserDataType,
   UserNameType,
 } from "@farcaster/hub-nodejs";
@@ -109,6 +110,12 @@ export type UsernameProofBodyJson = {
   type: UserNameType;
 };
 
+export type LendStorageBodyJson = {
+  toFid: number;
+  numUnits: number;
+  unitType: StorageUnitType;
+};
+
 export type MessageBodyJson =
   | CastAddBodyJson
   | CastRemoveBodyJson
@@ -119,7 +126,8 @@ export type MessageBodyJson =
   | SignerAddBodyJson
   | SignerRemoveBodyJson
   | UserDataBodyJson
-  | UsernameProofBodyJson;
+  | UsernameProofBodyJson
+  | LendStorageBodyJson;
 
 type MessagesTable = {
   id: Generated<string>;

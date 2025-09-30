@@ -47,6 +47,7 @@ export class MessageReconciliation {
     startTimestamp?: number,
     stopTimestamp?: number,
   ) {
+    // Don't reconcile storage lends
     for (const type of [
       MessageType.CAST_ADD,
       MessageType.REACTION_ADD,
