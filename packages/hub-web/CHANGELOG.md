@@ -1,5 +1,13 @@
 # @farcaster/hub-web
 
+## 0.11.6
+
+### Patch Changes
+
+- 206eb72f: feat: support storage lending
+- Updated dependencies [206eb72f]
+  - @farcaster/core@0.18.8
+
 ## 0.11.5
 
 ### Patch Changes

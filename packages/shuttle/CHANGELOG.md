@@ -1,5 +1,13 @@
 # @farcaster/hub-shuttle
 
+## 0.9.3
+
+### Patch Changes
+
+- 206eb72f: feat: support storage lending
+- Updated dependencies [206eb72f]
+  - @farcaster/hub-nodejs@0.15.8
+
 ## 0.9.2
 
 ### Patch Changes
