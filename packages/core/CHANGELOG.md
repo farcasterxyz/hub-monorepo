@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.18.8
+
+### Patch Changes
+
+- 206eb72f: feat: support storage lending
+
 ## 0.18.7
 
 ### Patch Changes
