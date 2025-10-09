@@ -1,25 +1,10 @@
-import {
-  DB,
-  getDbClient,
-  getHubClient,
-  MessageHandler,
-  StoreMessageOperation,
-  MessageReconciliation,
-  RedisClient,
-  HubEventProcessor,
-  EventStreamHubSubscriber,
-  EventStreamConnection,
-  HubEventStreamConsumer,
-  HubSubscriber,
-  MessageState,
-} from "../index"; // If you want to use this as a standalone app, replace this import with "@farcaster/shuttle"
-import { AppDb, migrateToLatest, Tables } from "./db";
+import { Command } from "@commander-js/extra-typings";
 import {
   bytesToHexString,
+  GetInfoRequest,
   getStorageUnitExpiry,
   getStorageUnitType,
-  HubEvent,
-  HubInfoRequest,
+  type HubEvent,
   isCastAddMessage,
   isCastRemoveMessage,
   isIdRegisterOnChainEvent,
@@ -28,29 +13,43 @@ import {
   isStorageRentOnChainEvent,
   Message,
 } from "@farcaster/hub-nodejs";
-import { log } from "./log";
-import { Command } from "@commander-js/extra-typings";
+import { Queue } from "bullmq";
 import { readFileSync } from "fs";
+import { ok } from "neverthrow";
+import * as process from "node:process";
+import url from "node:url";
+import {
+  DB,
+  EventStreamConnection,
+  EventStreamHubSubscriber,
+  getDbClient,
+  getHubClient,
+  HubEventProcessor,
+  HubEventStreamConsumer,
+  HubSubscriber,
+  MessageHandler,
+  MessageReconciliation,
+  MessageState,
+  RedisClient,
+  StoreMessageOperation,
+} from "../index"; // If you want to use this as a standalone app, replace this import with "@farcaster/shuttle"
+import { bytesToHex, farcasterTimeToDate } from "../utils";
+import { AppDb, migrateToLatest } from "./db";
 import {
   BACKFILL_FIDS,
   CONCURRENCY,
   HUB_HOST,
   HUB_SSL,
   MAX_FID,
-  POSTGRES_URL,
   POSTGRES_SCHEMA,
+  POSTGRES_URL,
   REDIS_URL,
   SHARD_INDEX,
-  TOTAL_SHARDS,
-  USE_STREAMING_RPCS_FOR_BACKFILL,
   SUBSCRIBE_RPC_TIMEOUT,
+  TOTAL_SHARDS,
 } from "./env";
-import * as process from "node:process";
-import url from "node:url";
-import { ok, Result } from "neverthrow";
+import { log } from "./log";
 import { getQueue, getWorker } from "./worker";
-import { Queue } from "bullmq";
-import { bytesToHex, farcasterTimeToDate } from "../utils";
 
 const hubId = "shuttle";
 
@@ -95,13 +94,12 @@ export class App implements MessageHandler {
     const hubSubscriber = new EventStreamHubSubscriber(
       hubId,
       hub,
+      shardIndex,
       eventStreamForWrite,
       redis,
       shardKey,
       log,
-      null,
-      totalShards,
-      shardIndex,
+      undefined,
       SUBSCRIBE_RPC_TIMEOUT,
     );
     const streamConsumer = new HubEventStreamConsumer(hub, eventStreamForRead, shardKey);
@@ -137,7 +135,7 @@ export class App implements MessageHandler {
         };
       }
       try {
-        await (txn as AppDb)
+        await (txn as unknown as AppDb)
           .insertInto("onchain_events")
           .values({
             fid: onChainEvent.fid,
@@ -190,7 +188,9 @@ export class App implements MessageHandler {
     } else if (isCastMessage && state === "deleted") {
       await appDB
         .updateTable("casts")
-        .set({ deletedAt: farcasterTimeToDate(message.data.timestamp) || new Date() })
+        .set({
+          deletedAt: farcasterTimeToDate(message.data.timestamp) || new Date(),
+        })
         .where("hash", "=", message.hash)
         .execute();
     }
@@ -223,7 +223,6 @@ export class App implements MessageHandler {
       this.db,
       log,
       undefined,
-      USE_STREAMING_RPCS_FOR_BACKFILL,
     );
     for (const fid of fids) {
       await reconciler.reconcileMessagesForFid(
@@ -250,12 +249,12 @@ export class App implements MessageHandler {
     if (fids.length === 0) {
       let maxFid = MAX_FID ? parseInt(MAX_FID) : undefined;
       if (!maxFid) {
-        const getInfoResult = await this.hubSubscriber.hubClient?.getInfo(HubInfoRequest.create({}));
+        const getInfoResult = await this.hubSubscriber.hubClient?.getInfo(GetInfoRequest.create({}));
         if (getInfoResult?.isErr()) {
           log.error("Failed to get max fid", getInfoResult.error);
           throw getInfoResult.error;
         } else {
-          maxFid = getInfoResult?._unsafeUnwrap()?.dbStats?.numFidEvents;
+          maxFid = getInfoResult?._unsafeUnwrap()?.dbStats?.numFidRegistrations;
           if (!maxFid) {
             log.error("Failed to get max fid");
             throw new Error("Failed to get max fid");
