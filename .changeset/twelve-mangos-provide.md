@@ -2,4 +2,4 @@
 '@farcaster/shuttle': patch
 ---
 
-update example app t utilize current shuttle libs
+update example app to utilize current shuttle libs
