@@ -19,7 +19,7 @@ import {
   getStorageUnitExpiry,
   getStorageUnitType,
   HubEvent,
-  HubInfoRequest,
+  GetInfoRequest,
   isCastAddMessage,
   isCastRemoveMessage,
   isIdRegisterOnChainEvent,
@@ -95,13 +95,12 @@ export class App implements MessageHandler {
     const hubSubscriber = new EventStreamHubSubscriber(
       hubId,
       hub,
+      shardIndex,
       eventStreamForWrite,
       redis,
       shardKey,
       log,
-      null,
-      totalShards,
-      shardIndex,
+      undefined,
       SUBSCRIBE_RPC_TIMEOUT,
     );
     const streamConsumer = new HubEventStreamConsumer(hub, eventStreamForRead, shardKey);
@@ -223,7 +222,6 @@ export class App implements MessageHandler {
       this.db,
       log,
       undefined,
-      USE_STREAMING_RPCS_FOR_BACKFILL,
     );
     for (const fid of fids) {
       await reconciler.reconcileMessagesForFid(
@@ -250,12 +248,12 @@ export class App implements MessageHandler {
     if (fids.length === 0) {
       let maxFid = MAX_FID ? parseInt(MAX_FID) : undefined;
       if (!maxFid) {
-        const getInfoResult = await this.hubSubscriber.hubClient?.getInfo(HubInfoRequest.create({}));
+        const getInfoResult = await this.hubSubscriber.hubClient?.getInfo(GetInfoRequest.create({}));
         if (getInfoResult?.isErr()) {
           log.error("Failed to get max fid", getInfoResult.error);
           throw getInfoResult.error;
         } else {
-          maxFid = getInfoResult?._unsafeUnwrap()?.dbStats?.numFidEvents;
+          maxFid = getInfoResult?._unsafeUnwrap()?.dbStats?.numFidRegistrations;
           if (!maxFid) {
             log.error("Failed to get max fid");
             throw new Error("Failed to get max fid");
