@@ -1,5 +1,5 @@
 import {
-  BlockConfirmedHubEvent,
+  type BlockConfirmedHubEvent,
   extractTimestampFromEvent,
   HubEvent,
   HubEventType,
