@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 0.9.5
+
+### Patch Changes
+
+- 872c2c78: feat: add support for backfilling lend storage messages
+
 ## 0.9.4
 
 ### Patch Changes
