@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.18.9
+
+### Patch Changes
+
+- 7e602dc9: chore: pull in latest snapchain protos
+
 ## 0.18.8
 
 ### Patch Changes

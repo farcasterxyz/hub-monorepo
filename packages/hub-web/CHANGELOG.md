@@ -1,5 +1,13 @@
 # @farcaster/hub-web
 
+## 0.11.7
+
+### Patch Changes
+
+- 7e602dc9: chore: pull in latest snapchain protos
+- Updated dependencies [7e602dc9]
+  - @farcaster/core@0.18.9
+
 ## 0.11.6
 
 ### Patch Changes
