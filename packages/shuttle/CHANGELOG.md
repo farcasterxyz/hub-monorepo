@@ -1,5 +1,13 @@
 # @farcaster/hub-shuttle
 
+## 0.9.4
+
+### Patch Changes
+
+- f1f2b4c3: chore: upgrade the example app's shuttle dependency
+- Updated dependencies [7e602dc9]
+  - @farcaster/hub-nodejs@0.15.9
+
 ## 0.9.3
 
 ### Patch Changes

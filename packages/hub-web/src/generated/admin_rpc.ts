@@ -28,6 +28,10 @@ export interface UploadSnapshotRequest {
   shardIndexes: number[];
 }
 
+export interface RunOnchainEventsMigrationRequest {
+  shardId: number;
+}
+
 function createBaseEmpty(): Empty {
   return {};
 }
@@ -359,12 +363,76 @@ export const UploadSnapshotRequest = {
   },
 };
 
+function createBaseRunOnchainEventsMigrationRequest(): RunOnchainEventsMigrationRequest {
+  return { shardId: 0 };
+}
+
+export const RunOnchainEventsMigrationRequest = {
+  encode(message: RunOnchainEventsMigrationRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.shardId !== 0) {
+      writer.uint32(8).uint64(message.shardId);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): RunOnchainEventsMigrationRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseRunOnchainEventsMigrationRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.shardId = longToNumber(reader.uint64() as Long);
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): RunOnchainEventsMigrationRequest {
+    return { shardId: isSet(object.shardId) ? Number(object.shardId) : 0 };
+  },
+
+  toJSON(message: RunOnchainEventsMigrationRequest): unknown {
+    const obj: any = {};
+    message.shardId !== undefined && (obj.shardId = Math.round(message.shardId));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<RunOnchainEventsMigrationRequest>, I>>(
+    base?: I,
+  ): RunOnchainEventsMigrationRequest {
+    return RunOnchainEventsMigrationRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<RunOnchainEventsMigrationRequest>, I>>(
+    object: I,
+  ): RunOnchainEventsMigrationRequest {
+    const message = createBaseRunOnchainEventsMigrationRequest();
+    message.shardId = object.shardId ?? 0;
+    return message;
+  },
+};
+
 export interface AdminService {
   submitOnChainEvent(request: DeepPartial<OnChainEvent>, metadata?: grpc.Metadata): Promise<OnChainEvent>;
   submitUserNameProof(request: DeepPartial<UserNameProof>, metadata?: grpc.Metadata): Promise<UserNameProof>;
   uploadSnapshot(request: DeepPartial<UploadSnapshotRequest>, metadata?: grpc.Metadata): Promise<Empty>;
   retryOnchainEvents(request: DeepPartial<RetryOnchainEventsRequest>, metadata?: grpc.Metadata): Promise<Empty>;
   retryFnameEvents(request: DeepPartial<RetryFnameRequest>, metadata?: grpc.Metadata): Promise<Empty>;
+  runOnchainEventsMigration(
+    request: DeepPartial<RunOnchainEventsMigrationRequest>,
+    metadata?: grpc.Metadata,
+  ): Promise<Empty>;
 }
 
 export class AdminServiceClientImpl implements AdminService {
@@ -377,6 +445,7 @@ export class AdminServiceClientImpl implements AdminService {
     this.uploadSnapshot = this.uploadSnapshot.bind(this);
     this.retryOnchainEvents = this.retryOnchainEvents.bind(this);
     this.retryFnameEvents = this.retryFnameEvents.bind(this);
+    this.runOnchainEventsMigration = this.runOnchainEventsMigration.bind(this);
   }
 
   submitOnChainEvent(request: DeepPartial<OnChainEvent>, metadata?: grpc.Metadata): Promise<OnChainEvent> {
@@ -397,6 +466,17 @@ export class AdminServiceClientImpl implements AdminService {
 
   retryFnameEvents(request: DeepPartial<RetryFnameRequest>, metadata?: grpc.Metadata): Promise<Empty> {
     return this.rpc.unary(AdminServiceRetryFnameEventsDesc, RetryFnameRequest.fromPartial(request), metadata);
+  }
+
+  runOnchainEventsMigration(
+    request: DeepPartial<RunOnchainEventsMigrationRequest>,
+    metadata?: grpc.Metadata,
+  ): Promise<Empty> {
+    return this.rpc.unary(
+      AdminServiceRunOnchainEventsMigrationDesc,
+      RunOnchainEventsMigrationRequest.fromPartial(request),
+      metadata,
+    );
   }
 }
 
@@ -502,6 +582,29 @@ export const AdminServiceRetryFnameEventsDesc: UnaryMethodDefinitionish = {
   requestType: {
     serializeBinary() {
       return RetryFnameRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = Empty.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const AdminServiceRunOnchainEventsMigrationDesc: UnaryMethodDefinitionish = {
+  methodName: "RunOnchainEventsMigration",
+  service: AdminServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return RunOnchainEventsMigrationRequest.encode(this).finish();
     },
   } as any,
   responseType: {
