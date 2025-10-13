@@ -47,13 +47,13 @@ export class MessageReconciliation {
     startTimestamp?: number,
     stopTimestamp?: number,
   ) {
-    // Don't reconcile storage lends
     for (const type of [
       MessageType.CAST_ADD,
       MessageType.REACTION_ADD,
       MessageType.LINK_ADD,
       MessageType.VERIFICATION_ADD_ETH_ADDRESS,
       MessageType.USER_DATA_ADD,
+      MessageType.LEND_STORAGE,
     ]) {
       this.log.debug(`Reconciling messages for FID ${fid} of type ${type}`);
       await this.reconcileMessagesOfTypeForFid(fid, type, onHubMessage, onDbMessage, startTimestamp, stopTimestamp);
@@ -149,6 +149,9 @@ export class MessageReconciliation {
       case MessageType.USER_DATA_ADD:
         fn = this.getAllUserDataMessagesByFidInBatchesOf;
         break;
+      case MessageType.LEND_STORAGE:
+        fn = this.getAllLendStorageMessagesByFidInBatchesOf;
+        break;
       default:
         throw `Unknown message type ${type}`;
     }
@@ -175,6 +178,10 @@ export class MessageReconciliation {
 
   private async getAllUserDataMessagesByFid(request: FidTimestampRequest) {
     return await this.client.getAllUserDataMessagesByFid(request);
+  }
+
+  private async getAllLendStorageMessagesByFid(request: FidTimestampRequest) {
+    return await this.client.getAllLendStorageMessagesByFid(request);
   }
 
   private async *getAllCastMessagesByFidInBatchesOf(
@@ -305,6 +312,33 @@ export class MessageReconciliation {
 
       if (!pageToken?.length) break;
       result = await this.getAllUserDataMessagesByFid({
+        pageSize,
+        pageToken,
+        fid,
+        startTimestamp,
+        stopTimestamp,
+      });
+    }
+  }
+
+  private async *getAllLendStorageMessagesByFidInBatchesOf(
+    fid: number,
+    pageSize: number,
+    startTimestamp?: number,
+    stopTimestamp?: number,
+  ) {
+    let result = await this.getAllLendStorageMessagesByFid({ pageSize, fid, startTimestamp, stopTimestamp });
+    for (;;) {
+      if (result.isErr()) {
+        throw new Error(`Unable to get all lend storage messages for FID ${fid}: ${result.error?.message}`);
+      }
+
+      const { messages, nextPageToken: pageToken } = result.value;
+
+      yield messages;
+
+      if (!pageToken?.length) break;
+      result = await this.getAllLendStorageMessagesByFid({
         pageSize,
         pageToken,
         fid,
