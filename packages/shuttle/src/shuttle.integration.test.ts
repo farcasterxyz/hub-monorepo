@@ -621,6 +621,18 @@ describe("shuttle", () => {
           }),
         );
       },
+      getAllLendStorageMessagesByFid: async (
+        _request: FidRequest,
+        _metadata: Metadata,
+        _options: Partial<CallOptions>,
+      ) => {
+        return ok(
+          MessagesResponse.create({
+            messages: [],
+            nextPageToken: undefined,
+          }),
+        );
+      },
     };
 
     // Only include 2 of the 3 messages in the time window
