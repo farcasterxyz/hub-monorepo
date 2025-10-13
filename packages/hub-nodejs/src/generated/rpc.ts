@@ -448,6 +448,15 @@ export const HubServiceService = {
     responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
+  getAllLendStorageMessagesByFid: {
+    path: "/HubService/GetAllLendStorageMessagesByFid",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: FidTimestampRequest) => Buffer.from(FidTimestampRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => FidTimestampRequest.decode(value),
+    responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
+  },
   getTrieMetadataByPrefix: {
     path: "/HubService/GetTrieMetadataByPrefix",
     requestStream: false,
@@ -515,6 +524,7 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   getAllVerificationMessagesByFid: handleUnaryCall<FidTimestampRequest, MessagesResponse>;
   getAllUserDataMessagesByFid: handleUnaryCall<FidTimestampRequest, MessagesResponse>;
   getAllLinkMessagesByFid: handleUnaryCall<FidTimestampRequest, MessagesResponse>;
+  getAllLendStorageMessagesByFid: handleUnaryCall<FidTimestampRequest, MessagesResponse>;
   getTrieMetadataByPrefix: handleUnaryCall<TrieNodeMetadataRequest, TrieNodeMetadataResponse>;
 }
 
@@ -1108,6 +1118,21 @@ export interface HubServiceClient extends Client {
     callback: (error: ServiceError | null, response: MessagesResponse) => void,
   ): ClientUnaryCall;
   getAllLinkMessagesByFid(
+    request: FidTimestampRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getAllLendStorageMessagesByFid(
+    request: FidTimestampRequest,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getAllLendStorageMessagesByFid(
+    request: FidTimestampRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: MessagesResponse) => void,
+  ): ClientUnaryCall;
+  getAllLendStorageMessagesByFid(
     request: FidTimestampRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,

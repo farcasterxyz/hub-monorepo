@@ -134,6 +134,7 @@ export interface ShardInfo {
   approxSize: number;
   blockDelay: number;
   mempoolSize: number;
+  numOnchainEvents: number;
 }
 
 export interface GetInfoRequest {
@@ -806,6 +807,7 @@ function createBaseShardInfo(): ShardInfo {
     approxSize: 0,
     blockDelay: 0,
     mempoolSize: 0,
+    numOnchainEvents: 0,
   };
 }
 
@@ -831,6 +833,9 @@ export const ShardInfo = {
     }
     if (message.mempoolSize !== 0) {
       writer.uint32(56).uint64(message.mempoolSize);
+    }
+    if (message.numOnchainEvents !== 0) {
+      writer.uint32(64).uint64(message.numOnchainEvents);
     }
     return writer;
   },
@@ -891,6 +896,13 @@ export const ShardInfo = {
 
           message.mempoolSize = longToNumber(reader.uint64() as Long);
           continue;
+        case 8:
+          if (tag != 64) {
+            break;
+          }
+
+          message.numOnchainEvents = longToNumber(reader.uint64() as Long);
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -909,6 +921,7 @@ export const ShardInfo = {
       approxSize: isSet(object.approxSize) ? Number(object.approxSize) : 0,
       blockDelay: isSet(object.blockDelay) ? Number(object.blockDelay) : 0,
       mempoolSize: isSet(object.mempoolSize) ? Number(object.mempoolSize) : 0,
+      numOnchainEvents: isSet(object.numOnchainEvents) ? Number(object.numOnchainEvents) : 0,
     };
   },
 
@@ -921,6 +934,7 @@ export const ShardInfo = {
     message.approxSize !== undefined && (obj.approxSize = Math.round(message.approxSize));
     message.blockDelay !== undefined && (obj.blockDelay = Math.round(message.blockDelay));
     message.mempoolSize !== undefined && (obj.mempoolSize = Math.round(message.mempoolSize));
+    message.numOnchainEvents !== undefined && (obj.numOnchainEvents = Math.round(message.numOnchainEvents));
     return obj;
   },
 
@@ -937,6 +951,7 @@ export const ShardInfo = {
     message.approxSize = object.approxSize ?? 0;
     message.blockDelay = object.blockDelay ?? 0;
     message.mempoolSize = object.mempoolSize ?? 0;
+    message.numOnchainEvents = object.numOnchainEvents ?? 0;
     return message;
   },
 };
