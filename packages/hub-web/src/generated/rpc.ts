@@ -144,6 +144,10 @@ export interface HubService {
     request: DeepPartial<FidTimestampRequest>,
     metadata?: grpcWeb.grpc.Metadata,
   ): Promise<MessagesResponse>;
+  getAllLendStorageMessagesByFid(
+    request: DeepPartial<FidTimestampRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<MessagesResponse>;
   getTrieMetadataByPrefix(
     request: DeepPartial<TrieNodeMetadataRequest>,
     metadata?: grpcWeb.grpc.Metadata,
@@ -196,6 +200,7 @@ export class HubServiceClientImpl implements HubService {
     this.getAllVerificationMessagesByFid = this.getAllVerificationMessagesByFid.bind(this);
     this.getAllUserDataMessagesByFid = this.getAllUserDataMessagesByFid.bind(this);
     this.getAllLinkMessagesByFid = this.getAllLinkMessagesByFid.bind(this);
+    this.getAllLendStorageMessagesByFid = this.getAllLendStorageMessagesByFid.bind(this);
     this.getTrieMetadataByPrefix = this.getTrieMetadataByPrefix.bind(this);
   }
 
@@ -416,6 +421,17 @@ export class HubServiceClientImpl implements HubService {
     metadata?: grpcWeb.grpc.Metadata,
   ): Promise<MessagesResponse> {
     return this.rpc.unary(HubServiceGetAllLinkMessagesByFidDesc, FidTimestampRequest.fromPartial(request), metadata);
+  }
+
+  getAllLendStorageMessagesByFid(
+    request: DeepPartial<FidTimestampRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<MessagesResponse> {
+    return this.rpc.unary(
+      HubServiceGetAllLendStorageMessagesByFidDesc,
+      FidTimestampRequest.fromPartial(request),
+      metadata,
+    );
   }
 
   getTrieMetadataByPrefix(
@@ -1354,6 +1370,29 @@ export const HubServiceGetAllUserDataMessagesByFidDesc: UnaryMethodDefinitionish
 
 export const HubServiceGetAllLinkMessagesByFidDesc: UnaryMethodDefinitionish = {
   methodName: "GetAllLinkMessagesByFid",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return FidTimestampRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = MessagesResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetAllLendStorageMessagesByFidDesc: UnaryMethodDefinitionish = {
+  methodName: "GetAllLendStorageMessagesByFid",
   service: HubServiceDesc,
   requestStream: false,
   responseStream: false,

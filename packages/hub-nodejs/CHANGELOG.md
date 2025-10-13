@@ -1,5 +1,13 @@
 # @farcaster/hub-nodejs
 
+## 0.15.9
+
+### Patch Changes
+
+- 7e602dc9: chore: pull in latest snapchain protos
+- Updated dependencies [7e602dc9]
+  - @farcaster/core@0.18.9
+
 ## 0.15.8
 
 ### Patch Changes

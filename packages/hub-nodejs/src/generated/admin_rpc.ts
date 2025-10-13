@@ -38,6 +38,10 @@ export interface UploadSnapshotRequest {
   shardIndexes: number[];
 }
 
+export interface RunOnchainEventsMigrationRequest {
+  shardId: number;
+}
+
 function createBaseEmpty(): Empty {
   return {};
 }
@@ -369,6 +373,66 @@ export const UploadSnapshotRequest = {
   },
 };
 
+function createBaseRunOnchainEventsMigrationRequest(): RunOnchainEventsMigrationRequest {
+  return { shardId: 0 };
+}
+
+export const RunOnchainEventsMigrationRequest = {
+  encode(message: RunOnchainEventsMigrationRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.shardId !== 0) {
+      writer.uint32(8).uint64(message.shardId);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): RunOnchainEventsMigrationRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseRunOnchainEventsMigrationRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.shardId = longToNumber(reader.uint64() as Long);
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): RunOnchainEventsMigrationRequest {
+    return { shardId: isSet(object.shardId) ? Number(object.shardId) : 0 };
+  },
+
+  toJSON(message: RunOnchainEventsMigrationRequest): unknown {
+    const obj: any = {};
+    message.shardId !== undefined && (obj.shardId = Math.round(message.shardId));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<RunOnchainEventsMigrationRequest>, I>>(
+    base?: I,
+  ): RunOnchainEventsMigrationRequest {
+    return RunOnchainEventsMigrationRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<RunOnchainEventsMigrationRequest>, I>>(
+    object: I,
+  ): RunOnchainEventsMigrationRequest {
+    const message = createBaseRunOnchainEventsMigrationRequest();
+    message.shardId = object.shardId ?? 0;
+    return message;
+  },
+};
+
 export type AdminServiceService = typeof AdminServiceService;
 export const AdminServiceService = {
   submitOnChainEvent: {
@@ -417,6 +481,16 @@ export const AdminServiceService = {
     responseSerialize: (value: Empty) => Buffer.from(Empty.encode(value).finish()),
     responseDeserialize: (value: Buffer) => Empty.decode(value),
   },
+  runOnchainEventsMigration: {
+    path: "/AdminService/RunOnchainEventsMigration",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: RunOnchainEventsMigrationRequest) =>
+      Buffer.from(RunOnchainEventsMigrationRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => RunOnchainEventsMigrationRequest.decode(value),
+    responseSerialize: (value: Empty) => Buffer.from(Empty.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => Empty.decode(value),
+  },
 } as const;
 
 export interface AdminServiceServer extends UntypedServiceImplementation {
@@ -425,6 +499,7 @@ export interface AdminServiceServer extends UntypedServiceImplementation {
   uploadSnapshot: handleUnaryCall<UploadSnapshotRequest, Empty>;
   retryOnchainEvents: handleUnaryCall<RetryOnchainEventsRequest, Empty>;
   retryFnameEvents: handleUnaryCall<RetryFnameRequest, Empty>;
+  runOnchainEventsMigration: handleUnaryCall<RunOnchainEventsMigrationRequest, Empty>;
 }
 
 export interface AdminServiceClient extends Client {
@@ -499,6 +574,21 @@ export interface AdminServiceClient extends Client {
   ): ClientUnaryCall;
   retryFnameEvents(
     request: RetryFnameRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: Empty) => void,
+  ): ClientUnaryCall;
+  runOnchainEventsMigration(
+    request: RunOnchainEventsMigrationRequest,
+    callback: (error: ServiceError | null, response: Empty) => void,
+  ): ClientUnaryCall;
+  runOnchainEventsMigration(
+    request: RunOnchainEventsMigrationRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: Empty) => void,
+  ): ClientUnaryCall;
+  runOnchainEventsMigration(
+    request: RunOnchainEventsMigrationRequest,
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: Empty) => void,
