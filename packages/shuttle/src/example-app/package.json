@@ -4,7 +4,7 @@
   "main": "./app.ts",
   "license": "MIT",
   "dependencies": {
-    "@farcaster/shuttle": "^0.9.3",
+    "@farcaster/shuttle": "^0.9.5",
     "@figma/hot-shots": "^9.0.0-figma.1",
     "commander": "^11.0.0",
     "ioredis": "^5.3.2",
