@@ -150,7 +150,10 @@ export class App implements MessageHandler {
           .execute();
         log.info(`Recorded OnchainEvent ${onChainEvent.type} for fid  ${onChainEvent.fid}`);
       } catch (e) {
-        log.error("Failed to insert onchain event", e);
+        log.error({
+          error: e,
+          onChainEvent,
+        }, "Failed to insert onchain event. Please check event data and database connection. If the error persists, verify the schema and data types.");
       }
     }
     return false;
@@ -250,12 +253,19 @@ export class App implements MessageHandler {
       if (!maxFid) {
         const getInfoResult = await this.hubSubscriber.hubClient?.getInfo(GetInfoRequest.create({}));
         if (getInfoResult?.isErr()) {
-          log.error("Failed to get max fid", getInfoResult.error);
+          log.error({
+            error: getInfoResult.error,
+            hubHost: this.hubSubscriber.hubClient?.host,
+            request: HubInfoRequest.create({}),
+          }, "Failed to get max fid from hub. Please check hub connectivity and credentials.");
           throw getInfoResult.error;
         } else {
           maxFid = getInfoResult?._unsafeUnwrap()?.dbStats?.numFidRegistrations;
           if (!maxFid) {
-            log.error("Failed to get max fid");
+            log.error({
+              hubHost: this.hubSubscriber.hubClient?.host,
+              dbStats: getInfoResult?._unsafeUnwrap()?.dbStats,
+            }, "Failed to get max fid: hub returned no fid stats. Please ensure the hub is fully synced and accessible.");
             throw new Error("Failed to get max fid");
           }
         }
@@ -282,7 +292,10 @@ export class App implements MessageHandler {
   async ensureMigrations() {
     const result = await migrateToLatest(this.db, this.dbSchema, log);
     if (result.isErr()) {
-      log.error("Failed to migrate database", result.error);
+      log.error({
+        error: result.error,
+        dbSchema: this.dbSchema,
+      }, "Failed to migrate database. Please check migration files, database connection, and schema compatibility.");
       throw result.error;
     }
   }
