@@ -88,7 +88,7 @@ import { bytesToUtf8String } from './utils';
 // Safety: byteArray is known and can't error
 const byteArray = new Uint8Array([72, 101, 108, 108, 111]); // "Hello" in ASCII encoding.
 const utfEncodedStr = bytesToUtf8String(byteArray)._unsafeUnwrap();
-console.log(utfEncodedStr); //"Hello"
+console.log(utfEncodedStr); // "Hello"
 ```
 
 #### Returns

@@ -1,6 +1,6 @@
 # Signers
 
-Signers are used to sign messages. There are two signature schemes, Eip712 signatures are used to sign SignerAdd and SignerRemove messages, and an Ed25519 key-pair is used to signer all other messages.
+Signers are used to sign messages. There are two signature schemes, Eip712 signatures are used to sign SignerAdd and SignerRemove messages, and an Ed25519 key-pair is used to sign all other messages.
 
 The following signer implementations are provided:
 
