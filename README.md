@@ -8,7 +8,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) to set up your developer environment an
 
 ## Code Organization
 
-The repository is a monorepo with a primary application in the `/apps/` folder that imports several packages `/packages/`. It is written primarily in [Typescript](https://www.typescriptlang.org/) and uses [Yarn](https://yarnpkg.com/) to orchestrate tasks and [TurboRepo](https://turbo.build/) as its build system. Some performance intensive code is written in Rust and compiled with Cargo.
+The repository is a monorepo with a primary application in the `/apps/` folder that imports several packages `/packages/`. It is written primarily in [TypeScript](https://www.typescriptlang.org/) and uses [Yarn](https://yarnpkg.com/) to orchestrate tasks and [TurboRepo](https://turbo.build/) as its build system. Some performance intensive code is written in Rust and compiled with Cargo.
 
 ### Packages
 
