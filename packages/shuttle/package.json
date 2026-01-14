@@ -56,7 +56,7 @@
     "@swc/jest": "^0.2.26",
     "@types/humanize-duration": "^3.27.1",
     "@types/jest": "^29.0.2",
-    "@types/node": "^20.11.30",
+    "@types/node": "^22.22.0",
     "@types/pg": "^8.10.3",
     "@types/pg-cursor": "^2.7.0",
     "bullmq": "^5.56.2",
