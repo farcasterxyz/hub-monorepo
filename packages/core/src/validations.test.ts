@@ -1721,3 +1721,12 @@ describe("validateFname extra", () => {
     );
   });
 });
+
+describe("validateCastId extra", () => {
+  test("fails when fid is present but hash is missing", () => {
+    const castId = Factories.CastId.build({ fid: 1, hash: undefined });
+    expect(validations.validateCastId(castId)).toEqual(
+      err(new HubError("bad_request.validation_failure", "hash is missing"))
+    );
+  });
+});
