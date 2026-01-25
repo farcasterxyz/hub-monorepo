@@ -1747,3 +1747,10 @@ describe("validateEthAddress extra", () => {
     );
   });
 });
+
+describe("validateEd25519PublicKey extra", () => {
+  test("succeeds with valid key", () => {
+    const key = Factories.Bytes.build({}, { transient: { length: 32 } });
+    expect(validations.validateEd25519PublicKey(key)).toEqual(ok(key));
+  });
+});
