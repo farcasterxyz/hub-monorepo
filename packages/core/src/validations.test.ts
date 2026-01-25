@@ -1694,3 +1694,12 @@ describe("validateFid extra", () => {
     );
   });
 });
+
+describe("validateFname extra", () => {
+  test("fails with uppercase characters", () => {
+    const fname = "Varun";
+    expect(validations.validateFname(fname)).toEqual(
+      err(new HubError("bad_request.validation_failure", `fname "${fname}" doesn't match ${validations.FNAME_REGEX}`))
+    );
+  });
+});
