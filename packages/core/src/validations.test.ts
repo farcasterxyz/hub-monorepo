@@ -1808,3 +1808,15 @@ describe("validateReactionBody extra", () => {
       );
   });
 });
+
+describe("validateVerificationAddEthAddressBody extra", () => {
+  test("fails with solana protocol", async () => {
+    const fid = Factories.Fid.build();
+    const network = Factories.FarcasterNetwork.build();
+    const body = await Factories.VerificationAddAddressBody.create(
+      {},
+      { transient: { fid, network, protocol: Protocol.SOLANA } },
+    );
+    expect((await validations.validateVerificationAddEthAddressBody(body, fid, network)).isErr()).toBeTruthy();
+  });
+});
