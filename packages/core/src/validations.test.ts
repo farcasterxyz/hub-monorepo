@@ -1787,3 +1787,13 @@ describe("validateCastAddBody extra", () => {
       expect(validations.validateCastAddBody(body)).toEqual(ok(body));
   });
 });
+
+describe("validateCastAddBody extra", () => {
+  test("fails with 321 bytes text", () => {
+      const text = faker.random.alphaNumeric(321);
+      const body = Factories.CastAddBody.build({ text });
+      expect(validations.validateCastAddBody(body)).toEqual(
+         err(new HubError("bad_request.validation_failure", "text > 320 bytes"))
+      );
+  });
+});
