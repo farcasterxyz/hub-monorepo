@@ -1754,3 +1754,15 @@ describe("validateEd25519PublicKey extra", () => {
     expect(validations.validateEd25519PublicKey(key)).toEqual(ok(key));
   });
 });
+
+describe("validateCastAddBody extra", () => {
+  test("fails with mention position mismatch", () => {
+     const body = Factories.CastAddBody.build({
+        mentions: [Factories.Fid.build()],
+        mentionsPositions: [],
+      });
+      expect(validations.validateCastAddBody(body)).toEqual(
+        err(new HubError("bad_request.validation_failure", "mentions and mentionsPositions must match"))
+      );
+  });
+});
