@@ -1836,3 +1836,12 @@ describe("validateFarcasterTime extra", () => {
     expect(validations.validateFarcasterTime(now).isOk()).toBeTruthy();
   });
 });
+
+describe("validateLinkBody extra", () => {
+  test("fails with invalid type", () => {
+    const body = Factories.LinkBody.build({
+       type: "unknown"
+    });
+    expect(validations.validateLinkBody(body)).not.toEqual(ok(body));
+  });
+});
