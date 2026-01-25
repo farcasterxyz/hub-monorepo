@@ -1829,3 +1829,10 @@ describe("validateFarcasterTime extra", () => {
     );
   });
 });
+
+describe("validateFarcasterTime extra", () => {
+  test("succeeds with current time", () => {
+    const now = getFarcasterTime();
+    expect(validations.validateFarcasterTime(now).isOk()).toBeTruthy();
+  });
+});
