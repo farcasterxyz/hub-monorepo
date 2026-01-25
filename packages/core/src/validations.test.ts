@@ -1797,3 +1797,14 @@ describe("validateCastAddBody extra", () => {
       );
   });
 });
+
+describe("validateReactionBody extra", () => {
+  test("fails with reaction type none", () => {
+      const body = Factories.ReactionBody.build({
+        type: 0 // ReactionType.NONE
+      });
+      expect(validations.validateReactionBody(body)).toEqual(
+        err(new HubError("bad_request.validation_failure", "invalid reaction type"))
+      );
+  });
+});
