@@ -1739,3 +1739,11 @@ describe("validateCastId extra", () => {
     );
   });
 });
+
+describe("validateEthAddress extra", () => {
+  test("fails with zero length buffer", () => {
+    expect(validations.validateEthAddress(new Uint8Array([]))).toEqual(
+      err(new HubError("bad_request.validation_failure", "Ethereum address is missing"))
+    );
+  });
+});
