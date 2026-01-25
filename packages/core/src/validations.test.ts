@@ -1845,3 +1845,14 @@ describe("validateLinkBody extra", () => {
     expect(validations.validateLinkBody(body)).not.toEqual(ok(body));
   });
 });
+
+describe("validateLinkBody extra", () => {
+  test("fails with empty type", () => {
+    const body = Factories.LinkBody.build({
+       type: ""
+    });
+    expect(validations.validateLinkBody(body)).toEqual(
+       err(new HubError("bad_request.validation_failure", "type must be between 1-8 bytes"))
+    );
+  });
+});
