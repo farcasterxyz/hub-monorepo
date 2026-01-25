@@ -1678,3 +1678,11 @@ describe("validateSingleBody", () => {
     expect(result._unsafeUnwrapErr().message).toMatch("only one body can be set");
   });
 });
+
+describe("validateFid extra", () => {
+  test("fails with MAX_SAFE_INTEGER + 1", () => {
+    expect(validations.validateFid(Number.MAX_SAFE_INTEGER + 1)).toEqual(
+      err(new HubError("bad_request.validation_failure", "fid must be an integer"))
+    );
+  });
+});
