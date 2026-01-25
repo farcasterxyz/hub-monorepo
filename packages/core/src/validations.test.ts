@@ -1703,3 +1703,12 @@ describe("validateFname extra", () => {
     );
   });
 });
+
+describe("validateFname extra", () => {
+  test("fails with hyphen at start", () => {
+    const fname = "-varun";
+    expect(validations.validateFname(fname)).toEqual(
+      err(new HubError("bad_request.validation_failure", `fname "${fname}" doesn't match ${validations.FNAME_REGEX}`))
+    );
+  });
+});
