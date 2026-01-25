@@ -1779,3 +1779,11 @@ describe("validateCastAddBody extra", () => {
       );
   });
 });
+
+describe("validateCastAddBody extra", () => {
+  test("succeeds with 320 bytes text", () => {
+      const text = faker.random.alphaNumeric(320);
+      const body = Factories.CastAddBody.build({ text });
+      expect(validations.validateCastAddBody(body)).toEqual(ok(body));
+  });
+});
