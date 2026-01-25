@@ -1686,3 +1686,11 @@ describe("validateFid extra", () => {
     );
   });
 });
+
+describe("validateFid extra", () => {
+  test("fails with float", () => {
+    expect(validations.validateFid(0.1)).toEqual(
+      err(new HubError("bad_request.validation_failure", "fid must be an integer"))
+    );
+  });
+});
