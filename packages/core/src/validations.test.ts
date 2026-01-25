@@ -1856,3 +1856,13 @@ describe("validateLinkBody extra", () => {
     );
   });
 });
+
+describe("validateMessage extra", () => {
+  test("fails with invalid signature scheme", async () => {
+    const message = await Factories.Message.create();
+    message.signatureScheme = -1;
+     expect(await validations.validateMessage(message)).toEqual(
+       err(new HubError("bad_request.validation_failure", "invalid signatureScheme"))
+    );
+  });
+});
