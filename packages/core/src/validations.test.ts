@@ -1766,3 +1766,16 @@ describe("validateCastAddBody extra", () => {
       );
   });
 });
+
+describe("validateCastAddBody extra", () => {
+  test("fails with negative mention position", () => {
+     const body = Factories.CastAddBody.build({
+        text: "hello",
+        mentions: [Factories.Fid.build()],
+        mentionsPositions: [-1],
+      });
+      expect(validations.validateCastAddBody(body)).toEqual(
+         err(new HubError("bad_request.validation_failure", "mentionsPositions must be a position in text"))
+      );
+  });
+});
