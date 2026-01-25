@@ -1820,3 +1820,12 @@ describe("validateVerificationAddEthAddressBody extra", () => {
     expect((await validations.validateVerificationAddEthAddressBody(body, fid, network)).isErr()).toBeTruthy();
   });
 });
+
+describe("validateFarcasterTime extra", () => {
+  test("fails with future time", () => {
+    const future = getFarcasterTime() + 10000;
+    expect(validations.validateFarcasterTime(future)).toEqual(
+      err(new HubError("bad_request.invalid_param", "time too far in future"))
+    );
+  });
+});
