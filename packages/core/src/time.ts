@@ -36,6 +36,15 @@ export const fromFarcasterTime = (time: number): HubResult<number> => {
   return ok(time * 1000 + FARCASTER_EPOCH);
 };
 
+/**
+ * Converts from a Farcaster timestamp to a JavaScript Date object.
+ * @param time seconds since the Farcaster Epoch
+ * @returns Date object representing the timestamp
+ */
+export const farcasterTimeToDate = (time: number): HubResult<Date> => {
+  return fromFarcasterTime(time).map((unixMs) => new Date(unixMs));
+};
+
 // Chosen to keep number under Number.MAX_SAFE_INTEGER
 const TIMESTAMP_BITS = 41;
 const SEQUENCE_BITS = 12;
