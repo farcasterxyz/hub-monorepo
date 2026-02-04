@@ -1,5 +1,13 @@
 # @farcaster/hub-nodejs
 
+## 0.15.10
+
+### Patch Changes
+
+- 2abc65d6: Test deploy with new CI auth method
+- Updated dependencies [2abc65d6]
+  - @farcaster/core@0.18.10
+
 ## 0.15.9
 
 ### Patch Changes
