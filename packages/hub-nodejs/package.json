@@ -17,7 +17,8 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/farcasterxyz/hub-monorepo/blob/main/packages/hub-nodejs"
+    "url": "https://github.com/farcasterxyz/hub-monorepo.git",
+    "directory": "packages/hub-nodejs"
   },
   "dependencies": {
     "@farcaster/core": "0.18.10",

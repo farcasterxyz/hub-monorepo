@@ -15,6 +15,11 @@
     "dist"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/farcasterxyz/hub-monorepo.git",
+    "directory": "packages/shuttle"
+  },
   "dependencies": {
     "@farcaster/hot-shots": "^10.0.0",
     "@farcaster/hub-nodejs": "^0.15.10",

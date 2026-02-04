@@ -17,7 +17,8 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/farcasterxyz/hub-monorepo/blob/main/packages/core"
+    "url": "https://github.com/farcasterxyz/hub-monorepo.git",
+    "directory": "packages/core"
   },
   "dependencies": {
     "@noble/curves": "^1.0.0",

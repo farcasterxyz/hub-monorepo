@@ -17,7 +17,8 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/farcasterxyz/hub-monorepo/blob/main/packages/hub-web"
+    "url": "https://github.com/farcasterxyz/hub-monorepo.git",
+    "directory": "packages/hub-web"
   },
   "scripts": {
     "build": "tsup --config tsup.config.ts",
