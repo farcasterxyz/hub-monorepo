@@ -1,5 +1,13 @@
 # @farcaster/hub-shuttle
 
+## 0.9.6
+
+### Patch Changes
+
+- 2abc65d6: Test deploy with new CI auth method
+- Updated dependencies [2abc65d6]
+  - @farcaster/hub-nodejs@0.15.10
+
 ## 0.9.5
 
 ### Patch Changes

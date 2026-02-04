@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.18.10
+
+### Patch Changes
+
+- 2abc65d6: Test deploy with new CI auth method
+
 ## 0.18.9
 
 ### Patch Changes

@@ -1,5 +1,13 @@
 # @farcaster/hub-web
 
+## 0.11.8
+
+### Patch Changes
+
+- 2abc65d6: Test deploy with new CI auth method
+- Updated dependencies [2abc65d6]
+  - @farcaster/core@0.18.10
+
 ## 0.11.7
 
 ### Patch Changes
