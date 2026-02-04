@@ -15,7 +15,7 @@
     "lint": "./node_modules/.bin/turbo run lint --parallel",
     "lint:ci": "./node_modules/.bin/turbo run lint:ci --parallel",
     "prepare": "husky",
-    "version-packages": "changeset version --ignore @farcaster/hubble",
+    "version-packages": "changeset version",
     "release-packages": "yarn build && changeset publish",
     "release-all": "yarn build && changeset publish && changeset tag"
   },

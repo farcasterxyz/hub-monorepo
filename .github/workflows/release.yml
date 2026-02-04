@@ -9,12 +9,16 @@ concurrency:
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '22.x'
+          registry-url: 'https://registry.npmjs.org'
 
       - name: Restore cached dependencies for Node modules.
         id: module-cache
@@ -28,9 +32,10 @@ jobs:
 
       - name: Create Release Pull Request or Publish to npm
         id: changesets
-        uses: changesets/action@v1
+        uses: changesets/action@v1.6.0
         with:
           publish: yarn release-all
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ''
+          NPM_CONFIG_PROVENANCE: true
