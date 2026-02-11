@@ -45,7 +45,7 @@
     "biome-config-custom": "*",
     "ethers": "^6.6.1",
     "ethers5": "npm:ethers@^5.7.0",
-    "node-gyp": "^9.4.0",
+    "node-gyp": "12.2.0",
     "prettier-config-custom": "*",
     "ts-proto": "^1.146.0"
   }

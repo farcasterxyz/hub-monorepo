@@ -68,7 +68,9 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
 
       - name: Install dependencies
-        run: yarn install
+        run: |
+          npx node-gyp@12.2.0 install
+          yarn install
 
       - name: Run build
         run: yarn build
