@@ -29,7 +29,9 @@ jobs:
           key: ${{ runner.os }}--node--${{ hashFiles('**/yarn.lock') }}
 
       - name: Install dependencies
-        run: yarn install
+        run: |
+          npx node-gyp install
+          yarn install
 
       - name: Create Release Pull Request or Publish to npm
         id: changesets
