@@ -69,7 +69,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          npx node-gyp install
+          npx node-gyp@12.2.0 install
           yarn install
 
       - name: Run build
