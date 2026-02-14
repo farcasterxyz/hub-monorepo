@@ -1678,3 +1678,191 @@ describe("validateSingleBody", () => {
     expect(result._unsafeUnwrapErr().message).toMatch("only one body can be set");
   });
 });
+
+describe("validateFid extra", () => {
+  test("fails with MAX_SAFE_INTEGER + 1", () => {
+    expect(validations.validateFid(Number.MAX_SAFE_INTEGER + 1)).toEqual(
+      err(new HubError("bad_request.validation_failure", "fid must be an integer"))
+    );
+  });
+});
+
+describe("validateFid extra", () => {
+  test("fails with float", () => {
+    expect(validations.validateFid(0.1)).toEqual(
+      err(new HubError("bad_request.validation_failure", "fid must be an integer"))
+    );
+  });
+});
+
+describe("validateFname extra", () => {
+  test("fails with uppercase characters", () => {
+    const fname = "Varun";
+    expect(validations.validateFname(fname)).toEqual(
+      err(new HubError("bad_request.validation_failure", `fname "${fname}" doesn't match ${validations.FNAME_REGEX}`))
+    );
+  });
+});
+
+describe("validateFname extra", () => {
+  test("fails with hyphen at start", () => {
+    const fname = "-varun";
+    expect(validations.validateFname(fname)).toEqual(
+      err(new HubError("bad_request.validation_failure", `fname "${fname}" doesn't match ${validations.FNAME_REGEX}`))
+    );
+  });
+});
+
+describe("validateFname extra", () => {
+  test("fails with hyphen at end", () => {
+    const fname = "varun-";
+    expect(validations.validateFname(fname)).toEqual(
+      err(new HubError("bad_request.validation_failure", `fname "${fname}" doesn't match ${validations.FNAME_REGEX}`))
+    );
+  });
+});
+
+describe("validateCastId extra", () => {
+  test("fails when fid is present but hash is missing", () => {
+    const castId = Factories.CastId.build({ fid: 1, hash: undefined });
+    expect(validations.validateCastId(castId)).toEqual(
+      err(new HubError("bad_request.validation_failure", "hash is missing"))
+    );
+  });
+});
+
+describe("validateCastId extra", () => {
+  test("fails when hash is present but fid is missing", () => {
+    const castId = Factories.CastId.build({ fid: undefined, hash: new Uint8Array([1, 2, 3]) });
+    expect(validations.validateCastId(castId)).toEqual(
+      err(new HubError("bad_request.validation_failure", "fid is missing"))
+    );
+  });
+});
+
+describe("validateEthAddress extra", () => {
+  test("fails with zero length buffer", () => {
+    expect(validations.validateEthAddress(new Uint8Array([]))).toEqual(
+      err(new HubError("bad_request.validation_failure", "Ethereum address is missing"))
+    );
+  });
+});
+
+describe("validateEd25519PublicKey extra", () => {
+  test("succeeds with valid key", () => {
+    const key = Factories.Bytes.build({}, { transient: { length: 32 } });
+    expect(validations.validateEd25519PublicKey(key)).toEqual(ok(key));
+  });
+});
+
+describe("validateCastAddBody extra", () => {
+  test("fails with mention position mismatch", () => {
+     const body = Factories.CastAddBody.build({
+        mentions: [Factories.Fid.build()],
+        mentionsPositions: [],
+      });
+      expect(validations.validateCastAddBody(body)).toEqual(
+        err(new HubError("bad_request.validation_failure", "mentions and mentionsPositions must match"))
+      );
+  });
+});
+
+describe("validateCastAddBody extra", () => {
+  test("fails with negative mention position", () => {
+     const body = Factories.CastAddBody.build({
+        text: "hello",
+        mentions: [Factories.Fid.build()],
+        mentionsPositions: [-1],
+      });
+      expect(validations.validateCastAddBody(body)).toEqual(
+         err(new HubError("bad_request.validation_failure", "mentionsPositions must be a position in text"))
+      );
+  });
+});
+
+describe("validateCastAddBody extra", () => {
+  test("succeeds with 320 bytes text", () => {
+      const text = faker.random.alphaNumeric(320);
+      const body = Factories.CastAddBody.build({ text });
+      expect(validations.validateCastAddBody(body)).toEqual(ok(body));
+  });
+});
+
+describe("validateCastAddBody extra", () => {
+  test("fails with 321 bytes text", () => {
+      const text = faker.random.alphaNumeric(321);
+      const body = Factories.CastAddBody.build({ text });
+      expect(validations.validateCastAddBody(body)).toEqual(
+         err(new HubError("bad_request.validation_failure", "text > 320 bytes"))
+      );
+  });
+});
+
+describe("validateReactionBody extra", () => {
+  test("fails with reaction type none", () => {
+      const body = Factories.ReactionBody.build({
+        type: 0 // ReactionType.NONE
+      });
+      expect(validations.validateReactionBody(body)).toEqual(
+        err(new HubError("bad_request.validation_failure", "invalid reaction type"))
+      );
+  });
+});
+
+describe("validateVerificationAddEthAddressBody extra", () => {
+  test("fails with solana protocol", async () => {
+    const fid = Factories.Fid.build();
+    const network = Factories.FarcasterNetwork.build();
+    const body = await Factories.VerificationAddAddressBody.create(
+      {},
+      { transient: { fid, network, protocol: Protocol.SOLANA } },
+    );
+    expect((await validations.validateVerificationAddEthAddressBody(body, fid, network)).isErr()).toBeTruthy();
+  });
+});
+
+describe("validateFarcasterTime extra", () => {
+  test("fails with future time", () => {
+    const future = getFarcasterTime() + 10000;
+    expect(validations.validateFarcasterTime(future)).toEqual(
+      err(new HubError("bad_request.invalid_param", "time too far in future"))
+    );
+  });
+});
+
+describe("validateFarcasterTime extra", () => {
+  test("succeeds with current time", () => {
+    const now = getFarcasterTime();
+    expect(validations.validateFarcasterTime(now).isOk()).toBeTruthy();
+  });
+});
+
+describe("validateLinkBody extra", () => {
+  test("fails with invalid type", () => {
+    const body = Factories.LinkBody.build({
+       type: "unknown"
+    });
+    expect(validations.validateLinkBody(body)).not.toEqual(ok(body));
+  });
+});
+
+describe("validateLinkBody extra", () => {
+  test("fails with empty type", () => {
+    const body = Factories.LinkBody.build({
+       type: ""
+    });
+    expect(validations.validateLinkBody(body)).toEqual(
+       err(new HubError("bad_request.validation_failure", "type must be between 1-8 bytes"))
+    );
+  });
+});
+
+describe("validateMessage extra", () => {
+  test("fails with invalid signature scheme", async () => {
+    const message = await Factories.Message.create();
+    message.signatureScheme = -1;
+     expect(await validations.validateMessage(message)).toEqual(
+       err(new HubError("bad_request.validation_failure", "invalid signatureScheme"))
+    );
+  });
+});
