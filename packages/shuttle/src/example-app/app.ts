@@ -44,6 +44,9 @@ import {
   TOTAL_SHARDS,
   USE_STREAMING_RPCS_FOR_BACKFILL,
   SUBSCRIBE_RPC_TIMEOUT,
+      {
+        rewindSeconds: HUB_REWIND_SECONDS,
+      },
 } from "./env";
 import * as process from "node:process";
 import url from "node:url";
@@ -102,6 +105,9 @@ export class App implements MessageHandler {
       log,
       undefined,
       SUBSCRIBE_RPC_TIMEOUT,
+      {
+        rewindSeconds: HUB_REWIND_SECONDS,
+      },
     );
     const streamConsumer = new HubEventStreamConsumer(hub, eventStreamForRead, shardKey);
 
