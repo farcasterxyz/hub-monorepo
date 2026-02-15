@@ -23,4 +23,5 @@ export const STATSD_METRICS_PREFIX = process.env["STATSD_METRICS_PREFIX"] || "sh
 
 export const CONCURRENCY = parseInt(process.env["CONCURRENCY"] || "2");
 export const USE_STREAMING_RPCS_FOR_BACKFILL = process.env["USE_STREAMING_RPCS_FOR_BACKFILL"] === "true" ? true : false;
+export const HUB_REWIND_SECONDS = parseInt(process.env["HUB_REWIND_SECONDS"] || "0");
 export const SUBSCRIBE_RPC_TIMEOUT = parseInt(process.env["SUBSCRIBE_RPC_TIMEOUT"] || "30000");
