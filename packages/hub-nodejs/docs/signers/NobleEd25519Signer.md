@@ -26,13 +26,13 @@ const signer = new NobleEd25519Signer(privateKeyBytes);
 
 | Value                | Description                    |
 | :------------------- | :----------------------------- |
-| `NobleEd25519Signer` | An NobleEd25519Signer instance |
+| `NobleEd25519Signer` | A NobleEd25519Signer instance |
 
 #### Parameters
 
 | Name         | Type         | Description                      |
 | :----------- | :----------- | :------------------------------- |
-| `privateKey` | `Uint8Array` | Bytes of the Signers private key |
+| `privateKey` | `Uint8Array` | Bytes of the Signer's private key |
 
 ---
 
