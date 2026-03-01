@@ -19,7 +19,7 @@ yarn add -D @types/axios
 
 ## Documentation
 
-The HTTP API endpoints are [documented here](https://www.thehubble.xyz/docs/httpapi/httpapi.html).
+The HTTP API endpoints are [documented here](https://docs.farcaster.xyz/reference/hubble/httpapi/message).
 
 ### Getting started: fetching casts
 
