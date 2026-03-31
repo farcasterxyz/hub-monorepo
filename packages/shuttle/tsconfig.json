@@ -6,6 +6,8 @@
     "outDir": "dist",
     "rootDir": "./src",
     "isolatedModules": true,
+    "ignoreDeprecations": "6.0",
+    "types": ["node", "jest"],
     "exactOptionalPropertyTypes": false,
     "rewriteRelativeImportExtensions": true
   },
