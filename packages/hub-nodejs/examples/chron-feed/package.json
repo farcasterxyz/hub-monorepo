@@ -10,10 +10,14 @@
   },
   "dependencies": {
     "@farcaster/hub-nodejs": "^0.13.0",
-    "javascript-time-ago": "^2.5.9"
+    "javascript-time-ago": "^2.5.9",
+    "protobufjs": "^7.5.5"
   },
   "devDependencies": {
     "tsx": "^3.12.5",
     "typescript": "^5.0.0"
+  },
+  "resolutions": {
+    "protobufjs": "^7.5.5"
   }
 }
