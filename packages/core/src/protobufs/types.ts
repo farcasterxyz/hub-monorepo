@@ -136,6 +136,26 @@ export type LendStorageMessage = protobufs.Message & {
   signatureScheme: protobufs.SignatureScheme.ED25519;
 };
 
+export type KeyAddData = protobufs.MessageData & {
+  type: protobufs.MessageType.KEY_ADD;
+  keyAddBody: protobufs.KeyAddBody;
+};
+
+export type KeyAddMessage = protobufs.Message & {
+  data: KeyAddData;
+  signatureScheme: protobufs.SignatureScheme.ED25519;
+};
+
+export type KeyRemoveData = protobufs.MessageData & {
+  type: protobufs.MessageType.KEY_REMOVE;
+  keyRemoveBody: protobufs.KeyRemoveBody;
+};
+
+export type KeyRemoveMessage = protobufs.Message & {
+  data: KeyRemoveData;
+  signatureScheme: protobufs.SignatureScheme.ED25519;
+};
+
 export type SignerOnChainEvent = onchainEventProtobufs.OnChainEvent & {
   type: onchainEventProtobufs.OnChainEventType.EVENT_TYPE_SIGNER;
   signerEventBody: onchainEventProtobufs.SignerEventBody;

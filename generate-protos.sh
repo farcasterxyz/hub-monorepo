@@ -1,11 +1,12 @@
 PROTO_REPO=https://github.com/farcasterxyz/snapchain
-PROTO_PATH=src/proto
-PROTO_REV=e634aa8789fa8196446ce1d68b459864b93a8780 # Update this if you want to generate off updated snapchain protos
+PROTO_PATH=proto/definitions
+PROTO_REV=e8e89a3e81f2e8da45231ecc5ac44ee85b17bb09 # Update this if you want to generate off updated snapchain protos
 
 TMPDIR=tmp-protogen
-git clone $PROTO_REPO $TMPDIR
-cd $TMPDIR 
-git checkout $PROTO_REV
+git clone --no-single-branch $PROTO_REPO $TMPDIR
+cd $TMPDIR
+git fetch origin "$PROTO_REV" 2>/dev/null || true
+git checkout $PROTO_REV || { echo "Failed to checkout $PROTO_REV — aborting"; exit 1; }
 cd ..
 
 

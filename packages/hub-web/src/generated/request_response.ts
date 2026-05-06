@@ -95,8 +95,44 @@ export function storeTypeToJSON(object: StoreType): string {
   }
 }
 
+/** Source of a signer record returned by GetSigner / GetSignersByFid. */
+export enum SignerSource {
+  NONE = 0,
+  ONCHAIN = 1,
+  /** OFFCHAIN - gasless / KEY_ADD */
+  OFFCHAIN = 2,
+}
+
+export function signerSourceFromJSON(object: any): SignerSource {
+  switch (object) {
+    case 0:
+    case "SIGNER_SOURCE_NONE":
+      return SignerSource.NONE;
+    case 1:
+    case "SIGNER_SOURCE_ONCHAIN":
+      return SignerSource.ONCHAIN;
+    case 2:
+    case "SIGNER_SOURCE_OFFCHAIN":
+      return SignerSource.OFFCHAIN;
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum SignerSource");
+  }
+}
+
+export function signerSourceToJSON(object: SignerSource): string {
+  switch (object) {
+    case SignerSource.NONE:
+      return "SIGNER_SOURCE_NONE";
+    case SignerSource.ONCHAIN:
+      return "SIGNER_SOURCE_ONCHAIN";
+    case SignerSource.OFFCHAIN:
+      return "SIGNER_SOURCE_OFFCHAIN";
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum SignerSource");
+  }
+}
+
 export interface BlocksRequest {
-  shardId: number;
   startBlockNumber: number;
   stopBlockNumber?: number | undefined;
 }
@@ -253,6 +289,9 @@ export interface StorageLimitsResponse {
 export interface StorageUnitDetails {
   unitType: StorageUnitType;
   unitSize: number;
+  purchasedUnitSize: number;
+  lentUnitSize: number;
+  borrowedUnitSize: number;
 }
 
 export interface StorageLimit {
@@ -285,6 +324,121 @@ export interface VerificationRequest {
 export interface SignerRequest {
   fid: number;
   signer: Uint8Array;
+}
+
+/**
+ * Unified per-key record. Optional fields are populated only when carried by
+ * the underlying source (on-chain signer event vs. gasless KEY_ADD record).
+ */
+export interface Signer {
+  source: SignerSource;
+  /** 32-byte Ed25519 public key */
+  key: Uint8Array;
+  /** 1 = Ed25519 */
+  keyType: number;
+  fid: number;
+  /**
+   * Common metadata. All timestamps are Unix epoch seconds regardless of
+   * source; off-chain values that natively live in Farcaster time
+   * (MessageData.timestamp, gasless last-used tracking) are converted at the
+   * RPC boundary so clients can compare/compute across sources without an
+   * epoch table.
+   */
+  addedAt?:
+    | number
+    | undefined;
+  /** Unix epoch seconds; off-chain only */
+  lastUsedAt?:
+    | number
+    | undefined;
+  /** duration in seconds; off-chain only */
+  ttl?:
+    | number
+    | undefined;
+  /** Unix epoch seconds; computed as last_used_at + ttl when ttl > 0 */
+  expiresAt?:
+    | number
+    | undefined;
+  /** Off-chain–only fields */
+  scopes: number[];
+  /** verified requestFid from SignedKeyRequestMetadata */
+  requestFid?:
+    | number
+    | undefined;
+  /** user nonce on the originating KEY_ADD */
+  nonce?:
+    | number
+    | undefined;
+  /**
+   * On-chain–only payload — original event for callers that need raw fields
+   * (block_hash, transaction_hash, log_index, metadata bytes, etc.).
+   */
+  onchainEvent?: OnChainEvent | undefined;
+}
+
+export interface SignerResponse {
+  signer: Signer | undefined;
+}
+
+/**
+ * Request for GetSignersByFid. Mirrors `FidRequest` but adds an optional list
+ * of `requester_fids` so callers can fetch the current app-nonce for one or
+ * more requesters alongside the signer list. Used in lieu of `FidRequest` so
+ * the shared message stays lean.
+ */
+export interface SignersByFidRequest {
+  fid: number;
+  pageSize?: number | undefined;
+  pageToken?: Uint8Array | undefined;
+  reverse?:
+    | boolean
+    | undefined;
+  /**
+   * FIDs (verified `requestFid` from SignedKeyRequestMetadata) whose current
+   * app-nonce should be included in the response. The response's
+   * `requester_fid_nonces` list carries one entry per FID supplied here, in
+   * the same order. Empty list ⇒ no app nonces in the response.
+   */
+  requesterFids: number[];
+}
+
+export interface SignersByFidResponse {
+  signers: Signer[];
+  nextPageToken?:
+    | Uint8Array
+    | undefined;
+  /**
+   * Total count of currently-active gasless (off-chain) keys for this FID.
+   * Populated from the O(1) per-FID counter maintained alongside the gasless
+   * key store, so it stays cheap regardless of the page size.
+   */
+  gaslessSignerCount: number;
+  /**
+   * Per-FID cap on active gasless keys (NEYN-10579). Lets clients show
+   * "X/Y delegations" without hardcoding the limit on their side.
+   */
+  gaslessSignerLimit: number;
+  /**
+   * Current value of the user-nonce counter for this FID, i.e. the highest
+   * nonce ever accepted on KEY_ADD or custody-signed KEY_REMOVE for the user.
+   * The next valid user-nonce is strictly greater than this value. Returns
+   * 0 when no gasless activity has occurred for this FID yet, matching the
+   * merge-time validation rule that treats a missing counter as 0.
+   */
+  currentUserNonce: number;
+  /**
+   * Current app-nonce counter, keyed by requester FID. Contains one entry
+   * per FID supplied in `request.requester_fids`; missing counters are
+   * surfaced as 0 so clients can read the map directly without falling back
+   * to defaults. The next valid self-revocation nonce for a given requester
+   * is strictly greater than the value here.
+   */
+  requesterFidNonces: { [key: number]: number };
+}
+
+export interface SignersByFidResponse_RequesterFidNoncesEntry {
+  key: number;
+  value: number;
 }
 
 export interface LinkRequest {
@@ -386,14 +540,11 @@ export interface GetConnectedPeersResponse {
 }
 
 function createBaseBlocksRequest(): BlocksRequest {
-  return { shardId: 0, startBlockNumber: 0, stopBlockNumber: undefined };
+  return { startBlockNumber: 0, stopBlockNumber: undefined };
 }
 
 export const BlocksRequest = {
   encode(message: BlocksRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.shardId !== 0) {
-      writer.uint32(8).uint32(message.shardId);
-    }
     if (message.startBlockNumber !== 0) {
       writer.uint32(16).uint64(message.startBlockNumber);
     }
@@ -410,13 +561,6 @@ export const BlocksRequest = {
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
-        case 1:
-          if (tag != 8) {
-            break;
-          }
-
-          message.shardId = reader.uint32();
-          continue;
         case 2:
           if (tag != 16) {
             break;
@@ -442,7 +586,6 @@ export const BlocksRequest = {
 
   fromJSON(object: any): BlocksRequest {
     return {
-      shardId: isSet(object.shardId) ? Number(object.shardId) : 0,
       startBlockNumber: isSet(object.startBlockNumber) ? Number(object.startBlockNumber) : 0,
       stopBlockNumber: isSet(object.stopBlockNumber) ? Number(object.stopBlockNumber) : undefined,
     };
@@ -450,7 +593,6 @@ export const BlocksRequest = {
 
   toJSON(message: BlocksRequest): unknown {
     const obj: any = {};
-    message.shardId !== undefined && (obj.shardId = Math.round(message.shardId));
     message.startBlockNumber !== undefined && (obj.startBlockNumber = Math.round(message.startBlockNumber));
     message.stopBlockNumber !== undefined && (obj.stopBlockNumber = Math.round(message.stopBlockNumber));
     return obj;
@@ -462,7 +604,6 @@ export const BlocksRequest = {
 
   fromPartial<I extends Exact<DeepPartial<BlocksRequest>, I>>(object: I): BlocksRequest {
     const message = createBaseBlocksRequest();
-    message.shardId = object.shardId ?? 0;
     message.startBlockNumber = object.startBlockNumber ?? 0;
     message.stopBlockNumber = object.stopBlockNumber ?? undefined;
     return message;
@@ -2603,7 +2744,7 @@ export const StorageLimitsResponse = {
 };
 
 function createBaseStorageUnitDetails(): StorageUnitDetails {
-  return { unitType: 0, unitSize: 0 };
+  return { unitType: 0, unitSize: 0, purchasedUnitSize: 0, lentUnitSize: 0, borrowedUnitSize: 0 };
 }
 
 export const StorageUnitDetails = {
@@ -2613,6 +2754,15 @@ export const StorageUnitDetails = {
     }
     if (message.unitSize !== 0) {
       writer.uint32(16).uint32(message.unitSize);
+    }
+    if (message.purchasedUnitSize !== 0) {
+      writer.uint32(24).uint32(message.purchasedUnitSize);
+    }
+    if (message.lentUnitSize !== 0) {
+      writer.uint32(32).uint32(message.lentUnitSize);
+    }
+    if (message.borrowedUnitSize !== 0) {
+      writer.uint32(40).uint32(message.borrowedUnitSize);
     }
     return writer;
   },
@@ -2638,6 +2788,27 @@ export const StorageUnitDetails = {
 
           message.unitSize = reader.uint32();
           continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.purchasedUnitSize = reader.uint32();
+          continue;
+        case 4:
+          if (tag != 32) {
+            break;
+          }
+
+          message.lentUnitSize = reader.uint32();
+          continue;
+        case 5:
+          if (tag != 40) {
+            break;
+          }
+
+          message.borrowedUnitSize = reader.uint32();
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -2651,6 +2822,9 @@ export const StorageUnitDetails = {
     return {
       unitType: isSet(object.unitType) ? storageUnitTypeFromJSON(object.unitType) : 0,
       unitSize: isSet(object.unitSize) ? Number(object.unitSize) : 0,
+      purchasedUnitSize: isSet(object.purchasedUnitSize) ? Number(object.purchasedUnitSize) : 0,
+      lentUnitSize: isSet(object.lentUnitSize) ? Number(object.lentUnitSize) : 0,
+      borrowedUnitSize: isSet(object.borrowedUnitSize) ? Number(object.borrowedUnitSize) : 0,
     };
   },
 
@@ -2658,6 +2832,9 @@ export const StorageUnitDetails = {
     const obj: any = {};
     message.unitType !== undefined && (obj.unitType = storageUnitTypeToJSON(message.unitType));
     message.unitSize !== undefined && (obj.unitSize = Math.round(message.unitSize));
+    message.purchasedUnitSize !== undefined && (obj.purchasedUnitSize = Math.round(message.purchasedUnitSize));
+    message.lentUnitSize !== undefined && (obj.lentUnitSize = Math.round(message.lentUnitSize));
+    message.borrowedUnitSize !== undefined && (obj.borrowedUnitSize = Math.round(message.borrowedUnitSize));
     return obj;
   },
 
@@ -2669,6 +2846,9 @@ export const StorageUnitDetails = {
     const message = createBaseStorageUnitDetails();
     message.unitType = object.unitType ?? 0;
     message.unitSize = object.unitSize ?? 0;
+    message.purchasedUnitSize = object.purchasedUnitSize ?? 0;
+    message.lentUnitSize = object.lentUnitSize ?? 0;
+    message.borrowedUnitSize = object.borrowedUnitSize ?? 0;
     return message;
   },
 };
@@ -3129,6 +3309,652 @@ export const SignerRequest = {
     const message = createBaseSignerRequest();
     message.fid = object.fid ?? 0;
     message.signer = object.signer ?? new Uint8Array();
+    return message;
+  },
+};
+
+function createBaseSigner(): Signer {
+  return {
+    source: 0,
+    key: new Uint8Array(),
+    keyType: 0,
+    fid: 0,
+    addedAt: undefined,
+    lastUsedAt: undefined,
+    ttl: undefined,
+    expiresAt: undefined,
+    scopes: [],
+    requestFid: undefined,
+    nonce: undefined,
+    onchainEvent: undefined,
+  };
+}
+
+export const Signer = {
+  encode(message: Signer, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.source !== 0) {
+      writer.uint32(8).int32(message.source);
+    }
+    if (message.key.length !== 0) {
+      writer.uint32(18).bytes(message.key);
+    }
+    if (message.keyType !== 0) {
+      writer.uint32(24).uint32(message.keyType);
+    }
+    if (message.fid !== 0) {
+      writer.uint32(32).uint64(message.fid);
+    }
+    if (message.addedAt !== undefined) {
+      writer.uint32(40).uint64(message.addedAt);
+    }
+    if (message.lastUsedAt !== undefined) {
+      writer.uint32(48).uint64(message.lastUsedAt);
+    }
+    if (message.ttl !== undefined) {
+      writer.uint32(56).uint32(message.ttl);
+    }
+    if (message.expiresAt !== undefined) {
+      writer.uint32(64).uint64(message.expiresAt);
+    }
+    writer.uint32(74).fork();
+    for (const v of message.scopes) {
+      writer.int32(v);
+    }
+    writer.ldelim();
+    if (message.requestFid !== undefined) {
+      writer.uint32(80).uint64(message.requestFid);
+    }
+    if (message.nonce !== undefined) {
+      writer.uint32(88).uint32(message.nonce);
+    }
+    if (message.onchainEvent !== undefined) {
+      OnChainEvent.encode(message.onchainEvent, writer.uint32(98).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): Signer {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSigner();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.source = reader.int32() as any;
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.key = reader.bytes();
+          continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.keyType = reader.uint32();
+          continue;
+        case 4:
+          if (tag != 32) {
+            break;
+          }
+
+          message.fid = longToNumber(reader.uint64() as Long);
+          continue;
+        case 5:
+          if (tag != 40) {
+            break;
+          }
+
+          message.addedAt = longToNumber(reader.uint64() as Long);
+          continue;
+        case 6:
+          if (tag != 48) {
+            break;
+          }
+
+          message.lastUsedAt = longToNumber(reader.uint64() as Long);
+          continue;
+        case 7:
+          if (tag != 56) {
+            break;
+          }
+
+          message.ttl = reader.uint32();
+          continue;
+        case 8:
+          if (tag != 64) {
+            break;
+          }
+
+          message.expiresAt = longToNumber(reader.uint64() as Long);
+          continue;
+        case 9:
+          if (tag == 72) {
+            message.scopes.push(reader.int32());
+            continue;
+          }
+
+          if (tag == 74) {
+            const end2 = reader.uint32() + reader.pos;
+            while (reader.pos < end2) {
+              message.scopes.push(reader.int32());
+            }
+
+            continue;
+          }
+
+          break;
+        case 10:
+          if (tag != 80) {
+            break;
+          }
+
+          message.requestFid = longToNumber(reader.uint64() as Long);
+          continue;
+        case 11:
+          if (tag != 88) {
+            break;
+          }
+
+          message.nonce = reader.uint32();
+          continue;
+        case 12:
+          if (tag != 98) {
+            break;
+          }
+
+          message.onchainEvent = OnChainEvent.decode(reader, reader.uint32());
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): Signer {
+    return {
+      source: isSet(object.source) ? signerSourceFromJSON(object.source) : 0,
+      key: isSet(object.key) ? bytesFromBase64(object.key) : new Uint8Array(),
+      keyType: isSet(object.keyType) ? Number(object.keyType) : 0,
+      fid: isSet(object.fid) ? Number(object.fid) : 0,
+      addedAt: isSet(object.addedAt) ? Number(object.addedAt) : undefined,
+      lastUsedAt: isSet(object.lastUsedAt) ? Number(object.lastUsedAt) : undefined,
+      ttl: isSet(object.ttl) ? Number(object.ttl) : undefined,
+      expiresAt: isSet(object.expiresAt) ? Number(object.expiresAt) : undefined,
+      scopes: Array.isArray(object?.scopes) ? object.scopes.map((e: any) => Number(e)) : [],
+      requestFid: isSet(object.requestFid) ? Number(object.requestFid) : undefined,
+      nonce: isSet(object.nonce) ? Number(object.nonce) : undefined,
+      onchainEvent: isSet(object.onchainEvent) ? OnChainEvent.fromJSON(object.onchainEvent) : undefined,
+    };
+  },
+
+  toJSON(message: Signer): unknown {
+    const obj: any = {};
+    message.source !== undefined && (obj.source = signerSourceToJSON(message.source));
+    message.key !== undefined &&
+      (obj.key = base64FromBytes(message.key !== undefined ? message.key : new Uint8Array()));
+    message.keyType !== undefined && (obj.keyType = Math.round(message.keyType));
+    message.fid !== undefined && (obj.fid = Math.round(message.fid));
+    message.addedAt !== undefined && (obj.addedAt = Math.round(message.addedAt));
+    message.lastUsedAt !== undefined && (obj.lastUsedAt = Math.round(message.lastUsedAt));
+    message.ttl !== undefined && (obj.ttl = Math.round(message.ttl));
+    message.expiresAt !== undefined && (obj.expiresAt = Math.round(message.expiresAt));
+    if (message.scopes) {
+      obj.scopes = message.scopes.map((e) => Math.round(e));
+    } else {
+      obj.scopes = [];
+    }
+    message.requestFid !== undefined && (obj.requestFid = Math.round(message.requestFid));
+    message.nonce !== undefined && (obj.nonce = Math.round(message.nonce));
+    message.onchainEvent !== undefined &&
+      (obj.onchainEvent = message.onchainEvent ? OnChainEvent.toJSON(message.onchainEvent) : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<Signer>, I>>(base?: I): Signer {
+    return Signer.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<Signer>, I>>(object: I): Signer {
+    const message = createBaseSigner();
+    message.source = object.source ?? 0;
+    message.key = object.key ?? new Uint8Array();
+    message.keyType = object.keyType ?? 0;
+    message.fid = object.fid ?? 0;
+    message.addedAt = object.addedAt ?? undefined;
+    message.lastUsedAt = object.lastUsedAt ?? undefined;
+    message.ttl = object.ttl ?? undefined;
+    message.expiresAt = object.expiresAt ?? undefined;
+    message.scopes = object.scopes?.map((e) => e) || [];
+    message.requestFid = object.requestFid ?? undefined;
+    message.nonce = object.nonce ?? undefined;
+    message.onchainEvent = (object.onchainEvent !== undefined && object.onchainEvent !== null)
+      ? OnChainEvent.fromPartial(object.onchainEvent)
+      : undefined;
+    return message;
+  },
+};
+
+function createBaseSignerResponse(): SignerResponse {
+  return { signer: undefined };
+}
+
+export const SignerResponse = {
+  encode(message: SignerResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.signer !== undefined) {
+      Signer.encode(message.signer, writer.uint32(10).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): SignerResponse {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSignerResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.signer = Signer.decode(reader, reader.uint32());
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SignerResponse {
+    return { signer: isSet(object.signer) ? Signer.fromJSON(object.signer) : undefined };
+  },
+
+  toJSON(message: SignerResponse): unknown {
+    const obj: any = {};
+    message.signer !== undefined && (obj.signer = message.signer ? Signer.toJSON(message.signer) : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<SignerResponse>, I>>(base?: I): SignerResponse {
+    return SignerResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<SignerResponse>, I>>(object: I): SignerResponse {
+    const message = createBaseSignerResponse();
+    message.signer = (object.signer !== undefined && object.signer !== null)
+      ? Signer.fromPartial(object.signer)
+      : undefined;
+    return message;
+  },
+};
+
+function createBaseSignersByFidRequest(): SignersByFidRequest {
+  return { fid: 0, pageSize: undefined, pageToken: undefined, reverse: undefined, requesterFids: [] };
+}
+
+export const SignersByFidRequest = {
+  encode(message: SignersByFidRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.fid !== 0) {
+      writer.uint32(8).uint64(message.fid);
+    }
+    if (message.pageSize !== undefined) {
+      writer.uint32(16).uint32(message.pageSize);
+    }
+    if (message.pageToken !== undefined) {
+      writer.uint32(26).bytes(message.pageToken);
+    }
+    if (message.reverse !== undefined) {
+      writer.uint32(32).bool(message.reverse);
+    }
+    writer.uint32(42).fork();
+    for (const v of message.requesterFids) {
+      writer.uint64(v);
+    }
+    writer.ldelim();
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): SignersByFidRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSignersByFidRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.fid = longToNumber(reader.uint64() as Long);
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.pageSize = reader.uint32();
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.pageToken = reader.bytes();
+          continue;
+        case 4:
+          if (tag != 32) {
+            break;
+          }
+
+          message.reverse = reader.bool();
+          continue;
+        case 5:
+          if (tag == 40) {
+            message.requesterFids.push(longToNumber(reader.uint64() as Long));
+            continue;
+          }
+
+          if (tag == 42) {
+            const end2 = reader.uint32() + reader.pos;
+            while (reader.pos < end2) {
+              message.requesterFids.push(longToNumber(reader.uint64() as Long));
+            }
+
+            continue;
+          }
+
+          break;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SignersByFidRequest {
+    return {
+      fid: isSet(object.fid) ? Number(object.fid) : 0,
+      pageSize: isSet(object.pageSize) ? Number(object.pageSize) : undefined,
+      pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : undefined,
+      reverse: isSet(object.reverse) ? Boolean(object.reverse) : undefined,
+      requesterFids: Array.isArray(object?.requesterFids) ? object.requesterFids.map((e: any) => Number(e)) : [],
+    };
+  },
+
+  toJSON(message: SignersByFidRequest): unknown {
+    const obj: any = {};
+    message.fid !== undefined && (obj.fid = Math.round(message.fid));
+    message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
+    message.pageToken !== undefined &&
+      (obj.pageToken = message.pageToken !== undefined ? base64FromBytes(message.pageToken) : undefined);
+    message.reverse !== undefined && (obj.reverse = message.reverse);
+    if (message.requesterFids) {
+      obj.requesterFids = message.requesterFids.map((e) => Math.round(e));
+    } else {
+      obj.requesterFids = [];
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<SignersByFidRequest>, I>>(base?: I): SignersByFidRequest {
+    return SignersByFidRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<SignersByFidRequest>, I>>(object: I): SignersByFidRequest {
+    const message = createBaseSignersByFidRequest();
+    message.fid = object.fid ?? 0;
+    message.pageSize = object.pageSize ?? undefined;
+    message.pageToken = object.pageToken ?? undefined;
+    message.reverse = object.reverse ?? undefined;
+    message.requesterFids = object.requesterFids?.map((e) => e) || [];
+    return message;
+  },
+};
+
+function createBaseSignersByFidResponse(): SignersByFidResponse {
+  return {
+    signers: [],
+    nextPageToken: undefined,
+    gaslessSignerCount: 0,
+    gaslessSignerLimit: 0,
+    currentUserNonce: 0,
+    requesterFidNonces: {},
+  };
+}
+
+export const SignersByFidResponse = {
+  encode(message: SignersByFidResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    for (const v of message.signers) {
+      Signer.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.nextPageToken !== undefined) {
+      writer.uint32(18).bytes(message.nextPageToken);
+    }
+    if (message.gaslessSignerCount !== 0) {
+      writer.uint32(24).uint32(message.gaslessSignerCount);
+    }
+    if (message.gaslessSignerLimit !== 0) {
+      writer.uint32(32).uint32(message.gaslessSignerLimit);
+    }
+    if (message.currentUserNonce !== 0) {
+      writer.uint32(40).uint32(message.currentUserNonce);
+    }
+    Object.entries(message.requesterFidNonces).forEach(([key, value]) => {
+      SignersByFidResponse_RequesterFidNoncesEntry.encode({ key: key as any, value }, writer.uint32(50).fork())
+        .ldelim();
+    });
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): SignersByFidResponse {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSignersByFidResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.signers.push(Signer.decode(reader, reader.uint32()));
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.nextPageToken = reader.bytes();
+          continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.gaslessSignerCount = reader.uint32();
+          continue;
+        case 4:
+          if (tag != 32) {
+            break;
+          }
+
+          message.gaslessSignerLimit = reader.uint32();
+          continue;
+        case 5:
+          if (tag != 40) {
+            break;
+          }
+
+          message.currentUserNonce = reader.uint32();
+          continue;
+        case 6:
+          if (tag != 50) {
+            break;
+          }
+
+          const entry6 = SignersByFidResponse_RequesterFidNoncesEntry.decode(reader, reader.uint32());
+          if (entry6.value !== undefined) {
+            message.requesterFidNonces[entry6.key] = entry6.value;
+          }
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SignersByFidResponse {
+    return {
+      signers: Array.isArray(object?.signers) ? object.signers.map((e: any) => Signer.fromJSON(e)) : [],
+      nextPageToken: isSet(object.nextPageToken) ? bytesFromBase64(object.nextPageToken) : undefined,
+      gaslessSignerCount: isSet(object.gaslessSignerCount) ? Number(object.gaslessSignerCount) : 0,
+      gaslessSignerLimit: isSet(object.gaslessSignerLimit) ? Number(object.gaslessSignerLimit) : 0,
+      currentUserNonce: isSet(object.currentUserNonce) ? Number(object.currentUserNonce) : 0,
+      requesterFidNonces: isObject(object.requesterFidNonces)
+        ? Object.entries(object.requesterFidNonces).reduce<{ [key: number]: number }>((acc, [key, value]) => {
+          acc[Number(key)] = Number(value);
+          return acc;
+        }, {})
+        : {},
+    };
+  },
+
+  toJSON(message: SignersByFidResponse): unknown {
+    const obj: any = {};
+    if (message.signers) {
+      obj.signers = message.signers.map((e) => e ? Signer.toJSON(e) : undefined);
+    } else {
+      obj.signers = [];
+    }
+    message.nextPageToken !== undefined &&
+      (obj.nextPageToken = message.nextPageToken !== undefined ? base64FromBytes(message.nextPageToken) : undefined);
+    message.gaslessSignerCount !== undefined && (obj.gaslessSignerCount = Math.round(message.gaslessSignerCount));
+    message.gaslessSignerLimit !== undefined && (obj.gaslessSignerLimit = Math.round(message.gaslessSignerLimit));
+    message.currentUserNonce !== undefined && (obj.currentUserNonce = Math.round(message.currentUserNonce));
+    obj.requesterFidNonces = {};
+    if (message.requesterFidNonces) {
+      Object.entries(message.requesterFidNonces).forEach(([k, v]) => {
+        obj.requesterFidNonces[k] = Math.round(v);
+      });
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<SignersByFidResponse>, I>>(base?: I): SignersByFidResponse {
+    return SignersByFidResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<SignersByFidResponse>, I>>(object: I): SignersByFidResponse {
+    const message = createBaseSignersByFidResponse();
+    message.signers = object.signers?.map((e) => Signer.fromPartial(e)) || [];
+    message.nextPageToken = object.nextPageToken ?? undefined;
+    message.gaslessSignerCount = object.gaslessSignerCount ?? 0;
+    message.gaslessSignerLimit = object.gaslessSignerLimit ?? 0;
+    message.currentUserNonce = object.currentUserNonce ?? 0;
+    message.requesterFidNonces = Object.entries(object.requesterFidNonces ?? {}).reduce<{ [key: number]: number }>(
+      (acc, [key, value]) => {
+        if (value !== undefined) {
+          acc[Number(key)] = Number(value);
+        }
+        return acc;
+      },
+      {},
+    );
+    return message;
+  },
+};
+
+function createBaseSignersByFidResponse_RequesterFidNoncesEntry(): SignersByFidResponse_RequesterFidNoncesEntry {
+  return { key: 0, value: 0 };
+}
+
+export const SignersByFidResponse_RequesterFidNoncesEntry = {
+  encode(message: SignersByFidResponse_RequesterFidNoncesEntry, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.key !== 0) {
+      writer.uint32(8).uint64(message.key);
+    }
+    if (message.value !== 0) {
+      writer.uint32(16).uint32(message.value);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): SignersByFidResponse_RequesterFidNoncesEntry {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSignersByFidResponse_RequesterFidNoncesEntry();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.key = longToNumber(reader.uint64() as Long);
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.value = reader.uint32();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SignersByFidResponse_RequesterFidNoncesEntry {
+    return { key: isSet(object.key) ? Number(object.key) : 0, value: isSet(object.value) ? Number(object.value) : 0 };
+  },
+
+  toJSON(message: SignersByFidResponse_RequesterFidNoncesEntry): unknown {
+    const obj: any = {};
+    message.key !== undefined && (obj.key = Math.round(message.key));
+    message.value !== undefined && (obj.value = Math.round(message.value));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<SignersByFidResponse_RequesterFidNoncesEntry>, I>>(
+    base?: I,
+  ): SignersByFidResponse_RequesterFidNoncesEntry {
+    return SignersByFidResponse_RequesterFidNoncesEntry.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<SignersByFidResponse_RequesterFidNoncesEntry>, I>>(
+    object: I,
+  ): SignersByFidResponse_RequesterFidNoncesEntry {
+    const message = createBaseSignersByFidResponse_RequesterFidNoncesEntry();
+    message.key = object.key ?? 0;
+    message.value = object.value ?? 0;
     return message;
   },
 };
@@ -4622,6 +5448,10 @@ function longToNumber(long: Long): number {
 if (_m0.util.Long !== Long) {
   _m0.util.Long = Long as any;
   _m0.configure();
+}
+
+function isObject(value: any): boolean {
+  return typeof value === "object" && value !== null;
 }
 
 function isSet(value: any): boolean {
