@@ -104,6 +104,10 @@ export enum MessageType {
   /** LINK_COMPACT_STATE - Link Compaction State Message */
   LINK_COMPACT_STATE = 14,
   LEND_STORAGE = 15,
+  /** KEY_ADD - Register an Ed25519 key via custody-authenticated message */
+  KEY_ADD = 16,
+  /** KEY_REMOVE - Revoke an Ed25519 key via custody signature or self-revocation */
+  KEY_REMOVE = 17,
 }
 
 export function messageTypeFromJSON(object: any): MessageType {
@@ -150,6 +154,12 @@ export function messageTypeFromJSON(object: any): MessageType {
     case 15:
     case "MESSAGE_TYPE_LEND_STORAGE":
       return MessageType.LEND_STORAGE;
+    case 16:
+    case "MESSAGE_TYPE_KEY_ADD":
+      return MessageType.KEY_ADD;
+    case 17:
+    case "MESSAGE_TYPE_KEY_REMOVE":
+      return MessageType.KEY_REMOVE;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum MessageType");
   }
@@ -185,6 +195,10 @@ export function messageTypeToJSON(object: MessageType): string {
       return "MESSAGE_TYPE_LINK_COMPACT_STATE";
     case MessageType.LEND_STORAGE:
       return "MESSAGE_TYPE_LEND_STORAGE";
+    case MessageType.KEY_ADD:
+      return "MESSAGE_TYPE_KEY_ADD";
+    case MessageType.KEY_REMOVE:
+      return "MESSAGE_TYPE_KEY_REMOVE";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum MessageType");
   }
@@ -538,6 +552,8 @@ export interface MessageData {
   /** Compaction messages */
   linkCompactStateBody?: LinkCompactStateBody | undefined;
   lendStorageBody?: LendStorageBody | undefined;
+  keyAddBody?: KeyAddBody | undefined;
+  keyRemoveBody?: KeyRemoveBody | undefined;
 }
 
 /** Adds metadata about a user */
@@ -670,6 +686,44 @@ export interface LendStorageBody {
   toFid: number;
   numUnits: number;
   unitType: StorageUnitType;
+}
+
+/** Registers an Ed25519 key for an FID via custody-authenticated message */
+export interface KeyAddBody {
+  /** Ed25519 public key (32 bytes) */
+  key: Uint8Array;
+  /** 1 = Ed25519 */
+  keyType: number;
+  /** EIP-712 signature from custody address */
+  custodySignature: Uint8Array;
+  /** Farcaster epoch timestamp after which the custody signature is invalid */
+  deadline: number;
+  /** Monotonically increasing per-FID user nonce */
+  nonce: number;
+  /** ABI-encoded SignedKeyRequestMetadata */
+  metadata: Uint8Array;
+  /** Must be 1 (SignedKeyRequest) */
+  metadataType: number;
+  /** Optional: tx hash of the FID registration transaction */
+  registrationTxHash: Uint8Array;
+  /** Allowed MessageType values; required and non-empty */
+  scopes: number[];
+  /** Seconds; must be > 0. Sliding expiry window; max enforced at validation. */
+  ttl: number;
+}
+
+/** Revokes an Ed25519 key via custody signature or self-revocation */
+export interface KeyRemoveBody {
+  /** Ed25519 public key to remove */
+  key: Uint8Array;
+  /** EIP-712 (custody) or Ed25519 (self-revocation) signature */
+  signature: Uint8Array;
+  /** 1 = custody (EIP-712), 2 = self (Ed25519) */
+  signatureType: number;
+  /** Farcaster epoch timestamp after which the signature is invalid */
+  deadline: number;
+  /** Monotonically increasing nonce (user nonce for custody, app nonce for self) */
+  nonce: number;
 }
 
 function createBaseMessage(): Message {
@@ -839,6 +893,8 @@ function createBaseMessageData(): MessageData {
     frameActionBody: undefined,
     linkCompactStateBody: undefined,
     lendStorageBody: undefined,
+    keyAddBody: undefined,
+    keyRemoveBody: undefined,
   };
 }
 
@@ -888,6 +944,12 @@ export const MessageData = {
     }
     if (message.lendStorageBody !== undefined) {
       LendStorageBody.encode(message.lendStorageBody, writer.uint32(146).fork()).ldelim();
+    }
+    if (message.keyAddBody !== undefined) {
+      KeyAddBody.encode(message.keyAddBody, writer.uint32(154).fork()).ldelim();
+    }
+    if (message.keyRemoveBody !== undefined) {
+      KeyRemoveBody.encode(message.keyRemoveBody, writer.uint32(162).fork()).ldelim();
     }
     return writer;
   },
@@ -1004,6 +1066,20 @@ export const MessageData = {
 
           message.lendStorageBody = LendStorageBody.decode(reader, reader.uint32());
           continue;
+        case 19:
+          if (tag != 154) {
+            break;
+          }
+
+          message.keyAddBody = KeyAddBody.decode(reader, reader.uint32());
+          continue;
+        case 20:
+          if (tag != 162) {
+            break;
+          }
+
+          message.keyRemoveBody = KeyRemoveBody.decode(reader, reader.uint32());
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -1036,6 +1112,8 @@ export const MessageData = {
         ? LinkCompactStateBody.fromJSON(object.linkCompactStateBody)
         : undefined,
       lendStorageBody: isSet(object.lendStorageBody) ? LendStorageBody.fromJSON(object.lendStorageBody) : undefined,
+      keyAddBody: isSet(object.keyAddBody) ? KeyAddBody.fromJSON(object.keyAddBody) : undefined,
+      keyRemoveBody: isSet(object.keyRemoveBody) ? KeyRemoveBody.fromJSON(object.keyRemoveBody) : undefined,
     };
   },
 
@@ -1070,6 +1148,10 @@ export const MessageData = {
       : undefined);
     message.lendStorageBody !== undefined &&
       (obj.lendStorageBody = message.lendStorageBody ? LendStorageBody.toJSON(message.lendStorageBody) : undefined);
+    message.keyAddBody !== undefined &&
+      (obj.keyAddBody = message.keyAddBody ? KeyAddBody.toJSON(message.keyAddBody) : undefined);
+    message.keyRemoveBody !== undefined &&
+      (obj.keyRemoveBody = message.keyRemoveBody ? KeyRemoveBody.toJSON(message.keyRemoveBody) : undefined);
     return obj;
   },
 
@@ -1117,6 +1199,12 @@ export const MessageData = {
       : undefined;
     message.lendStorageBody = (object.lendStorageBody !== undefined && object.lendStorageBody !== null)
       ? LendStorageBody.fromPartial(object.lendStorageBody)
+      : undefined;
+    message.keyAddBody = (object.keyAddBody !== undefined && object.keyAddBody !== null)
+      ? KeyAddBody.fromPartial(object.keyAddBody)
+      : undefined;
+    message.keyRemoveBody = (object.keyRemoveBody !== undefined && object.keyRemoveBody !== null)
+      ? KeyRemoveBody.fromPartial(object.keyRemoveBody)
       : undefined;
     return message;
   },
@@ -2295,6 +2383,329 @@ export const LendStorageBody = {
     message.toFid = object.toFid ?? 0;
     message.numUnits = object.numUnits ?? 0;
     message.unitType = object.unitType ?? 0;
+    return message;
+  },
+};
+
+function createBaseKeyAddBody(): KeyAddBody {
+  return {
+    key: new Uint8Array(),
+    keyType: 0,
+    custodySignature: new Uint8Array(),
+    deadline: 0,
+    nonce: 0,
+    metadata: new Uint8Array(),
+    metadataType: 0,
+    registrationTxHash: new Uint8Array(),
+    scopes: [],
+    ttl: 0,
+  };
+}
+
+export const KeyAddBody = {
+  encode(message: KeyAddBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.key.length !== 0) {
+      writer.uint32(10).bytes(message.key);
+    }
+    if (message.keyType !== 0) {
+      writer.uint32(16).uint32(message.keyType);
+    }
+    if (message.custodySignature.length !== 0) {
+      writer.uint32(26).bytes(message.custodySignature);
+    }
+    if (message.deadline !== 0) {
+      writer.uint32(32).uint32(message.deadline);
+    }
+    if (message.nonce !== 0) {
+      writer.uint32(40).uint32(message.nonce);
+    }
+    if (message.metadata.length !== 0) {
+      writer.uint32(50).bytes(message.metadata);
+    }
+    if (message.metadataType !== 0) {
+      writer.uint32(56).uint32(message.metadataType);
+    }
+    if (message.registrationTxHash.length !== 0) {
+      writer.uint32(66).bytes(message.registrationTxHash);
+    }
+    writer.uint32(74).fork();
+    for (const v of message.scopes) {
+      writer.int32(v);
+    }
+    writer.ldelim();
+    if (message.ttl !== 0) {
+      writer.uint32(80).uint32(message.ttl);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): KeyAddBody {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseKeyAddBody();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.key = reader.bytes();
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.keyType = reader.uint32();
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.custodySignature = reader.bytes();
+          continue;
+        case 4:
+          if (tag != 32) {
+            break;
+          }
+
+          message.deadline = reader.uint32();
+          continue;
+        case 5:
+          if (tag != 40) {
+            break;
+          }
+
+          message.nonce = reader.uint32();
+          continue;
+        case 6:
+          if (tag != 50) {
+            break;
+          }
+
+          message.metadata = reader.bytes();
+          continue;
+        case 7:
+          if (tag != 56) {
+            break;
+          }
+
+          message.metadataType = reader.uint32();
+          continue;
+        case 8:
+          if (tag != 66) {
+            break;
+          }
+
+          message.registrationTxHash = reader.bytes();
+          continue;
+        case 9:
+          if (tag == 72) {
+            message.scopes.push(reader.int32());
+            continue;
+          }
+
+          if (tag == 74) {
+            const end2 = reader.uint32() + reader.pos;
+            while (reader.pos < end2) {
+              message.scopes.push(reader.int32());
+            }
+
+            continue;
+          }
+
+          break;
+        case 10:
+          if (tag != 80) {
+            break;
+          }
+
+          message.ttl = reader.uint32();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): KeyAddBody {
+    return {
+      key: isSet(object.key) ? bytesFromBase64(object.key) : new Uint8Array(),
+      keyType: isSet(object.keyType) ? Number(object.keyType) : 0,
+      custodySignature: isSet(object.custodySignature) ? bytesFromBase64(object.custodySignature) : new Uint8Array(),
+      deadline: isSet(object.deadline) ? Number(object.deadline) : 0,
+      nonce: isSet(object.nonce) ? Number(object.nonce) : 0,
+      metadata: isSet(object.metadata) ? bytesFromBase64(object.metadata) : new Uint8Array(),
+      metadataType: isSet(object.metadataType) ? Number(object.metadataType) : 0,
+      registrationTxHash: isSet(object.registrationTxHash)
+        ? bytesFromBase64(object.registrationTxHash)
+        : new Uint8Array(),
+      scopes: Array.isArray(object?.scopes) ? object.scopes.map((e: any) => Number(e)) : [],
+      ttl: isSet(object.ttl) ? Number(object.ttl) : 0,
+    };
+  },
+
+  toJSON(message: KeyAddBody): unknown {
+    const obj: any = {};
+    message.key !== undefined &&
+      (obj.key = base64FromBytes(message.key !== undefined ? message.key : new Uint8Array()));
+    message.keyType !== undefined && (obj.keyType = Math.round(message.keyType));
+    message.custodySignature !== undefined &&
+      (obj.custodySignature = base64FromBytes(
+        message.custodySignature !== undefined ? message.custodySignature : new Uint8Array(),
+      ));
+    message.deadline !== undefined && (obj.deadline = Math.round(message.deadline));
+    message.nonce !== undefined && (obj.nonce = Math.round(message.nonce));
+    message.metadata !== undefined &&
+      (obj.metadata = base64FromBytes(message.metadata !== undefined ? message.metadata : new Uint8Array()));
+    message.metadataType !== undefined && (obj.metadataType = Math.round(message.metadataType));
+    message.registrationTxHash !== undefined &&
+      (obj.registrationTxHash = base64FromBytes(
+        message.registrationTxHash !== undefined ? message.registrationTxHash : new Uint8Array(),
+      ));
+    if (message.scopes) {
+      obj.scopes = message.scopes.map((e) => Math.round(e));
+    } else {
+      obj.scopes = [];
+    }
+    message.ttl !== undefined && (obj.ttl = Math.round(message.ttl));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<KeyAddBody>, I>>(base?: I): KeyAddBody {
+    return KeyAddBody.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<KeyAddBody>, I>>(object: I): KeyAddBody {
+    const message = createBaseKeyAddBody();
+    message.key = object.key ?? new Uint8Array();
+    message.keyType = object.keyType ?? 0;
+    message.custodySignature = object.custodySignature ?? new Uint8Array();
+    message.deadline = object.deadline ?? 0;
+    message.nonce = object.nonce ?? 0;
+    message.metadata = object.metadata ?? new Uint8Array();
+    message.metadataType = object.metadataType ?? 0;
+    message.registrationTxHash = object.registrationTxHash ?? new Uint8Array();
+    message.scopes = object.scopes?.map((e) => e) || [];
+    message.ttl = object.ttl ?? 0;
+    return message;
+  },
+};
+
+function createBaseKeyRemoveBody(): KeyRemoveBody {
+  return { key: new Uint8Array(), signature: new Uint8Array(), signatureType: 0, deadline: 0, nonce: 0 };
+}
+
+export const KeyRemoveBody = {
+  encode(message: KeyRemoveBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.key.length !== 0) {
+      writer.uint32(10).bytes(message.key);
+    }
+    if (message.signature.length !== 0) {
+      writer.uint32(18).bytes(message.signature);
+    }
+    if (message.signatureType !== 0) {
+      writer.uint32(24).uint32(message.signatureType);
+    }
+    if (message.deadline !== 0) {
+      writer.uint32(32).uint32(message.deadline);
+    }
+    if (message.nonce !== 0) {
+      writer.uint32(40).uint32(message.nonce);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): KeyRemoveBody {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseKeyRemoveBody();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.key = reader.bytes();
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.signature = reader.bytes();
+          continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.signatureType = reader.uint32();
+          continue;
+        case 4:
+          if (tag != 32) {
+            break;
+          }
+
+          message.deadline = reader.uint32();
+          continue;
+        case 5:
+          if (tag != 40) {
+            break;
+          }
+
+          message.nonce = reader.uint32();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): KeyRemoveBody {
+    return {
+      key: isSet(object.key) ? bytesFromBase64(object.key) : new Uint8Array(),
+      signature: isSet(object.signature) ? bytesFromBase64(object.signature) : new Uint8Array(),
+      signatureType: isSet(object.signatureType) ? Number(object.signatureType) : 0,
+      deadline: isSet(object.deadline) ? Number(object.deadline) : 0,
+      nonce: isSet(object.nonce) ? Number(object.nonce) : 0,
+    };
+  },
+
+  toJSON(message: KeyRemoveBody): unknown {
+    const obj: any = {};
+    message.key !== undefined &&
+      (obj.key = base64FromBytes(message.key !== undefined ? message.key : new Uint8Array()));
+    message.signature !== undefined &&
+      (obj.signature = base64FromBytes(message.signature !== undefined ? message.signature : new Uint8Array()));
+    message.signatureType !== undefined && (obj.signatureType = Math.round(message.signatureType));
+    message.deadline !== undefined && (obj.deadline = Math.round(message.deadline));
+    message.nonce !== undefined && (obj.nonce = Math.round(message.nonce));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<KeyRemoveBody>, I>>(base?: I): KeyRemoveBody {
+    return KeyRemoveBody.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<KeyRemoveBody>, I>>(object: I): KeyRemoveBody {
+    const message = createBaseKeyRemoveBody();
+    message.key = object.key ?? new Uint8Array();
+    message.signature = object.signature ?? new Uint8Array();
+    message.signatureType = object.signatureType ?? 0;
+    message.deadline = object.deadline ?? 0;
+    message.nonce = object.nonce ?? 0;
     return message;
   },
 };

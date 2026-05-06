@@ -158,6 +158,42 @@ export const isFrameActionMessage = (message: protobufs.Message): message is typ
   );
 };
 
+export const isLendStorageData = (data: protobufs.MessageData): data is types.LendStorageData => {
+  return data.type === protobufs.MessageType.LEND_STORAGE && typeof data.lendStorageBody !== "undefined";
+};
+
+export const isLendStorageMessage = (message: protobufs.Message): message is types.LendStorageMessage => {
+  return (
+    message.signatureScheme === protobufs.SignatureScheme.ED25519 &&
+    typeof message.data !== "undefined" &&
+    isLendStorageData(message.data)
+  );
+};
+
+export const isKeyAddData = (data: protobufs.MessageData): data is types.KeyAddData => {
+  return data.type === protobufs.MessageType.KEY_ADD && typeof data.keyAddBody !== "undefined";
+};
+
+export const isKeyAddMessage = (message: protobufs.Message): message is types.KeyAddMessage => {
+  return (
+    message.signatureScheme === protobufs.SignatureScheme.ED25519 &&
+    typeof message.data !== "undefined" &&
+    isKeyAddData(message.data)
+  );
+};
+
+export const isKeyRemoveData = (data: protobufs.MessageData): data is types.KeyRemoveData => {
+  return data.type === protobufs.MessageType.KEY_REMOVE && typeof data.keyRemoveBody !== "undefined";
+};
+
+export const isKeyRemoveMessage = (message: protobufs.Message): message is types.KeyRemoveMessage => {
+  return (
+    message.signatureScheme === protobufs.SignatureScheme.ED25519 &&
+    typeof message.data !== "undefined" &&
+    isKeyRemoveData(message.data)
+  );
+};
+
 export const isSignerOnChainEvent = (event: onChainEventProtobufs.OnChainEvent): event is types.SignerOnChainEvent => {
   return (
     event.type === onChainEventProtobufs.OnChainEventType.EVENT_TYPE_SIGNER &&

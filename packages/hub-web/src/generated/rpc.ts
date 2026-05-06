@@ -36,6 +36,9 @@ import {
   ShardChunksRequest,
   ShardChunksResponse,
   SignerRequest,
+  SignerResponse,
+  SignersByFidRequest,
+  SignersByFidResponse,
   StorageLimitsResponse,
   SubmitBulkMessagesRequest,
   SubmitBulkMessagesResponse,
@@ -98,9 +101,20 @@ export interface HubService {
   /** Verifications */
   getVerification(request: DeepPartial<VerificationRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<Message>;
   getVerificationsByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MessagesResponse>;
-  /** OnChain Events */
+  /**
+   * OnChain Events
+   * DEPRECATED in favor of GetSigner (unified). Returns on-chain signer events
+   * only — gasless / off-chain keys are not surfaced through this RPC.
+   */
   getOnChainSigner(request: DeepPartial<SignerRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEvent>;
+  /**
+   * DEPRECATED in favor of GetSignersByFid (unified). Returns on-chain signer
+   * events only — gasless / off-chain keys are not surfaced through this RPC.
+   */
   getOnChainSignersByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEventResponse>;
+  /** Unified signer surface — returns both on-chain and off-chain (gasless) keys. */
+  getSigner(request: DeepPartial<SignerRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<SignerResponse>;
+  getSignersByFid(request: DeepPartial<SignersByFidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<SignersByFidResponse>;
   getOnChainEvents(request: DeepPartial<OnChainEventRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEventResponse>;
   getIdRegistryOnChainEvent(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEvent>;
   getIdRegistryOnChainEventByAddress(
@@ -186,6 +200,8 @@ export class HubServiceClientImpl implements HubService {
     this.getVerificationsByFid = this.getVerificationsByFid.bind(this);
     this.getOnChainSigner = this.getOnChainSigner.bind(this);
     this.getOnChainSignersByFid = this.getOnChainSignersByFid.bind(this);
+    this.getSigner = this.getSigner.bind(this);
+    this.getSignersByFid = this.getSignersByFid.bind(this);
     this.getOnChainEvents = this.getOnChainEvents.bind(this);
     this.getIdRegistryOnChainEvent = this.getIdRegistryOnChainEvent.bind(this);
     this.getIdRegistryOnChainEventByAddress = this.getIdRegistryOnChainEventByAddress.bind(this);
@@ -322,6 +338,14 @@ export class HubServiceClientImpl implements HubService {
 
   getOnChainSignersByFid(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEventResponse> {
     return this.rpc.unary(HubServiceGetOnChainSignersByFidDesc, FidRequest.fromPartial(request), metadata);
+  }
+
+  getSigner(request: DeepPartial<SignerRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<SignerResponse> {
+    return this.rpc.unary(HubServiceGetSignerDesc, SignerRequest.fromPartial(request), metadata);
+  }
+
+  getSignersByFid(request: DeepPartial<SignersByFidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<SignersByFidResponse> {
+    return this.rpc.unary(HubServiceGetSignersByFidDesc, SignersByFidRequest.fromPartial(request), metadata);
   }
 
   getOnChainEvents(request: DeepPartial<OnChainEventRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEventResponse> {
@@ -1059,6 +1083,52 @@ export const HubServiceGetOnChainSignersByFidDesc: UnaryMethodDefinitionish = {
   responseType: {
     deserializeBinary(data: Uint8Array) {
       const value = OnChainEventResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetSignerDesc: UnaryMethodDefinitionish = {
+  methodName: "GetSigner",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return SignerRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = SignerResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetSignersByFidDesc: UnaryMethodDefinitionish = {
+  methodName: "GetSignersByFid",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return SignersByFidRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = SignersByFidResponse.decode(data);
       return {
         ...value,
         toObject() {

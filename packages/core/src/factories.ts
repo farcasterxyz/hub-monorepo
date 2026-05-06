@@ -722,6 +722,98 @@ const FrameActionMessageFactory = Factory.define<protobufs.FrameActionMessage, {
   },
 );
 
+const LendStorageBodyFactory = Factory.define<protobufs.LendStorageBody>(() => {
+  return protobufs.LendStorageBody.create({
+    toFid: FidFactory.build(),
+    numUnits: faker.datatype.number({ min: 1, max: 10 }),
+    unitType: protobufs.StorageUnitType.UNIT_TYPE_2025,
+  });
+});
+
+const LendStorageDataFactory = Factory.define<protobufs.LendStorageData>(() => {
+  return MessageDataFactory.build({
+    lendStorageBody: LendStorageBodyFactory.build(),
+    type: protobufs.MessageType.LEND_STORAGE,
+  }) as protobufs.LendStorageData;
+});
+
+const LendStorageMessageFactory = Factory.define<protobufs.LendStorageMessage, { signer?: Ed25519Signer }>(
+  ({ onCreate, transientParams }) => {
+    onCreate((message) => {
+      return MessageFactory.create(message, { transient: transientParams }) as Promise<protobufs.LendStorageMessage>;
+    });
+
+    return MessageFactory.build(
+      { data: LendStorageDataFactory.build(), signatureScheme: protobufs.SignatureScheme.ED25519 },
+      { transient: transientParams },
+    ) as protobufs.LendStorageMessage;
+  },
+);
+
+const KeyAddBodyFactory = Factory.define<protobufs.KeyAddBody>(() => {
+  return protobufs.KeyAddBody.create({
+    key: Ed25519PublicKeyFactory.build(),
+    keyType: 1,
+    custodySignature: Eip712SignatureFactory.build(),
+    deadline: faker.datatype.number({ min: 1, max: 2 ** 31 - 1 }),
+    nonce: faker.datatype.number({ min: 1, max: 2 ** 31 - 1 }),
+    metadata: BytesFactory.build({}, { transient: { length: 64 } }),
+    metadataType: 1,
+    scopes: [protobufs.MessageType.CAST_ADD as number],
+    ttl: faker.datatype.number({ min: 1, max: 60 * 60 * 24 * 365 }),
+  });
+});
+
+const KeyAddDataFactory = Factory.define<protobufs.KeyAddData>(() => {
+  return MessageDataFactory.build({
+    keyAddBody: KeyAddBodyFactory.build(),
+    type: protobufs.MessageType.KEY_ADD,
+  }) as protobufs.KeyAddData;
+});
+
+const KeyAddMessageFactory = Factory.define<protobufs.KeyAddMessage, { signer?: Ed25519Signer }>(
+  ({ onCreate, transientParams }) => {
+    onCreate((message) => {
+      return MessageFactory.create(message, { transient: transientParams }) as Promise<protobufs.KeyAddMessage>;
+    });
+
+    return MessageFactory.build(
+      { data: KeyAddDataFactory.build(), signatureScheme: protobufs.SignatureScheme.ED25519 },
+      { transient: transientParams },
+    ) as protobufs.KeyAddMessage;
+  },
+);
+
+const KeyRemoveBodyFactory = Factory.define<protobufs.KeyRemoveBody>(() => {
+  return protobufs.KeyRemoveBody.create({
+    key: Ed25519PublicKeyFactory.build(),
+    signature: Eip712SignatureFactory.build(),
+    signatureType: 1,
+    deadline: faker.datatype.number({ min: 1, max: 2 ** 31 - 1 }),
+    nonce: faker.datatype.number({ min: 1, max: 2 ** 31 - 1 }),
+  });
+});
+
+const KeyRemoveDataFactory = Factory.define<protobufs.KeyRemoveData>(() => {
+  return MessageDataFactory.build({
+    keyRemoveBody: KeyRemoveBodyFactory.build(),
+    type: protobufs.MessageType.KEY_REMOVE,
+  }) as protobufs.KeyRemoveData;
+});
+
+const KeyRemoveMessageFactory = Factory.define<protobufs.KeyRemoveMessage, { signer?: Ed25519Signer }>(
+  ({ onCreate, transientParams }) => {
+    onCreate((message) => {
+      return MessageFactory.create(message, { transient: transientParams }) as Promise<protobufs.KeyRemoveMessage>;
+    });
+
+    return MessageFactory.build(
+      { data: KeyRemoveDataFactory.build(), signatureScheme: protobufs.SignatureScheme.ED25519 },
+      { transient: transientParams },
+    ) as protobufs.KeyRemoveMessage;
+  },
+);
+
 const OnChainEventFactory = Factory.define<protobufs.OnChainEvent>(() => {
   return protobufs.OnChainEvent.create({
     type: OnChainEventType.EVENT_TYPE_SIGNER,
@@ -853,6 +945,15 @@ export const Factories = {
   FrameActionBody: FrameActionBodyFactory,
   FrameActionData: FrameActionDataFactory,
   FrameActionMessage: FrameActionMessageFactory,
+  LendStorageBody: LendStorageBodyFactory,
+  LendStorageData: LendStorageDataFactory,
+  LendStorageMessage: LendStorageMessageFactory,
+  KeyAddBody: KeyAddBodyFactory,
+  KeyAddData: KeyAddDataFactory,
+  KeyAddMessage: KeyAddMessageFactory,
+  KeyRemoveBody: KeyRemoveBodyFactory,
+  KeyRemoveData: KeyRemoveDataFactory,
+  KeyRemoveMessage: KeyRemoveMessageFactory,
   LinkBody: LinkBodyFactory,
   LinkAddData: LinkAddDataFactory,
   LinkAddMessage: LinkAddMessageFactory,

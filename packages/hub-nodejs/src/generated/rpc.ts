@@ -46,6 +46,9 @@ import {
   ShardChunksRequest,
   ShardChunksResponse,
   SignerRequest,
+  SignerResponse,
+  SignersByFidRequest,
+  SignersByFidResponse,
   StorageLimitsResponse,
   SubmitBulkMessagesRequest,
   SubmitBulkMessagesResponse,
@@ -300,7 +303,11 @@ export const HubServiceService = {
     responseSerialize: (value: MessagesResponse) => Buffer.from(MessagesResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer) => MessagesResponse.decode(value),
   },
-  /** OnChain Events */
+  /**
+   * OnChain Events
+   * DEPRECATED in favor of GetSigner (unified). Returns on-chain signer events
+   * only — gasless / off-chain keys are not surfaced through this RPC.
+   */
   getOnChainSigner: {
     path: "/HubService/GetOnChainSigner",
     requestStream: false,
@@ -310,6 +317,10 @@ export const HubServiceService = {
     responseSerialize: (value: OnChainEvent) => Buffer.from(OnChainEvent.encode(value).finish()),
     responseDeserialize: (value: Buffer) => OnChainEvent.decode(value),
   },
+  /**
+   * DEPRECATED in favor of GetSignersByFid (unified). Returns on-chain signer
+   * events only — gasless / off-chain keys are not surfaced through this RPC.
+   */
   getOnChainSignersByFid: {
     path: "/HubService/GetOnChainSignersByFid",
     requestStream: false,
@@ -318,6 +329,25 @@ export const HubServiceService = {
     requestDeserialize: (value: Buffer) => FidRequest.decode(value),
     responseSerialize: (value: OnChainEventResponse) => Buffer.from(OnChainEventResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer) => OnChainEventResponse.decode(value),
+  },
+  /** Unified signer surface — returns both on-chain and off-chain (gasless) keys. */
+  getSigner: {
+    path: "/HubService/GetSigner",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: SignerRequest) => Buffer.from(SignerRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => SignerRequest.decode(value),
+    responseSerialize: (value: SignerResponse) => Buffer.from(SignerResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => SignerResponse.decode(value),
+  },
+  getSignersByFid: {
+    path: "/HubService/GetSignersByFid",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: SignersByFidRequest) => Buffer.from(SignersByFidRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => SignersByFidRequest.decode(value),
+    responseSerialize: (value: SignersByFidResponse) => Buffer.from(SignersByFidResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => SignersByFidResponse.decode(value),
   },
   getOnChainEvents: {
     path: "/HubService/GetOnChainEvents",
@@ -505,9 +535,20 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   /** Verifications */
   getVerification: handleUnaryCall<VerificationRequest, Message>;
   getVerificationsByFid: handleUnaryCall<FidRequest, MessagesResponse>;
-  /** OnChain Events */
+  /**
+   * OnChain Events
+   * DEPRECATED in favor of GetSigner (unified). Returns on-chain signer events
+   * only — gasless / off-chain keys are not surfaced through this RPC.
+   */
   getOnChainSigner: handleUnaryCall<SignerRequest, OnChainEvent>;
+  /**
+   * DEPRECATED in favor of GetSignersByFid (unified). Returns on-chain signer
+   * events only — gasless / off-chain keys are not surfaced through this RPC.
+   */
   getOnChainSignersByFid: handleUnaryCall<FidRequest, OnChainEventResponse>;
+  /** Unified signer surface — returns both on-chain and off-chain (gasless) keys. */
+  getSigner: handleUnaryCall<SignerRequest, SignerResponse>;
+  getSignersByFid: handleUnaryCall<SignersByFidRequest, SignersByFidResponse>;
   getOnChainEvents: handleUnaryCall<OnChainEventRequest, OnChainEventResponse>;
   getIdRegistryOnChainEvent: handleUnaryCall<FidRequest, OnChainEvent>;
   getIdRegistryOnChainEventByAddress: handleUnaryCall<IdRegistryEventByAddressRequest, OnChainEvent>;
@@ -883,7 +924,11 @@ export interface HubServiceClient extends Client {
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: MessagesResponse) => void,
   ): ClientUnaryCall;
-  /** OnChain Events */
+  /**
+   * OnChain Events
+   * DEPRECATED in favor of GetSigner (unified). Returns on-chain signer events
+   * only — gasless / off-chain keys are not surfaced through this RPC.
+   */
   getOnChainSigner(
     request: SignerRequest,
     callback: (error: ServiceError | null, response: OnChainEvent) => void,
@@ -899,6 +944,10 @@ export interface HubServiceClient extends Client {
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: OnChainEvent) => void,
   ): ClientUnaryCall;
+  /**
+   * DEPRECATED in favor of GetSignersByFid (unified). Returns on-chain signer
+   * events only — gasless / off-chain keys are not surfaced through this RPC.
+   */
   getOnChainSignersByFid(
     request: FidRequest,
     callback: (error: ServiceError | null, response: OnChainEventResponse) => void,
@@ -913,6 +962,37 @@ export interface HubServiceClient extends Client {
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: OnChainEventResponse) => void,
+  ): ClientUnaryCall;
+  /** Unified signer surface — returns both on-chain and off-chain (gasless) keys. */
+  getSigner(
+    request: SignerRequest,
+    callback: (error: ServiceError | null, response: SignerResponse) => void,
+  ): ClientUnaryCall;
+  getSigner(
+    request: SignerRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: SignerResponse) => void,
+  ): ClientUnaryCall;
+  getSigner(
+    request: SignerRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: SignerResponse) => void,
+  ): ClientUnaryCall;
+  getSignersByFid(
+    request: SignersByFidRequest,
+    callback: (error: ServiceError | null, response: SignersByFidResponse) => void,
+  ): ClientUnaryCall;
+  getSignersByFid(
+    request: SignersByFidRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: SignersByFidResponse) => void,
+  ): ClientUnaryCall;
+  getSignersByFid(
+    request: SignersByFidRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: SignersByFidResponse) => void,
   ): ClientUnaryCall;
   getOnChainEvents(
     request: OnChainEventRequest,
