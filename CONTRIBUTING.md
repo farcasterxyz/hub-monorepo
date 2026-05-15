@@ -55,7 +55,7 @@ Then, from the root folder run:
 - `yarn build` to build packages
 - `yarn test` to ensure that the test suite runs correctly
 
-NOTE: Running `yarn test` currently fails due to an environment issue with shuttle. you can still run `yarn test` successfully from all the other repositories.
+NOTE: Running `yarn test` currently fails due to an environment issue with shuttle. You can still run `yarn test` successfully from all the other repositories.
 
 ### 2.2 Signing Commits
 
@@ -150,7 +150,7 @@ const parseMessage = (message: string): HubResult<Uint8Array> => {
 
 ---
 
-Always wrap external calls with `Result.fromThrowable` or `ResultAsync.fromPromise` and wrap external an `Error` into a `HubError`.
+Always wrap external calls with `Result.fromThrowable` or `ResultAsync.fromPromise` and wrap an external `Error` into a `HubError`.
 
 ```ts
 // incorrect usage

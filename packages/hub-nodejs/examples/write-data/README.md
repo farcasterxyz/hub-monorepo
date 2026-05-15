@@ -1,6 +1,6 @@
 ## Writing Data to Hubs
 
-An example that different types of messages like casts, reactions, follows, etc. given a signer private key for an fid. 
+An example that writes different types of messages like casts, reactions, follows, etc. given a signer private key for an fid. 
 
 The example runs on testnet by default so that you can make changes safely without affecting your mainnet data.
 
