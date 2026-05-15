@@ -28,8 +28,17 @@ import {
   MessageReconciliation,
   OnChainEventReconciliation,
   type OnChainEventBodyJson,
+  UsernameProofReconciliation,
 } from "./shuttle";
-import { OnChainEvent, OnChainEventResponse, OnChainEventType, IdRegisterEventType } from "@farcaster/hub-nodejs";
+import {
+  IdRegisterEventType,
+  OnChainEvent,
+  OnChainEventResponse,
+  OnChainEventType,
+  UserNameProof,
+  UserNameType,
+  UsernameProofsResponse,
+} from "@farcaster/hub-nodejs";
 import { err, ok } from "neverthrow";
 import { bytesToHex } from "./utils";
 
@@ -971,7 +980,7 @@ describe("shuttle", () => {
       };
     }
 
-    function mockHubWith(events: OnChainEvent[]): HubRpcClient {
+    function mockOnChainHubWith(events: OnChainEvent[]): HubRpcClient {
       // Each `getOnChainEvents` call is scoped to a single `eventType`; only return
       // events of the requested type so callers don't accidentally cross-contaminate.
       const mock = {
@@ -1015,7 +1024,7 @@ describe("shuttle", () => {
       const event = makeIdRegisterEvent({ blockNumber: 1234567, logIndex: 3 });
       await insertOnChainEvent(event);
 
-      const reconciler = new OnChainEventReconciliation(mockHubWith([event]), db, log);
+      const reconciler = new OnChainEventReconciliation(mockOnChainHubWith([event]), db, log);
       const observations: { missingInDb: boolean; chainId: number; blockNumber: number }[] = [];
       await reconciler.reconcileOnChainEventsForFid(fid, async (e, missingInDb) => {
         observations.push({ missingInDb, chainId: e.chainId, blockNumber: e.blockNumber });
@@ -1027,7 +1036,7 @@ describe("shuttle", () => {
     test("hub event missing from DB is reported with missingInDb=true", async () => {
       const event = makeIdRegisterEvent({ blockNumber: 222, logIndex: 7 });
 
-      const reconciler = new OnChainEventReconciliation(mockHubWith([event]), db, log);
+      const reconciler = new OnChainEventReconciliation(mockOnChainHubWith([event]), db, log);
       const observations: { missingInDb: boolean }[] = [];
       await reconciler.reconcileOnChainEventsForFid(fid, async (_e, missingInDb) => {
         observations.push({ missingInDb });
@@ -1040,7 +1049,7 @@ describe("shuttle", () => {
       const event = makeIdRegisterEvent({ blockNumber: 333, logIndex: 0 });
       await insertOnChainEvent(event);
 
-      const reconciler = new OnChainEventReconciliation(mockHubWith([]), db, log);
+      const reconciler = new OnChainEventReconciliation(mockOnChainHubWith([]), db, log);
       const dbObservations: { missingInOnChain: boolean; blockNumber: number }[] = [];
       await reconciler.reconcileOnChainEventsForFid(
         fid,
@@ -1072,6 +1081,97 @@ describe("shuttle", () => {
         types: [OnChainEventType.EVENT_TYPE_SIGNER],
       });
       expect(calls).toBe(1);
+    });
+  });
+
+  describe("UsernameProofReconciliation", () => {
+    const fid = 4242;
+
+    function makeProof(name: string, owner: string, type: UserNameType, timestamp: number): UserNameProof {
+      return {
+        timestamp,
+        name: Buffer.from(name, "utf8"),
+        owner: Buffer.from(owner.replace(/^0x/, ""), "hex"),
+        signature: Buffer.from([]),
+        fid,
+        type,
+      };
+    }
+
+    function mockUsernameHubWith(proofs: UserNameProof[]): HubRpcClient {
+      const mock = {
+        getUserNameProofsByFid: async (_request: { fid: number }) => ok(UsernameProofsResponse.create({ proofs })),
+      };
+      return mock as unknown as HubRpcClient;
+    }
+
+    beforeEach(async () => {
+      await db.deleteFrom("usernames").where("fid", "=", fid).execute();
+    });
+
+    test("hub proof present in DB by readable username is detected (regression: IN-clause used hex bytes)", async () => {
+      const ownerHex = "0xaaaabbbbccccddddeeeeffff0000111122223333";
+      const proof = makeProof("alice", ownerHex, UserNameType.USERNAME_TYPE_FNAME, 1_700_000_000);
+
+      // The DB stores the readable username, not the hex of the protobuf bytes.
+      await db
+        .insertInto("usernames")
+        .values({
+          fid,
+          username: "alice",
+          custodyAddress: Buffer.from(ownerHex.slice(2), "hex"),
+          proofTimestamp: new Date(proof.timestamp * 1000),
+          type: UserNameType.USERNAME_TYPE_FNAME,
+        })
+        .execute();
+
+      const reconciler = new UsernameProofReconciliation(mockUsernameHubWith([proof]), db, log);
+      const observations: { name: string; missingInDb: boolean }[] = [];
+      await reconciler.reconcileUsernameProofsForFid(fid, async (p, missingInDb) => {
+        observations.push({ name: Buffer.from(p.name).toString("utf8"), missingInDb });
+      });
+
+      expect(observations).toEqual([{ name: "alice", missingInDb: false }]);
+    });
+
+    test("hub proof missing from DB is reported with missingInDb=true", async () => {
+      const proof = makeProof("bob", `0x${"11".repeat(20)}`, UserNameType.USERNAME_TYPE_FNAME, 1_700_000_001);
+
+      const reconciler = new UsernameProofReconciliation(mockUsernameHubWith([proof]), db, log);
+      const observations: { name: string; missingInDb: boolean }[] = [];
+      await reconciler.reconcileUsernameProofsForFid(fid, async (p, missingInDb) => {
+        observations.push({ name: Buffer.from(p.name).toString("utf8"), missingInDb });
+      });
+
+      expect(observations).toEqual([{ name: "bob", missingInDb: true }]);
+    });
+
+    test("DB row missing from hub is reported with missingInHub=true when onDbProof is provided", async () => {
+      const ownerHex = `0x${"22".repeat(20)}`;
+      await db
+        .insertInto("usernames")
+        .values({
+          fid,
+          username: "carol",
+          custodyAddress: Buffer.from(ownerHex.slice(2), "hex"),
+          proofTimestamp: new Date(1_700_000_002 * 1000),
+          type: UserNameType.USERNAME_TYPE_FNAME,
+        })
+        .execute();
+
+      const reconciler = new UsernameProofReconciliation(mockUsernameHubWith([]), db, log);
+      const dbObservations: { name: string; missingInHub: boolean }[] = [];
+      await reconciler.reconcileUsernameProofsForFid(
+        fid,
+        async () => {
+          /* hub returned nothing */
+        },
+        async (p, missingInHub) => {
+          dbObservations.push({ name: Buffer.from(p.name).toString("utf8"), missingInHub });
+        },
+      );
+
+      expect(dbObservations).toEqual([{ name: "carol", missingInHub: true }]);
     });
   });
 
