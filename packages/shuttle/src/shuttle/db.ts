@@ -148,9 +148,26 @@ type MessagesTable = {
 export type MessageRow = Selectable<MessagesTable>;
 export type InsertableMessageRow = Insertable<MessagesTable>;
 
+// USERNAMES --------------------------------------------------------------------------------------
+export type UsernamesTable = {
+  id: Generated<string>;
+  createdAt: Generated<Date>;
+  updatedAt: Generated<Date>;
+  deletedAt: Date | null;
+  fid: Fid;
+  username: string;
+  custodyAddress: Uint8Array | null;
+  proofTimestamp: Date;
+  type: UserNameType;
+};
+
+export type UsernameRow = Selectable<UsernamesTable>;
+export type InsertableUsernameRow = Insertable<UsernamesTable>;
+
 // ALL TABLES -------------------------------------------------------------------------------------
 export interface HubTables {
   messages: MessagesTable;
+  usernames: UsernamesTable;
 }
 
 export const getDbClient = (connectionString?: string, schema = "public") => {
