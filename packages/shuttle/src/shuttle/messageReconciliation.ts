@@ -16,7 +16,21 @@ import { randomUUID } from "crypto";
 
 const MAX_PAGE_SIZE = 500;
 
-type DBMessage = {
+// The "primary" message types that `MessageReconciliation` can fetch from a hub.
+// Each entry has a corresponding `getAll<...>MessagesByFid` RPC; "remove" / compact-state
+// variants are reconciled implicitly via the DB-side pass and must not be passed in here.
+export const RECONCILABLE_MESSAGE_TYPES = [
+  MessageType.CAST_ADD,
+  MessageType.REACTION_ADD,
+  MessageType.LINK_ADD,
+  MessageType.VERIFICATION_ADD_ETH_ADDRESS,
+  MessageType.USER_DATA_ADD,
+  MessageType.LEND_STORAGE,
+] as const;
+
+export type ReconcilableMessageType = typeof RECONCILABLE_MESSAGE_TYPES[number];
+
+export type DBMessage = {
   hash: Uint8Array;
   prunedAt: Date | null;
   revokedAt: Date | null;
@@ -43,33 +57,70 @@ export class MessageReconciliation {
   async reconcileMessagesForFid(
     fid: number,
     onHubMessage: (message: Message, missingInDb: boolean, prunedInDb: boolean, revokedInDb: boolean) => Promise<void>,
-    onDbMessage: (message: DBMessage, missingInHub: boolean) => Promise<void>,
+    onDbMessage?: (message: DBMessage, missingInHub: boolean) => Promise<void>,
     startTimestamp?: number,
     stopTimestamp?: number,
+    types?: ReconcilableMessageType[],
   ) {
-    for (const type of [
-      MessageType.CAST_ADD,
-      MessageType.REACTION_ADD,
-      MessageType.LINK_ADD,
-      MessageType.VERIFICATION_ADD_ETH_ADDRESS,
-      MessageType.USER_DATA_ADD,
-      MessageType.LEND_STORAGE,
-    ]) {
+    // Validate the time range exactly once up front so callers see the same input
+    // handling regardless of whether they pass `onDbMessage`. The resolved Dates are
+    // reused by the per-type DB pass so we don't re-parse on every iteration.
+    const window = this.resolveTimeWindow(startTimestamp, stopTimestamp);
+    if (window.isErr()) {
+      this.log.error({ fid, startTimestamp, stopTimestamp }, "Invalid time range provided to reconciliation");
+      return;
+    }
+
+    for (const type of types ?? RECONCILABLE_MESSAGE_TYPES) {
       this.log.debug(`Reconciling messages for FID ${fid} of type ${type}`);
-      await this.reconcileMessagesOfTypeForFid(fid, type, onHubMessage, onDbMessage, startTimestamp, stopTimestamp);
+      await this.reconcileMessagesOfTypeForFidInternal(
+        fid,
+        type,
+        onHubMessage,
+        onDbMessage,
+        startTimestamp,
+        stopTimestamp,
+        window.value,
+      );
     }
   }
 
   async reconcileMessagesOfTypeForFid(
     fid: number,
-    type: MessageType,
+    type: ReconcilableMessageType,
     onHubMessage: (message: Message, missingInDb: boolean, prunedInDb: boolean, revokedInDb: boolean) => Promise<void>,
-    onDbMessage: (message: DBMessage, missingInHub: boolean) => Promise<void>,
+    onDbMessage?: (message: DBMessage, missingInHub: boolean) => Promise<void>,
     startTimestamp?: number,
     stopTimestamp?: number,
   ) {
-    // todo: Username proofs, and on chain events
+    const window = this.resolveTimeWindow(startTimestamp, stopTimestamp);
+    if (window.isErr()) {
+      this.log.error({ fid, type, startTimestamp, stopTimestamp }, "Invalid time range provided to reconciliation");
+      return;
+    }
+    await this.reconcileMessagesOfTypeForFidInternal(
+      fid,
+      type,
+      onHubMessage,
+      onDbMessage,
+      startTimestamp,
+      stopTimestamp,
+      window.value,
+    );
+  }
 
+  private async reconcileMessagesOfTypeForFidInternal(
+    fid: number,
+    type: ReconcilableMessageType,
+    onHubMessage: (message: Message, missingInDb: boolean, prunedInDb: boolean, revokedInDb: boolean) => Promise<void>,
+    onDbMessage: ((message: DBMessage, missingInHub: boolean) => Promise<void>) | undefined,
+    startTimestamp: number | undefined,
+    stopTimestamp: number | undefined,
+    window: { startDate?: Date; stopDate?: Date },
+  ) {
+    // Only build the hash map of hub messages when we'll actually use it for the DB-side
+    // pass. For large backfills the per-FID memory cost would otherwise be wasted.
+    const trackHubMessages = onDbMessage !== undefined;
     const hubMessagesByHash: Record<string, Message> = {};
     // First, reconcile messages that are in the hub but not in the database
     for await (const messages of this.allHubMessagesOfTypeForFid(fid, type, startTimestamp, stopTimestamp)) {
@@ -94,7 +145,9 @@ export class MessageReconciliation {
 
       for (const message of messages) {
         const msgHashKey = Buffer.from(message.hash).toString("hex");
-        hubMessagesByHash[msgHashKey] = message;
+        if (trackHubMessages) {
+          hubMessagesByHash[msgHashKey] = message;
+        }
 
         const dbMessage = dbMessageHashes[msgHashKey];
         if (dbMessage === undefined) {
@@ -114,16 +167,35 @@ export class MessageReconciliation {
     }
 
     // Next, reconcile messages that are in the database but not in the hub
-    const dbMessages = await this.allActiveDbMessagesOfTypeForFid(fid, type, startTimestamp, stopTimestamp);
-    if (dbMessages.isErr()) {
-      this.log.error({ startTimestamp, stopTimestamp }, "Invalid time range provided to reconciliation");
-      return;
+    if (onDbMessage) {
+      const dbMessages = await this.allActiveDbMessagesOfTypeForFid(fid, type, window.startDate, window.stopDate);
+
+      for (const dbMessage of dbMessages) {
+        const key = Buffer.from(dbMessage.hash).toString("hex");
+        await onDbMessage(dbMessage, !hubMessagesByHash[key]);
+      }
+    }
+  }
+
+  private resolveTimeWindow(
+    startTimestamp: number | undefined,
+    stopTimestamp: number | undefined,
+  ): HubResult<{ startDate?: Date; stopDate?: Date }> {
+    let startDate: Date | undefined;
+    if (startTimestamp !== undefined) {
+      const r = fromFarcasterTime(startTimestamp);
+      if (r.isErr()) return err(r.error);
+      startDate = new Date(r.value);
     }
 
-    for (const dbMessage of dbMessages.value) {
-      const key = Buffer.from(dbMessage.hash).toString("hex");
-      await onDbMessage(dbMessage, !hubMessagesByHash[key]);
+    let stopDate: Date | undefined;
+    if (stopTimestamp !== undefined) {
+      const r = fromFarcasterTime(stopTimestamp);
+      if (r.isErr()) return err(r.error);
+      stopDate = new Date(r.value);
     }
+
+    return ok({ startDate, stopDate });
   }
 
   private async *allHubMessagesOfTypeForFid(
@@ -350,9 +422,9 @@ export class MessageReconciliation {
 
   private async allActiveDbMessagesOfTypeForFid(
     fid: number,
-    type: MessageType,
-    startTimestamp?: number,
-    stopTimestamp?: number,
+    type: ReconcilableMessageType,
+    startDate: Date | undefined,
+    stopDate: Date | undefined,
   ) {
     let typeSet: MessageType[] = [type];
     // Add remove types for messages which support them
@@ -369,26 +441,6 @@ export class MessageReconciliation {
       case MessageType.VERIFICATION_ADD_ETH_ADDRESS:
         typeSet = [...typeSet, MessageType.VERIFICATION_REMOVE];
         break;
-    }
-
-    let startDate;
-    if (startTimestamp) {
-      const startUnixTimestampResult = fromFarcasterTime(startTimestamp);
-      if (startUnixTimestampResult.isErr()) {
-        return err(startUnixTimestampResult.error);
-      }
-
-      startDate = new Date(startUnixTimestampResult.value);
-    }
-
-    let stopDate;
-    if (stopTimestamp) {
-      const stopUnixTimestampResult = fromFarcasterTime(stopTimestamp);
-      if (stopUnixTimestampResult.isErr()) {
-        return err(stopUnixTimestampResult.error);
-      }
-
-      stopDate = new Date(stopUnixTimestampResult.value);
     }
 
     const query = this.db
@@ -411,7 +463,6 @@ export class MessageReconciliation {
     const queryWithStopTime = stopDate
       ? queryWithStartTime.where("messages.timestamp", "<=", stopDate)
       : queryWithStartTime;
-    const result = await queryWithStopTime.execute();
-    return ok(result);
+    return queryWithStopTime.execute();
   }
 }

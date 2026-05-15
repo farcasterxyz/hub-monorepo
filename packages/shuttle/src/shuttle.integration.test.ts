@@ -663,6 +663,81 @@ describe("shuttle", () => {
     expect(messagesInDb.length).toBe(2);
   });
 
+  test("reconciler with no onDbMessage skips DB-side pass and only emits hub-side observations", async () => {
+    const linkAddMessage = await Factories.LinkAddMessage.create({}, { transient: { signer } });
+
+    // Persist a DB-only message that, if the DB-side pass were running, would be flagged
+    // as missingInHub. The DB-side pass should be skipped entirely when onDbMessage is undefined.
+    const dbOnlyMessage = await Factories.LinkAddMessage.create(
+      { data: { fid: linkAddMessage.data.fid, linkBody: { type: "follow", targetFid: 99999 } } },
+      { transient: { signer } },
+    );
+    await subscriber.processHubEvent(
+      HubEvent.create({ id: 1001, type: HubEventType.MERGE_MESSAGE, mergeMessageBody: { message: dbOnlyMessage } }),
+    );
+
+    const mockRPCClient = {
+      streamFetch: () => err(new HubError("unavailable", "unavailable")),
+      getAllLinkMessagesByFid: async () =>
+        ok(MessagesResponse.create({ messages: [linkAddMessage], nextPageToken: undefined })),
+      getLinkCompactStateMessageByFid: async () =>
+        ok(MessagesResponse.create({ messages: [], nextPageToken: undefined })),
+    };
+
+    const reconciler = new MessageReconciliation(mockRPCClient as unknown as HubRpcClient, db, log);
+    const dbCallCount = { count: 0 };
+    const hubObservations: Uint8Array[] = [];
+    await reconciler.reconcileMessagesOfTypeForFid(
+      linkAddMessage.data.fid,
+      MessageType.LINK_ADD,
+      async (msg) => {
+        hubObservations.push(msg.hash);
+      },
+      // onDbMessage intentionally omitted
+    );
+
+    expect(hubObservations.length).toBe(1);
+    expect(bytesToHex(hubObservations[0] as Uint8Array)).toEqual(bytesToHex(linkAddMessage.hash));
+    expect(dbCallCount.count).toBe(0);
+  });
+
+  test("reconciler `types` filter restricts the per-type RPC calls", async () => {
+    const linkAddMessage = await Factories.LinkAddMessage.create({}, { transient: { signer } });
+
+    let castCalls = 0;
+    let linkCalls = 0;
+    const mockRPCClient = {
+      streamFetch: () => err(new HubError("unavailable", "unavailable")),
+      getAllCastMessagesByFid: async () => {
+        castCalls++;
+        return ok(MessagesResponse.create({ messages: [], nextPageToken: undefined }));
+      },
+      getAllLinkMessagesByFid: async () => {
+        linkCalls++;
+        return ok(MessagesResponse.create({ messages: [linkAddMessage], nextPageToken: undefined }));
+      },
+      getLinkCompactStateMessageByFid: async () =>
+        ok(MessagesResponse.create({ messages: [], nextPageToken: undefined })),
+    };
+
+    const reconciler = new MessageReconciliation(mockRPCClient as unknown as HubRpcClient, db, log);
+    const observations: MessageType[] = [];
+    await reconciler.reconcileMessagesForFid(
+      linkAddMessage.data.fid,
+      async (msg) => {
+        if (msg.data?.type !== undefined) observations.push(msg.data.type);
+      },
+      undefined,
+      undefined,
+      undefined,
+      [MessageType.LINK_ADD],
+    );
+
+    expect(linkCalls).toBe(1);
+    expect(castCalls).toBe(0);
+    expect(observations).toEqual([MessageType.LINK_ADD]);
+  });
+
   // TODO: Skip for now, and figure out how to test that the fallback is called correctly
   xtest("reconciler lets unresponsive server requests terminate in error", async () => {
     const startTimestamp = getFarcasterTime()._unsafeUnwrap();
