@@ -19,10 +19,14 @@ import {
 import {
   CastType,
   HashScheme,
+  IdRegisterEventType,
   MessageType,
+  OnChainEventType,
   ReactionType,
   SignatureScheme,
+  SignerEventType,
   StorageUnitType,
+  TierType,
   UserDataType,
   UserNameType,
 } from "@farcaster/hub-nodejs";
@@ -148,9 +152,79 @@ type MessagesTable = {
 export type MessageRow = Selectable<MessagesTable>;
 export type InsertableMessageRow = Insertable<MessagesTable>;
 
+// ON-CHAIN EVENTS --------------------------------------------------------------------------------
+// JSON-safe representations of each on-chain event body. Mirrors the convention used by
+// `MessageBodyJson`: every `Uint8Array` field on the protobuf body is serialized as a
+// hex-prefixed string ("0x...") so the value round-trips through a Postgres `json` /
+// `jsonb` column. Using the protobuf types directly would let `Uint8Array`-typed fields
+// like `IdRegisterEventBody.to` or `TierPurchaseBody.payer` be persisted as the
+// node-default `{ "0": 0xab, "1": 0xcd, ... }` numeric-index object shape, which is both
+// wasteful and a pain for downstream consumers to query.
+export type IdRegisterEventBodyJson = {
+  to: Hex;
+  eventType: IdRegisterEventType;
+  from: Hex;
+  recoveryAddress: Hex;
+};
+
+export type SignerEventBodyJson = {
+  key: Hex;
+  keyType: number;
+  eventType: SignerEventType;
+  metadata: Hex;
+  metadataType: number;
+};
+
+export type SignerMigratedEventBodyJson = {
+  migratedAt: number;
+};
+
+export type StorageRentEventBodyJson = {
+  payer: Hex;
+  units: number;
+  expiry: number;
+};
+
+export type TierPurchaseEventBodyJson = {
+  tierType: TierType;
+  forDays: number;
+  payer: Hex;
+};
+
+export type OnChainEventBodyJson =
+  | IdRegisterEventBodyJson
+  | SignerEventBodyJson
+  | SignerMigratedEventBodyJson
+  | StorageRentEventBodyJson
+  | TierPurchaseEventBodyJson;
+
+export type OnChainEventsTable = {
+  id: Generated<string>;
+  // `chainId` and `blockNumber` are Postgres `bigint` (int8) columns, but the package
+  // installs a global `pg.types.setTypeParser(20, ...)` that returns int8 values as JS
+  // `number`. Typing them as `number` keeps the runtime shape and the declared shape in
+  // sync (declaring `bigint` would silently mislead downstream consumers and break
+  // arithmetic / serialization). Real-world chain IDs and block numbers are far below
+  // `Number.MAX_SAFE_INTEGER`.
+  chainId: number;
+  createdAt: Generated<Date>;
+  updatedAt: Generated<Date>;
+  blockTimestamp: Date;
+  fid: Fid;
+  blockNumber: number;
+  logIndex: number;
+  type: OnChainEventType;
+  txHash: Uint8Array;
+  body: OnChainEventBodyJson;
+};
+
+export type OnChainEventRow = Selectable<OnChainEventsTable>;
+export type InsertableOnChainEventRow = Insertable<OnChainEventsTable>;
+
 // ALL TABLES -------------------------------------------------------------------------------------
 export interface HubTables {
   messages: MessagesTable;
+  onchain_events: OnChainEventsTable;
 }
 
 export const getDbClient = (connectionString?: string, schema = "public") => {
