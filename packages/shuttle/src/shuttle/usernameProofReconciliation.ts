@@ -3,6 +3,17 @@ import { err, ok, Result } from "neverthrow";
 import { pino } from "pino";
 import { DB } from "./db";
 
+// `UserNameProof.name` on the wire is the username's UTF-8 bytes (e.g. "alice" -> [0x61,...]).
+// The `usernames` table on `HubTables` stores `username` as the human-readable string, so any
+// time we cross the wire<->row boundary we need to round-trip through UTF-8, not hex.
+function nameBytesToUsername(name: Uint8Array): string {
+  return Buffer.from(name).toString("utf8");
+}
+
+function usernameToNameBytes(username: string): Uint8Array {
+  return Buffer.from(username, "utf8");
+}
+
 // Reconciles username proofs between the hub and the local database for a given FID.
 // Mirrors the structure of MessageReconciliation: the hub-side pass is always run, and
 // the DB-side pass is only run when an onDbProof callback is provided.
@@ -155,17 +166,20 @@ export class UsernameProofReconciliation {
       if (stopDate) query = query.where("proofTimestamp", "<", stopDate);
 
       if (hubProofs) {
+        // The `username` column stores the human-readable name, not hex of the bytes,
+        // so build the IN list with the UTF-8 decoding of each hub proof's name. Building
+        // it from `bytesToHexString(p.name)` (a "0x..." string) would never match anything.
         query = query.where(
           "username",
           "in",
-          hubProofs.map((p) => bytesToHexString(p.name)._unsafeUnwrap()),
+          hubProofs.map((p) => nameBytesToUsername(p.name)),
         );
       }
 
       const results = await query.execute();
 
       const proofs = results.map((row) => ({
-        name: Buffer.from(row.username),
+        name: usernameToNameBytes(row.username),
         type: row.type,
         fid: row.fid,
         timestamp: Math.floor(row.proofTimestamp.getTime() / 1000),

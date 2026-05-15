@@ -1,5 +1,5 @@
 ---
-"@farcaster/shuttle": minor
+"@farcaster/shuttle": major
 ---
 
 feat(shuttle): add `UsernameProofReconciliation` and a typed `usernames` table
@@ -16,3 +16,8 @@ the structure of `MessageReconciliation`:
 
 - Promotes `usernames` to a typed table on `HubTables`, with new
   exports `UsernamesTable`, `UsernameRow`, `InsertableUsernameRow`.
+  Adds an `004_usernames` migration to the example app.
+
+Marked as a major release because the new `usernames` field on the
+exported `HubTables` interface is a breaking change for consumers that
+already extend `HubTables` with their own `usernames` table shape.
