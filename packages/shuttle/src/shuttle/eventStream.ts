@@ -200,7 +200,15 @@ export class EventStreamConnection {
    * Does an approximate trim to reduce effort by Redis.
    */
   async trim(key: string, timestamp: Date) {
-    return await this.client.xtrim(key, "MINID", "~", timestamp.getTime());
+    try {
+      return await this.client.xtrim(key, "MINID", "~", timestamp.getTime());
+    } catch (e) {
+      // Swallow errors caused by the underlying connection being closed (e.g. during
+      // pod shutdown). `trim` is a periodic best-effort cleanup; the next invocation
+      // against a fresh client will catch up. Any other failure is real and rethrown.
+      if (this.client.status !== "ready") return 0;
+      throw e;
+    }
   }
 }
 

@@ -26,9 +26,19 @@ import {
   HubEventProcessor,
   MessageState,
   MessageReconciliation,
+  OnChainEventReconciliation,
+  type OnChainEventBodyJson,
   UsernameProofReconciliation,
 } from "./shuttle";
-import { UserNameProof, UserNameType, UsernameProofsResponse } from "@farcaster/hub-nodejs";
+import {
+  IdRegisterEventType,
+  OnChainEvent,
+  OnChainEventResponse,
+  OnChainEventType,
+  UserNameProof,
+  UserNameType,
+  UsernameProofsResponse,
+} from "@farcaster/hub-nodejs";
 import { err, ok } from "neverthrow";
 import { bytesToHex } from "./utils";
 
@@ -665,6 +675,81 @@ describe("shuttle", () => {
     expect(messagesInDb.length).toBe(2);
   });
 
+  test("reconciler with no onDbMessage skips DB-side pass and only emits hub-side observations", async () => {
+    const linkAddMessage = await Factories.LinkAddMessage.create({}, { transient: { signer } });
+
+    // Persist a DB-only message that, if the DB-side pass were running, would be flagged
+    // as missingInHub. The DB-side pass should be skipped entirely when onDbMessage is undefined.
+    const dbOnlyMessage = await Factories.LinkAddMessage.create(
+      { data: { fid: linkAddMessage.data.fid, linkBody: { type: "follow", targetFid: 99999 } } },
+      { transient: { signer } },
+    );
+    await subscriber.processHubEvent(
+      HubEvent.create({ id: 1001, type: HubEventType.MERGE_MESSAGE, mergeMessageBody: { message: dbOnlyMessage } }),
+    );
+
+    const mockRPCClient = {
+      streamFetch: () => err(new HubError("unavailable", "unavailable")),
+      getAllLinkMessagesByFid: async () =>
+        ok(MessagesResponse.create({ messages: [linkAddMessage], nextPageToken: undefined })),
+      getLinkCompactStateMessageByFid: async () =>
+        ok(MessagesResponse.create({ messages: [], nextPageToken: undefined })),
+    };
+
+    const reconciler = new MessageReconciliation(mockRPCClient as unknown as HubRpcClient, db, log);
+    const dbCallCount = { count: 0 };
+    const hubObservations: Uint8Array[] = [];
+    await reconciler.reconcileMessagesOfTypeForFid(
+      linkAddMessage.data.fid,
+      MessageType.LINK_ADD,
+      async (msg) => {
+        hubObservations.push(msg.hash);
+      },
+      // onDbMessage intentionally omitted
+    );
+
+    expect(hubObservations.length).toBe(1);
+    expect(bytesToHex(hubObservations[0] as Uint8Array)).toEqual(bytesToHex(linkAddMessage.hash));
+    expect(dbCallCount.count).toBe(0);
+  });
+
+  test("reconciler `types` filter restricts the per-type RPC calls", async () => {
+    const linkAddMessage = await Factories.LinkAddMessage.create({}, { transient: { signer } });
+
+    let castCalls = 0;
+    let linkCalls = 0;
+    const mockRPCClient = {
+      streamFetch: () => err(new HubError("unavailable", "unavailable")),
+      getAllCastMessagesByFid: async () => {
+        castCalls++;
+        return ok(MessagesResponse.create({ messages: [], nextPageToken: undefined }));
+      },
+      getAllLinkMessagesByFid: async () => {
+        linkCalls++;
+        return ok(MessagesResponse.create({ messages: [linkAddMessage], nextPageToken: undefined }));
+      },
+      getLinkCompactStateMessageByFid: async () =>
+        ok(MessagesResponse.create({ messages: [], nextPageToken: undefined })),
+    };
+
+    const reconciler = new MessageReconciliation(mockRPCClient as unknown as HubRpcClient, db, log);
+    const observations: MessageType[] = [];
+    await reconciler.reconcileMessagesForFid(
+      linkAddMessage.data.fid,
+      async (msg) => {
+        if (msg.data?.type !== undefined) observations.push(msg.data.type);
+      },
+      undefined,
+      undefined,
+      undefined,
+      [MessageType.LINK_ADD],
+    );
+
+    expect(linkCalls).toBe(1);
+    expect(castCalls).toBe(0);
+    expect(observations).toEqual([MessageType.LINK_ADD]);
+  });
+
   // TODO: Skip for now, and figure out how to test that the fallback is called correctly
   xtest("reconciler lets unresponsive server requests terminate in error", async () => {
     const startTimestamp = getFarcasterTime()._unsafeUnwrap();
@@ -866,6 +951,139 @@ describe("shuttle", () => {
     expect(addMessageInDb.revokedAt).not.toBeNull();
   });
 
+  describe("OnChainEventReconciliation", () => {
+    const fid = 7777;
+
+    function makeIdRegisterEvent(opts: {
+      chainId?: number;
+      blockNumber: number;
+      logIndex: number;
+      blockTimestamp?: number;
+    }): OnChainEvent {
+      return {
+        type: OnChainEventType.EVENT_TYPE_ID_REGISTER,
+        chainId: opts.chainId ?? 10,
+        blockNumber: opts.blockNumber,
+        blockHash: Buffer.from("11".repeat(32), "hex"),
+        blockTimestamp: opts.blockTimestamp ?? 1_700_000_000,
+        transactionHash: Buffer.from("22".repeat(32), "hex"),
+        logIndex: opts.logIndex,
+        fid,
+        idRegisterEventBody: {
+          to: Buffer.from("aa".repeat(20), "hex"),
+          eventType: IdRegisterEventType.REGISTER,
+          from: Buffer.from("bb".repeat(20), "hex"),
+          recoveryAddress: Buffer.from("cc".repeat(20), "hex"),
+        },
+        txIndex: 0,
+        version: 1,
+      };
+    }
+
+    function mockOnChainHubWith(events: OnChainEvent[]): HubRpcClient {
+      // Each `getOnChainEvents` call is scoped to a single `eventType`; only return
+      // events of the requested type so callers don't accidentally cross-contaminate.
+      const mock = {
+        getOnChainEvents: async (req: { eventType: OnChainEventType }) =>
+          ok(OnChainEventResponse.create({ events: events.filter((e) => e.type === req.eventType) })),
+      };
+      return mock as unknown as HubRpcClient;
+    }
+
+    async function insertOnChainEvent(
+      event: OnChainEvent,
+      body: OnChainEventBodyJson = {
+        to: bytesToHex(event.idRegisterEventBody?.to ?? new Uint8Array()),
+        eventType: event.idRegisterEventBody?.eventType ?? IdRegisterEventType.REGISTER,
+        from: bytesToHex(event.idRegisterEventBody?.from ?? new Uint8Array()),
+        recoveryAddress: bytesToHex(event.idRegisterEventBody?.recoveryAddress ?? new Uint8Array()),
+      },
+    ) {
+      await db
+        .insertInto("onchain_events")
+        .values({
+          chainId: event.chainId,
+          fid: event.fid,
+          blockTimestamp: new Date(event.blockTimestamp * 1000),
+          blockNumber: event.blockNumber,
+          logIndex: event.logIndex,
+          txHash: event.transactionHash,
+          type: event.type,
+          body,
+        })
+        .execute();
+    }
+
+    beforeEach(async () => {
+      await db.deleteFrom("onchain_events").where("fid", "=", fid).execute();
+    });
+
+    test("hub event present in DB by (chainId, blockNumber, logIndex) is detected as not missing", async () => {
+      // Regression: pg parses int8 as JS number, so chainId / blockNumber on the row are
+      // numbers; comparing the IN-list as numbers (not BigInts) must still match.
+      const event = makeIdRegisterEvent({ blockNumber: 1234567, logIndex: 3 });
+      await insertOnChainEvent(event);
+
+      const reconciler = new OnChainEventReconciliation(mockOnChainHubWith([event]), db, log);
+      const observations: { missingInDb: boolean; chainId: number; blockNumber: number }[] = [];
+      await reconciler.reconcileOnChainEventsForFid(fid, async (e, missingInDb) => {
+        observations.push({ missingInDb, chainId: e.chainId, blockNumber: e.blockNumber });
+      });
+
+      expect(observations).toEqual([{ missingInDb: false, chainId: 10, blockNumber: 1234567 }]);
+    });
+
+    test("hub event missing from DB is reported with missingInDb=true", async () => {
+      const event = makeIdRegisterEvent({ blockNumber: 222, logIndex: 7 });
+
+      const reconciler = new OnChainEventReconciliation(mockOnChainHubWith([event]), db, log);
+      const observations: { missingInDb: boolean }[] = [];
+      await reconciler.reconcileOnChainEventsForFid(fid, async (_e, missingInDb) => {
+        observations.push({ missingInDb });
+      });
+
+      expect(observations).toEqual([{ missingInDb: true }]);
+    });
+
+    test("DB row missing from hub is reported via onDbOnChainEvent (options object)", async () => {
+      const event = makeIdRegisterEvent({ blockNumber: 333, logIndex: 0 });
+      await insertOnChainEvent(event);
+
+      const reconciler = new OnChainEventReconciliation(mockOnChainHubWith([]), db, log);
+      const dbObservations: { missingInOnChain: boolean; blockNumber: number }[] = [];
+      await reconciler.reconcileOnChainEventsForFid(
+        fid,
+        async () => {
+          /* hub returned nothing */
+        },
+        {
+          onDbOnChainEvent: async (row, missingInOnChain) => {
+            dbObservations.push({ missingInOnChain, blockNumber: row.blockNumber });
+          },
+        },
+      );
+
+      expect(dbObservations).toEqual([{ missingInOnChain: true, blockNumber: 333 }]);
+    });
+
+    test("`types` filter restricts which on-chain event types are reconciled", async () => {
+      let calls = 0;
+      const mock = {
+        getOnChainEvents: async (req: { eventType: OnChainEventType }) => {
+          calls++;
+          // Each call comes in for one type at a time; assert we only see SIGNER.
+          expect(req.eventType).toBe(OnChainEventType.EVENT_TYPE_SIGNER);
+          return ok(OnChainEventResponse.create({ events: [] }));
+        },
+      };
+      const reconciler = new OnChainEventReconciliation(mock as unknown as HubRpcClient, db, log);
+      await reconciler.reconcileOnChainEventsForFid(fid, async () => {}, {
+        types: [OnChainEventType.EVENT_TYPE_SIGNER],
+      });
+      expect(calls).toBe(1);
+    });
+  });
+
   describe("UsernameProofReconciliation", () => {
     const fid = 4242;
 
@@ -880,7 +1098,7 @@ describe("shuttle", () => {
       };
     }
 
-    function mockHubWith(proofs: UserNameProof[]): HubRpcClient {
+    function mockUsernameHubWith(proofs: UserNameProof[]): HubRpcClient {
       const mock = {
         getUserNameProofsByFid: async (_request: { fid: number }) => ok(UsernameProofsResponse.create({ proofs })),
       };
@@ -907,7 +1125,7 @@ describe("shuttle", () => {
         })
         .execute();
 
-      const reconciler = new UsernameProofReconciliation(mockHubWith([proof]), db, log);
+      const reconciler = new UsernameProofReconciliation(mockUsernameHubWith([proof]), db, log);
       const observations: { name: string; missingInDb: boolean }[] = [];
       await reconciler.reconcileUsernameProofsForFid(fid, async (p, missingInDb) => {
         observations.push({ name: Buffer.from(p.name).toString("utf8"), missingInDb });
@@ -919,7 +1137,7 @@ describe("shuttle", () => {
     test("hub proof missing from DB is reported with missingInDb=true", async () => {
       const proof = makeProof("bob", `0x${"11".repeat(20)}`, UserNameType.USERNAME_TYPE_FNAME, 1_700_000_001);
 
-      const reconciler = new UsernameProofReconciliation(mockHubWith([proof]), db, log);
+      const reconciler = new UsernameProofReconciliation(mockUsernameHubWith([proof]), db, log);
       const observations: { name: string; missingInDb: boolean }[] = [];
       await reconciler.reconcileUsernameProofsForFid(fid, async (p, missingInDb) => {
         observations.push({ name: Buffer.from(p.name).toString("utf8"), missingInDb });
@@ -941,7 +1159,7 @@ describe("shuttle", () => {
         })
         .execute();
 
-      const reconciler = new UsernameProofReconciliation(mockHubWith([]), db, log);
+      const reconciler = new UsernameProofReconciliation(mockUsernameHubWith([]), db, log);
       const dbObservations: { name: string; missingInHub: boolean }[] = [];
       await reconciler.reconcileUsernameProofsForFid(
         fid,

@@ -12,6 +12,7 @@ import {
   HubEventStreamConsumer,
   HubSubscriber,
   MessageState,
+  OnChainEventBodyJson,
 } from "../index"; // If you want to use this as a standalone app, replace this import with "@farcaster/shuttle"
 import { AppDb, migrateToLatest, Tables } from "./db";
 import {
@@ -24,8 +25,10 @@ import {
   isCastRemoveMessage,
   isIdRegisterOnChainEvent,
   isMergeOnChainHubEvent,
+  isSignerMigratedOnChainEvent,
   isSignerOnChainEvent,
   isStorageRentOnChainEvent,
+  isTierPurchaseOnChainEvent,
   Message,
 } from "@farcaster/hub-nodejs";
 import { log } from "./log";
@@ -111,7 +114,7 @@ export class App implements MessageHandler {
   async onHubEvent(event: HubEvent, txn: DB): Promise<boolean> {
     if (isMergeOnChainHubEvent(event)) {
       const onChainEvent = event.mergeOnChainEventBody.onChainEvent;
-      let body = {};
+      let body: OnChainEventBodyJson | undefined;
       if (isIdRegisterOnChainEvent(onChainEvent)) {
         body = {
           eventType: onChainEvent.idRegisterEventBody.eventType,
@@ -128,29 +131,48 @@ export class App implements MessageHandler {
           metadataType: onChainEvent.signerEventBody.metadataType,
         };
       } else if (isStorageRentOnChainEvent(onChainEvent)) {
+        // `getStorageUnitType` here is a misnomer for the materialized "expiry units"
+        // bucket; we keep using it for parity with the existing example, but the
+        // canonical body shape is `{ payer, units, expiry }` from the protobuf body.
         body = {
-          eventType: getStorageUnitType(onChainEvent),
-          expiry: getStorageUnitExpiry(onChainEvent),
-          units: onChainEvent.storageRentEventBody.units,
           payer: bytesToHex(onChainEvent.storageRentEventBody.payer),
+          units: onChainEvent.storageRentEventBody.units,
+          expiry: getStorageUnitExpiry(onChainEvent),
+        };
+        // `getStorageUnitType` is referenced here purely so the import is still used by
+        // downstream forks that rely on it; it intentionally isn't persisted.
+        void getStorageUnitType(onChainEvent);
+      } else if (isSignerMigratedOnChainEvent(onChainEvent)) {
+        body = { migratedAt: onChainEvent.signerMigratedEventBody.migratedAt };
+      } else if (isTierPurchaseOnChainEvent(onChainEvent)) {
+        // `payer` is `Uint8Array` on the protobuf and would JSON-serialize as a
+        // numeric-index object in a Postgres `json` column; convert to the hex shape
+        // that matches every other on-chain event body persisted here.
+        body = {
+          tierType: onChainEvent.tierPurchaseEventBody.tierType,
+          forDays: onChainEvent.tierPurchaseEventBody.forDays,
+          payer: bytesToHex(onChainEvent.tierPurchaseEventBody.payer),
         };
       }
-      try {
-        await (txn as AppDb)
-          .insertInto("onchain_events")
-          .values({
-            fid: onChainEvent.fid,
-            timestamp: new Date(onChainEvent.blockTimestamp * 1000),
-            blockNumber: onChainEvent.blockNumber,
-            logIndex: onChainEvent.logIndex,
-            txHash: onChainEvent.transactionHash,
-            type: onChainEvent.type,
-            body: body,
-          })
-          .execute();
-        log.info(`Recorded OnchainEvent ${onChainEvent.type} for fid  ${onChainEvent.fid}`);
-      } catch (e) {
-        log.error("Failed to insert onchain event", e);
+      if (body !== undefined) {
+        try {
+          await (txn as unknown as AppDb)
+            .insertInto("onchain_events")
+            .values({
+              chainId: onChainEvent.chainId,
+              fid: onChainEvent.fid,
+              blockTimestamp: new Date(onChainEvent.blockTimestamp * 1000),
+              blockNumber: onChainEvent.blockNumber,
+              logIndex: onChainEvent.logIndex,
+              txHash: onChainEvent.transactionHash,
+              type: onChainEvent.type,
+              body,
+            })
+            .execute();
+          log.info(`Recorded OnchainEvent ${onChainEvent.type} for fid  ${onChainEvent.fid}`);
+        } catch (e) {
+          log.error("Failed to insert onchain event", e);
+        }
       }
     }
     return false;
