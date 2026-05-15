@@ -1,5 +1,134 @@
 # @farcaster/hub-shuttle
 
+## 1.0.0
+
+### Major Changes
+
+- 8311e4c4: feat(shuttle): add `OnChainEventReconciliation` and a typed `onchain_events` table
+
+  Adds first-class support for reconciling on-chain events between the hub
+  and the local database, mirroring the structure of
+  `MessageReconciliation`.
+
+  Highlights:
+
+  - New `OnChainEventReconciliation` class (in
+    `src/shuttle/onChainEventReconciliation.ts`) with
+    `reconcileOnChainEventsForFid` / `reconcileOnChainEventsOfTypeForFid`.
+    Both methods take an **options object** (rather than positional
+    arguments) so the optional `onDbOnChainEvent` callback isn't a
+    landmine sitting between the hub callback and the time-window
+    arguments. The DB-side pass is opt-in via that callback. By default
+    it covers `ID_REGISTER`, `SIGNER`, `SIGNER_MIGRATED`, `STORAGE_RENT`
+    and `TIER_PURCHASE` events. The new `RECONCILABLE_ONCHAIN_EVENT_TYPES`
+    const + `ReconcilableOnChainEventType` type pin the public `types`
+    parameter to only the event kinds the reconciler actually has hub-
+    side fetch logic for.
+
+  - `startTimestamp` / `stopTimestamp` are Farcaster timestamp numbers
+    (matching `MessageReconciliation`), validated once up front in the
+    outer call, so input handling is consistent whether or not
+    `onDbOnChainEvent` is provided.
+
+  - Promotes `onchain_events` to a typed table on `HubTables`, with new
+    exports `OnChainEventsTable`, `OnChainEventRow`,
+    `InsertableOnChainEventRow`, and `OnChainEventBodyJson`. Body shapes
+    are now JSON-safe (every protobuf `Uint8Array` field — e.g.
+    `IdRegisterEventBody.to`, `TierPurchaseBody.payer` — is exposed as a
+    `0x`-prefixed string), so values round-trip through a Postgres `json`
+    column without being persisted as numeric-index objects. `chainId` /
+    `blockNumber` are typed as `number` to match the package's global
+    `int8` → JS `number` pg parser; declaring them as `bigint` (the
+    literal Postgres type) would silently mislead consumers and break
+    the IN-list comparisons used by reconciliation.
+
+  - Updates the example-app accordingly: migration `003_onchain_events`
+    now includes `chainId` and uses `blockTimestamp` (matching the hub
+    event payload), and the example handler records signer-migrated and
+    tier-purchase events alongside the existing ID-register / signer /
+    storage-rent ones.
+
+  - Adds integration test coverage for `OnChainEventReconciliation`:
+    a regression test for the `chainId` / `blockNumber` IN-list
+    comparison (now that those columns deserialize as JS `number`),
+    hub-only and DB-only flagging, and the `types` filter.
+
+  Marked as a major release because the new `onchain_events` field on the
+  exported `HubTables` interface is a breaking change for consumers that
+  already extend `HubTables` with their own `onchain_events` shape, and
+  the example-app migration renames/adds columns relative to the prior
+  example schema.
+
+- a089e1d8: feat(shuttle): add `UsernameProofReconciliation` and a typed `usernames` table
+
+  Adds first-class support for reconciling username proofs (`fname`,
+  `ENS L1`, basenames) between the hub and the local database, mirroring
+  the structure of `MessageReconciliation`:
+
+  - New `UsernameProofReconciliation` class (in
+    `src/shuttle/usernameProofReconciliation.ts`) with
+    `reconcileUsernameProofsForFid` /
+    `reconcileUsernameProofsOfTypeForFid`. The hub-side pass is always
+    run, and the DB-side pass is opt-in via an `onDbProof` callback.
+
+  - Promotes `usernames` to a typed table on `HubTables`, with new
+    exports `UsernamesTable`, `UsernameRow`, `InsertableUsernameRow`.
+    Adds an `004_usernames` migration to the example app.
+
+  Marked as a major release because the new `usernames` field on the
+  exported `HubTables` interface is a breaking change for consumers that
+  already extend `HubTables` with their own `usernames` table shape.
+
+### Minor Changes
+
+- 2328cf4d: feat(shuttle): allow disabling DB-side reconciliation and filtering message types
+
+  `MessageReconciliation` now lets callers opt out of the
+  "DB messages missing from the hub" pass, which is useful during initial
+  backfills where every DB row is missing from the hub by definition and
+  streaming each one through the callback is just wasted work.
+
+  - `onDbMessage` is now optional on both `reconcileMessagesForFid` and
+    `reconcileMessagesOfTypeForFid`. When omitted, the DB-side scan is
+    skipped entirely (no `allActiveDbMessagesOfTypeForFid` call) and the
+    per-message hub-hash map that the DB pass needed is no longer
+    populated, removing a per-FID memory cost on large backfills.
+  - `reconcileMessagesForFid` accepts a new optional
+    `types: ReconcilableMessageType[]` parameter to restrict
+    reconciliation to a subset of message types (e.g. only `LEND_STORAGE`
+    after a hub backfill of just that type). The new
+    `RECONCILABLE_MESSAGE_TYPES` const + `ReconcilableMessageType` type
+    pin this to the message types `MessageReconciliation` actually has
+    hub-side RPCs for, so passing e.g. `CAST_REMOVE` is a compile-time
+    error instead of a runtime "Unknown message type" throw.
+  - `DBMessage` is now exported so consumers can type their `onDbMessage`
+    callback without re-declaring the row shape.
+  - Time-window resolution (`fromFarcasterTime` of `startTimestamp` /
+    `stopTimestamp`) now happens once up front in
+    `reconcileMessagesForFid` / `reconcileMessagesOfTypeForFid` instead
+    of per-type inside the DB pass, so input handling is consistent
+    whether or not `onDbMessage` is provided.
+  - Bonus: fixes a stale `@farcaster/hub-shuttle` import in the example
+    app that would otherwise fail `tsc --noEmit`.
+
+  No behavior change for existing callers that pass an `onDbMessage`
+  callback.
+
+### Patch Changes
+
+- 814c9f15: fix(shuttle): swallow `xtrim` errors when the Redis connection is no longer ready
+
+  During process shutdown the periodic `HubEventStreamConsumer.clearOldEvents`
+  timer can still fire while the underlying ioredis client is closing. The
+  follow-up `xtrim` call against the closed connection produces unhandled
+  promise rejections.
+
+  `EventStreamConnection.trim` now wraps the `xtrim` call in a try/catch:
+  if it fails _and_ the client is no longer in a `"ready"` state, the
+  error is swallowed (xtrim is best-effort periodic maintenance, the next
+  invocation against a fresh client will catch up). Any other failure is
+  rethrown so real errors stay visible.
+
 ## 0.9.7
 
 ### Patch Changes
