@@ -26,7 +26,10 @@ import {
   HubEventProcessor,
   MessageState,
   MessageReconciliation,
+  OnChainEventReconciliation,
+  type OnChainEventBodyJson,
 } from "./shuttle";
+import { OnChainEvent, OnChainEventResponse, OnChainEventType, IdRegisterEventType } from "@farcaster/hub-nodejs";
 import { err, ok } from "neverthrow";
 import { bytesToHex } from "./utils";
 
@@ -862,6 +865,139 @@ describe("shuttle", () => {
       .executeTakeFirstOrThrow();
     expect(Buffer.from(addMessageInDb.hash)).toEqual(Buffer.from(addMessage.hash));
     expect(addMessageInDb.revokedAt).not.toBeNull();
+  });
+
+  describe("OnChainEventReconciliation", () => {
+    const fid = 7777;
+
+    function makeIdRegisterEvent(opts: {
+      chainId?: number;
+      blockNumber: number;
+      logIndex: number;
+      blockTimestamp?: number;
+    }): OnChainEvent {
+      return {
+        type: OnChainEventType.EVENT_TYPE_ID_REGISTER,
+        chainId: opts.chainId ?? 10,
+        blockNumber: opts.blockNumber,
+        blockHash: Buffer.from("11".repeat(32), "hex"),
+        blockTimestamp: opts.blockTimestamp ?? 1_700_000_000,
+        transactionHash: Buffer.from("22".repeat(32), "hex"),
+        logIndex: opts.logIndex,
+        fid,
+        idRegisterEventBody: {
+          to: Buffer.from("aa".repeat(20), "hex"),
+          eventType: IdRegisterEventType.REGISTER,
+          from: Buffer.from("bb".repeat(20), "hex"),
+          recoveryAddress: Buffer.from("cc".repeat(20), "hex"),
+        },
+        txIndex: 0,
+        version: 1,
+      };
+    }
+
+    function mockHubWith(events: OnChainEvent[]): HubRpcClient {
+      // Each `getOnChainEvents` call is scoped to a single `eventType`; only return
+      // events of the requested type so callers don't accidentally cross-contaminate.
+      const mock = {
+        getOnChainEvents: async (req: { eventType: OnChainEventType }) =>
+          ok(OnChainEventResponse.create({ events: events.filter((e) => e.type === req.eventType) })),
+      };
+      return mock as unknown as HubRpcClient;
+    }
+
+    async function insertOnChainEvent(
+      event: OnChainEvent,
+      body: OnChainEventBodyJson = {
+        to: bytesToHex(event.idRegisterEventBody?.to ?? new Uint8Array()),
+        eventType: event.idRegisterEventBody?.eventType ?? IdRegisterEventType.REGISTER,
+        from: bytesToHex(event.idRegisterEventBody?.from ?? new Uint8Array()),
+        recoveryAddress: bytesToHex(event.idRegisterEventBody?.recoveryAddress ?? new Uint8Array()),
+      },
+    ) {
+      await db
+        .insertInto("onchain_events")
+        .values({
+          chainId: event.chainId,
+          fid: event.fid,
+          blockTimestamp: new Date(event.blockTimestamp * 1000),
+          blockNumber: event.blockNumber,
+          logIndex: event.logIndex,
+          txHash: event.transactionHash,
+          type: event.type,
+          body,
+        })
+        .execute();
+    }
+
+    beforeEach(async () => {
+      await db.deleteFrom("onchain_events").where("fid", "=", fid).execute();
+    });
+
+    test("hub event present in DB by (chainId, blockNumber, logIndex) is detected as not missing", async () => {
+      // Regression: pg parses int8 as JS number, so chainId / blockNumber on the row are
+      // numbers; comparing the IN-list as numbers (not BigInts) must still match.
+      const event = makeIdRegisterEvent({ blockNumber: 1234567, logIndex: 3 });
+      await insertOnChainEvent(event);
+
+      const reconciler = new OnChainEventReconciliation(mockHubWith([event]), db, log);
+      const observations: { missingInDb: boolean; chainId: number; blockNumber: number }[] = [];
+      await reconciler.reconcileOnChainEventsForFid(fid, async (e, missingInDb) => {
+        observations.push({ missingInDb, chainId: e.chainId, blockNumber: e.blockNumber });
+      });
+
+      expect(observations).toEqual([{ missingInDb: false, chainId: 10, blockNumber: 1234567 }]);
+    });
+
+    test("hub event missing from DB is reported with missingInDb=true", async () => {
+      const event = makeIdRegisterEvent({ blockNumber: 222, logIndex: 7 });
+
+      const reconciler = new OnChainEventReconciliation(mockHubWith([event]), db, log);
+      const observations: { missingInDb: boolean }[] = [];
+      await reconciler.reconcileOnChainEventsForFid(fid, async (_e, missingInDb) => {
+        observations.push({ missingInDb });
+      });
+
+      expect(observations).toEqual([{ missingInDb: true }]);
+    });
+
+    test("DB row missing from hub is reported via onDbOnChainEvent (options object)", async () => {
+      const event = makeIdRegisterEvent({ blockNumber: 333, logIndex: 0 });
+      await insertOnChainEvent(event);
+
+      const reconciler = new OnChainEventReconciliation(mockHubWith([]), db, log);
+      const dbObservations: { missingInOnChain: boolean; blockNumber: number }[] = [];
+      await reconciler.reconcileOnChainEventsForFid(
+        fid,
+        async () => {
+          /* hub returned nothing */
+        },
+        {
+          onDbOnChainEvent: async (row, missingInOnChain) => {
+            dbObservations.push({ missingInOnChain, blockNumber: row.blockNumber });
+          },
+        },
+      );
+
+      expect(dbObservations).toEqual([{ missingInOnChain: true, blockNumber: 333 }]);
+    });
+
+    test("`types` filter restricts which on-chain event types are reconciled", async () => {
+      let calls = 0;
+      const mock = {
+        getOnChainEvents: async (req: { eventType: OnChainEventType }) => {
+          calls++;
+          // Each call comes in for one type at a time; assert we only see SIGNER.
+          expect(req.eventType).toBe(OnChainEventType.EVENT_TYPE_SIGNER);
+          return ok(OnChainEventResponse.create({ events: [] }));
+        },
+      };
+      const reconciler = new OnChainEventReconciliation(mock as unknown as HubRpcClient, db, log);
+      await reconciler.reconcileOnChainEventsForFid(fid, async () => {}, {
+        types: [OnChainEventType.EVENT_TYPE_SIGNER],
+      });
+      expect(calls).toBe(1);
+    });
   });
 
   describe("message types", () => {

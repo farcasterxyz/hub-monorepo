@@ -4,8 +4,7 @@ import { err, ok, Result } from "neverthrow";
 import path from "path";
 import { promises as fs } from "fs";
 import { fileURLToPath } from "node:url";
-import { HubTables } from "@farcaster/hub-shuttle";
-import { Fid } from "../shuttle";
+import { Fid, HubTables } from "../shuttle";
 
 const createMigrator = async (db: Kysely<HubTables>, dbSchema: string, log: Logger) => {
   const currentDir = path.dirname(fileURLToPath(import.meta.url));
@@ -60,22 +59,8 @@ export type CastRow = {
   text: string;
 };
 
-export type OnChainEventRow = {
-  id: Generated<string>;
-  createdAt: Generated<Date>;
-  updatedAt: Generated<Date>;
-  timestamp: Date;
-  fid: Fid;
-  blockNumber: number;
-  logIndex: number;
-  type: number;
-  txHash: Uint8Array;
-  body: Record<string, string | number>;
-};
-
 export interface Tables extends HubTables {
   casts: CastRow;
-  onchain_events: OnChainEventRow;
 }
 
 export type AppDb = Kysely<Tables>;
