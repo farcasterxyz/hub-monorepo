@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@farcaster/core": "^0.12.10",
-    "axios": "^1.7.4"
+    "axios": "^1.13.5"
   },
   "devDependencies": {
     "@types/axios": "^0.14.0",
