@@ -1380,7 +1380,7 @@ describe("validateLiveAtUrl", () => {
       err(new HubError("bad_request.validation_failure", "live_at is not a valid URL")),
     );
     expect(validations.validateLiveAtUrl("https://example.com/".padEnd(257, "a"))).toEqual(
-      err(new HubError("bad_request.validation_failure", "live_at value > 256 bytes")),
+      err(new HubError("bad_request.invalid_param", "live_at > 256 bytes")),
     );
     expect(validations.validateLiveAtUrl(123 as unknown as string)).toEqual(
       err(new HubError("bad_request.validation_failure", "live_at must be a string")),

@@ -573,7 +573,7 @@ export const validateLiveAtUrl = (url: string): HubResult<string> => {
   }
 
   if (urlBytesResult.value.length > 256) {
-    return err(new HubError("bad_request.validation_failure", "live_at value > 256 bytes"));
+    return err(new HubError("bad_request.invalid_param", "live_at > 256 bytes"));
   }
 
   let parsedUrl: URL;
