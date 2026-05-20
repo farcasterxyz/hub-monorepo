@@ -157,6 +157,7 @@ const UserDataTypeFactory = Factory.define<protobufs.UserDataType>(() => {
     protobufs.UserDataType.USERNAME,
     protobufs.UserDataType.PFP,
     protobufs.UserDataType.URL,
+    protobufs.UserDataType.LIVE_AT,
   ]);
 });
 

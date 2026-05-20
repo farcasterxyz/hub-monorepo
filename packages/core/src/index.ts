@@ -7,6 +7,7 @@ export * from "./eth";
 export * from "./factories";
 export * from "./signers";
 export * from "./time";
+export { validateLiveAtUrl } from "./validations";
 export * as validations from "./validations";
 export * from "./verifications";
 export * from "./userNameProof";

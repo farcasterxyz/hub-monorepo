@@ -558,6 +558,38 @@ export const validateUrl = (url: string): HubResult<string> => {
   return ok(url);
 };
 
+export const validateLiveAtUrl = (url: string): HubResult<string> => {
+  if (typeof url !== "string") {
+    return err(new HubError("bad_request.validation_failure", "live_at must be a string"));
+  }
+
+  if (url === "") {
+    return ok(url);
+  }
+
+  const urlBytesResult = utf8StringToBytes(url);
+  if (urlBytesResult.isErr()) {
+    return err(new HubError("bad_request.invalid_param", "live_at must be encodable as utf8"));
+  }
+
+  if (urlBytesResult.value.length > 256) {
+    return err(new HubError("bad_request.validation_failure", "live_at value > 256 bytes"));
+  }
+
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(url);
+  } catch {
+    return err(new HubError("bad_request.validation_failure", "live_at is not a valid URL"));
+  }
+
+  if (parsedUrl.protocol !== "https:") {
+    return err(new HubError("bad_request.validation_failure", "live_at must use https"));
+  }
+
+  return ok(url);
+};
+
 export const validateParent = (parent: protobufs.CastId | string): HubResult<protobufs.CastId | string> => {
   if (typeof parent === "string") {
     return validateUrl(parent);
@@ -1028,6 +1060,11 @@ export const validateUserDataAddBody = (body: protobufs.UserDataBody): HubResult
     case protobufs.UserDataType.URL:
       if (valueBytes.length > 256) {
         return err(new HubError("bad_request.validation_failure", "url value > 256"));
+      }
+      break;
+    case protobufs.UserDataType.LIVE_AT:
+      if (valueBytes.length > 256) {
+        return err(new HubError("bad_request.validation_failure", "live_at value > 256"));
       }
       break;
     case protobufs.UserDataType.USERNAME: {

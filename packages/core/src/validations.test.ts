@@ -1093,6 +1093,16 @@ describe("validateUserDataAddBody", () => {
     );
   });
 
+  test("succeeds for live_at values accepted by snapchain", async () => {
+    for (const value of ["", "x", "http://example.com/live", "a".repeat(256)]) {
+      const body = Factories.UserDataBody.build({
+        type: protobufs.UserDataType.LIVE_AT,
+        value,
+      });
+      expect(validations.validateUserDataAddBody(body)).toEqual(ok(body));
+    }
+  });
+
   test("succeeds for empty location", async () => {
     const body = Factories.UserDataBody.build({
       type: UserDataType.LOCATION,
@@ -1197,6 +1207,14 @@ describe("validateUserDataAddBody", () => {
         value: faker.random.alphaNumeric(257),
       });
       hubErrorMessage = "url value > 256";
+    });
+
+    test("when live_at > 256", () => {
+      body = Factories.UserDataBody.build({
+        type: protobufs.UserDataType.LIVE_AT,
+        value: faker.random.alphaNumeric(257),
+      });
+      hubErrorMessage = "live_at value > 256";
     });
 
     test("when latitude is too low", () => {
@@ -1345,6 +1363,28 @@ describe("validateUserDataAddBody", () => {
         ),
       );
     });
+  });
+});
+
+describe("validateLiveAtUrl", () => {
+  test("succeeds for empty and https URLs", async () => {
+    expect(validations.validateLiveAtUrl("")).toEqual(ok(""));
+    expect(validations.validateLiveAtUrl("https://example.com/live")).toEqual(ok("https://example.com/live"));
+  });
+
+  test("fails for invalid live_at URLs", async () => {
+    expect(validations.validateLiveAtUrl("http://example.com/live")).toEqual(
+      err(new HubError("bad_request.validation_failure", "live_at must use https")),
+    );
+    expect(validations.validateLiveAtUrl("not a url")).toEqual(
+      err(new HubError("bad_request.validation_failure", "live_at is not a valid URL")),
+    );
+    expect(validations.validateLiveAtUrl("https://example.com/".padEnd(257, "a"))).toEqual(
+      err(new HubError("bad_request.validation_failure", "live_at value > 256 bytes")),
+    );
+    expect(validations.validateLiveAtUrl(123 as unknown as string)).toEqual(
+      err(new HubError("bad_request.validation_failure", "live_at must be a string")),
+    );
   });
 });
 

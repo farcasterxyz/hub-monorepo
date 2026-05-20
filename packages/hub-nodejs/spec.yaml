@@ -1839,6 +1839,7 @@ components:
          - USER_DATA_TYPE_BIO: Bio for the user
          - USER_DATA_TYPE_URL: URL of the user
          - USER_DATA_TYPE_USERNAME: Preferred Name for the user
+         - USER_DATA_TYPE_LIVE_AT: URL of the user's live activity
       default: USER_DATA_TYPE_PFP
       enum:
         - USER_DATA_TYPE_PFP
@@ -1846,6 +1847,7 @@ components:
         - USER_DATA_TYPE_BIO
         - USER_DATA_TYPE_URL
         - USER_DATA_TYPE_USERNAME
+        - USER_DATA_TYPE_LIVE_AT
     UserNameProof:
       type: object
       properties:
