@@ -1,5 +1,16 @@
 # @farcaster/hub-nodejs
 
+## 0.16.0
+
+### Minor Changes
+
+- ef52a8ef: Add LIVE_AT user data protobuf support and core validation helpers.
+
+### Patch Changes
+
+- Updated dependencies [ef52a8ef]
+  - @farcaster/core@0.19.0
+
 ## 0.15.11
 
 ### Patch Changes

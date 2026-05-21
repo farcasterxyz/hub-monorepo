@@ -1,5 +1,11 @@
 # @farcaster/core
 
+## 0.19.0
+
+### Minor Changes
+
+- ef52a8ef: Add LIVE_AT user data protobuf support and core validation helpers.
+
 ## 0.18.11
 
 ### Patch Changes
