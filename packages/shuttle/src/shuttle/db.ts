@@ -116,6 +116,10 @@ export type LendStorageBodyJson = {
   unitType: StorageUnitType;
 };
 
+export type UnsupportedMessageBodyJson = {
+  unsupportedMessageType: number;
+};
+
 export type MessageBodyJson =
   | CastAddBodyJson
   | CastRemoveBodyJson
@@ -127,7 +131,8 @@ export type MessageBodyJson =
   | SignerRemoveBodyJson
   | UserDataBodyJson
   | UsernameProofBodyJson
-  | LendStorageBodyJson;
+  | LendStorageBodyJson
+  | UnsupportedMessageBodyJson;
 
 type MessagesTable = {
   id: Generated<string>;

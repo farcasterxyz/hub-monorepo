@@ -134,7 +134,6 @@ export class BaseHubSubscriber extends HubSubscriber {
 
         stream.on("close", async () => {
           this.log.info(`HubSubscriber ${this.label} stream closed`);
-          this.stopped = true;
           this.stream = null;
         });
 
@@ -159,17 +158,17 @@ export class BaseHubSubscriber extends HubSubscriber {
 
       try {
         // Do not allow hanging unresponsive connections to linger:
-        let cancel = setTimeout(() => {
-          this.destroy();
+        let cancelTimeout = setTimeout(() => {
+          stream.cancel();
         }, this.connectionTimeout);
         for await (const event of stream) {
           await this.processHubEvent(event);
-          clearTimeout(cancel);
-          cancel = setTimeout(() => {
-            this.destroy();
+          clearTimeout(cancelTimeout);
+          cancelTimeout = setTimeout(() => {
+            stream.cancel();
           }, this.connectionTimeout);
         }
-        clearTimeout(cancel);
+        clearTimeout(cancelTimeout);
         // biome-ignore lint/suspicious/noExplicitAny: error catching
       } catch (e: any) {
         this.log.info(
@@ -182,7 +181,8 @@ export class BaseHubSubscriber extends HubSubscriber {
         if (this.stopped) {
           this.log.info(`Hub event stream processing stopped, aborting retry: ${e.message}`);
         } else {
-          void this.start();
+          await this.start();
+          break;
         }
       }
     }
