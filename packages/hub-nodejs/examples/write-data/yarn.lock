@@ -169,9 +169,9 @@
     neverthrow "^6.0.0"
 
 "@grpc/grpc-js@~1.11.1":
-  version "1.11.3"
-  resolved "https://registry.npmjs.org/@grpc/grpc-js/-/grpc-js-1.11.3.tgz#a33a472618d166fbb195012ae390dbfc277470ed"
-  integrity sha512-i9UraDzFHMR+Iz/MhFLljT+fCpgxZ3O6CxwGJ8YuNYHJItIHUzKJpW2LvoFZNnGPwqc9iWy9RAucxV0JoR9aUQ==
+  version "1.11.4"
+  resolved "https://registry.npmjs.org/@grpc/grpc-js/-/grpc-js-1.11.4.tgz#001b43aa3dae98721564456106225dad218fe9cd"
+  integrity sha512-ca9hn7kfwbJssq1TTjE6CiCnfpESHl600mVQsmaTVEQD8kD14UmCsx4rkfuWYncIvTBUbEJb3agQGkYh65VGKA==
   dependencies:
     "@grpc/proto-loader" "^0.7.13"
     "@js-sdsl/ordered-map" "^4.4.2"
