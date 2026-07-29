@@ -38,6 +38,16 @@ import {
   SignedKeyRequestMessage,
 } from "../eth/contracts/signedKeyRequestValidator";
 import { encodeAbiParameters } from "viem";
+import {
+  GASLESS_KEY_ADD_TYPE,
+  GASLESS_KEY_EIP_712_DOMAIN,
+  GASLESS_KEY_REMOVE_TYPE,
+  GASLESS_SIGNED_KEY_REQUEST_TYPE,
+  GaslessKeyAddMessage,
+  GaslessKeyRemoveMessage,
+  GaslessSignedKeyRequestMessage,
+  encodeGaslessSignedKeyRequestMetadata,
+} from "../gaslessKeys";
 
 export type MinimalEthersSigner = Pick<Signer, "signTypedData" | "getAddress">;
 
@@ -226,5 +236,61 @@ export class EthersEip712Signer extends Eip712Signer {
       [metadataStruct],
     );
     return hexStringToBytes(encodedStruct);
+  }
+
+  public async signKeyAdd(message: GaslessKeyAddMessage): HubAsyncResult<Uint8Array> {
+    const hexSignature = await ResultAsync.fromPromise(
+      this._ethersSigner.signTypedData(GASLESS_KEY_EIP_712_DOMAIN, { KeyAdd: [...GASLESS_KEY_ADD_TYPE] }, message),
+      (e) => new HubError("bad_request.invalid_param", e as Error),
+    );
+    return hexSignature.andThen((hex) => hexStringToBytes(hex));
+  }
+
+  public async signKeyRemove(message: GaslessKeyRemoveMessage): HubAsyncResult<Uint8Array> {
+    const hexSignature = await ResultAsync.fromPromise(
+      this._ethersSigner.signTypedData(
+        GASLESS_KEY_EIP_712_DOMAIN,
+        { KeyRemove: [...GASLESS_KEY_REMOVE_TYPE] },
+        message,
+      ),
+      (e) => new HubError("bad_request.invalid_param", e as Error),
+    );
+    return hexSignature.andThen((hex) => hexStringToBytes(hex));
+  }
+
+  public async signGaslessKeyRequest(message: GaslessSignedKeyRequestMessage): HubAsyncResult<Uint8Array> {
+    const hexSignature = await ResultAsync.fromPromise(
+      this._ethersSigner.signTypedData(
+        GASLESS_KEY_EIP_712_DOMAIN,
+        { SignedKeyRequest: [...GASLESS_SIGNED_KEY_REQUEST_TYPE] },
+        message,
+      ),
+      (e) => new HubError("bad_request.invalid_param", e as Error),
+    );
+    return hexSignature.andThen((hex) => hexStringToBytes(hex));
+  }
+
+  public async getGaslessSignedKeyRequestMetadata(message: GaslessSignedKeyRequestMessage): HubAsyncResult<Uint8Array> {
+    const signature = await this.signGaslessKeyRequest(message);
+    if (signature.isErr()) {
+      return err(signature.error);
+    }
+
+    const signerAddressBytes = await this.getSignerKey();
+    if (signerAddressBytes.isErr()) {
+      return err(signerAddressBytes.error);
+    }
+
+    const requestSigner = bytesToHexString(signerAddressBytes.value);
+    if (requestSigner.isErr()) {
+      return err(requestSigner.error);
+    }
+
+    return encodeGaslessSignedKeyRequestMetadata({
+      requestFid: message.requestFid,
+      requestSigner: requestSigner.value,
+      signature: signature.value,
+      deadline: message.deadline,
+    });
   }
 }

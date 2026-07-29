@@ -26,6 +26,15 @@ import {
   SignedKeyRequestMessage,
 } from "../eth/contracts/signedKeyRequestValidator";
 import { TypedDataDefinition } from "viem";
+import {
+  GASLESS_KEY_ADD_EIP_712_TYPES,
+  GASLESS_KEY_REMOVE_EIP_712_TYPES,
+  GASLESS_SIGNED_KEY_REQUEST_EIP_712_TYPES,
+  GaslessKeyAddMessage,
+  GaslessKeyRemoveMessage,
+  GaslessSignedKeyRequestMessage,
+  encodeGaslessSignedKeyRequestMetadata,
+} from "../gaslessKeys";
 
 export class ViemLocalEip712Signer extends Eip712Signer {
   private readonly _viemLocalAccount: LocalAccount<string>;
@@ -186,6 +195,54 @@ export class ViemLocalEip712Signer extends Eip712Signer {
       [metadataStruct],
     );
     return hexStringToBytes(encodedStruct);
+  }
+
+  public async signKeyAdd(message: GaslessKeyAddMessage): HubAsyncResult<Uint8Array> {
+    return this._signTypedData({
+      ...GASLESS_KEY_ADD_EIP_712_TYPES,
+      primaryType: "KeyAdd",
+      message: { ...message, key: bytesToHex(message.key) },
+    });
+  }
+
+  public async signKeyRemove(message: GaslessKeyRemoveMessage): HubAsyncResult<Uint8Array> {
+    return this._signTypedData({
+      ...GASLESS_KEY_REMOVE_EIP_712_TYPES,
+      primaryType: "KeyRemove",
+      message: { ...message, key: bytesToHex(message.key) },
+    });
+  }
+
+  public async signGaslessKeyRequest(message: GaslessSignedKeyRequestMessage): HubAsyncResult<Uint8Array> {
+    return this._signTypedData({
+      ...GASLESS_SIGNED_KEY_REQUEST_EIP_712_TYPES,
+      primaryType: "SignedKeyRequest",
+      message: { ...message, key: bytesToHex(message.key) },
+    });
+  }
+
+  public async getGaslessSignedKeyRequestMetadata(message: GaslessSignedKeyRequestMessage): HubAsyncResult<Uint8Array> {
+    const signature = await this.signGaslessKeyRequest(message);
+    if (signature.isErr()) {
+      return err(signature.error);
+    }
+
+    const signerAddressBytes = await this.getSignerKey();
+    if (signerAddressBytes.isErr()) {
+      return err(signerAddressBytes.error);
+    }
+
+    const requestSigner = bytesToHexString(signerAddressBytes.value);
+    if (requestSigner.isErr()) {
+      return err(requestSigner.error);
+    }
+
+    return encodeGaslessSignedKeyRequestMetadata({
+      requestFid: message.requestFid,
+      requestSigner: requestSigner.value,
+      signature: signature.value,
+      deadline: message.deadline,
+    });
   }
 
   private async _signTypedData(params: TypedDataDefinition): HubAsyncResult<Uint8Array> {

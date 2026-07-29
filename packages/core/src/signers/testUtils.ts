@@ -3,7 +3,7 @@ import { ok } from "neverthrow";
 import { bytesToHexString, hexStringToBytes } from "../bytes";
 import { eip712 } from "../crypto";
 import { Factories } from "../factories";
-import { FarcasterNetwork, Protocol } from "../protobufs";
+import { FarcasterNetwork, MessageType, Protocol } from "../protobufs";
 import { makeVerificationAddressClaim, VerificationAddressClaim } from "../verifications";
 import { makeUserNameProofClaim, UserNameProofClaim } from "../userNameProof";
 import { Eip712Signer } from "./eip712Signer";
@@ -19,6 +19,16 @@ import {
 } from "../eth/contracts/idRegistry";
 import { KeyGatewayAddMessage, verifyAdd } from "../eth/contracts/keyGateway";
 import { SignedKeyRequestMessage, verifyKeyRequest } from "../eth/contracts/signedKeyRequestValidator";
+import {
+  GaslessKeyAddMessage,
+  GaslessKeyRemoveMessage,
+  GaslessSignedKeyRequestMessage,
+  KEY_TYPE_ED25519,
+  decodeGaslessSignedKeyRequestMetadata,
+  verifyGaslessKeyRequest,
+  verifyKeyAdd,
+  verifyKeyRemove,
+} from "../gaslessKeys";
 
 export const testEip712Signer = async (signer: Eip712Signer) => {
   let signerKey: Uint8Array;
@@ -394,6 +404,113 @@ export const testEip712Signer = async (signer: Eip712Signer) => {
     test("fails with HubError", async () => {
       const result = await signer.getSignedKeyRequestMetadata({
         ...message,
+        deadline: -1n,
+      });
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr().errCode).toBe("bad_request.invalid_param");
+    });
+  });
+
+  describe("signKeyAdd", () => {
+    test("generates valid signature", async () => {
+      const message: GaslessKeyAddMessage = {
+        fid: BigInt(Factories.Fid.build()),
+        key: Factories.Ed25519PublicKey.build(),
+        keyType: KEY_TYPE_ED25519,
+        scopes: [MessageType.CAST_ADD, MessageType.REACTION_ADD],
+        ttl: 86400,
+        nonce: 7,
+        deadline: 1712096400n,
+      };
+      const signature = await signer.signKeyAdd(message);
+      expect(signature.isOk()).toBeTruthy();
+      const valid = await verifyKeyAdd(message, signature._unsafeUnwrap(), signerKey);
+      expect(valid).toEqual(ok(true));
+    });
+
+    test("signature does not verify against a mutated payload", async () => {
+      const message: GaslessKeyAddMessage = {
+        fid: BigInt(Factories.Fid.build()),
+        key: Factories.Ed25519PublicKey.build(),
+        keyType: KEY_TYPE_ED25519,
+        scopes: [MessageType.CAST_ADD],
+        ttl: 86400,
+        nonce: 7,
+        deadline: 1712096400n,
+      };
+      const signature = await signer.signKeyAdd(message);
+      const valid = await verifyKeyAdd(
+        { ...message, scopes: [MessageType.CAST_ADD, MessageType.LINK_ADD] },
+        signature._unsafeUnwrap(),
+        signerKey,
+      );
+      expect(valid).toEqual(ok(false));
+    });
+  });
+
+  describe("signKeyRemove", () => {
+    test("generates valid signature", async () => {
+      const message: GaslessKeyRemoveMessage = {
+        fid: BigInt(Factories.Fid.build()),
+        key: Factories.Ed25519PublicKey.build(),
+        nonce: 8,
+        deadline: 1712096400n,
+      };
+      const signature = await signer.signKeyRemove(message);
+      expect(signature.isOk()).toBeTruthy();
+      const valid = await verifyKeyRemove(message, signature._unsafeUnwrap(), signerKey);
+      expect(valid).toEqual(ok(true));
+    });
+  });
+
+  describe("signGaslessKeyRequest", () => {
+    test("generates valid signature", async () => {
+      const message: GaslessSignedKeyRequestMessage = {
+        requestFid: BigInt(Factories.Fid.build()),
+        key: Factories.Ed25519PublicKey.build(),
+        deadline: 1712096400n,
+      };
+      const signature = await signer.signGaslessKeyRequest(message);
+      expect(signature.isOk()).toBeTruthy();
+      const valid = await verifyGaslessKeyRequest(message, signature._unsafeUnwrap(), signerKey);
+      expect(valid).toEqual(ok(true));
+    });
+
+    test("is not interchangeable with the onchain signKeyRequest", async () => {
+      const message: GaslessSignedKeyRequestMessage = {
+        requestFid: BigInt(Factories.Fid.build()),
+        key: Factories.Ed25519PublicKey.build(),
+        deadline: 1712096400n,
+      };
+      const onchainSignature = await signer.signKeyRequest(message);
+      const valid = await verifyGaslessKeyRequest(message, onchainSignature._unsafeUnwrap(), signerKey);
+      expect(valid).toEqual(ok(false));
+    });
+  });
+
+  describe("getGaslessSignedKeyRequestMetadata", () => {
+    test("round-trips through the metadata encoding", async () => {
+      const message: GaslessSignedKeyRequestMessage = {
+        requestFid: BigInt(Factories.Fid.build()),
+        key: Factories.Ed25519PublicKey.build(),
+        deadline: 1712096400n,
+      };
+      const metadata = await signer.getGaslessSignedKeyRequestMetadata(message);
+      expect(metadata.isOk()).toBeTruthy();
+
+      const decoded = decodeGaslessSignedKeyRequestMetadata(metadata._unsafeUnwrap())._unsafeUnwrap();
+      expect(decoded.requestFid).toEqual(message.requestFid);
+      expect(decoded.deadline).toEqual(message.deadline);
+      expect(decoded.requestSigner.toLowerCase()).toEqual(bytesToHex(signerKey).toLowerCase());
+
+      const valid = await verifyGaslessKeyRequest(message, decoded.signature, signerKey);
+      expect(valid).toEqual(ok(true));
+    });
+
+    test("fails with invalid deadline", async () => {
+      const result = await signer.getGaslessSignedKeyRequestMetadata({
+        requestFid: BigInt(Factories.Fid.build()),
+        key: Factories.Ed25519PublicKey.build(),
         deadline: -1n,
       });
       expect(result.isErr()).toBe(true);
