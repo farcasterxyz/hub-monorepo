@@ -26,7 +26,12 @@ four bundled signers (`ViemLocalEip712Signer`, `ViemWalletEip712Signer`, `Ethers
   `makeKeyAdd`, `makeKeyAddData`, `makeKeyRemove`, `makeKeyRemoveData`.
 - `validations.validateKeyAddBody` and `validateKeyRemoveBody`, wired into
   `validateMessageData` so `KEY_ADD` / `KEY_REMOVE` are no longer rejected as
-  `bodyType is invalid`.
+  `bodyType is invalid`. `validateKeyAddBody` also decodes the `SignedKeyRequest`
+  metadata blob and, given the enclosing `MessageData.timestamp`, rejects an expired
+  one — matching `verify_signed_key_request_metadata` so an authorization that the
+  node would reject fails before submit rather than at merge time. It compares
+  against the message's own timestamp, not wall-clock, so replaying a valid old
+  message stays deterministic.
 
 Note that snapchain's `SignedKeyRequest` shares a struct name with the onchain
 `SignedKeyRequestValidator` flow but uses a different EIP-712 domain — `Farcaster KeyAdd`,

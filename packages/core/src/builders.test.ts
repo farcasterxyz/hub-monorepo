@@ -521,6 +521,33 @@ describe("gasless signers", () => {
       expect(body).toEqual(err(new HubError("bad_request.validation_failure", "scopes is required")));
     });
 
+    test("fails when the signed key request has already expired", async () => {
+      const body = await builders.makeKeyAddBody(
+        { ...keyAddOptions(), deadline: getFarcasterTime()._unsafeUnwrap() - 60 },
+        eip712Signer,
+      );
+      expect(body).toEqual(err(new HubError("bad_request.validation_failure", "signed key request has expired")));
+    });
+
+    test("fails when the metadata blob is not a valid SignedKeyRequest", async () => {
+      const body = validations.validateKeyAddBody(
+        protobufs.KeyAddBody.create({
+          key: signerKey,
+          keyType: 1,
+          custodySignature: new Uint8Array(65),
+          deadline: getFarcasterTime()._unsafeUnwrap() + 3600,
+          nonce: 1,
+          metadata: new Uint8Array([1, 2, 3]),
+          metadataType: 1,
+          scopes: [protobufs.MessageType.CAST_ADD],
+          ttl: 3600,
+        }),
+      );
+      expect(body).toEqual(
+        err(new HubError("bad_request.validation_failure", "metadata is not a valid SignedKeyRequest")),
+      );
+    });
+
     test("fails with a ttl beyond the maximum", async () => {
       const body = await builders.makeKeyAddBody({ ...keyAddOptions(), ttl: MAX_KEY_TTL_SECONDS + 1 }, eip712Signer);
       expect(body.isErr()).toBeTruthy();
@@ -561,6 +588,16 @@ describe("gasless signers", () => {
         ethSignerKey,
       );
       expect(valid).toEqual(ok(true));
+    });
+
+    test("accepts a past deadline, matching the node", async () => {
+      // KeyRemoveBody has no metadata blob and the node never compares body.deadline to the
+      // message timestamp, so rejecting this here would fail messages the network merges.
+      const body = await builders.makeKeyRemoveBody(
+        { fid: BigInt(fid), key: signerKey, nonce: 2, deadline: getFarcasterTime()._unsafeUnwrap() - 60 },
+        eip712Signer,
+      );
+      expect(body.isOk()).toBeTruthy();
     });
   });
 

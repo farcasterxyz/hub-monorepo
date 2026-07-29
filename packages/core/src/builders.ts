@@ -476,6 +476,9 @@ export const makeKeyAddBody = async (
       scopes: options.scopes,
       ttl: options.ttl,
     }),
+    // Catch an already-expired deadline at build time rather than on submit. The message has no
+    // timestamp yet, so use now — `makeKeyAddData` stamps it within milliseconds of this call.
+    getFarcasterTime().unwrapOr(undefined),
   );
 };
 
