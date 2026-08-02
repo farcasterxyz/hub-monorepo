@@ -18,6 +18,7 @@ import { DB, DBTransaction } from "./db";
 import { MessageProcessor } from "./messageProcessor";
 import { MessageHandler, MessageState, StoreMessageOperation } from "./";
 import { log } from "../log";
+import { MESSAGE_TYPE_KEY_ADD, MESSAGE_TYPE_KEY_REMOVE } from "../utils";
 
 export class HubEventProcessor {
   static async processHubEvent(db: DB, event: HubEvent, handler: MessageHandler) {
@@ -105,6 +106,15 @@ export class HubEventProcessor {
     } else if (
       (isAdd && isVerificationRemoveMessage(message)) ||
       (!isAdd && isVerificationAddAddressMessage(message))
+    ) {
+      return "deleted";
+    }
+
+    if (isAdd && message.data?.type === MESSAGE_TYPE_KEY_ADD) {
+      return "created";
+    } else if (
+      (isAdd && message.data?.type === MESSAGE_TYPE_KEY_REMOVE) ||
+      (!isAdd && message.data?.type === MESSAGE_TYPE_KEY_ADD)
     ) {
       return "deleted";
     }

@@ -40,7 +40,7 @@ import {
   UsernameProofsResponse,
 } from "@farcaster/hub-nodejs";
 import { err, ok } from "neverthrow";
-import { bytesToHex } from "./utils";
+import { bytesToHex, MESSAGE_TYPE_KEY_ADD, MESSAGE_TYPE_KEY_REMOVE } from "./utils";
 
 let db: DB;
 let subscriber: FakeHubSubscriber;
@@ -175,6 +175,37 @@ describe("shuttle", () => {
     await subscriber.processHubEvent(
       HubEvent.create({ id: 101, type: HubEventType.MERGE_MESSAGE, mergeMessageBody: { message } }),
     );
+  });
+
+  test.each([
+    [MESSAGE_TYPE_KEY_ADD, "created"],
+    [MESSAGE_TYPE_KEY_REMOVE, "deleted"],
+  ] as const)("stores upstream key-management message type %i", async (type, expectedState) => {
+    const message = await Factories.CastAddMessage.create({}, { transient: { signer } });
+    if (!message.data) throw new Error("Message data is missing");
+    message.data.type = type;
+    message.data.castAddBody = undefined;
+
+    subscriber.addMessageCallback((msg, operation, state, isNew, wasMissed) => {
+      expect(msg.hash).toEqual(message.hash);
+      expect(operation).toEqual("merge");
+      expect(state).toEqual(expectedState);
+      expect(isNew).toEqual(true);
+      expect(wasMissed).toEqual(false);
+    });
+
+    await subscriber.processHubEvent(
+      HubEvent.create({ id: 102 + type, type: HubEventType.MERGE_MESSAGE, mergeMessageBody: { message } }),
+    );
+
+    const storedMessage = await db
+      .selectFrom("messages")
+      .select(["type", "body"])
+      .where("hash", "=", message.hash)
+      .executeTakeFirstOrThrow();
+
+    expect(storedMessage.type).toEqual(type);
+    expect(storedMessage.body).toEqual({ unsupportedMessageType: type });
   });
 
   test("shouldSkip skip handler callbacks", async () => {
