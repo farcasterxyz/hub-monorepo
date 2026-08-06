@@ -61,6 +61,7 @@ export class BaseHubSubscriber extends HubSubscriber {
   private stream: ClientReadableStream<HubEvent> | null = null;
   private shardIndex: number;
   private connectionTimeout: number; // milliseconds
+  private rewindSeconds: number;
 
   constructor(
     label: string,
@@ -69,6 +70,7 @@ export class BaseHubSubscriber extends HubSubscriber {
     log: Logger,
     eventTypes?: HubEventType[],
     connectionTimeout = 30000,
+    rewindSeconds = 0,
   ) {
     super();
     this.label = label;
@@ -77,6 +79,7 @@ export class BaseHubSubscriber extends HubSubscriber {
     this.shardIndex = shardIndex;
     this.eventTypes = eventTypes || DEFAULT_EVENT_TYPES;
     this.connectionTimeout = connectionTimeout;
+    this.rewindSeconds = rewindSeconds;
   }
 
   public override stop() {
@@ -108,9 +111,26 @@ export class BaseHubSubscriber extends HubSubscriber {
     }
     this.log.info(`HubSubscriber ${this.label} connected to hub`);
 
-    const fromId = await this.getLastEventId();
+    let fromId = await this.getLastEventId();
     if (fromId) {
       this.log.info(`HubSubscriber ${this.label} Found last hub event ID: ${fromId}`);
+      if (this.rewindSeconds > 0) {
+        const lastEventResult = await this.hubClient.getEvent({ id: fromId });
+        if (lastEventResult.isOk()) {
+          const lastEvent = lastEventResult.value;
+          const lastTimestamp = extractTimestampFromEvent(lastEvent);
+          const targetTimestamp = lastTimestamp - this.rewindSeconds * 1000;
+          this.log.info(`Rewinding ${this.rewindSeconds}s to target timestamp: ${targetTimestamp}`);
+          const rewindIdResult = await this.hubClient.getEvents({
+            fromId: 0,
+            startTimestamp: targetTimestamp,
+          });
+          if (rewindIdResult.isOk() && rewindIdResult.value.events[0]) {
+            fromId = rewindIdResult.value.events[0].id;
+            this.log.info(`New start event ID after rewind: ${fromId}`);
+          }
+        }
+      }
     } else {
       this.log.warn("No last hub event ID found, starting from the beginning");
     }
@@ -195,6 +215,7 @@ type PostProcessHandler = (events: HubEvent[], eventBytes: Uint8Array[]) => Prom
 type EventStreamHubSubscriberOptions = {
   beforeProcess?: PreProcessHandler;
   afterProcess?: PostProcessHandler;
+  rewindSeconds?: number;
 };
 
 export class EventStreamHubSubscriber extends BaseHubSubscriber {
@@ -225,7 +246,7 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
     connectionTimeout?: number,
     options?: EventStreamHubSubscriberOptions,
   ) {
-    super(label, hubClient.client, shardIndex, log, eventTypes, connectionTimeout);
+    super(label, hubClient.client, shardIndex, log, eventTypes, connectionTimeout, options?.rewindSeconds);
     this.eventStream = eventStream;
     this.redis = redis;
     this.streamKey = `hub:${hubClient.host}:evt:msg:${shardKey}`;
