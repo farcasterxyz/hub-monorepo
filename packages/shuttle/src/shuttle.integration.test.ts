@@ -573,7 +573,7 @@ describe("shuttle", () => {
           }),
         );
       },
-      getAllVerficationMessagesByFid: async (
+      getAllVerificationMessagesByFid: async (
         _request: FidRequest,
         _metadata: Metadata,
         _options: Partial<CallOptions>,
