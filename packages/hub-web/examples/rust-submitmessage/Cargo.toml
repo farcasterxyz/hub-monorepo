@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 blake3 = "1.5.0"
 ed25519-dalek = {version = "2.0.0", features = ["rand_core"]}
-rand = "0.8.5"
+rand = "0.8.6"
 hex = "0.4.3"
 protobuf = "2.25.2"
 reqwest = "0.11"
