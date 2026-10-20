@@ -5,7 +5,7 @@ An example that signs up a new user on chain, purchases storage, creates a signe
 Given a custody address with ~10$ worth of funds on OP Mainnet, this example will:
  - Register an FID on the IdRegistry contract
  - Purchase 1 unit of storage on the StorageContract
- - Create a signer on the KeyRegistry contract
+ - Add a signer with a gasless KEY_ADD message (no transaction; scoped to profile updates, expires after a day unused)
  - Register an fname on the fname registry server
  - Update the user's profile
 
