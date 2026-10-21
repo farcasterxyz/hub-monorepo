@@ -5,9 +5,18 @@ import { ShardChunk } from "./blocks";
 import { HubEvent, HubEventType, hubEventTypeFromJSON, hubEventTypeToJSON } from "./hub_event";
 import {
   CastId,
+  CastingMode,
+  castingModeFromJSON,
+  castingModeToJSON,
+  ChannelModerateAction,
+  channelModerateActionFromJSON,
+  channelModerateActionToJSON,
   FarcasterNetwork,
   farcasterNetworkFromJSON,
   farcasterNetworkToJSON,
+  MembershipMode,
+  membershipModeFromJSON,
+  membershipModeToJSON,
   Message,
   ReactionType,
   reactionTypeFromJSON,
@@ -29,6 +38,53 @@ import {
   tierTypeToJSON,
 } from "./onchain_event";
 import { UserNameProof } from "./username_proof";
+
+export enum ChannelMemberState {
+  NONE = 0,
+  MEMBER = 1,
+  MODERATOR = 2,
+  REMOVED = 3,
+  BANNED = 4,
+}
+
+export function channelMemberStateFromJSON(object: any): ChannelMemberState {
+  switch (object) {
+    case 0:
+    case "CHANNEL_MEMBER_STATE_NONE":
+      return ChannelMemberState.NONE;
+    case 1:
+    case "CHANNEL_MEMBER_STATE_MEMBER":
+      return ChannelMemberState.MEMBER;
+    case 2:
+    case "CHANNEL_MEMBER_STATE_MODERATOR":
+      return ChannelMemberState.MODERATOR;
+    case 3:
+    case "CHANNEL_MEMBER_STATE_REMOVED":
+      return ChannelMemberState.REMOVED;
+    case 4:
+    case "CHANNEL_MEMBER_STATE_BANNED":
+      return ChannelMemberState.BANNED;
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum ChannelMemberState");
+  }
+}
+
+export function channelMemberStateToJSON(object: ChannelMemberState): string {
+  switch (object) {
+    case ChannelMemberState.NONE:
+      return "CHANNEL_MEMBER_STATE_NONE";
+    case ChannelMemberState.MEMBER:
+      return "CHANNEL_MEMBER_STATE_MEMBER";
+    case ChannelMemberState.MODERATOR:
+      return "CHANNEL_MEMBER_STATE_MODERATOR";
+    case ChannelMemberState.REMOVED:
+      return "CHANNEL_MEMBER_STATE_REMOVED";
+    case ChannelMemberState.BANNED:
+      return "CHANNEL_MEMBER_STATE_BANNED";
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum ChannelMemberState");
+  }
+}
 
 export enum StoreType {
   NONE = 0,
@@ -129,6 +185,82 @@ export function signerSourceToJSON(object: SignerSource): string {
       return "SIGNER_SOURCE_OFFCHAIN";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum SignerSource");
+  }
+}
+
+/**
+ * Where a peer's address/contact data came from. Keeps internally-derived
+ * (observed) data from being conflated with peer-attested gossip data.
+ */
+export enum ContactSource {
+  UNKNOWN = 0,
+  /** COLLECTED - real ContactInfoBody received over the contact-info topic */
+  COLLECTED = 1,
+  /** DERIVED - internal: PeerId + observed connection address only */
+  DERIVED = 2,
+}
+
+export function contactSourceFromJSON(object: any): ContactSource {
+  switch (object) {
+    case 0:
+    case "CONTACT_SOURCE_UNKNOWN":
+      return ContactSource.UNKNOWN;
+    case 1:
+    case "CONTACT_SOURCE_COLLECTED":
+      return ContactSource.COLLECTED;
+    case 2:
+    case "CONTACT_SOURCE_DERIVED":
+      return ContactSource.DERIVED;
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum ContactSource");
+  }
+}
+
+export function contactSourceToJSON(object: ContactSource): string {
+  switch (object) {
+    case ContactSource.UNKNOWN:
+      return "CONTACT_SOURCE_UNKNOWN";
+    case ContactSource.COLLECTED:
+      return "CONTACT_SOURCE_COLLECTED";
+    case ContactSource.DERIVED:
+      return "CONTACT_SOURCE_DERIVED";
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum ContactSource");
+  }
+}
+
+export enum MeshNodeType {
+  UNKNOWN = 0,
+  VALIDATOR = 1,
+  NON_VALIDATOR = 2,
+}
+
+export function meshNodeTypeFromJSON(object: any): MeshNodeType {
+  switch (object) {
+    case 0:
+    case "MESH_NODE_TYPE_UNKNOWN":
+      return MeshNodeType.UNKNOWN;
+    case 1:
+    case "MESH_NODE_TYPE_VALIDATOR":
+      return MeshNodeType.VALIDATOR;
+    case 2:
+    case "MESH_NODE_TYPE_NON_VALIDATOR":
+      return MeshNodeType.NON_VALIDATOR;
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum MeshNodeType");
+  }
+}
+
+export function meshNodeTypeToJSON(object: MeshNodeType): string {
+  switch (object) {
+    case MeshNodeType.UNKNOWN:
+      return "MESH_NODE_TYPE_UNKNOWN";
+    case MeshNodeType.VALIDATOR:
+      return "MESH_NODE_TYPE_VALIDATOR";
+    case MeshNodeType.NON_VALIDATOR:
+      return "MESH_NODE_TYPE_NON_VALIDATOR";
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum MeshNodeType");
   }
 }
 
@@ -272,6 +404,254 @@ export interface OnChainEventRequest {
 export interface OnChainEventResponse {
   events: OnChainEvent[];
   nextPageToken?: Uint8Array | undefined;
+}
+
+export interface ChannelOwnerRequest {
+  channelKey: string;
+}
+
+export interface ChannelOwnerResponse {
+  /**
+   * 0 = the owner's verification has not landed on shard 0 yet. A normal state,
+   * not an error: the registration exists and owner_address below is known, but
+   * nothing binds it to an fid on shard 0. Resolved when the owner submits a
+   * post-activation verification of that address, which is REQUIRED even if they
+   * verified it before activation — that history is not backfilled. Never a
+   * signal that the channel is abandoned. See GetChannelOwner in rpc.proto.
+   * Computed at read time, never stored.
+   */
+  fid: number;
+  /** Raw 20-byte EVM address from the channel registry fold. */
+  ownerAddress: Uint8Array;
+  /**
+   * Absolute expiry, unix seconds, as emitted by the registry contract. May be
+   * in the past: lapsed registrations are returned until superseded (see
+   * GetChannelOwner in rpc.proto).
+   */
+  expiry: number;
+}
+
+export interface ChannelsByAddressRequest {
+  /** Raw 20-byte EVM address. */
+  ownerAddress: Uint8Array;
+  pageSize?: number | undefined;
+  pageToken?: Uint8Array | undefined;
+  reverse?: boolean | undefined;
+}
+
+export interface ChannelsByFidRequest {
+  fid: number;
+  pageSize?:
+    | number
+    | undefined;
+  /**
+   * Opaque composite cursor over the fid's verified addresses joined with the
+   * channel owner-address index. No reverse cursor (addresses iterate ascending).
+   */
+  pageToken?: Uint8Array | undefined;
+}
+
+export interface ChannelInfo {
+  channelKey: string;
+  /** Resolved winner; 0 = parked. */
+  fid: number;
+  ownerAddress: Uint8Array;
+  /**
+   * Absolute expiry, unix seconds, as emitted by the registry contract. May be
+   * in the past: lapsed registrations are listed until superseded (see
+   * GetChannelOwner in rpc.proto).
+   */
+  expiry: number;
+}
+
+export interface ChannelsResponse {
+  channels: ChannelInfo[];
+  nextPageToken?: Uint8Array | undefined;
+}
+
+export interface ChannelRequest {
+  channelId: Uint8Array;
+}
+
+export interface ChannelMemberRequest {
+  channelId: Uint8Array;
+  fid: number;
+}
+
+/**
+ * The two fields are paired: CHANNEL_MEMBER_STATE_NONE means the fid has no
+ * membership row and `last_action_ts` is absent; any other state always carries
+ * the timestamp of the ChannelMember message that produced it. The server never
+ * emits the mixed combinations.
+ *
+ * Unlike ChannelPinResponse this is not nested, because it would not buy the same
+ * guarantee — proto3 cannot exclude the zero variant from an enum, so a NONE
+ * state inside a present wrapper would remain representable and the pairing would
+ * still rest on this comment.
+ */
+export interface ChannelMemberResponse {
+  state: ChannelMemberState;
+  lastActionTs?: number | undefined;
+}
+
+export interface ChannelMembersRequest {
+  channelId: Uint8Array;
+  /** Absent OR CHANNEL_MEMBER_STATE_NONE both mean "no filter" (return all states). */
+  stateFilter?: ChannelMemberState | undefined;
+  pageSize?: number | undefined;
+  pageToken?: Uint8Array | undefined;
+  reverse?: boolean | undefined;
+}
+
+export interface ChannelMember {
+  fid: number;
+  state: ChannelMemberState;
+}
+
+export interface ChannelMembersResponse {
+  members: ChannelMember[];
+  nextPageToken?: Uint8Array | undefined;
+}
+
+/**
+ * A pinned cast. Both fields are always populated together — a pin cannot exist
+ * without the fid that set it.
+ */
+export interface ChannelPin {
+  castHash: Uint8Array;
+  authorFid: number;
+}
+
+/**
+ * `pin` absent means the channel has no pin. That covers a channel that was never
+ * pinned and one whose pin was cleared by an unpin (a ChannelPin message with an
+ * empty cast_hash); the two are deliberately indistinguishable here.
+ *
+ * The pair is nested rather than two sibling optionals so a half-populated
+ * response — a cast_hash with no author, or an author with no cast_hash — is not
+ * representable on the wire.
+ */
+export interface ChannelPinResponse {
+  pin?: ChannelPin | undefined;
+}
+
+export interface ChannelModerationsRequest {
+  channelId: Uint8Array;
+  pageSize?: number | undefined;
+  pageToken?: Uint8Array | undefined;
+  reverse?: boolean | undefined;
+}
+
+export interface ChannelModeration {
+  castHash: Uint8Array;
+  action: ChannelModerateAction;
+  authorFid: number;
+}
+
+export interface ChannelModerationsResponse {
+  moderations: ChannelModeration[];
+  nextPageToken?: Uint8Array | undefined;
+}
+
+/**
+ * The whole-replace fold of the single winning ChannelUpdate (see
+ * ChannelUpdateBody). A field absent here reads as unset — it was omitted by the
+ * latest update and is never inherited from the update that one superseded. Do
+ * NOT treat an absent field as "unchanged": consumers that merge this response
+ * into a stored model must clear the fields it omits, or deleted metadata lives
+ * forever.
+ *
+ * casting_mode/membership_mode are the RESOLVED effective policy: for a registered
+ * channel with no ChannelUpdate yet, the server returns the restrictive defaults
+ * (MEMBERS_ONLY / APPROVAL), never the NONE=0 sentinel. Clients cannot distinguish
+ * "never configured" from "explicitly set to the default" here — that is intentional.
+ */
+export interface ChannelMetadataResponse {
+  name?: string | undefined;
+  description?: string | undefined;
+  imageUrl?: string | undefined;
+  header?: string | undefined;
+  rules?: string | undefined;
+  castingMode: CastingMode;
+  membershipMode: MembershipMode;
+}
+
+export interface ChannelMembershipsByFidRequest {
+  fid: number;
+  pageSize?: number | undefined;
+  pageToken?: Uint8Array | undefined;
+  reverse?: boolean | undefined;
+}
+
+export interface ChannelMembership {
+  channelId: Uint8Array;
+  state: ChannelMemberState;
+}
+
+export interface ChannelMembershipsResponse {
+  memberships: ChannelMembership[];
+  nextPageToken?: Uint8Array | undefined;
+}
+
+/**
+ * `followed_at` is the Farcaster timestamp of the reaction that expressed the
+ * follow. A re-follow refreshes it.
+ */
+export interface ChannelFollower {
+  fid: number;
+  followedAt: number;
+}
+
+export interface ChannelFollowersRequest {
+  channelId: Uint8Array;
+  /**
+   * NOTE: page_size is PER SHARD, unlike the single-shard channel reads. A page
+   * may hold up to page_size * num_shards entries.
+   */
+  pageSize?: number | undefined;
+  pageToken?: Uint8Array | undefined;
+  reverse?: boolean | undefined;
+}
+
+export interface ChannelFollowersResponse {
+  followers: ChannelFollower[];
+  nextPageToken?: Uint8Array | undefined;
+}
+
+export interface ChannelFollowerCountRequest {
+  channelId: Uint8Array;
+}
+
+export interface ChannelFollowerCountResponse {
+  count: number;
+}
+
+export interface ChannelFollow {
+  channelId: Uint8Array;
+  followedAt: number;
+}
+
+export interface ChannelFollowsRequest {
+  fid: number;
+  pageSize?: number | undefined;
+  pageToken?: Uint8Array | undefined;
+  reverse?: boolean | undefined;
+}
+
+export interface ChannelFollowsResponse {
+  follows: ChannelFollow[];
+  nextPageToken?: Uint8Array | undefined;
+}
+
+export interface IsFollowingChannelRequest {
+  fid: number;
+  channelId: Uint8Array;
+}
+
+/** `followed_at` is present exactly when `following` is true. */
+export interface IsFollowingChannelResponse {
+  following: boolean;
+  followedAt?: number | undefined;
 }
 
 export interface TierDetails {
@@ -537,6 +917,116 @@ export interface GetConnectedPeersRequest {
 
 export interface GetConnectedPeersResponse {
   contacts: ContactInfoBody[];
+  /**
+   * Unified, source-tagged view of connected peers. Includes peers we have no
+   * collected ContactInfoBody for (e.g. validators) as CONTACT_SOURCE_DERIVED
+   * entries built from the live connection — kept distinct from collected data.
+   */
+  peers: ConnectedPeer[];
+}
+
+export interface ConnectedPeer {
+  source: ContactSource;
+  /** set only when source == COLLECTED */
+  contactInfo:
+    | ContactInfoBody
+    | undefined;
+  /** always present (esp. for DERIVED) */
+  peerId: Uint8Array;
+  /** set for DERIVED: the live-connection address */
+  observedAddress: string;
+}
+
+export interface GetMeshViewRequest {
+  /** default true (applied by the handler) */
+  validatorsOnly: boolean;
+  /**
+   * Reserved for the recursive crawl; ignored by the local view, kept so the
+   * wire format doesn't break when a propagating crawl is added later.
+   */
+  ttl: number;
+  visitedPeerIds: Uint8Array[];
+}
+
+export interface GossipRate {
+  topic: string;
+  msgsPerSec: number;
+  bytesPerSec: number;
+  totalMsgs: number;
+  totalBytes: number;
+}
+
+export interface TopicMembership {
+  topic: string;
+  subscribed: boolean;
+  /** peer is in OUR gossipsub mesh for this topic */
+  inMesh: boolean;
+}
+
+export interface MeshSelf {
+  peerId: Uint8Array;
+  /** node identity key (always present) */
+  consensusPublicKey: Uint8Array;
+  /** key is in the validator set at current height */
+  isValidator: boolean;
+  gossipAddress: string;
+  rpcAddress: string;
+  snapchainVersion: string;
+  network: FarcasterNetwork;
+  subscribedTopics: string[];
+  consensusMeshSize: number;
+  currentHeight: number;
+}
+
+export interface MeshPeer {
+  peerId: Uint8Array;
+  nodeType: MeshNodeType;
+  /** set iff PeerId matched a validator-set entry */
+  consensusPublicKey?: Uint8Array | undefined;
+  connected: boolean;
+  directPeer: boolean;
+  /** COLLECTED vs DERIVED — never conflate the two */
+  contactSource: ContactSource;
+  /** set only when contact_source == COLLECTED */
+  contactInfo:
+    | ContactInfoBody
+    | undefined;
+  /** internal: live-connection addr; not a self-announced IP */
+  observedAddress: string;
+  topics: TopicMembership[];
+  gossipRates: GossipRate[];
+}
+
+export interface MeshView {
+  /** The responding node. Named `local` (not `self`) to avoid the Rust keyword. */
+  local: MeshSelf | undefined;
+  peers: MeshPeer[];
+  /** unix millis */
+  generatedAt: number;
+}
+
+/**
+ * A validator that the crawl could not query directly. The crawl is
+ * connected-only: validators the serving node has no live connection to,
+ * or that did not respond in time, are surfaced here rather than dropped.
+ */
+export interface UnreachableNode {
+  peerId: Uint8Array;
+  /** set when the missing node is a known validator */
+  consensusPublicKey: Uint8Array;
+  /** "not_connected" | "timeout" | "error: …" */
+  reason: string;
+}
+
+/**
+ * Network-wide topology assembled by the centralized crawl over the gossip
+ * port. `nodes` is one MeshView per responding validator (including self).
+ */
+export interface MeshTopology {
+  nodes: MeshView[];
+  unreachable: UnreachableNode[];
+  /** unix millis */
+  generatedAt: number;
 }
 
 function createBaseBlocksRequest(): BlocksRequest {
@@ -2555,6 +3045,2509 @@ export const OnChainEventResponse = {
     const message = createBaseOnChainEventResponse();
     message.events = object.events?.map((e) => OnChainEvent.fromPartial(e)) || [];
     message.nextPageToken = object.nextPageToken ?? undefined;
+    return message;
+  },
+};
+
+function createBaseChannelOwnerRequest(): ChannelOwnerRequest {
+  return { channelKey: "" };
+}
+
+export const ChannelOwnerRequest = {
+  encode(message: ChannelOwnerRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.channelKey !== "") {
+      writer.uint32(10).string(message.channelKey);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelOwnerRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelOwnerRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.channelKey = reader.string();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelOwnerRequest {
+    return { channelKey: isSet(object.channelKey) ? String(object.channelKey) : "" };
+  },
+
+  toJSON(message: ChannelOwnerRequest): unknown {
+    const obj: any = {};
+    message.channelKey !== undefined && (obj.channelKey = message.channelKey);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelOwnerRequest>, I>>(base?: I): ChannelOwnerRequest {
+    return ChannelOwnerRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelOwnerRequest>, I>>(object: I): ChannelOwnerRequest {
+    const message = createBaseChannelOwnerRequest();
+    message.channelKey = object.channelKey ?? "";
+    return message;
+  },
+};
+
+function createBaseChannelOwnerResponse(): ChannelOwnerResponse {
+  return { fid: 0, ownerAddress: new Uint8Array(), expiry: 0 };
+}
+
+export const ChannelOwnerResponse = {
+  encode(message: ChannelOwnerResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.fid !== 0) {
+      writer.uint32(8).uint64(message.fid);
+    }
+    if (message.ownerAddress.length !== 0) {
+      writer.uint32(18).bytes(message.ownerAddress);
+    }
+    if (message.expiry !== 0) {
+      writer.uint32(24).uint64(message.expiry);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelOwnerResponse {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelOwnerResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.fid = longToNumber(reader.uint64() as Long);
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.ownerAddress = reader.bytes();
+          continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.expiry = longToNumber(reader.uint64() as Long);
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelOwnerResponse {
+    return {
+      fid: isSet(object.fid) ? Number(object.fid) : 0,
+      ownerAddress: isSet(object.ownerAddress) ? bytesFromBase64(object.ownerAddress) : new Uint8Array(),
+      expiry: isSet(object.expiry) ? Number(object.expiry) : 0,
+    };
+  },
+
+  toJSON(message: ChannelOwnerResponse): unknown {
+    const obj: any = {};
+    message.fid !== undefined && (obj.fid = Math.round(message.fid));
+    message.ownerAddress !== undefined &&
+      (obj.ownerAddress = base64FromBytes(
+        message.ownerAddress !== undefined ? message.ownerAddress : new Uint8Array(),
+      ));
+    message.expiry !== undefined && (obj.expiry = Math.round(message.expiry));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelOwnerResponse>, I>>(base?: I): ChannelOwnerResponse {
+    return ChannelOwnerResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelOwnerResponse>, I>>(object: I): ChannelOwnerResponse {
+    const message = createBaseChannelOwnerResponse();
+    message.fid = object.fid ?? 0;
+    message.ownerAddress = object.ownerAddress ?? new Uint8Array();
+    message.expiry = object.expiry ?? 0;
+    return message;
+  },
+};
+
+function createBaseChannelsByAddressRequest(): ChannelsByAddressRequest {
+  return { ownerAddress: new Uint8Array(), pageSize: undefined, pageToken: undefined, reverse: undefined };
+}
+
+export const ChannelsByAddressRequest = {
+  encode(message: ChannelsByAddressRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.ownerAddress.length !== 0) {
+      writer.uint32(10).bytes(message.ownerAddress);
+    }
+    if (message.pageSize !== undefined) {
+      writer.uint32(16).uint32(message.pageSize);
+    }
+    if (message.pageToken !== undefined) {
+      writer.uint32(26).bytes(message.pageToken);
+    }
+    if (message.reverse !== undefined) {
+      writer.uint32(32).bool(message.reverse);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelsByAddressRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelsByAddressRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.ownerAddress = reader.bytes();
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.pageSize = reader.uint32();
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.pageToken = reader.bytes();
+          continue;
+        case 4:
+          if (tag != 32) {
+            break;
+          }
+
+          message.reverse = reader.bool();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelsByAddressRequest {
+    return {
+      ownerAddress: isSet(object.ownerAddress) ? bytesFromBase64(object.ownerAddress) : new Uint8Array(),
+      pageSize: isSet(object.pageSize) ? Number(object.pageSize) : undefined,
+      pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : undefined,
+      reverse: isSet(object.reverse) ? Boolean(object.reverse) : undefined,
+    };
+  },
+
+  toJSON(message: ChannelsByAddressRequest): unknown {
+    const obj: any = {};
+    message.ownerAddress !== undefined &&
+      (obj.ownerAddress = base64FromBytes(
+        message.ownerAddress !== undefined ? message.ownerAddress : new Uint8Array(),
+      ));
+    message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
+    message.pageToken !== undefined &&
+      (obj.pageToken = message.pageToken !== undefined ? base64FromBytes(message.pageToken) : undefined);
+    message.reverse !== undefined && (obj.reverse = message.reverse);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelsByAddressRequest>, I>>(base?: I): ChannelsByAddressRequest {
+    return ChannelsByAddressRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelsByAddressRequest>, I>>(object: I): ChannelsByAddressRequest {
+    const message = createBaseChannelsByAddressRequest();
+    message.ownerAddress = object.ownerAddress ?? new Uint8Array();
+    message.pageSize = object.pageSize ?? undefined;
+    message.pageToken = object.pageToken ?? undefined;
+    message.reverse = object.reverse ?? undefined;
+    return message;
+  },
+};
+
+function createBaseChannelsByFidRequest(): ChannelsByFidRequest {
+  return { fid: 0, pageSize: undefined, pageToken: undefined };
+}
+
+export const ChannelsByFidRequest = {
+  encode(message: ChannelsByFidRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.fid !== 0) {
+      writer.uint32(8).uint64(message.fid);
+    }
+    if (message.pageSize !== undefined) {
+      writer.uint32(16).uint32(message.pageSize);
+    }
+    if (message.pageToken !== undefined) {
+      writer.uint32(26).bytes(message.pageToken);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelsByFidRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelsByFidRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.fid = longToNumber(reader.uint64() as Long);
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.pageSize = reader.uint32();
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.pageToken = reader.bytes();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelsByFidRequest {
+    return {
+      fid: isSet(object.fid) ? Number(object.fid) : 0,
+      pageSize: isSet(object.pageSize) ? Number(object.pageSize) : undefined,
+      pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : undefined,
+    };
+  },
+
+  toJSON(message: ChannelsByFidRequest): unknown {
+    const obj: any = {};
+    message.fid !== undefined && (obj.fid = Math.round(message.fid));
+    message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
+    message.pageToken !== undefined &&
+      (obj.pageToken = message.pageToken !== undefined ? base64FromBytes(message.pageToken) : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelsByFidRequest>, I>>(base?: I): ChannelsByFidRequest {
+    return ChannelsByFidRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelsByFidRequest>, I>>(object: I): ChannelsByFidRequest {
+    const message = createBaseChannelsByFidRequest();
+    message.fid = object.fid ?? 0;
+    message.pageSize = object.pageSize ?? undefined;
+    message.pageToken = object.pageToken ?? undefined;
+    return message;
+  },
+};
+
+function createBaseChannelInfo(): ChannelInfo {
+  return { channelKey: "", fid: 0, ownerAddress: new Uint8Array(), expiry: 0 };
+}
+
+export const ChannelInfo = {
+  encode(message: ChannelInfo, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.channelKey !== "") {
+      writer.uint32(10).string(message.channelKey);
+    }
+    if (message.fid !== 0) {
+      writer.uint32(16).uint64(message.fid);
+    }
+    if (message.ownerAddress.length !== 0) {
+      writer.uint32(26).bytes(message.ownerAddress);
+    }
+    if (message.expiry !== 0) {
+      writer.uint32(32).uint64(message.expiry);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelInfo {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelInfo();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.channelKey = reader.string();
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.fid = longToNumber(reader.uint64() as Long);
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.ownerAddress = reader.bytes();
+          continue;
+        case 4:
+          if (tag != 32) {
+            break;
+          }
+
+          message.expiry = longToNumber(reader.uint64() as Long);
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelInfo {
+    return {
+      channelKey: isSet(object.channelKey) ? String(object.channelKey) : "",
+      fid: isSet(object.fid) ? Number(object.fid) : 0,
+      ownerAddress: isSet(object.ownerAddress) ? bytesFromBase64(object.ownerAddress) : new Uint8Array(),
+      expiry: isSet(object.expiry) ? Number(object.expiry) : 0,
+    };
+  },
+
+  toJSON(message: ChannelInfo): unknown {
+    const obj: any = {};
+    message.channelKey !== undefined && (obj.channelKey = message.channelKey);
+    message.fid !== undefined && (obj.fid = Math.round(message.fid));
+    message.ownerAddress !== undefined &&
+      (obj.ownerAddress = base64FromBytes(
+        message.ownerAddress !== undefined ? message.ownerAddress : new Uint8Array(),
+      ));
+    message.expiry !== undefined && (obj.expiry = Math.round(message.expiry));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelInfo>, I>>(base?: I): ChannelInfo {
+    return ChannelInfo.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelInfo>, I>>(object: I): ChannelInfo {
+    const message = createBaseChannelInfo();
+    message.channelKey = object.channelKey ?? "";
+    message.fid = object.fid ?? 0;
+    message.ownerAddress = object.ownerAddress ?? new Uint8Array();
+    message.expiry = object.expiry ?? 0;
+    return message;
+  },
+};
+
+function createBaseChannelsResponse(): ChannelsResponse {
+  return { channels: [], nextPageToken: undefined };
+}
+
+export const ChannelsResponse = {
+  encode(message: ChannelsResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    for (const v of message.channels) {
+      ChannelInfo.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.nextPageToken !== undefined) {
+      writer.uint32(18).bytes(message.nextPageToken);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelsResponse {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelsResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.channels.push(ChannelInfo.decode(reader, reader.uint32()));
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.nextPageToken = reader.bytes();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelsResponse {
+    return {
+      channels: Array.isArray(object?.channels) ? object.channels.map((e: any) => ChannelInfo.fromJSON(e)) : [],
+      nextPageToken: isSet(object.nextPageToken) ? bytesFromBase64(object.nextPageToken) : undefined,
+    };
+  },
+
+  toJSON(message: ChannelsResponse): unknown {
+    const obj: any = {};
+    if (message.channels) {
+      obj.channels = message.channels.map((e) => e ? ChannelInfo.toJSON(e) : undefined);
+    } else {
+      obj.channels = [];
+    }
+    message.nextPageToken !== undefined &&
+      (obj.nextPageToken = message.nextPageToken !== undefined ? base64FromBytes(message.nextPageToken) : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelsResponse>, I>>(base?: I): ChannelsResponse {
+    return ChannelsResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelsResponse>, I>>(object: I): ChannelsResponse {
+    const message = createBaseChannelsResponse();
+    message.channels = object.channels?.map((e) => ChannelInfo.fromPartial(e)) || [];
+    message.nextPageToken = object.nextPageToken ?? undefined;
+    return message;
+  },
+};
+
+function createBaseChannelRequest(): ChannelRequest {
+  return { channelId: new Uint8Array() };
+}
+
+export const ChannelRequest = {
+  encode(message: ChannelRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.channelId.length !== 0) {
+      writer.uint32(10).bytes(message.channelId);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.channelId = reader.bytes();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelRequest {
+    return { channelId: isSet(object.channelId) ? bytesFromBase64(object.channelId) : new Uint8Array() };
+  },
+
+  toJSON(message: ChannelRequest): unknown {
+    const obj: any = {};
+    message.channelId !== undefined &&
+      (obj.channelId = base64FromBytes(message.channelId !== undefined ? message.channelId : new Uint8Array()));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelRequest>, I>>(base?: I): ChannelRequest {
+    return ChannelRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelRequest>, I>>(object: I): ChannelRequest {
+    const message = createBaseChannelRequest();
+    message.channelId = object.channelId ?? new Uint8Array();
+    return message;
+  },
+};
+
+function createBaseChannelMemberRequest(): ChannelMemberRequest {
+  return { channelId: new Uint8Array(), fid: 0 };
+}
+
+export const ChannelMemberRequest = {
+  encode(message: ChannelMemberRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.channelId.length !== 0) {
+      writer.uint32(10).bytes(message.channelId);
+    }
+    if (message.fid !== 0) {
+      writer.uint32(16).uint64(message.fid);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelMemberRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelMemberRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.channelId = reader.bytes();
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.fid = longToNumber(reader.uint64() as Long);
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelMemberRequest {
+    return {
+      channelId: isSet(object.channelId) ? bytesFromBase64(object.channelId) : new Uint8Array(),
+      fid: isSet(object.fid) ? Number(object.fid) : 0,
+    };
+  },
+
+  toJSON(message: ChannelMemberRequest): unknown {
+    const obj: any = {};
+    message.channelId !== undefined &&
+      (obj.channelId = base64FromBytes(message.channelId !== undefined ? message.channelId : new Uint8Array()));
+    message.fid !== undefined && (obj.fid = Math.round(message.fid));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelMemberRequest>, I>>(base?: I): ChannelMemberRequest {
+    return ChannelMemberRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelMemberRequest>, I>>(object: I): ChannelMemberRequest {
+    const message = createBaseChannelMemberRequest();
+    message.channelId = object.channelId ?? new Uint8Array();
+    message.fid = object.fid ?? 0;
+    return message;
+  },
+};
+
+function createBaseChannelMemberResponse(): ChannelMemberResponse {
+  return { state: 0, lastActionTs: undefined };
+}
+
+export const ChannelMemberResponse = {
+  encode(message: ChannelMemberResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.state !== 0) {
+      writer.uint32(8).int32(message.state);
+    }
+    if (message.lastActionTs !== undefined) {
+      writer.uint32(16).uint32(message.lastActionTs);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelMemberResponse {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelMemberResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.state = reader.int32() as any;
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.lastActionTs = reader.uint32();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelMemberResponse {
+    return {
+      state: isSet(object.state) ? channelMemberStateFromJSON(object.state) : 0,
+      lastActionTs: isSet(object.lastActionTs) ? Number(object.lastActionTs) : undefined,
+    };
+  },
+
+  toJSON(message: ChannelMemberResponse): unknown {
+    const obj: any = {};
+    message.state !== undefined && (obj.state = channelMemberStateToJSON(message.state));
+    message.lastActionTs !== undefined && (obj.lastActionTs = Math.round(message.lastActionTs));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelMemberResponse>, I>>(base?: I): ChannelMemberResponse {
+    return ChannelMemberResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelMemberResponse>, I>>(object: I): ChannelMemberResponse {
+    const message = createBaseChannelMemberResponse();
+    message.state = object.state ?? 0;
+    message.lastActionTs = object.lastActionTs ?? undefined;
+    return message;
+  },
+};
+
+function createBaseChannelMembersRequest(): ChannelMembersRequest {
+  return {
+    channelId: new Uint8Array(),
+    stateFilter: undefined,
+    pageSize: undefined,
+    pageToken: undefined,
+    reverse: undefined,
+  };
+}
+
+export const ChannelMembersRequest = {
+  encode(message: ChannelMembersRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.channelId.length !== 0) {
+      writer.uint32(10).bytes(message.channelId);
+    }
+    if (message.stateFilter !== undefined) {
+      writer.uint32(16).int32(message.stateFilter);
+    }
+    if (message.pageSize !== undefined) {
+      writer.uint32(24).uint32(message.pageSize);
+    }
+    if (message.pageToken !== undefined) {
+      writer.uint32(34).bytes(message.pageToken);
+    }
+    if (message.reverse !== undefined) {
+      writer.uint32(40).bool(message.reverse);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelMembersRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelMembersRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.channelId = reader.bytes();
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.stateFilter = reader.int32() as any;
+          continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.pageSize = reader.uint32();
+          continue;
+        case 4:
+          if (tag != 34) {
+            break;
+          }
+
+          message.pageToken = reader.bytes();
+          continue;
+        case 5:
+          if (tag != 40) {
+            break;
+          }
+
+          message.reverse = reader.bool();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelMembersRequest {
+    return {
+      channelId: isSet(object.channelId) ? bytesFromBase64(object.channelId) : new Uint8Array(),
+      stateFilter: isSet(object.stateFilter) ? channelMemberStateFromJSON(object.stateFilter) : undefined,
+      pageSize: isSet(object.pageSize) ? Number(object.pageSize) : undefined,
+      pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : undefined,
+      reverse: isSet(object.reverse) ? Boolean(object.reverse) : undefined,
+    };
+  },
+
+  toJSON(message: ChannelMembersRequest): unknown {
+    const obj: any = {};
+    message.channelId !== undefined &&
+      (obj.channelId = base64FromBytes(message.channelId !== undefined ? message.channelId : new Uint8Array()));
+    message.stateFilter !== undefined &&
+      (obj.stateFilter = message.stateFilter !== undefined ? channelMemberStateToJSON(message.stateFilter) : undefined);
+    message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
+    message.pageToken !== undefined &&
+      (obj.pageToken = message.pageToken !== undefined ? base64FromBytes(message.pageToken) : undefined);
+    message.reverse !== undefined && (obj.reverse = message.reverse);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelMembersRequest>, I>>(base?: I): ChannelMembersRequest {
+    return ChannelMembersRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelMembersRequest>, I>>(object: I): ChannelMembersRequest {
+    const message = createBaseChannelMembersRequest();
+    message.channelId = object.channelId ?? new Uint8Array();
+    message.stateFilter = object.stateFilter ?? undefined;
+    message.pageSize = object.pageSize ?? undefined;
+    message.pageToken = object.pageToken ?? undefined;
+    message.reverse = object.reverse ?? undefined;
+    return message;
+  },
+};
+
+function createBaseChannelMember(): ChannelMember {
+  return { fid: 0, state: 0 };
+}
+
+export const ChannelMember = {
+  encode(message: ChannelMember, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.fid !== 0) {
+      writer.uint32(8).uint64(message.fid);
+    }
+    if (message.state !== 0) {
+      writer.uint32(16).int32(message.state);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelMember {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelMember();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.fid = longToNumber(reader.uint64() as Long);
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.state = reader.int32() as any;
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelMember {
+    return {
+      fid: isSet(object.fid) ? Number(object.fid) : 0,
+      state: isSet(object.state) ? channelMemberStateFromJSON(object.state) : 0,
+    };
+  },
+
+  toJSON(message: ChannelMember): unknown {
+    const obj: any = {};
+    message.fid !== undefined && (obj.fid = Math.round(message.fid));
+    message.state !== undefined && (obj.state = channelMemberStateToJSON(message.state));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelMember>, I>>(base?: I): ChannelMember {
+    return ChannelMember.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelMember>, I>>(object: I): ChannelMember {
+    const message = createBaseChannelMember();
+    message.fid = object.fid ?? 0;
+    message.state = object.state ?? 0;
+    return message;
+  },
+};
+
+function createBaseChannelMembersResponse(): ChannelMembersResponse {
+  return { members: [], nextPageToken: undefined };
+}
+
+export const ChannelMembersResponse = {
+  encode(message: ChannelMembersResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    for (const v of message.members) {
+      ChannelMember.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.nextPageToken !== undefined) {
+      writer.uint32(18).bytes(message.nextPageToken);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelMembersResponse {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelMembersResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.members.push(ChannelMember.decode(reader, reader.uint32()));
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.nextPageToken = reader.bytes();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelMembersResponse {
+    return {
+      members: Array.isArray(object?.members) ? object.members.map((e: any) => ChannelMember.fromJSON(e)) : [],
+      nextPageToken: isSet(object.nextPageToken) ? bytesFromBase64(object.nextPageToken) : undefined,
+    };
+  },
+
+  toJSON(message: ChannelMembersResponse): unknown {
+    const obj: any = {};
+    if (message.members) {
+      obj.members = message.members.map((e) => e ? ChannelMember.toJSON(e) : undefined);
+    } else {
+      obj.members = [];
+    }
+    message.nextPageToken !== undefined &&
+      (obj.nextPageToken = message.nextPageToken !== undefined ? base64FromBytes(message.nextPageToken) : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelMembersResponse>, I>>(base?: I): ChannelMembersResponse {
+    return ChannelMembersResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelMembersResponse>, I>>(object: I): ChannelMembersResponse {
+    const message = createBaseChannelMembersResponse();
+    message.members = object.members?.map((e) => ChannelMember.fromPartial(e)) || [];
+    message.nextPageToken = object.nextPageToken ?? undefined;
+    return message;
+  },
+};
+
+function createBaseChannelPin(): ChannelPin {
+  return { castHash: new Uint8Array(), authorFid: 0 };
+}
+
+export const ChannelPin = {
+  encode(message: ChannelPin, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.castHash.length !== 0) {
+      writer.uint32(10).bytes(message.castHash);
+    }
+    if (message.authorFid !== 0) {
+      writer.uint32(16).uint64(message.authorFid);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelPin {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelPin();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.castHash = reader.bytes();
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.authorFid = longToNumber(reader.uint64() as Long);
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelPin {
+    return {
+      castHash: isSet(object.castHash) ? bytesFromBase64(object.castHash) : new Uint8Array(),
+      authorFid: isSet(object.authorFid) ? Number(object.authorFid) : 0,
+    };
+  },
+
+  toJSON(message: ChannelPin): unknown {
+    const obj: any = {};
+    message.castHash !== undefined &&
+      (obj.castHash = base64FromBytes(message.castHash !== undefined ? message.castHash : new Uint8Array()));
+    message.authorFid !== undefined && (obj.authorFid = Math.round(message.authorFid));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelPin>, I>>(base?: I): ChannelPin {
+    return ChannelPin.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelPin>, I>>(object: I): ChannelPin {
+    const message = createBaseChannelPin();
+    message.castHash = object.castHash ?? new Uint8Array();
+    message.authorFid = object.authorFid ?? 0;
+    return message;
+  },
+};
+
+function createBaseChannelPinResponse(): ChannelPinResponse {
+  return { pin: undefined };
+}
+
+export const ChannelPinResponse = {
+  encode(message: ChannelPinResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.pin !== undefined) {
+      ChannelPin.encode(message.pin, writer.uint32(10).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelPinResponse {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelPinResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.pin = ChannelPin.decode(reader, reader.uint32());
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelPinResponse {
+    return { pin: isSet(object.pin) ? ChannelPin.fromJSON(object.pin) : undefined };
+  },
+
+  toJSON(message: ChannelPinResponse): unknown {
+    const obj: any = {};
+    message.pin !== undefined && (obj.pin = message.pin ? ChannelPin.toJSON(message.pin) : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelPinResponse>, I>>(base?: I): ChannelPinResponse {
+    return ChannelPinResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelPinResponse>, I>>(object: I): ChannelPinResponse {
+    const message = createBaseChannelPinResponse();
+    message.pin = (object.pin !== undefined && object.pin !== null) ? ChannelPin.fromPartial(object.pin) : undefined;
+    return message;
+  },
+};
+
+function createBaseChannelModerationsRequest(): ChannelModerationsRequest {
+  return { channelId: new Uint8Array(), pageSize: undefined, pageToken: undefined, reverse: undefined };
+}
+
+export const ChannelModerationsRequest = {
+  encode(message: ChannelModerationsRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.channelId.length !== 0) {
+      writer.uint32(10).bytes(message.channelId);
+    }
+    if (message.pageSize !== undefined) {
+      writer.uint32(16).uint32(message.pageSize);
+    }
+    if (message.pageToken !== undefined) {
+      writer.uint32(26).bytes(message.pageToken);
+    }
+    if (message.reverse !== undefined) {
+      writer.uint32(32).bool(message.reverse);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelModerationsRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelModerationsRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.channelId = reader.bytes();
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.pageSize = reader.uint32();
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.pageToken = reader.bytes();
+          continue;
+        case 4:
+          if (tag != 32) {
+            break;
+          }
+
+          message.reverse = reader.bool();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelModerationsRequest {
+    return {
+      channelId: isSet(object.channelId) ? bytesFromBase64(object.channelId) : new Uint8Array(),
+      pageSize: isSet(object.pageSize) ? Number(object.pageSize) : undefined,
+      pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : undefined,
+      reverse: isSet(object.reverse) ? Boolean(object.reverse) : undefined,
+    };
+  },
+
+  toJSON(message: ChannelModerationsRequest): unknown {
+    const obj: any = {};
+    message.channelId !== undefined &&
+      (obj.channelId = base64FromBytes(message.channelId !== undefined ? message.channelId : new Uint8Array()));
+    message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
+    message.pageToken !== undefined &&
+      (obj.pageToken = message.pageToken !== undefined ? base64FromBytes(message.pageToken) : undefined);
+    message.reverse !== undefined && (obj.reverse = message.reverse);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelModerationsRequest>, I>>(base?: I): ChannelModerationsRequest {
+    return ChannelModerationsRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelModerationsRequest>, I>>(object: I): ChannelModerationsRequest {
+    const message = createBaseChannelModerationsRequest();
+    message.channelId = object.channelId ?? new Uint8Array();
+    message.pageSize = object.pageSize ?? undefined;
+    message.pageToken = object.pageToken ?? undefined;
+    message.reverse = object.reverse ?? undefined;
+    return message;
+  },
+};
+
+function createBaseChannelModeration(): ChannelModeration {
+  return { castHash: new Uint8Array(), action: 0, authorFid: 0 };
+}
+
+export const ChannelModeration = {
+  encode(message: ChannelModeration, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.castHash.length !== 0) {
+      writer.uint32(10).bytes(message.castHash);
+    }
+    if (message.action !== 0) {
+      writer.uint32(16).int32(message.action);
+    }
+    if (message.authorFid !== 0) {
+      writer.uint32(24).uint64(message.authorFid);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelModeration {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelModeration();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.castHash = reader.bytes();
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.action = reader.int32() as any;
+          continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.authorFid = longToNumber(reader.uint64() as Long);
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelModeration {
+    return {
+      castHash: isSet(object.castHash) ? bytesFromBase64(object.castHash) : new Uint8Array(),
+      action: isSet(object.action) ? channelModerateActionFromJSON(object.action) : 0,
+      authorFid: isSet(object.authorFid) ? Number(object.authorFid) : 0,
+    };
+  },
+
+  toJSON(message: ChannelModeration): unknown {
+    const obj: any = {};
+    message.castHash !== undefined &&
+      (obj.castHash = base64FromBytes(message.castHash !== undefined ? message.castHash : new Uint8Array()));
+    message.action !== undefined && (obj.action = channelModerateActionToJSON(message.action));
+    message.authorFid !== undefined && (obj.authorFid = Math.round(message.authorFid));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelModeration>, I>>(base?: I): ChannelModeration {
+    return ChannelModeration.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelModeration>, I>>(object: I): ChannelModeration {
+    const message = createBaseChannelModeration();
+    message.castHash = object.castHash ?? new Uint8Array();
+    message.action = object.action ?? 0;
+    message.authorFid = object.authorFid ?? 0;
+    return message;
+  },
+};
+
+function createBaseChannelModerationsResponse(): ChannelModerationsResponse {
+  return { moderations: [], nextPageToken: undefined };
+}
+
+export const ChannelModerationsResponse = {
+  encode(message: ChannelModerationsResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    for (const v of message.moderations) {
+      ChannelModeration.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.nextPageToken !== undefined) {
+      writer.uint32(18).bytes(message.nextPageToken);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelModerationsResponse {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelModerationsResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.moderations.push(ChannelModeration.decode(reader, reader.uint32()));
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.nextPageToken = reader.bytes();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelModerationsResponse {
+    return {
+      moderations: Array.isArray(object?.moderations)
+        ? object.moderations.map((e: any) => ChannelModeration.fromJSON(e))
+        : [],
+      nextPageToken: isSet(object.nextPageToken) ? bytesFromBase64(object.nextPageToken) : undefined,
+    };
+  },
+
+  toJSON(message: ChannelModerationsResponse): unknown {
+    const obj: any = {};
+    if (message.moderations) {
+      obj.moderations = message.moderations.map((e) => e ? ChannelModeration.toJSON(e) : undefined);
+    } else {
+      obj.moderations = [];
+    }
+    message.nextPageToken !== undefined &&
+      (obj.nextPageToken = message.nextPageToken !== undefined ? base64FromBytes(message.nextPageToken) : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelModerationsResponse>, I>>(base?: I): ChannelModerationsResponse {
+    return ChannelModerationsResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelModerationsResponse>, I>>(object: I): ChannelModerationsResponse {
+    const message = createBaseChannelModerationsResponse();
+    message.moderations = object.moderations?.map((e) => ChannelModeration.fromPartial(e)) || [];
+    message.nextPageToken = object.nextPageToken ?? undefined;
+    return message;
+  },
+};
+
+function createBaseChannelMetadataResponse(): ChannelMetadataResponse {
+  return {
+    name: undefined,
+    description: undefined,
+    imageUrl: undefined,
+    header: undefined,
+    rules: undefined,
+    castingMode: 0,
+    membershipMode: 0,
+  };
+}
+
+export const ChannelMetadataResponse = {
+  encode(message: ChannelMetadataResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.name !== undefined) {
+      writer.uint32(10).string(message.name);
+    }
+    if (message.description !== undefined) {
+      writer.uint32(18).string(message.description);
+    }
+    if (message.imageUrl !== undefined) {
+      writer.uint32(26).string(message.imageUrl);
+    }
+    if (message.header !== undefined) {
+      writer.uint32(34).string(message.header);
+    }
+    if (message.rules !== undefined) {
+      writer.uint32(42).string(message.rules);
+    }
+    if (message.castingMode !== 0) {
+      writer.uint32(48).int32(message.castingMode);
+    }
+    if (message.membershipMode !== 0) {
+      writer.uint32(56).int32(message.membershipMode);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelMetadataResponse {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelMetadataResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.name = reader.string();
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.description = reader.string();
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.imageUrl = reader.string();
+          continue;
+        case 4:
+          if (tag != 34) {
+            break;
+          }
+
+          message.header = reader.string();
+          continue;
+        case 5:
+          if (tag != 42) {
+            break;
+          }
+
+          message.rules = reader.string();
+          continue;
+        case 6:
+          if (tag != 48) {
+            break;
+          }
+
+          message.castingMode = reader.int32() as any;
+          continue;
+        case 7:
+          if (tag != 56) {
+            break;
+          }
+
+          message.membershipMode = reader.int32() as any;
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelMetadataResponse {
+    return {
+      name: isSet(object.name) ? String(object.name) : undefined,
+      description: isSet(object.description) ? String(object.description) : undefined,
+      imageUrl: isSet(object.imageUrl) ? String(object.imageUrl) : undefined,
+      header: isSet(object.header) ? String(object.header) : undefined,
+      rules: isSet(object.rules) ? String(object.rules) : undefined,
+      castingMode: isSet(object.castingMode) ? castingModeFromJSON(object.castingMode) : 0,
+      membershipMode: isSet(object.membershipMode) ? membershipModeFromJSON(object.membershipMode) : 0,
+    };
+  },
+
+  toJSON(message: ChannelMetadataResponse): unknown {
+    const obj: any = {};
+    message.name !== undefined && (obj.name = message.name);
+    message.description !== undefined && (obj.description = message.description);
+    message.imageUrl !== undefined && (obj.imageUrl = message.imageUrl);
+    message.header !== undefined && (obj.header = message.header);
+    message.rules !== undefined && (obj.rules = message.rules);
+    message.castingMode !== undefined && (obj.castingMode = castingModeToJSON(message.castingMode));
+    message.membershipMode !== undefined && (obj.membershipMode = membershipModeToJSON(message.membershipMode));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelMetadataResponse>, I>>(base?: I): ChannelMetadataResponse {
+    return ChannelMetadataResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelMetadataResponse>, I>>(object: I): ChannelMetadataResponse {
+    const message = createBaseChannelMetadataResponse();
+    message.name = object.name ?? undefined;
+    message.description = object.description ?? undefined;
+    message.imageUrl = object.imageUrl ?? undefined;
+    message.header = object.header ?? undefined;
+    message.rules = object.rules ?? undefined;
+    message.castingMode = object.castingMode ?? 0;
+    message.membershipMode = object.membershipMode ?? 0;
+    return message;
+  },
+};
+
+function createBaseChannelMembershipsByFidRequest(): ChannelMembershipsByFidRequest {
+  return { fid: 0, pageSize: undefined, pageToken: undefined, reverse: undefined };
+}
+
+export const ChannelMembershipsByFidRequest = {
+  encode(message: ChannelMembershipsByFidRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.fid !== 0) {
+      writer.uint32(8).uint64(message.fid);
+    }
+    if (message.pageSize !== undefined) {
+      writer.uint32(16).uint32(message.pageSize);
+    }
+    if (message.pageToken !== undefined) {
+      writer.uint32(26).bytes(message.pageToken);
+    }
+    if (message.reverse !== undefined) {
+      writer.uint32(32).bool(message.reverse);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelMembershipsByFidRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelMembershipsByFidRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.fid = longToNumber(reader.uint64() as Long);
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.pageSize = reader.uint32();
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.pageToken = reader.bytes();
+          continue;
+        case 4:
+          if (tag != 32) {
+            break;
+          }
+
+          message.reverse = reader.bool();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelMembershipsByFidRequest {
+    return {
+      fid: isSet(object.fid) ? Number(object.fid) : 0,
+      pageSize: isSet(object.pageSize) ? Number(object.pageSize) : undefined,
+      pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : undefined,
+      reverse: isSet(object.reverse) ? Boolean(object.reverse) : undefined,
+    };
+  },
+
+  toJSON(message: ChannelMembershipsByFidRequest): unknown {
+    const obj: any = {};
+    message.fid !== undefined && (obj.fid = Math.round(message.fid));
+    message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
+    message.pageToken !== undefined &&
+      (obj.pageToken = message.pageToken !== undefined ? base64FromBytes(message.pageToken) : undefined);
+    message.reverse !== undefined && (obj.reverse = message.reverse);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelMembershipsByFidRequest>, I>>(base?: I): ChannelMembershipsByFidRequest {
+    return ChannelMembershipsByFidRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelMembershipsByFidRequest>, I>>(
+    object: I,
+  ): ChannelMembershipsByFidRequest {
+    const message = createBaseChannelMembershipsByFidRequest();
+    message.fid = object.fid ?? 0;
+    message.pageSize = object.pageSize ?? undefined;
+    message.pageToken = object.pageToken ?? undefined;
+    message.reverse = object.reverse ?? undefined;
+    return message;
+  },
+};
+
+function createBaseChannelMembership(): ChannelMembership {
+  return { channelId: new Uint8Array(), state: 0 };
+}
+
+export const ChannelMembership = {
+  encode(message: ChannelMembership, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.channelId.length !== 0) {
+      writer.uint32(10).bytes(message.channelId);
+    }
+    if (message.state !== 0) {
+      writer.uint32(16).int32(message.state);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelMembership {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelMembership();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.channelId = reader.bytes();
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.state = reader.int32() as any;
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelMembership {
+    return {
+      channelId: isSet(object.channelId) ? bytesFromBase64(object.channelId) : new Uint8Array(),
+      state: isSet(object.state) ? channelMemberStateFromJSON(object.state) : 0,
+    };
+  },
+
+  toJSON(message: ChannelMembership): unknown {
+    const obj: any = {};
+    message.channelId !== undefined &&
+      (obj.channelId = base64FromBytes(message.channelId !== undefined ? message.channelId : new Uint8Array()));
+    message.state !== undefined && (obj.state = channelMemberStateToJSON(message.state));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelMembership>, I>>(base?: I): ChannelMembership {
+    return ChannelMembership.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelMembership>, I>>(object: I): ChannelMembership {
+    const message = createBaseChannelMembership();
+    message.channelId = object.channelId ?? new Uint8Array();
+    message.state = object.state ?? 0;
+    return message;
+  },
+};
+
+function createBaseChannelMembershipsResponse(): ChannelMembershipsResponse {
+  return { memberships: [], nextPageToken: undefined };
+}
+
+export const ChannelMembershipsResponse = {
+  encode(message: ChannelMembershipsResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    for (const v of message.memberships) {
+      ChannelMembership.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.nextPageToken !== undefined) {
+      writer.uint32(18).bytes(message.nextPageToken);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelMembershipsResponse {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelMembershipsResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.memberships.push(ChannelMembership.decode(reader, reader.uint32()));
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.nextPageToken = reader.bytes();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelMembershipsResponse {
+    return {
+      memberships: Array.isArray(object?.memberships)
+        ? object.memberships.map((e: any) => ChannelMembership.fromJSON(e))
+        : [],
+      nextPageToken: isSet(object.nextPageToken) ? bytesFromBase64(object.nextPageToken) : undefined,
+    };
+  },
+
+  toJSON(message: ChannelMembershipsResponse): unknown {
+    const obj: any = {};
+    if (message.memberships) {
+      obj.memberships = message.memberships.map((e) => e ? ChannelMembership.toJSON(e) : undefined);
+    } else {
+      obj.memberships = [];
+    }
+    message.nextPageToken !== undefined &&
+      (obj.nextPageToken = message.nextPageToken !== undefined ? base64FromBytes(message.nextPageToken) : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelMembershipsResponse>, I>>(base?: I): ChannelMembershipsResponse {
+    return ChannelMembershipsResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelMembershipsResponse>, I>>(object: I): ChannelMembershipsResponse {
+    const message = createBaseChannelMembershipsResponse();
+    message.memberships = object.memberships?.map((e) => ChannelMembership.fromPartial(e)) || [];
+    message.nextPageToken = object.nextPageToken ?? undefined;
+    return message;
+  },
+};
+
+function createBaseChannelFollower(): ChannelFollower {
+  return { fid: 0, followedAt: 0 };
+}
+
+export const ChannelFollower = {
+  encode(message: ChannelFollower, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.fid !== 0) {
+      writer.uint32(8).uint64(message.fid);
+    }
+    if (message.followedAt !== 0) {
+      writer.uint32(16).uint32(message.followedAt);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelFollower {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelFollower();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.fid = longToNumber(reader.uint64() as Long);
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.followedAt = reader.uint32();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelFollower {
+    return {
+      fid: isSet(object.fid) ? Number(object.fid) : 0,
+      followedAt: isSet(object.followedAt) ? Number(object.followedAt) : 0,
+    };
+  },
+
+  toJSON(message: ChannelFollower): unknown {
+    const obj: any = {};
+    message.fid !== undefined && (obj.fid = Math.round(message.fid));
+    message.followedAt !== undefined && (obj.followedAt = Math.round(message.followedAt));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelFollower>, I>>(base?: I): ChannelFollower {
+    return ChannelFollower.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelFollower>, I>>(object: I): ChannelFollower {
+    const message = createBaseChannelFollower();
+    message.fid = object.fid ?? 0;
+    message.followedAt = object.followedAt ?? 0;
+    return message;
+  },
+};
+
+function createBaseChannelFollowersRequest(): ChannelFollowersRequest {
+  return { channelId: new Uint8Array(), pageSize: undefined, pageToken: undefined, reverse: undefined };
+}
+
+export const ChannelFollowersRequest = {
+  encode(message: ChannelFollowersRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.channelId.length !== 0) {
+      writer.uint32(10).bytes(message.channelId);
+    }
+    if (message.pageSize !== undefined) {
+      writer.uint32(16).uint32(message.pageSize);
+    }
+    if (message.pageToken !== undefined) {
+      writer.uint32(26).bytes(message.pageToken);
+    }
+    if (message.reverse !== undefined) {
+      writer.uint32(32).bool(message.reverse);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelFollowersRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelFollowersRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.channelId = reader.bytes();
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.pageSize = reader.uint32();
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.pageToken = reader.bytes();
+          continue;
+        case 4:
+          if (tag != 32) {
+            break;
+          }
+
+          message.reverse = reader.bool();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelFollowersRequest {
+    return {
+      channelId: isSet(object.channelId) ? bytesFromBase64(object.channelId) : new Uint8Array(),
+      pageSize: isSet(object.pageSize) ? Number(object.pageSize) : undefined,
+      pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : undefined,
+      reverse: isSet(object.reverse) ? Boolean(object.reverse) : undefined,
+    };
+  },
+
+  toJSON(message: ChannelFollowersRequest): unknown {
+    const obj: any = {};
+    message.channelId !== undefined &&
+      (obj.channelId = base64FromBytes(message.channelId !== undefined ? message.channelId : new Uint8Array()));
+    message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
+    message.pageToken !== undefined &&
+      (obj.pageToken = message.pageToken !== undefined ? base64FromBytes(message.pageToken) : undefined);
+    message.reverse !== undefined && (obj.reverse = message.reverse);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelFollowersRequest>, I>>(base?: I): ChannelFollowersRequest {
+    return ChannelFollowersRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelFollowersRequest>, I>>(object: I): ChannelFollowersRequest {
+    const message = createBaseChannelFollowersRequest();
+    message.channelId = object.channelId ?? new Uint8Array();
+    message.pageSize = object.pageSize ?? undefined;
+    message.pageToken = object.pageToken ?? undefined;
+    message.reverse = object.reverse ?? undefined;
+    return message;
+  },
+};
+
+function createBaseChannelFollowersResponse(): ChannelFollowersResponse {
+  return { followers: [], nextPageToken: undefined };
+}
+
+export const ChannelFollowersResponse = {
+  encode(message: ChannelFollowersResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    for (const v of message.followers) {
+      ChannelFollower.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.nextPageToken !== undefined) {
+      writer.uint32(18).bytes(message.nextPageToken);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelFollowersResponse {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelFollowersResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.followers.push(ChannelFollower.decode(reader, reader.uint32()));
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.nextPageToken = reader.bytes();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelFollowersResponse {
+    return {
+      followers: Array.isArray(object?.followers) ? object.followers.map((e: any) => ChannelFollower.fromJSON(e)) : [],
+      nextPageToken: isSet(object.nextPageToken) ? bytesFromBase64(object.nextPageToken) : undefined,
+    };
+  },
+
+  toJSON(message: ChannelFollowersResponse): unknown {
+    const obj: any = {};
+    if (message.followers) {
+      obj.followers = message.followers.map((e) => e ? ChannelFollower.toJSON(e) : undefined);
+    } else {
+      obj.followers = [];
+    }
+    message.nextPageToken !== undefined &&
+      (obj.nextPageToken = message.nextPageToken !== undefined ? base64FromBytes(message.nextPageToken) : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelFollowersResponse>, I>>(base?: I): ChannelFollowersResponse {
+    return ChannelFollowersResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelFollowersResponse>, I>>(object: I): ChannelFollowersResponse {
+    const message = createBaseChannelFollowersResponse();
+    message.followers = object.followers?.map((e) => ChannelFollower.fromPartial(e)) || [];
+    message.nextPageToken = object.nextPageToken ?? undefined;
+    return message;
+  },
+};
+
+function createBaseChannelFollowerCountRequest(): ChannelFollowerCountRequest {
+  return { channelId: new Uint8Array() };
+}
+
+export const ChannelFollowerCountRequest = {
+  encode(message: ChannelFollowerCountRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.channelId.length !== 0) {
+      writer.uint32(10).bytes(message.channelId);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelFollowerCountRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelFollowerCountRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.channelId = reader.bytes();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelFollowerCountRequest {
+    return { channelId: isSet(object.channelId) ? bytesFromBase64(object.channelId) : new Uint8Array() };
+  },
+
+  toJSON(message: ChannelFollowerCountRequest): unknown {
+    const obj: any = {};
+    message.channelId !== undefined &&
+      (obj.channelId = base64FromBytes(message.channelId !== undefined ? message.channelId : new Uint8Array()));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelFollowerCountRequest>, I>>(base?: I): ChannelFollowerCountRequest {
+    return ChannelFollowerCountRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelFollowerCountRequest>, I>>(object: I): ChannelFollowerCountRequest {
+    const message = createBaseChannelFollowerCountRequest();
+    message.channelId = object.channelId ?? new Uint8Array();
+    return message;
+  },
+};
+
+function createBaseChannelFollowerCountResponse(): ChannelFollowerCountResponse {
+  return { count: 0 };
+}
+
+export const ChannelFollowerCountResponse = {
+  encode(message: ChannelFollowerCountResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.count !== 0) {
+      writer.uint32(8).uint64(message.count);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelFollowerCountResponse {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelFollowerCountResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.count = longToNumber(reader.uint64() as Long);
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelFollowerCountResponse {
+    return { count: isSet(object.count) ? Number(object.count) : 0 };
+  },
+
+  toJSON(message: ChannelFollowerCountResponse): unknown {
+    const obj: any = {};
+    message.count !== undefined && (obj.count = Math.round(message.count));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelFollowerCountResponse>, I>>(base?: I): ChannelFollowerCountResponse {
+    return ChannelFollowerCountResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelFollowerCountResponse>, I>>(object: I): ChannelFollowerCountResponse {
+    const message = createBaseChannelFollowerCountResponse();
+    message.count = object.count ?? 0;
+    return message;
+  },
+};
+
+function createBaseChannelFollow(): ChannelFollow {
+  return { channelId: new Uint8Array(), followedAt: 0 };
+}
+
+export const ChannelFollow = {
+  encode(message: ChannelFollow, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.channelId.length !== 0) {
+      writer.uint32(10).bytes(message.channelId);
+    }
+    if (message.followedAt !== 0) {
+      writer.uint32(16).uint32(message.followedAt);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelFollow {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelFollow();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.channelId = reader.bytes();
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.followedAt = reader.uint32();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelFollow {
+    return {
+      channelId: isSet(object.channelId) ? bytesFromBase64(object.channelId) : new Uint8Array(),
+      followedAt: isSet(object.followedAt) ? Number(object.followedAt) : 0,
+    };
+  },
+
+  toJSON(message: ChannelFollow): unknown {
+    const obj: any = {};
+    message.channelId !== undefined &&
+      (obj.channelId = base64FromBytes(message.channelId !== undefined ? message.channelId : new Uint8Array()));
+    message.followedAt !== undefined && (obj.followedAt = Math.round(message.followedAt));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelFollow>, I>>(base?: I): ChannelFollow {
+    return ChannelFollow.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelFollow>, I>>(object: I): ChannelFollow {
+    const message = createBaseChannelFollow();
+    message.channelId = object.channelId ?? new Uint8Array();
+    message.followedAt = object.followedAt ?? 0;
+    return message;
+  },
+};
+
+function createBaseChannelFollowsRequest(): ChannelFollowsRequest {
+  return { fid: 0, pageSize: undefined, pageToken: undefined, reverse: undefined };
+}
+
+export const ChannelFollowsRequest = {
+  encode(message: ChannelFollowsRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.fid !== 0) {
+      writer.uint32(8).uint64(message.fid);
+    }
+    if (message.pageSize !== undefined) {
+      writer.uint32(16).uint32(message.pageSize);
+    }
+    if (message.pageToken !== undefined) {
+      writer.uint32(26).bytes(message.pageToken);
+    }
+    if (message.reverse !== undefined) {
+      writer.uint32(32).bool(message.reverse);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelFollowsRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelFollowsRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.fid = longToNumber(reader.uint64() as Long);
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.pageSize = reader.uint32();
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.pageToken = reader.bytes();
+          continue;
+        case 4:
+          if (tag != 32) {
+            break;
+          }
+
+          message.reverse = reader.bool();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelFollowsRequest {
+    return {
+      fid: isSet(object.fid) ? Number(object.fid) : 0,
+      pageSize: isSet(object.pageSize) ? Number(object.pageSize) : undefined,
+      pageToken: isSet(object.pageToken) ? bytesFromBase64(object.pageToken) : undefined,
+      reverse: isSet(object.reverse) ? Boolean(object.reverse) : undefined,
+    };
+  },
+
+  toJSON(message: ChannelFollowsRequest): unknown {
+    const obj: any = {};
+    message.fid !== undefined && (obj.fid = Math.round(message.fid));
+    message.pageSize !== undefined && (obj.pageSize = Math.round(message.pageSize));
+    message.pageToken !== undefined &&
+      (obj.pageToken = message.pageToken !== undefined ? base64FromBytes(message.pageToken) : undefined);
+    message.reverse !== undefined && (obj.reverse = message.reverse);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelFollowsRequest>, I>>(base?: I): ChannelFollowsRequest {
+    return ChannelFollowsRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelFollowsRequest>, I>>(object: I): ChannelFollowsRequest {
+    const message = createBaseChannelFollowsRequest();
+    message.fid = object.fid ?? 0;
+    message.pageSize = object.pageSize ?? undefined;
+    message.pageToken = object.pageToken ?? undefined;
+    message.reverse = object.reverse ?? undefined;
+    return message;
+  },
+};
+
+function createBaseChannelFollowsResponse(): ChannelFollowsResponse {
+  return { follows: [], nextPageToken: undefined };
+}
+
+export const ChannelFollowsResponse = {
+  encode(message: ChannelFollowsResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    for (const v of message.follows) {
+      ChannelFollow.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.nextPageToken !== undefined) {
+      writer.uint32(18).bytes(message.nextPageToken);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelFollowsResponse {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelFollowsResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.follows.push(ChannelFollow.decode(reader, reader.uint32()));
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.nextPageToken = reader.bytes();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelFollowsResponse {
+    return {
+      follows: Array.isArray(object?.follows) ? object.follows.map((e: any) => ChannelFollow.fromJSON(e)) : [],
+      nextPageToken: isSet(object.nextPageToken) ? bytesFromBase64(object.nextPageToken) : undefined,
+    };
+  },
+
+  toJSON(message: ChannelFollowsResponse): unknown {
+    const obj: any = {};
+    if (message.follows) {
+      obj.follows = message.follows.map((e) => e ? ChannelFollow.toJSON(e) : undefined);
+    } else {
+      obj.follows = [];
+    }
+    message.nextPageToken !== undefined &&
+      (obj.nextPageToken = message.nextPageToken !== undefined ? base64FromBytes(message.nextPageToken) : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelFollowsResponse>, I>>(base?: I): ChannelFollowsResponse {
+    return ChannelFollowsResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelFollowsResponse>, I>>(object: I): ChannelFollowsResponse {
+    const message = createBaseChannelFollowsResponse();
+    message.follows = object.follows?.map((e) => ChannelFollow.fromPartial(e)) || [];
+    message.nextPageToken = object.nextPageToken ?? undefined;
+    return message;
+  },
+};
+
+function createBaseIsFollowingChannelRequest(): IsFollowingChannelRequest {
+  return { fid: 0, channelId: new Uint8Array() };
+}
+
+export const IsFollowingChannelRequest = {
+  encode(message: IsFollowingChannelRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.fid !== 0) {
+      writer.uint32(8).uint64(message.fid);
+    }
+    if (message.channelId.length !== 0) {
+      writer.uint32(18).bytes(message.channelId);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): IsFollowingChannelRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseIsFollowingChannelRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.fid = longToNumber(reader.uint64() as Long);
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.channelId = reader.bytes();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): IsFollowingChannelRequest {
+    return {
+      fid: isSet(object.fid) ? Number(object.fid) : 0,
+      channelId: isSet(object.channelId) ? bytesFromBase64(object.channelId) : new Uint8Array(),
+    };
+  },
+
+  toJSON(message: IsFollowingChannelRequest): unknown {
+    const obj: any = {};
+    message.fid !== undefined && (obj.fid = Math.round(message.fid));
+    message.channelId !== undefined &&
+      (obj.channelId = base64FromBytes(message.channelId !== undefined ? message.channelId : new Uint8Array()));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<IsFollowingChannelRequest>, I>>(base?: I): IsFollowingChannelRequest {
+    return IsFollowingChannelRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<IsFollowingChannelRequest>, I>>(object: I): IsFollowingChannelRequest {
+    const message = createBaseIsFollowingChannelRequest();
+    message.fid = object.fid ?? 0;
+    message.channelId = object.channelId ?? new Uint8Array();
+    return message;
+  },
+};
+
+function createBaseIsFollowingChannelResponse(): IsFollowingChannelResponse {
+  return { following: false, followedAt: undefined };
+}
+
+export const IsFollowingChannelResponse = {
+  encode(message: IsFollowingChannelResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.following === true) {
+      writer.uint32(8).bool(message.following);
+    }
+    if (message.followedAt !== undefined) {
+      writer.uint32(16).uint32(message.followedAt);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): IsFollowingChannelResponse {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseIsFollowingChannelResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.following = reader.bool();
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.followedAt = reader.uint32();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): IsFollowingChannelResponse {
+    return {
+      following: isSet(object.following) ? Boolean(object.following) : false,
+      followedAt: isSet(object.followedAt) ? Number(object.followedAt) : undefined,
+    };
+  },
+
+  toJSON(message: IsFollowingChannelResponse): unknown {
+    const obj: any = {};
+    message.following !== undefined && (obj.following = message.following);
+    message.followedAt !== undefined && (obj.followedAt = Math.round(message.followedAt));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<IsFollowingChannelResponse>, I>>(base?: I): IsFollowingChannelResponse {
+    return IsFollowingChannelResponse.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<IsFollowingChannelResponse>, I>>(object: I): IsFollowingChannelResponse {
+    const message = createBaseIsFollowingChannelResponse();
+    message.following = object.following ?? false;
+    message.followedAt = object.followedAt ?? undefined;
     return message;
   },
 };
@@ -5322,13 +8315,16 @@ export const GetConnectedPeersRequest = {
 };
 
 function createBaseGetConnectedPeersResponse(): GetConnectedPeersResponse {
-  return { contacts: [] };
+  return { contacts: [], peers: [] };
 }
 
 export const GetConnectedPeersResponse = {
   encode(message: GetConnectedPeersResponse, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
     for (const v of message.contacts) {
       ContactInfoBody.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    for (const v of message.peers) {
+      ConnectedPeer.encode(v!, writer.uint32(18).fork()).ldelim();
     }
     return writer;
   },
@@ -5347,6 +8343,13 @@ export const GetConnectedPeersResponse = {
 
           message.contacts.push(ContactInfoBody.decode(reader, reader.uint32()));
           continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.peers.push(ConnectedPeer.decode(reader, reader.uint32()));
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -5359,6 +8362,7 @@ export const GetConnectedPeersResponse = {
   fromJSON(object: any): GetConnectedPeersResponse {
     return {
       contacts: Array.isArray(object?.contacts) ? object.contacts.map((e: any) => ContactInfoBody.fromJSON(e)) : [],
+      peers: Array.isArray(object?.peers) ? object.peers.map((e: any) => ConnectedPeer.fromJSON(e)) : [],
     };
   },
 
@@ -5368,6 +8372,11 @@ export const GetConnectedPeersResponse = {
       obj.contacts = message.contacts.map((e) => e ? ContactInfoBody.toJSON(e) : undefined);
     } else {
       obj.contacts = [];
+    }
+    if (message.peers) {
+      obj.peers = message.peers.map((e) => e ? ConnectedPeer.toJSON(e) : undefined);
+    } else {
+      obj.peers = [];
     }
     return obj;
   },
@@ -5379,6 +8388,1064 @@ export const GetConnectedPeersResponse = {
   fromPartial<I extends Exact<DeepPartial<GetConnectedPeersResponse>, I>>(object: I): GetConnectedPeersResponse {
     const message = createBaseGetConnectedPeersResponse();
     message.contacts = object.contacts?.map((e) => ContactInfoBody.fromPartial(e)) || [];
+    message.peers = object.peers?.map((e) => ConnectedPeer.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBaseConnectedPeer(): ConnectedPeer {
+  return { source: 0, contactInfo: undefined, peerId: new Uint8Array(), observedAddress: "" };
+}
+
+export const ConnectedPeer = {
+  encode(message: ConnectedPeer, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.source !== 0) {
+      writer.uint32(8).int32(message.source);
+    }
+    if (message.contactInfo !== undefined) {
+      ContactInfoBody.encode(message.contactInfo, writer.uint32(18).fork()).ldelim();
+    }
+    if (message.peerId.length !== 0) {
+      writer.uint32(26).bytes(message.peerId);
+    }
+    if (message.observedAddress !== "") {
+      writer.uint32(34).string(message.observedAddress);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ConnectedPeer {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseConnectedPeer();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.source = reader.int32() as any;
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.contactInfo = ContactInfoBody.decode(reader, reader.uint32());
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.peerId = reader.bytes();
+          continue;
+        case 4:
+          if (tag != 34) {
+            break;
+          }
+
+          message.observedAddress = reader.string();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ConnectedPeer {
+    return {
+      source: isSet(object.source) ? contactSourceFromJSON(object.source) : 0,
+      contactInfo: isSet(object.contactInfo) ? ContactInfoBody.fromJSON(object.contactInfo) : undefined,
+      peerId: isSet(object.peerId) ? bytesFromBase64(object.peerId) : new Uint8Array(),
+      observedAddress: isSet(object.observedAddress) ? String(object.observedAddress) : "",
+    };
+  },
+
+  toJSON(message: ConnectedPeer): unknown {
+    const obj: any = {};
+    message.source !== undefined && (obj.source = contactSourceToJSON(message.source));
+    message.contactInfo !== undefined &&
+      (obj.contactInfo = message.contactInfo ? ContactInfoBody.toJSON(message.contactInfo) : undefined);
+    message.peerId !== undefined &&
+      (obj.peerId = base64FromBytes(message.peerId !== undefined ? message.peerId : new Uint8Array()));
+    message.observedAddress !== undefined && (obj.observedAddress = message.observedAddress);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ConnectedPeer>, I>>(base?: I): ConnectedPeer {
+    return ConnectedPeer.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ConnectedPeer>, I>>(object: I): ConnectedPeer {
+    const message = createBaseConnectedPeer();
+    message.source = object.source ?? 0;
+    message.contactInfo = (object.contactInfo !== undefined && object.contactInfo !== null)
+      ? ContactInfoBody.fromPartial(object.contactInfo)
+      : undefined;
+    message.peerId = object.peerId ?? new Uint8Array();
+    message.observedAddress = object.observedAddress ?? "";
+    return message;
+  },
+};
+
+function createBaseGetMeshViewRequest(): GetMeshViewRequest {
+  return { validatorsOnly: false, ttl: 0, visitedPeerIds: [] };
+}
+
+export const GetMeshViewRequest = {
+  encode(message: GetMeshViewRequest, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.validatorsOnly === true) {
+      writer.uint32(8).bool(message.validatorsOnly);
+    }
+    if (message.ttl !== 0) {
+      writer.uint32(16).uint32(message.ttl);
+    }
+    for (const v of message.visitedPeerIds) {
+      writer.uint32(26).bytes(v!);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): GetMeshViewRequest {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGetMeshViewRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 8) {
+            break;
+          }
+
+          message.validatorsOnly = reader.bool();
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.ttl = reader.uint32();
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.visitedPeerIds.push(reader.bytes());
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): GetMeshViewRequest {
+    return {
+      validatorsOnly: isSet(object.validatorsOnly) ? Boolean(object.validatorsOnly) : false,
+      ttl: isSet(object.ttl) ? Number(object.ttl) : 0,
+      visitedPeerIds: Array.isArray(object?.visitedPeerIds)
+        ? object.visitedPeerIds.map((e: any) => bytesFromBase64(e))
+        : [],
+    };
+  },
+
+  toJSON(message: GetMeshViewRequest): unknown {
+    const obj: any = {};
+    message.validatorsOnly !== undefined && (obj.validatorsOnly = message.validatorsOnly);
+    message.ttl !== undefined && (obj.ttl = Math.round(message.ttl));
+    if (message.visitedPeerIds) {
+      obj.visitedPeerIds = message.visitedPeerIds.map((e) => base64FromBytes(e !== undefined ? e : new Uint8Array()));
+    } else {
+      obj.visitedPeerIds = [];
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GetMeshViewRequest>, I>>(base?: I): GetMeshViewRequest {
+    return GetMeshViewRequest.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<GetMeshViewRequest>, I>>(object: I): GetMeshViewRequest {
+    const message = createBaseGetMeshViewRequest();
+    message.validatorsOnly = object.validatorsOnly ?? false;
+    message.ttl = object.ttl ?? 0;
+    message.visitedPeerIds = object.visitedPeerIds?.map((e) => e) || [];
+    return message;
+  },
+};
+
+function createBaseGossipRate(): GossipRate {
+  return { topic: "", msgsPerSec: 0, bytesPerSec: 0, totalMsgs: 0, totalBytes: 0 };
+}
+
+export const GossipRate = {
+  encode(message: GossipRate, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.topic !== "") {
+      writer.uint32(10).string(message.topic);
+    }
+    if (message.msgsPerSec !== 0) {
+      writer.uint32(17).double(message.msgsPerSec);
+    }
+    if (message.bytesPerSec !== 0) {
+      writer.uint32(25).double(message.bytesPerSec);
+    }
+    if (message.totalMsgs !== 0) {
+      writer.uint32(32).uint64(message.totalMsgs);
+    }
+    if (message.totalBytes !== 0) {
+      writer.uint32(40).uint64(message.totalBytes);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): GossipRate {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGossipRate();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.topic = reader.string();
+          continue;
+        case 2:
+          if (tag != 17) {
+            break;
+          }
+
+          message.msgsPerSec = reader.double();
+          continue;
+        case 3:
+          if (tag != 25) {
+            break;
+          }
+
+          message.bytesPerSec = reader.double();
+          continue;
+        case 4:
+          if (tag != 32) {
+            break;
+          }
+
+          message.totalMsgs = longToNumber(reader.uint64() as Long);
+          continue;
+        case 5:
+          if (tag != 40) {
+            break;
+          }
+
+          message.totalBytes = longToNumber(reader.uint64() as Long);
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): GossipRate {
+    return {
+      topic: isSet(object.topic) ? String(object.topic) : "",
+      msgsPerSec: isSet(object.msgsPerSec) ? Number(object.msgsPerSec) : 0,
+      bytesPerSec: isSet(object.bytesPerSec) ? Number(object.bytesPerSec) : 0,
+      totalMsgs: isSet(object.totalMsgs) ? Number(object.totalMsgs) : 0,
+      totalBytes: isSet(object.totalBytes) ? Number(object.totalBytes) : 0,
+    };
+  },
+
+  toJSON(message: GossipRate): unknown {
+    const obj: any = {};
+    message.topic !== undefined && (obj.topic = message.topic);
+    message.msgsPerSec !== undefined && (obj.msgsPerSec = message.msgsPerSec);
+    message.bytesPerSec !== undefined && (obj.bytesPerSec = message.bytesPerSec);
+    message.totalMsgs !== undefined && (obj.totalMsgs = Math.round(message.totalMsgs));
+    message.totalBytes !== undefined && (obj.totalBytes = Math.round(message.totalBytes));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<GossipRate>, I>>(base?: I): GossipRate {
+    return GossipRate.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<GossipRate>, I>>(object: I): GossipRate {
+    const message = createBaseGossipRate();
+    message.topic = object.topic ?? "";
+    message.msgsPerSec = object.msgsPerSec ?? 0;
+    message.bytesPerSec = object.bytesPerSec ?? 0;
+    message.totalMsgs = object.totalMsgs ?? 0;
+    message.totalBytes = object.totalBytes ?? 0;
+    return message;
+  },
+};
+
+function createBaseTopicMembership(): TopicMembership {
+  return { topic: "", subscribed: false, inMesh: false };
+}
+
+export const TopicMembership = {
+  encode(message: TopicMembership, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.topic !== "") {
+      writer.uint32(10).string(message.topic);
+    }
+    if (message.subscribed === true) {
+      writer.uint32(16).bool(message.subscribed);
+    }
+    if (message.inMesh === true) {
+      writer.uint32(24).bool(message.inMesh);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): TopicMembership {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseTopicMembership();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.topic = reader.string();
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.subscribed = reader.bool();
+          continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.inMesh = reader.bool();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): TopicMembership {
+    return {
+      topic: isSet(object.topic) ? String(object.topic) : "",
+      subscribed: isSet(object.subscribed) ? Boolean(object.subscribed) : false,
+      inMesh: isSet(object.inMesh) ? Boolean(object.inMesh) : false,
+    };
+  },
+
+  toJSON(message: TopicMembership): unknown {
+    const obj: any = {};
+    message.topic !== undefined && (obj.topic = message.topic);
+    message.subscribed !== undefined && (obj.subscribed = message.subscribed);
+    message.inMesh !== undefined && (obj.inMesh = message.inMesh);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<TopicMembership>, I>>(base?: I): TopicMembership {
+    return TopicMembership.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<TopicMembership>, I>>(object: I): TopicMembership {
+    const message = createBaseTopicMembership();
+    message.topic = object.topic ?? "";
+    message.subscribed = object.subscribed ?? false;
+    message.inMesh = object.inMesh ?? false;
+    return message;
+  },
+};
+
+function createBaseMeshSelf(): MeshSelf {
+  return {
+    peerId: new Uint8Array(),
+    consensusPublicKey: new Uint8Array(),
+    isValidator: false,
+    gossipAddress: "",
+    rpcAddress: "",
+    snapchainVersion: "",
+    network: 0,
+    subscribedTopics: [],
+    consensusMeshSize: 0,
+    currentHeight: 0,
+  };
+}
+
+export const MeshSelf = {
+  encode(message: MeshSelf, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.peerId.length !== 0) {
+      writer.uint32(10).bytes(message.peerId);
+    }
+    if (message.consensusPublicKey.length !== 0) {
+      writer.uint32(18).bytes(message.consensusPublicKey);
+    }
+    if (message.isValidator === true) {
+      writer.uint32(24).bool(message.isValidator);
+    }
+    if (message.gossipAddress !== "") {
+      writer.uint32(34).string(message.gossipAddress);
+    }
+    if (message.rpcAddress !== "") {
+      writer.uint32(42).string(message.rpcAddress);
+    }
+    if (message.snapchainVersion !== "") {
+      writer.uint32(50).string(message.snapchainVersion);
+    }
+    if (message.network !== 0) {
+      writer.uint32(56).int32(message.network);
+    }
+    for (const v of message.subscribedTopics) {
+      writer.uint32(66).string(v!);
+    }
+    if (message.consensusMeshSize !== 0) {
+      writer.uint32(72).uint32(message.consensusMeshSize);
+    }
+    if (message.currentHeight !== 0) {
+      writer.uint32(80).uint64(message.currentHeight);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): MeshSelf {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseMeshSelf();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.peerId = reader.bytes();
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.consensusPublicKey = reader.bytes();
+          continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.isValidator = reader.bool();
+          continue;
+        case 4:
+          if (tag != 34) {
+            break;
+          }
+
+          message.gossipAddress = reader.string();
+          continue;
+        case 5:
+          if (tag != 42) {
+            break;
+          }
+
+          message.rpcAddress = reader.string();
+          continue;
+        case 6:
+          if (tag != 50) {
+            break;
+          }
+
+          message.snapchainVersion = reader.string();
+          continue;
+        case 7:
+          if (tag != 56) {
+            break;
+          }
+
+          message.network = reader.int32() as any;
+          continue;
+        case 8:
+          if (tag != 66) {
+            break;
+          }
+
+          message.subscribedTopics.push(reader.string());
+          continue;
+        case 9:
+          if (tag != 72) {
+            break;
+          }
+
+          message.consensusMeshSize = reader.uint32();
+          continue;
+        case 10:
+          if (tag != 80) {
+            break;
+          }
+
+          message.currentHeight = longToNumber(reader.uint64() as Long);
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): MeshSelf {
+    return {
+      peerId: isSet(object.peerId) ? bytesFromBase64(object.peerId) : new Uint8Array(),
+      consensusPublicKey: isSet(object.consensusPublicKey)
+        ? bytesFromBase64(object.consensusPublicKey)
+        : new Uint8Array(),
+      isValidator: isSet(object.isValidator) ? Boolean(object.isValidator) : false,
+      gossipAddress: isSet(object.gossipAddress) ? String(object.gossipAddress) : "",
+      rpcAddress: isSet(object.rpcAddress) ? String(object.rpcAddress) : "",
+      snapchainVersion: isSet(object.snapchainVersion) ? String(object.snapchainVersion) : "",
+      network: isSet(object.network) ? farcasterNetworkFromJSON(object.network) : 0,
+      subscribedTopics: Array.isArray(object?.subscribedTopics)
+        ? object.subscribedTopics.map((e: any) => String(e))
+        : [],
+      consensusMeshSize: isSet(object.consensusMeshSize) ? Number(object.consensusMeshSize) : 0,
+      currentHeight: isSet(object.currentHeight) ? Number(object.currentHeight) : 0,
+    };
+  },
+
+  toJSON(message: MeshSelf): unknown {
+    const obj: any = {};
+    message.peerId !== undefined &&
+      (obj.peerId = base64FromBytes(message.peerId !== undefined ? message.peerId : new Uint8Array()));
+    message.consensusPublicKey !== undefined &&
+      (obj.consensusPublicKey = base64FromBytes(
+        message.consensusPublicKey !== undefined ? message.consensusPublicKey : new Uint8Array(),
+      ));
+    message.isValidator !== undefined && (obj.isValidator = message.isValidator);
+    message.gossipAddress !== undefined && (obj.gossipAddress = message.gossipAddress);
+    message.rpcAddress !== undefined && (obj.rpcAddress = message.rpcAddress);
+    message.snapchainVersion !== undefined && (obj.snapchainVersion = message.snapchainVersion);
+    message.network !== undefined && (obj.network = farcasterNetworkToJSON(message.network));
+    if (message.subscribedTopics) {
+      obj.subscribedTopics = message.subscribedTopics.map((e) => e);
+    } else {
+      obj.subscribedTopics = [];
+    }
+    message.consensusMeshSize !== undefined && (obj.consensusMeshSize = Math.round(message.consensusMeshSize));
+    message.currentHeight !== undefined && (obj.currentHeight = Math.round(message.currentHeight));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MeshSelf>, I>>(base?: I): MeshSelf {
+    return MeshSelf.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<MeshSelf>, I>>(object: I): MeshSelf {
+    const message = createBaseMeshSelf();
+    message.peerId = object.peerId ?? new Uint8Array();
+    message.consensusPublicKey = object.consensusPublicKey ?? new Uint8Array();
+    message.isValidator = object.isValidator ?? false;
+    message.gossipAddress = object.gossipAddress ?? "";
+    message.rpcAddress = object.rpcAddress ?? "";
+    message.snapchainVersion = object.snapchainVersion ?? "";
+    message.network = object.network ?? 0;
+    message.subscribedTopics = object.subscribedTopics?.map((e) => e) || [];
+    message.consensusMeshSize = object.consensusMeshSize ?? 0;
+    message.currentHeight = object.currentHeight ?? 0;
+    return message;
+  },
+};
+
+function createBaseMeshPeer(): MeshPeer {
+  return {
+    peerId: new Uint8Array(),
+    nodeType: 0,
+    consensusPublicKey: undefined,
+    connected: false,
+    directPeer: false,
+    contactSource: 0,
+    contactInfo: undefined,
+    observedAddress: "",
+    topics: [],
+    gossipRates: [],
+  };
+}
+
+export const MeshPeer = {
+  encode(message: MeshPeer, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.peerId.length !== 0) {
+      writer.uint32(10).bytes(message.peerId);
+    }
+    if (message.nodeType !== 0) {
+      writer.uint32(16).int32(message.nodeType);
+    }
+    if (message.consensusPublicKey !== undefined) {
+      writer.uint32(26).bytes(message.consensusPublicKey);
+    }
+    if (message.connected === true) {
+      writer.uint32(32).bool(message.connected);
+    }
+    if (message.directPeer === true) {
+      writer.uint32(40).bool(message.directPeer);
+    }
+    if (message.contactSource !== 0) {
+      writer.uint32(48).int32(message.contactSource);
+    }
+    if (message.contactInfo !== undefined) {
+      ContactInfoBody.encode(message.contactInfo, writer.uint32(58).fork()).ldelim();
+    }
+    if (message.observedAddress !== "") {
+      writer.uint32(66).string(message.observedAddress);
+    }
+    for (const v of message.topics) {
+      TopicMembership.encode(v!, writer.uint32(74).fork()).ldelim();
+    }
+    for (const v of message.gossipRates) {
+      GossipRate.encode(v!, writer.uint32(82).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): MeshPeer {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseMeshPeer();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.peerId = reader.bytes();
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.nodeType = reader.int32() as any;
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.consensusPublicKey = reader.bytes();
+          continue;
+        case 4:
+          if (tag != 32) {
+            break;
+          }
+
+          message.connected = reader.bool();
+          continue;
+        case 5:
+          if (tag != 40) {
+            break;
+          }
+
+          message.directPeer = reader.bool();
+          continue;
+        case 6:
+          if (tag != 48) {
+            break;
+          }
+
+          message.contactSource = reader.int32() as any;
+          continue;
+        case 7:
+          if (tag != 58) {
+            break;
+          }
+
+          message.contactInfo = ContactInfoBody.decode(reader, reader.uint32());
+          continue;
+        case 8:
+          if (tag != 66) {
+            break;
+          }
+
+          message.observedAddress = reader.string();
+          continue;
+        case 9:
+          if (tag != 74) {
+            break;
+          }
+
+          message.topics.push(TopicMembership.decode(reader, reader.uint32()));
+          continue;
+        case 10:
+          if (tag != 82) {
+            break;
+          }
+
+          message.gossipRates.push(GossipRate.decode(reader, reader.uint32()));
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): MeshPeer {
+    return {
+      peerId: isSet(object.peerId) ? bytesFromBase64(object.peerId) : new Uint8Array(),
+      nodeType: isSet(object.nodeType) ? meshNodeTypeFromJSON(object.nodeType) : 0,
+      consensusPublicKey: isSet(object.consensusPublicKey) ? bytesFromBase64(object.consensusPublicKey) : undefined,
+      connected: isSet(object.connected) ? Boolean(object.connected) : false,
+      directPeer: isSet(object.directPeer) ? Boolean(object.directPeer) : false,
+      contactSource: isSet(object.contactSource) ? contactSourceFromJSON(object.contactSource) : 0,
+      contactInfo: isSet(object.contactInfo) ? ContactInfoBody.fromJSON(object.contactInfo) : undefined,
+      observedAddress: isSet(object.observedAddress) ? String(object.observedAddress) : "",
+      topics: Array.isArray(object?.topics) ? object.topics.map((e: any) => TopicMembership.fromJSON(e)) : [],
+      gossipRates: Array.isArray(object?.gossipRates) ? object.gossipRates.map((e: any) => GossipRate.fromJSON(e)) : [],
+    };
+  },
+
+  toJSON(message: MeshPeer): unknown {
+    const obj: any = {};
+    message.peerId !== undefined &&
+      (obj.peerId = base64FromBytes(message.peerId !== undefined ? message.peerId : new Uint8Array()));
+    message.nodeType !== undefined && (obj.nodeType = meshNodeTypeToJSON(message.nodeType));
+    message.consensusPublicKey !== undefined && (obj.consensusPublicKey = message.consensusPublicKey !== undefined
+      ? base64FromBytes(message.consensusPublicKey)
+      : undefined);
+    message.connected !== undefined && (obj.connected = message.connected);
+    message.directPeer !== undefined && (obj.directPeer = message.directPeer);
+    message.contactSource !== undefined && (obj.contactSource = contactSourceToJSON(message.contactSource));
+    message.contactInfo !== undefined &&
+      (obj.contactInfo = message.contactInfo ? ContactInfoBody.toJSON(message.contactInfo) : undefined);
+    message.observedAddress !== undefined && (obj.observedAddress = message.observedAddress);
+    if (message.topics) {
+      obj.topics = message.topics.map((e) => e ? TopicMembership.toJSON(e) : undefined);
+    } else {
+      obj.topics = [];
+    }
+    if (message.gossipRates) {
+      obj.gossipRates = message.gossipRates.map((e) => e ? GossipRate.toJSON(e) : undefined);
+    } else {
+      obj.gossipRates = [];
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MeshPeer>, I>>(base?: I): MeshPeer {
+    return MeshPeer.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<MeshPeer>, I>>(object: I): MeshPeer {
+    const message = createBaseMeshPeer();
+    message.peerId = object.peerId ?? new Uint8Array();
+    message.nodeType = object.nodeType ?? 0;
+    message.consensusPublicKey = object.consensusPublicKey ?? undefined;
+    message.connected = object.connected ?? false;
+    message.directPeer = object.directPeer ?? false;
+    message.contactSource = object.contactSource ?? 0;
+    message.contactInfo = (object.contactInfo !== undefined && object.contactInfo !== null)
+      ? ContactInfoBody.fromPartial(object.contactInfo)
+      : undefined;
+    message.observedAddress = object.observedAddress ?? "";
+    message.topics = object.topics?.map((e) => TopicMembership.fromPartial(e)) || [];
+    message.gossipRates = object.gossipRates?.map((e) => GossipRate.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBaseMeshView(): MeshView {
+  return { local: undefined, peers: [], generatedAt: 0 };
+}
+
+export const MeshView = {
+  encode(message: MeshView, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.local !== undefined) {
+      MeshSelf.encode(message.local, writer.uint32(10).fork()).ldelim();
+    }
+    for (const v of message.peers) {
+      MeshPeer.encode(v!, writer.uint32(18).fork()).ldelim();
+    }
+    if (message.generatedAt !== 0) {
+      writer.uint32(24).uint64(message.generatedAt);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): MeshView {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseMeshView();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.local = MeshSelf.decode(reader, reader.uint32());
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.peers.push(MeshPeer.decode(reader, reader.uint32()));
+          continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.generatedAt = longToNumber(reader.uint64() as Long);
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): MeshView {
+    return {
+      local: isSet(object.local) ? MeshSelf.fromJSON(object.local) : undefined,
+      peers: Array.isArray(object?.peers) ? object.peers.map((e: any) => MeshPeer.fromJSON(e)) : [],
+      generatedAt: isSet(object.generatedAt) ? Number(object.generatedAt) : 0,
+    };
+  },
+
+  toJSON(message: MeshView): unknown {
+    const obj: any = {};
+    message.local !== undefined && (obj.local = message.local ? MeshSelf.toJSON(message.local) : undefined);
+    if (message.peers) {
+      obj.peers = message.peers.map((e) => e ? MeshPeer.toJSON(e) : undefined);
+    } else {
+      obj.peers = [];
+    }
+    message.generatedAt !== undefined && (obj.generatedAt = Math.round(message.generatedAt));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MeshView>, I>>(base?: I): MeshView {
+    return MeshView.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<MeshView>, I>>(object: I): MeshView {
+    const message = createBaseMeshView();
+    message.local = (object.local !== undefined && object.local !== null)
+      ? MeshSelf.fromPartial(object.local)
+      : undefined;
+    message.peers = object.peers?.map((e) => MeshPeer.fromPartial(e)) || [];
+    message.generatedAt = object.generatedAt ?? 0;
+    return message;
+  },
+};
+
+function createBaseUnreachableNode(): UnreachableNode {
+  return { peerId: new Uint8Array(), consensusPublicKey: new Uint8Array(), reason: "" };
+}
+
+export const UnreachableNode = {
+  encode(message: UnreachableNode, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.peerId.length !== 0) {
+      writer.uint32(10).bytes(message.peerId);
+    }
+    if (message.consensusPublicKey.length !== 0) {
+      writer.uint32(18).bytes(message.consensusPublicKey);
+    }
+    if (message.reason !== "") {
+      writer.uint32(26).string(message.reason);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): UnreachableNode {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseUnreachableNode();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.peerId = reader.bytes();
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.consensusPublicKey = reader.bytes();
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.reason = reader.string();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): UnreachableNode {
+    return {
+      peerId: isSet(object.peerId) ? bytesFromBase64(object.peerId) : new Uint8Array(),
+      consensusPublicKey: isSet(object.consensusPublicKey)
+        ? bytesFromBase64(object.consensusPublicKey)
+        : new Uint8Array(),
+      reason: isSet(object.reason) ? String(object.reason) : "",
+    };
+  },
+
+  toJSON(message: UnreachableNode): unknown {
+    const obj: any = {};
+    message.peerId !== undefined &&
+      (obj.peerId = base64FromBytes(message.peerId !== undefined ? message.peerId : new Uint8Array()));
+    message.consensusPublicKey !== undefined &&
+      (obj.consensusPublicKey = base64FromBytes(
+        message.consensusPublicKey !== undefined ? message.consensusPublicKey : new Uint8Array(),
+      ));
+    message.reason !== undefined && (obj.reason = message.reason);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<UnreachableNode>, I>>(base?: I): UnreachableNode {
+    return UnreachableNode.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<UnreachableNode>, I>>(object: I): UnreachableNode {
+    const message = createBaseUnreachableNode();
+    message.peerId = object.peerId ?? new Uint8Array();
+    message.consensusPublicKey = object.consensusPublicKey ?? new Uint8Array();
+    message.reason = object.reason ?? "";
+    return message;
+  },
+};
+
+function createBaseMeshTopology(): MeshTopology {
+  return { nodes: [], unreachable: [], generatedAt: 0 };
+}
+
+export const MeshTopology = {
+  encode(message: MeshTopology, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    for (const v of message.nodes) {
+      MeshView.encode(v!, writer.uint32(10).fork()).ldelim();
+    }
+    for (const v of message.unreachable) {
+      UnreachableNode.encode(v!, writer.uint32(18).fork()).ldelim();
+    }
+    if (message.generatedAt !== 0) {
+      writer.uint32(24).uint64(message.generatedAt);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): MeshTopology {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseMeshTopology();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.nodes.push(MeshView.decode(reader, reader.uint32()));
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.unreachable.push(UnreachableNode.decode(reader, reader.uint32()));
+          continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.generatedAt = longToNumber(reader.uint64() as Long);
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): MeshTopology {
+    return {
+      nodes: Array.isArray(object?.nodes) ? object.nodes.map((e: any) => MeshView.fromJSON(e)) : [],
+      unreachable: Array.isArray(object?.unreachable)
+        ? object.unreachable.map((e: any) => UnreachableNode.fromJSON(e))
+        : [],
+      generatedAt: isSet(object.generatedAt) ? Number(object.generatedAt) : 0,
+    };
+  },
+
+  toJSON(message: MeshTopology): unknown {
+    const obj: any = {};
+    if (message.nodes) {
+      obj.nodes = message.nodes.map((e) => e ? MeshView.toJSON(e) : undefined);
+    } else {
+      obj.nodes = [];
+    }
+    if (message.unreachable) {
+      obj.unreachable = message.unreachable.map((e) => e ? UnreachableNode.toJSON(e) : undefined);
+    } else {
+      obj.unreachable = [];
+    }
+    message.generatedAt !== undefined && (obj.generatedAt = Math.round(message.generatedAt));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MeshTopology>, I>>(base?: I): MeshTopology {
+    return MeshTopology.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<MeshTopology>, I>>(object: I): MeshTopology {
+    const message = createBaseMeshTopology();
+    message.nodes = object.nodes?.map((e) => MeshView.fromPartial(e)) || [];
+    message.unreachable = object.unreachable?.map((e) => UnreachableNode.fromPartial(e)) || [];
+    message.generatedAt = object.generatedAt ?? 0;
     return message;
   },
 };

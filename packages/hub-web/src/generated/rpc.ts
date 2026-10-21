@@ -10,6 +10,28 @@ import { OnChainEvent } from "./onchain_event";
 import {
   BlocksRequest,
   CastsByParentRequest,
+  ChannelFollowerCountRequest,
+  ChannelFollowerCountResponse,
+  ChannelFollowersRequest,
+  ChannelFollowersResponse,
+  ChannelFollowsRequest,
+  ChannelFollowsResponse,
+  ChannelMemberRequest,
+  ChannelMemberResponse,
+  ChannelMembershipsByFidRequest,
+  ChannelMembershipsResponse,
+  ChannelMembersRequest,
+  ChannelMembersResponse,
+  ChannelMetadataResponse,
+  ChannelModerationsRequest,
+  ChannelModerationsResponse,
+  ChannelOwnerRequest,
+  ChannelOwnerResponse,
+  ChannelPinResponse,
+  ChannelRequest,
+  ChannelsByAddressRequest,
+  ChannelsByFidRequest,
+  ChannelsResponse,
   EventRequest,
   EventsRequest,
   EventsResponse,
@@ -23,10 +45,15 @@ import {
   GetConnectedPeersResponse,
   GetInfoRequest,
   GetInfoResponse,
+  GetMeshViewRequest,
   IdRegistryEventByAddressRequest,
+  IsFollowingChannelRequest,
+  IsFollowingChannelResponse,
   LinkRequest,
   LinksByFidRequest,
   LinksByTargetRequest,
+  MeshTopology,
+  MeshView,
   MessagesResponse,
   OnChainEventRequest,
   OnChainEventResponse,
@@ -71,6 +98,13 @@ export interface HubService {
     request: DeepPartial<GetConnectedPeersRequest>,
     metadata?: grpcWeb.grpc.Metadata,
   ): Promise<GetConnectedPeersResponse>;
+  /** Mesh health & topology: this node's local view of the gossip mesh. Admin-gated. */
+  getMeshView(request: DeepPartial<GetMeshViewRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MeshView>;
+  /**
+   * Network-wide topology: centralized crawl of connected validators over the
+   * gossip port, aggregating each validator's local mesh view. Admin-gated.
+   */
+  getMeshTopology(request: DeepPartial<GetMeshViewRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MeshTopology>;
   /** Events */
   subscribe(request: DeepPartial<SubscribeRequest>, metadata?: grpcWeb.grpc.Metadata): Observable<HubEvent>;
   getEvent(request: DeepPartial<EventRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<HubEvent>;
@@ -116,6 +150,161 @@ export interface HubService {
   getSigner(request: DeepPartial<SignerRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<SignerResponse>;
   getSignersByFid(request: DeepPartial<SignersByFidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<SignersByFidResponse>;
   getOnChainEvents(request: DeepPartial<OnChainEventRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEventResponse>;
+  /**
+   * Resolves the current channel registry owner address to an fid using the
+   * shard-0 verification replica. The owner is the winning verifier of the
+   * address in that replica (greatest ts_hash, ties to the lower fid);
+   * verifications that exist only in pre-activation data-shard history do not
+   * participate. This read is not consensus.
+   *
+   * An fid of 0 means the owner's verification has not landed on shard 0 yet.
+   * It is a normal, expected state — not an error and not a lookup failure. The
+   * registration exists and the owner address is known; nothing binds that
+   * address to an fid on shard 0 yet, so there is no one to authorize.
+   *
+   * Two situations produce it: the address was never verified, or it was
+   * verified only before activation, which the shard-0 admission timestamp
+   * floor deliberately excludes. The node cannot tell them apart — both are the
+   * same absent replica row — and does not need to, because the remedy is the
+   * same either way. Surface fid 0 as "not yet", never as "abandoned".
+   *
+   * RE-VERIFICATION IS REQUIRED. There is no backfill of pre-activation
+   * verification history into the shard-0 replica, so an owner who verified
+   * their address before activation MUST submit a fresh verification of the
+   * same address afterwards for their channel to become manageable. Until they
+   * do, every permissioned write on the channel is rejected exactly as if it
+   * were unclaimed. Clients should present fid 0 as an actionable "verify your
+   * address to manage this channel" state rather than an error.
+   *
+   * Expiry is returned as-is and may be in the past. The registry contract
+   * emits no onchain event when a lapsed registration's grace period ends, so
+   * this endpoint reports the last known registration (owner address + expiry)
+   * until a later registration supersedes it; it never computes grace or
+   * release state. Callers interpret `expiry` themselves (e.g. against the
+   * deployed grace period). NOT_FOUND is returned only for a channel key with
+   * no registration record at all.
+   */
+  getChannelOwner(request: DeepPartial<ChannelOwnerRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<ChannelOwnerResponse>;
+  /**
+   * Lists channels for a raw 20-byte EVM owner address, including lapsed
+   * registrations (expiry in the past) until a later registration supersedes
+   * them — see GetChannelOwner's expiry note; callers interpret `expiry`
+   * themselves. Owner resolution uses the shard-0 verification replica, as in
+   * GetChannelOwner.
+   * This read is not consensus. `page_token` is opaque bytes; callers page until
+   * `next_page_token` is unset, which marks the end of enumeration. A page that
+   * lands exactly on the last entry may return a token that yields one final
+   * empty page, so a present token means "page again", not "results guaranteed".
+   */
+  getChannelsByAddress(
+    request: DeepPartial<ChannelsByAddressRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<ChannelsResponse>;
+  /**
+   * Lists channels that currently resolve to `fid`, including lapsed
+   * registrations (see GetChannelOwner's expiry note). The node must host the
+   * fid's home shard to enumerate its verified addresses, following existing
+   * fid-routed read behavior. The final owner-winner filter uses the shard-0
+   * verification replica, as in GetChannelOwner. This read is not consensus.
+   *
+   * This is a joined read over the fid's verified EVM addresses and the channel
+   * owner-address index. The verified addresses are enumerated in ascending
+   * order, making the owner-address index key a globally ordered composite
+   * cursor across the join. `page_token` is opaque bytes and the paging contract
+   * is identical to GetChannelsByAddress: page until `next_page_token` is unset
+   * (a boundary-aligned page may return one final empty page). There is no
+   * `reverse` (addresses iterate ascending only).
+   */
+  getChannelsByFid(request: DeepPartial<ChannelsByFidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<ChannelsResponse>;
+  /**
+   * Channel-message reads use shard-0 stores. All channel_id values are the raw
+   * 32-byte registry labels; any other width is INVALID_ARGUMENT, not NOT_FOUND.
+   *
+   * The five channel_id-keyed reads below require a registered channel and
+   * return NOT_FOUND otherwise; a registered channel with no matching state
+   * returns an empty/default response or page. GetChannelMembershipsByFid is
+   * the exception: it is keyed by fid alone, performs no registration check,
+   * and therefore never returns NOT_FOUND — it can list memberships for
+   * channels the caller cannot look up individually. It and GetChannelMember
+   * reject an fid that is zero or exceeds u32 with INVALID_ARGUMENT.
+   *
+   * Paging on the three list reads follows GetChannelsByAddress: `page_token`
+   * is opaque bytes, page until `next_page_token` is unset, and a
+   * boundary-aligned page may yield one final empty page. Unlike the reads
+   * above, a token is scoped to the index that minted it — passing one channel's
+   * token to another channel (or another fid's to GetChannelMembershipsByFid)
+   * is INVALID_ARGUMENT rather than a silent cross-channel read. `page_size` is
+   * clamped to the server maximum without signalling, and `page_size: 0` is
+   * INVALID_ARGUMENT rather than an empty terminal page — omit it for the default.
+   */
+  getChannelMember(
+    request: DeepPartial<ChannelMemberRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<ChannelMemberResponse>;
+  getChannelMembers(
+    request: DeepPartial<ChannelMembersRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<ChannelMembersResponse>;
+  getChannelPin(request: DeepPartial<ChannelRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<ChannelPinResponse>;
+  getChannelModerations(
+    request: DeepPartial<ChannelModerationsRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<ChannelModerationsResponse>;
+  getChannelMetadata(request: DeepPartial<ChannelRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<ChannelMetadataResponse>;
+  getChannelMembershipsByFid(
+    request: DeepPartial<ChannelMembershipsByFidRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<ChannelMembershipsResponse>;
+  /**
+   * Channel follows. Unlike everything above, these read DATA SHARDS, not shard 0:
+   * a follow is an ordinary reaction living on its author's own shard (see
+   * ChannelFollower in request_response.proto for the message shape and for the
+   * pruning caveat).
+   *
+   * No registration check, deliberately, and so NEVER NOT_FOUND for an unknown
+   * channel — only INVALID_ARGUMENT for a channel_id that is not 32 bytes.
+   * Registration lives on shard 0, which a data-shard-only node need not host, and
+   * a follow row can legitimately exist for a tokenId that was never minted;
+   * returning NOT_FOUND would make GetChannelFollowerCount disagree with
+   * IsFollowingChannel for the same channel. An unfollowed or unknown channel
+   * returns an empty page and a count of zero.
+   *
+   * GetChannelFollowers and GetChannelFollowerCount FAN OUT across every shard,
+   * because no single shard holds a channel's whole follower set. Two consequences:
+   *
+   *   * A node that does not host all shards returns FAILED_PRECONDITION rather
+   *     than answering from the shards it has. A partial follower list is
+   *     indistinguishable from a small one, so it must not be served silently.
+   *   * `page_size` is per shard, so a page may hold up to page_size * num_shards
+   *     entries, and `page_token` encodes one cursor per shard. A token is rejected
+   *     with INVALID_ARGUMENT if its shard set does not match the node's. Page until
+   *     `next_page_token` is unset; a boundary-aligned page may yield one final
+   *     empty page. As above, `page_size: 0` is INVALID_ARGUMENT — omit it for the
+   *     default.
+   *
+   * A summed count and an enumerated follower list are read from each shard at
+   * slightly different instants, so under concurrent writes they can disagree by a
+   * few entries. Neither is stale in itself; there is just no cross-shard snapshot.
+   *
+   * GetChannelFollows and IsFollowingChannel are keyed by fid, so they answer from
+   * that fid's home shard alone and have none of the above caveats.
+   */
+  getChannelFollowers(
+    request: DeepPartial<ChannelFollowersRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<ChannelFollowersResponse>;
+  getChannelFollowerCount(
+    request: DeepPartial<ChannelFollowerCountRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<ChannelFollowerCountResponse>;
+  getChannelFollows(
+    request: DeepPartial<ChannelFollowsRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<ChannelFollowsResponse>;
+  isFollowingChannel(
+    request: DeepPartial<IsFollowingChannelRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<IsFollowingChannelResponse>;
   getIdRegistryOnChainEvent(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEvent>;
   getIdRegistryOnChainEventByAddress(
     request: DeepPartial<IdRegistryEventByAddressRequest>,
@@ -181,6 +370,8 @@ export class HubServiceClientImpl implements HubService {
     this.getInfo = this.getInfo.bind(this);
     this.getFids = this.getFids.bind(this);
     this.getConnectedPeers = this.getConnectedPeers.bind(this);
+    this.getMeshView = this.getMeshView.bind(this);
+    this.getMeshTopology = this.getMeshTopology.bind(this);
     this.subscribe = this.subscribe.bind(this);
     this.getEvent = this.getEvent.bind(this);
     this.getEvents = this.getEvents.bind(this);
@@ -203,6 +394,19 @@ export class HubServiceClientImpl implements HubService {
     this.getSigner = this.getSigner.bind(this);
     this.getSignersByFid = this.getSignersByFid.bind(this);
     this.getOnChainEvents = this.getOnChainEvents.bind(this);
+    this.getChannelOwner = this.getChannelOwner.bind(this);
+    this.getChannelsByAddress = this.getChannelsByAddress.bind(this);
+    this.getChannelsByFid = this.getChannelsByFid.bind(this);
+    this.getChannelMember = this.getChannelMember.bind(this);
+    this.getChannelMembers = this.getChannelMembers.bind(this);
+    this.getChannelPin = this.getChannelPin.bind(this);
+    this.getChannelModerations = this.getChannelModerations.bind(this);
+    this.getChannelMetadata = this.getChannelMetadata.bind(this);
+    this.getChannelMembershipsByFid = this.getChannelMembershipsByFid.bind(this);
+    this.getChannelFollowers = this.getChannelFollowers.bind(this);
+    this.getChannelFollowerCount = this.getChannelFollowerCount.bind(this);
+    this.getChannelFollows = this.getChannelFollows.bind(this);
+    this.isFollowingChannel = this.isFollowingChannel.bind(this);
     this.getIdRegistryOnChainEvent = this.getIdRegistryOnChainEvent.bind(this);
     this.getIdRegistryOnChainEventByAddress = this.getIdRegistryOnChainEventByAddress.bind(this);
     this.getCurrentStorageLimitsByFid = this.getCurrentStorageLimitsByFid.bind(this);
@@ -256,6 +460,14 @@ export class HubServiceClientImpl implements HubService {
     metadata?: grpcWeb.grpc.Metadata,
   ): Promise<GetConnectedPeersResponse> {
     return this.rpc.unary(HubServiceGetConnectedPeersDesc, GetConnectedPeersRequest.fromPartial(request), metadata);
+  }
+
+  getMeshView(request: DeepPartial<GetMeshViewRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MeshView> {
+    return this.rpc.unary(HubServiceGetMeshViewDesc, GetMeshViewRequest.fromPartial(request), metadata);
+  }
+
+  getMeshTopology(request: DeepPartial<GetMeshViewRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<MeshTopology> {
+    return this.rpc.unary(HubServiceGetMeshTopologyDesc, GetMeshViewRequest.fromPartial(request), metadata);
   }
 
   subscribe(request: DeepPartial<SubscribeRequest>, metadata?: grpcWeb.grpc.Metadata): Observable<HubEvent> {
@@ -350,6 +562,97 @@ export class HubServiceClientImpl implements HubService {
 
   getOnChainEvents(request: DeepPartial<OnChainEventRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEventResponse> {
     return this.rpc.unary(HubServiceGetOnChainEventsDesc, OnChainEventRequest.fromPartial(request), metadata);
+  }
+
+  getChannelOwner(request: DeepPartial<ChannelOwnerRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<ChannelOwnerResponse> {
+    return this.rpc.unary(HubServiceGetChannelOwnerDesc, ChannelOwnerRequest.fromPartial(request), metadata);
+  }
+
+  getChannelsByAddress(
+    request: DeepPartial<ChannelsByAddressRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<ChannelsResponse> {
+    return this.rpc.unary(HubServiceGetChannelsByAddressDesc, ChannelsByAddressRequest.fromPartial(request), metadata);
+  }
+
+  getChannelsByFid(request: DeepPartial<ChannelsByFidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<ChannelsResponse> {
+    return this.rpc.unary(HubServiceGetChannelsByFidDesc, ChannelsByFidRequest.fromPartial(request), metadata);
+  }
+
+  getChannelMember(
+    request: DeepPartial<ChannelMemberRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<ChannelMemberResponse> {
+    return this.rpc.unary(HubServiceGetChannelMemberDesc, ChannelMemberRequest.fromPartial(request), metadata);
+  }
+
+  getChannelMembers(
+    request: DeepPartial<ChannelMembersRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<ChannelMembersResponse> {
+    return this.rpc.unary(HubServiceGetChannelMembersDesc, ChannelMembersRequest.fromPartial(request), metadata);
+  }
+
+  getChannelPin(request: DeepPartial<ChannelRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<ChannelPinResponse> {
+    return this.rpc.unary(HubServiceGetChannelPinDesc, ChannelRequest.fromPartial(request), metadata);
+  }
+
+  getChannelModerations(
+    request: DeepPartial<ChannelModerationsRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<ChannelModerationsResponse> {
+    return this.rpc.unary(
+      HubServiceGetChannelModerationsDesc,
+      ChannelModerationsRequest.fromPartial(request),
+      metadata,
+    );
+  }
+
+  getChannelMetadata(request: DeepPartial<ChannelRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<ChannelMetadataResponse> {
+    return this.rpc.unary(HubServiceGetChannelMetadataDesc, ChannelRequest.fromPartial(request), metadata);
+  }
+
+  getChannelMembershipsByFid(
+    request: DeepPartial<ChannelMembershipsByFidRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<ChannelMembershipsResponse> {
+    return this.rpc.unary(
+      HubServiceGetChannelMembershipsByFidDesc,
+      ChannelMembershipsByFidRequest.fromPartial(request),
+      metadata,
+    );
+  }
+
+  getChannelFollowers(
+    request: DeepPartial<ChannelFollowersRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<ChannelFollowersResponse> {
+    return this.rpc.unary(HubServiceGetChannelFollowersDesc, ChannelFollowersRequest.fromPartial(request), metadata);
+  }
+
+  getChannelFollowerCount(
+    request: DeepPartial<ChannelFollowerCountRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<ChannelFollowerCountResponse> {
+    return this.rpc.unary(
+      HubServiceGetChannelFollowerCountDesc,
+      ChannelFollowerCountRequest.fromPartial(request),
+      metadata,
+    );
+  }
+
+  getChannelFollows(
+    request: DeepPartial<ChannelFollowsRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<ChannelFollowsResponse> {
+    return this.rpc.unary(HubServiceGetChannelFollowsDesc, ChannelFollowsRequest.fromPartial(request), metadata);
+  }
+
+  isFollowingChannel(
+    request: DeepPartial<IsFollowingChannelRequest>,
+    metadata?: grpcWeb.grpc.Metadata,
+  ): Promise<IsFollowingChannelResponse> {
+    return this.rpc.unary(HubServiceIsFollowingChannelDesc, IsFollowingChannelRequest.fromPartial(request), metadata);
   }
 
   getIdRegistryOnChainEvent(request: DeepPartial<FidRequest>, metadata?: grpcWeb.grpc.Metadata): Promise<OnChainEvent> {
@@ -646,6 +949,52 @@ export const HubServiceGetConnectedPeersDesc: UnaryMethodDefinitionish = {
   responseType: {
     deserializeBinary(data: Uint8Array) {
       const value = GetConnectedPeersResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetMeshViewDesc: UnaryMethodDefinitionish = {
+  methodName: "GetMeshView",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return GetMeshViewRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = MeshView.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetMeshTopologyDesc: UnaryMethodDefinitionish = {
+  methodName: "GetMeshTopology",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return GetMeshViewRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = MeshTopology.decode(data);
       return {
         ...value,
         toObject() {
@@ -1152,6 +1501,305 @@ export const HubServiceGetOnChainEventsDesc: UnaryMethodDefinitionish = {
   responseType: {
     deserializeBinary(data: Uint8Array) {
       const value = OnChainEventResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetChannelOwnerDesc: UnaryMethodDefinitionish = {
+  methodName: "GetChannelOwner",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return ChannelOwnerRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = ChannelOwnerResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetChannelsByAddressDesc: UnaryMethodDefinitionish = {
+  methodName: "GetChannelsByAddress",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return ChannelsByAddressRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = ChannelsResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetChannelsByFidDesc: UnaryMethodDefinitionish = {
+  methodName: "GetChannelsByFid",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return ChannelsByFidRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = ChannelsResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetChannelMemberDesc: UnaryMethodDefinitionish = {
+  methodName: "GetChannelMember",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return ChannelMemberRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = ChannelMemberResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetChannelMembersDesc: UnaryMethodDefinitionish = {
+  methodName: "GetChannelMembers",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return ChannelMembersRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = ChannelMembersResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetChannelPinDesc: UnaryMethodDefinitionish = {
+  methodName: "GetChannelPin",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return ChannelRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = ChannelPinResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetChannelModerationsDesc: UnaryMethodDefinitionish = {
+  methodName: "GetChannelModerations",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return ChannelModerationsRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = ChannelModerationsResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetChannelMetadataDesc: UnaryMethodDefinitionish = {
+  methodName: "GetChannelMetadata",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return ChannelRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = ChannelMetadataResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetChannelMembershipsByFidDesc: UnaryMethodDefinitionish = {
+  methodName: "GetChannelMembershipsByFid",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return ChannelMembershipsByFidRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = ChannelMembershipsResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetChannelFollowersDesc: UnaryMethodDefinitionish = {
+  methodName: "GetChannelFollowers",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return ChannelFollowersRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = ChannelFollowersResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetChannelFollowerCountDesc: UnaryMethodDefinitionish = {
+  methodName: "GetChannelFollowerCount",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return ChannelFollowerCountRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = ChannelFollowerCountResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceGetChannelFollowsDesc: UnaryMethodDefinitionish = {
+  methodName: "GetChannelFollows",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return ChannelFollowsRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = ChannelFollowsResponse.decode(data);
+      return {
+        ...value,
+        toObject() {
+          return value;
+        },
+      };
+    },
+  } as any,
+};
+
+export const HubServiceIsFollowingChannelDesc: UnaryMethodDefinitionish = {
+  methodName: "IsFollowingChannel",
+  service: HubServiceDesc,
+  requestStream: false,
+  responseStream: false,
+  requestType: {
+    serializeBinary() {
+      return IsFollowingChannelRequest.encode(this).finish();
+    },
+  } as any,
+  responseType: {
+    deserializeBinary(data: Uint8Array) {
+      const value = IsFollowingChannelResponse.decode(data);
       return {
         ...value,
         toObject() {

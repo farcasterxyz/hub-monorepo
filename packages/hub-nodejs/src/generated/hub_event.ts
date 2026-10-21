@@ -24,6 +24,7 @@ export enum HubEventType {
   MERGE_ON_CHAIN_EVENT = 9,
   MERGE_FAILURE = 10,
   BLOCK_CONFIRMED = 11,
+  CHANNEL_OWNER_CHANGE_HINT = 12,
 }
 
 export function hubEventTypeFromJSON(object: any): HubEventType {
@@ -52,6 +53,9 @@ export function hubEventTypeFromJSON(object: any): HubEventType {
     case 11:
     case "HUB_EVENT_TYPE_BLOCK_CONFIRMED":
       return HubEventType.BLOCK_CONFIRMED;
+    case 12:
+    case "HUB_EVENT_TYPE_CHANNEL_OWNER_CHANGE_HINT":
+      return HubEventType.CHANNEL_OWNER_CHANGE_HINT;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum HubEventType");
   }
@@ -75,8 +79,65 @@ export function hubEventTypeToJSON(object: HubEventType): string {
       return "HUB_EVENT_TYPE_MERGE_FAILURE";
     case HubEventType.BLOCK_CONFIRMED:
       return "HUB_EVENT_TYPE_BLOCK_CONFIRMED";
+    case HubEventType.CHANNEL_OWNER_CHANGE_HINT:
+      return "HUB_EVENT_TYPE_CHANNEL_OWNER_CHANGE_HINT";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum HubEventType");
+  }
+}
+
+/**
+ * What caused a channel's recorded owner to (possibly) change. NONE (0) is the
+ * proto3 zero-default and is never emitted on a real hint; treat a NONE or
+ * otherwise unrecognized cause as "re-read the owner" and do not assume the set
+ * of causes is closed — new causes may be added over time. RENEW is
+ * deliberately absent: extending a registration's expiry is not an ownership
+ * change, so renewals emit no hint.
+ */
+export enum ChannelOwnerChangeCause {
+  NONE = 0,
+  REGISTER = 1,
+  TRANSFER = 2,
+  VERIFICATION_ADD = 3,
+  VERIFICATION_REMOVE = 4,
+}
+
+export function channelOwnerChangeCauseFromJSON(object: any): ChannelOwnerChangeCause {
+  switch (object) {
+    case 0:
+    case "CHANNEL_OWNER_CHANGE_CAUSE_NONE":
+      return ChannelOwnerChangeCause.NONE;
+    case 1:
+    case "CHANNEL_OWNER_CHANGE_CAUSE_REGISTER":
+      return ChannelOwnerChangeCause.REGISTER;
+    case 2:
+    case "CHANNEL_OWNER_CHANGE_CAUSE_TRANSFER":
+      return ChannelOwnerChangeCause.TRANSFER;
+    case 3:
+    case "CHANNEL_OWNER_CHANGE_CAUSE_VERIFICATION_ADD":
+      return ChannelOwnerChangeCause.VERIFICATION_ADD;
+    case 4:
+    case "CHANNEL_OWNER_CHANGE_CAUSE_VERIFICATION_REMOVE":
+      return ChannelOwnerChangeCause.VERIFICATION_REMOVE;
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum ChannelOwnerChangeCause");
+  }
+}
+
+export function channelOwnerChangeCauseToJSON(object: ChannelOwnerChangeCause): string {
+  switch (object) {
+    case ChannelOwnerChangeCause.NONE:
+      return "CHANNEL_OWNER_CHANGE_CAUSE_NONE";
+    case ChannelOwnerChangeCause.REGISTER:
+      return "CHANNEL_OWNER_CHANGE_CAUSE_REGISTER";
+    case ChannelOwnerChangeCause.TRANSFER:
+      return "CHANNEL_OWNER_CHANGE_CAUSE_TRANSFER";
+    case ChannelOwnerChangeCause.VERIFICATION_ADD:
+      return "CHANNEL_OWNER_CHANGE_CAUSE_VERIFICATION_ADD";
+    case ChannelOwnerChangeCause.VERIFICATION_REMOVE:
+      return "CHANNEL_OWNER_CHANGE_CAUSE_VERIFICATION_REMOVE";
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum ChannelOwnerChangeCause");
   }
 }
 
@@ -125,6 +186,43 @@ export interface MergeUserNameProofBody {
   deletedUsernameProofMessage: Message | undefined;
 }
 
+/**
+ * A trigger telling consumers that a channel's owner may have changed. It is a
+ * nudge, not authoritative data — it carries no resolved owner. CONSUMER
+ * CONTRACT (stable API):
+ *   - Delivery is at-least-once across the full shard set (see the coverage
+ *     note below) and may over-emit: the resolved winner may not have actually
+ *     changed since the last hint. Treat a hint as "re-read", never as "the
+ *     owner is now X".
+ *   - Hints carry NO fid claims. On receipt, call GetChannelOwner to learn the
+ *     current owner; this body's owner_address is a raw registry-owner address,
+ *     not an authoritative resolution.
+ *   - REGISTER/TRANSFER hints ride the shard-0 -> data-shard fan-out. The
+ *     LATEST ownership update of a channel hints on every shard, but any single
+ *     shard may COALESCE a rapid same-channel burst down to just the latest
+ *     hint, so no single shard's stream is guaranteed to carry every hint.
+ *     VERIFICATION_ADD/REMOVE hints appear only on the verifier's home shard.
+ *     Complete coverage therefore requires subscribing to all shards and, as
+ *     above, treating each hint as a re-read trigger rather than a full log.
+ *   - Nothing fires when a lapsed registration's grace period ends (the chain
+ *     is silent at expiry); consumers apply expiry themselves.
+ */
+export interface ChannelOwnerChangeHintBody {
+  /**
+   * Channel identifier; pass this to GetChannelOwner to resolve the current
+   * owner.
+   */
+  channelKey: string;
+  /**
+   * Raw 20-byte EVM registry-owner address the hint concerns: for
+   * REGISTER/TRANSFER, the newly-recorded owner; for VERIFICATION_ADD/REMOVE,
+   * the owner address whose verification changed. Not an authoritative
+   * resolution — consumers call GetChannelOwner.
+   */
+  ownerAddress: Uint8Array;
+  cause: ChannelOwnerChangeCause;
+}
+
 export interface HubEvent {
   type: HubEventType;
   id: number;
@@ -149,6 +247,7 @@ export interface HubEvent {
   mergeOnChainEventBody?: MergeOnChainEventBody | undefined;
   mergeFailure?: MergeFailureBody | undefined;
   blockConfirmedBody?: BlockConfirmedBody | undefined;
+  channelOwnerChangeHintBody?: ChannelOwnerChangeHintBody | undefined;
   blockNumber: number;
   shardIndex: number;
   timestamp: number;
@@ -857,6 +956,93 @@ export const MergeUserNameProofBody = {
   },
 };
 
+function createBaseChannelOwnerChangeHintBody(): ChannelOwnerChangeHintBody {
+  return { channelKey: "", ownerAddress: new Uint8Array(), cause: 0 };
+}
+
+export const ChannelOwnerChangeHintBody = {
+  encode(message: ChannelOwnerChangeHintBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.channelKey !== "") {
+      writer.uint32(10).string(message.channelKey);
+    }
+    if (message.ownerAddress.length !== 0) {
+      writer.uint32(18).bytes(message.ownerAddress);
+    }
+    if (message.cause !== 0) {
+      writer.uint32(24).int32(message.cause);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelOwnerChangeHintBody {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelOwnerChangeHintBody();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.channelKey = reader.string();
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.ownerAddress = reader.bytes();
+          continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.cause = reader.int32() as any;
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelOwnerChangeHintBody {
+    return {
+      channelKey: isSet(object.channelKey) ? String(object.channelKey) : "",
+      ownerAddress: isSet(object.ownerAddress) ? bytesFromBase64(object.ownerAddress) : new Uint8Array(),
+      cause: isSet(object.cause) ? channelOwnerChangeCauseFromJSON(object.cause) : 0,
+    };
+  },
+
+  toJSON(message: ChannelOwnerChangeHintBody): unknown {
+    const obj: any = {};
+    message.channelKey !== undefined && (obj.channelKey = message.channelKey);
+    message.ownerAddress !== undefined &&
+      (obj.ownerAddress = base64FromBytes(
+        message.ownerAddress !== undefined ? message.ownerAddress : new Uint8Array(),
+      ));
+    message.cause !== undefined && (obj.cause = channelOwnerChangeCauseToJSON(message.cause));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelOwnerChangeHintBody>, I>>(base?: I): ChannelOwnerChangeHintBody {
+    return ChannelOwnerChangeHintBody.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelOwnerChangeHintBody>, I>>(object: I): ChannelOwnerChangeHintBody {
+    const message = createBaseChannelOwnerChangeHintBody();
+    message.channelKey = object.channelKey ?? "";
+    message.ownerAddress = object.ownerAddress ?? new Uint8Array();
+    message.cause = object.cause ?? 0;
+    return message;
+  },
+};
+
 function createBaseHubEvent(): HubEvent {
   return {
     type: 0,
@@ -868,6 +1054,7 @@ function createBaseHubEvent(): HubEvent {
     mergeOnChainEventBody: undefined,
     mergeFailure: undefined,
     blockConfirmedBody: undefined,
+    channelOwnerChangeHintBody: undefined,
     blockNumber: 0,
     shardIndex: 0,
     timestamp: 0,
@@ -902,6 +1089,9 @@ export const HubEvent = {
     }
     if (message.blockConfirmedBody !== undefined) {
       BlockConfirmedBody.encode(message.blockConfirmedBody, writer.uint32(130).fork()).ldelim();
+    }
+    if (message.channelOwnerChangeHintBody !== undefined) {
+      ChannelOwnerChangeHintBody.encode(message.channelOwnerChangeHintBody, writer.uint32(138).fork()).ldelim();
     }
     if (message.blockNumber !== 0) {
       writer.uint32(96).uint64(message.blockNumber);
@@ -985,6 +1175,13 @@ export const HubEvent = {
 
           message.blockConfirmedBody = BlockConfirmedBody.decode(reader, reader.uint32());
           continue;
+        case 17:
+          if (tag != 138) {
+            break;
+          }
+
+          message.channelOwnerChangeHintBody = ChannelOwnerChangeHintBody.decode(reader, reader.uint32());
+          continue;
         case 12:
           if (tag != 96) {
             break;
@@ -1034,6 +1231,9 @@ export const HubEvent = {
       blockConfirmedBody: isSet(object.blockConfirmedBody)
         ? BlockConfirmedBody.fromJSON(object.blockConfirmedBody)
         : undefined,
+      channelOwnerChangeHintBody: isSet(object.channelOwnerChangeHintBody)
+        ? ChannelOwnerChangeHintBody.fromJSON(object.channelOwnerChangeHintBody)
+        : undefined,
       blockNumber: isSet(object.blockNumber) ? Number(object.blockNumber) : 0,
       shardIndex: isSet(object.shardIndex) ? Number(object.shardIndex) : 0,
       timestamp: isSet(object.timestamp) ? Number(object.timestamp) : 0,
@@ -1062,6 +1262,10 @@ export const HubEvent = {
     message.blockConfirmedBody !== undefined && (obj.blockConfirmedBody = message.blockConfirmedBody
       ? BlockConfirmedBody.toJSON(message.blockConfirmedBody)
       : undefined);
+    message.channelOwnerChangeHintBody !== undefined &&
+      (obj.channelOwnerChangeHintBody = message.channelOwnerChangeHintBody
+        ? ChannelOwnerChangeHintBody.toJSON(message.channelOwnerChangeHintBody)
+        : undefined);
     message.blockNumber !== undefined && (obj.blockNumber = Math.round(message.blockNumber));
     message.shardIndex !== undefined && (obj.shardIndex = Math.round(message.shardIndex));
     message.timestamp !== undefined && (obj.timestamp = Math.round(message.timestamp));
@@ -1099,6 +1303,10 @@ export const HubEvent = {
     message.blockConfirmedBody = (object.blockConfirmedBody !== undefined && object.blockConfirmedBody !== null)
       ? BlockConfirmedBody.fromPartial(object.blockConfirmedBody)
       : undefined;
+    message.channelOwnerChangeHintBody =
+      (object.channelOwnerChangeHintBody !== undefined && object.channelOwnerChangeHintBody !== null)
+        ? ChannelOwnerChangeHintBody.fromPartial(object.channelOwnerChangeHintBody)
+        : undefined;
     message.blockNumber = object.blockNumber ?? 0;
     message.shardIndex = object.shardIndex ?? 0;
     message.timestamp = object.timestamp ?? 0;
