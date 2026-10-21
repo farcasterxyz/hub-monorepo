@@ -9,6 +9,7 @@ export enum OnChainEventType {
   EVENT_TYPE_ID_REGISTER = 3,
   EVENT_TYPE_STORAGE_RENT = 4,
   EVENT_TYPE_TIER_PURCHASE = 5,
+  EVENT_TYPE_CHANNEL_REGISTER = 6,
 }
 
 export function onChainEventTypeFromJSON(object: any): OnChainEventType {
@@ -31,6 +32,9 @@ export function onChainEventTypeFromJSON(object: any): OnChainEventType {
     case 5:
     case "EVENT_TYPE_TIER_PURCHASE":
       return OnChainEventType.EVENT_TYPE_TIER_PURCHASE;
+    case 6:
+    case "EVENT_TYPE_CHANNEL_REGISTER":
+      return OnChainEventType.EVENT_TYPE_CHANNEL_REGISTER;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum OnChainEventType");
   }
@@ -50,8 +54,51 @@ export function onChainEventTypeToJSON(object: OnChainEventType): string {
       return "EVENT_TYPE_STORAGE_RENT";
     case OnChainEventType.EVENT_TYPE_TIER_PURCHASE:
       return "EVENT_TYPE_TIER_PURCHASE";
+    case OnChainEventType.EVENT_TYPE_CHANNEL_REGISTER:
+      return "EVENT_TYPE_CHANNEL_REGISTER";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum OnChainEventType");
+  }
+}
+
+export enum ChannelRegisterEventType {
+  NONE = 0,
+  REGISTER = 1,
+  RENEW = 2,
+  TRANSFER = 3,
+}
+
+export function channelRegisterEventTypeFromJSON(object: any): ChannelRegisterEventType {
+  switch (object) {
+    case 0:
+    case "CHANNEL_REGISTER_EVENT_TYPE_NONE":
+      return ChannelRegisterEventType.NONE;
+    case 1:
+    case "CHANNEL_REGISTER_EVENT_TYPE_REGISTER":
+      return ChannelRegisterEventType.REGISTER;
+    case 2:
+    case "CHANNEL_REGISTER_EVENT_TYPE_RENEW":
+      return ChannelRegisterEventType.RENEW;
+    case 3:
+    case "CHANNEL_REGISTER_EVENT_TYPE_TRANSFER":
+      return ChannelRegisterEventType.TRANSFER;
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum ChannelRegisterEventType");
+  }
+}
+
+export function channelRegisterEventTypeToJSON(object: ChannelRegisterEventType): string {
+  switch (object) {
+    case ChannelRegisterEventType.NONE:
+      return "CHANNEL_REGISTER_EVENT_TYPE_NONE";
+    case ChannelRegisterEventType.REGISTER:
+      return "CHANNEL_REGISTER_EVENT_TYPE_REGISTER";
+    case ChannelRegisterEventType.RENEW:
+      return "CHANNEL_REGISTER_EVENT_TYPE_RENEW";
+    case ChannelRegisterEventType.TRANSFER:
+      return "CHANNEL_REGISTER_EVENT_TYPE_TRANSFER";
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum ChannelRegisterEventType");
   }
 }
 
@@ -180,8 +227,38 @@ export interface OnChainEvent {
   idRegisterEventBody?: IdRegisterEventBody | undefined;
   storageRentEventBody?: StorageRentEventBody | undefined;
   tierPurchaseEventBody?: TierPurchaseBody | undefined;
+  channelRegisterEventBody?: ChannelRegisterBody | undefined;
   txIndex: number;
   version: number;
+}
+
+/**
+ * Field-presence rules below are producer conventions (the connector), not
+ * merge validity rules: the store checks them only as index-input gating, so
+ * an event that fails those checks still merges as a raw onchain event — it
+ * just builds no channel index entries.
+ */
+export interface ChannelRegisterBody {
+  /**
+   * Verbatim name from the registry event; label = keccak256(channel_key).
+   * Empty for TRANSFER (the ERC-721 Transfer log carries only the tokenId).
+   * The registry contract validates name length only, so non-UTF-8 names are
+   * registrable onchain but unrepresentable here (proto3 string requires valid
+   * UTF-8). Such logs fail ABI decode in the connector and are never minted as
+   * events — deterministic on every node, and the dropped names are
+   * untypeable in any client.
+   */
+  channelKey: string;
+  /** Absolute unix timestamp in seconds. 0 for TRANSFER. */
+  expiry: number;
+  /** REGISTER: the registrant. TRANSFER: the receiving address. Empty for RENEW. */
+  ownerAddress: Uint8Array;
+  eventType: ChannelRegisterEventType;
+  /**
+   * keccak256(channel_key), equal to the ERC-721 tokenId. Present on all event
+   * types — the join key tying REGISTER/RENEW/TRANSFER for one channel together.
+   */
+  label: Uint8Array;
 }
 
 export interface TierPurchaseBody {
@@ -230,6 +307,7 @@ function createBaseOnChainEvent(): OnChainEvent {
     idRegisterEventBody: undefined,
     storageRentEventBody: undefined,
     tierPurchaseEventBody: undefined,
+    channelRegisterEventBody: undefined,
     txIndex: 0,
     version: 0,
   };
@@ -275,6 +353,9 @@ export const OnChainEvent = {
     }
     if (message.tierPurchaseEventBody !== undefined) {
       TierPurchaseBody.encode(message.tierPurchaseEventBody, writer.uint32(122).fork()).ldelim();
+    }
+    if (message.channelRegisterEventBody !== undefined) {
+      ChannelRegisterBody.encode(message.channelRegisterEventBody, writer.uint32(130).fork()).ldelim();
     }
     if (message.txIndex !== 0) {
       writer.uint32(104).uint32(message.txIndex);
@@ -383,6 +464,13 @@ export const OnChainEvent = {
 
           message.tierPurchaseEventBody = TierPurchaseBody.decode(reader, reader.uint32());
           continue;
+        case 16:
+          if (tag != 130) {
+            break;
+          }
+
+          message.channelRegisterEventBody = ChannelRegisterBody.decode(reader, reader.uint32());
+          continue;
         case 13:
           if (tag != 104) {
             break;
@@ -429,6 +517,9 @@ export const OnChainEvent = {
       tierPurchaseEventBody: isSet(object.tierPurchaseEventBody)
         ? TierPurchaseBody.fromJSON(object.tierPurchaseEventBody)
         : undefined,
+      channelRegisterEventBody: isSet(object.channelRegisterEventBody)
+        ? ChannelRegisterBody.fromJSON(object.channelRegisterEventBody)
+        : undefined,
       txIndex: isSet(object.txIndex) ? Number(object.txIndex) : 0,
       version: isSet(object.version) ? Number(object.version) : 0,
     };
@@ -461,6 +552,9 @@ export const OnChainEvent = {
       : undefined);
     message.tierPurchaseEventBody !== undefined && (obj.tierPurchaseEventBody = message.tierPurchaseEventBody
       ? TierPurchaseBody.toJSON(message.tierPurchaseEventBody)
+      : undefined);
+    message.channelRegisterEventBody !== undefined && (obj.channelRegisterEventBody = message.channelRegisterEventBody
+      ? ChannelRegisterBody.toJSON(message.channelRegisterEventBody)
       : undefined);
     message.txIndex !== undefined && (obj.txIndex = Math.round(message.txIndex));
     message.version !== undefined && (obj.version = Math.round(message.version));
@@ -498,8 +592,126 @@ export const OnChainEvent = {
       (object.tierPurchaseEventBody !== undefined && object.tierPurchaseEventBody !== null)
         ? TierPurchaseBody.fromPartial(object.tierPurchaseEventBody)
         : undefined;
+    message.channelRegisterEventBody =
+      (object.channelRegisterEventBody !== undefined && object.channelRegisterEventBody !== null)
+        ? ChannelRegisterBody.fromPartial(object.channelRegisterEventBody)
+        : undefined;
     message.txIndex = object.txIndex ?? 0;
     message.version = object.version ?? 0;
+    return message;
+  },
+};
+
+function createBaseChannelRegisterBody(): ChannelRegisterBody {
+  return { channelKey: "", expiry: 0, ownerAddress: new Uint8Array(), eventType: 0, label: new Uint8Array() };
+}
+
+export const ChannelRegisterBody = {
+  encode(message: ChannelRegisterBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.channelKey !== "") {
+      writer.uint32(10).string(message.channelKey);
+    }
+    if (message.expiry !== 0) {
+      writer.uint32(16).uint64(message.expiry);
+    }
+    if (message.ownerAddress.length !== 0) {
+      writer.uint32(26).bytes(message.ownerAddress);
+    }
+    if (message.eventType !== 0) {
+      writer.uint32(32).int32(message.eventType);
+    }
+    if (message.label.length !== 0) {
+      writer.uint32(42).bytes(message.label);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelRegisterBody {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelRegisterBody();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.channelKey = reader.string();
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.expiry = longToNumber(reader.uint64() as Long);
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.ownerAddress = reader.bytes();
+          continue;
+        case 4:
+          if (tag != 32) {
+            break;
+          }
+
+          message.eventType = reader.int32() as any;
+          continue;
+        case 5:
+          if (tag != 42) {
+            break;
+          }
+
+          message.label = reader.bytes();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelRegisterBody {
+    return {
+      channelKey: isSet(object.channelKey) ? String(object.channelKey) : "",
+      expiry: isSet(object.expiry) ? Number(object.expiry) : 0,
+      ownerAddress: isSet(object.ownerAddress) ? bytesFromBase64(object.ownerAddress) : new Uint8Array(),
+      eventType: isSet(object.eventType) ? channelRegisterEventTypeFromJSON(object.eventType) : 0,
+      label: isSet(object.label) ? bytesFromBase64(object.label) : new Uint8Array(),
+    };
+  },
+
+  toJSON(message: ChannelRegisterBody): unknown {
+    const obj: any = {};
+    message.channelKey !== undefined && (obj.channelKey = message.channelKey);
+    message.expiry !== undefined && (obj.expiry = Math.round(message.expiry));
+    message.ownerAddress !== undefined &&
+      (obj.ownerAddress = base64FromBytes(
+        message.ownerAddress !== undefined ? message.ownerAddress : new Uint8Array(),
+      ));
+    message.eventType !== undefined && (obj.eventType = channelRegisterEventTypeToJSON(message.eventType));
+    message.label !== undefined &&
+      (obj.label = base64FromBytes(message.label !== undefined ? message.label : new Uint8Array()));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelRegisterBody>, I>>(base?: I): ChannelRegisterBody {
+    return ChannelRegisterBody.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelRegisterBody>, I>>(object: I): ChannelRegisterBody {
+    const message = createBaseChannelRegisterBody();
+    message.channelKey = object.channelKey ?? "";
+    message.expiry = object.expiry ?? 0;
+    message.ownerAddress = object.ownerAddress ?? new Uint8Array();
+    message.eventType = object.eventType ?? 0;
+    message.label = object.label ?? new Uint8Array();
     return message;
   },
 };

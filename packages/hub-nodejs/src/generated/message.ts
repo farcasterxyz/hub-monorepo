@@ -108,6 +108,10 @@ export enum MessageType {
   KEY_ADD = 16,
   /** KEY_REMOVE - Revoke an Ed25519 key via custody signature or self-revocation */
   KEY_REMOVE = 17,
+  CHANNEL_UPDATE = 18,
+  CHANNEL_MEMBER = 19,
+  CHANNEL_PIN = 20,
+  CHANNEL_MODERATE = 21,
 }
 
 export function messageTypeFromJSON(object: any): MessageType {
@@ -160,6 +164,18 @@ export function messageTypeFromJSON(object: any): MessageType {
     case 17:
     case "MESSAGE_TYPE_KEY_REMOVE":
       return MessageType.KEY_REMOVE;
+    case 18:
+    case "MESSAGE_TYPE_CHANNEL_UPDATE":
+      return MessageType.CHANNEL_UPDATE;
+    case 19:
+    case "MESSAGE_TYPE_CHANNEL_MEMBER":
+      return MessageType.CHANNEL_MEMBER;
+    case 20:
+    case "MESSAGE_TYPE_CHANNEL_PIN":
+      return MessageType.CHANNEL_PIN;
+    case 21:
+    case "MESSAGE_TYPE_CHANNEL_MODERATE":
+      return MessageType.CHANNEL_MODERATE;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum MessageType");
   }
@@ -199,6 +215,14 @@ export function messageTypeToJSON(object: MessageType): string {
       return "MESSAGE_TYPE_KEY_ADD";
     case MessageType.KEY_REMOVE:
       return "MESSAGE_TYPE_KEY_REMOVE";
+    case MessageType.CHANNEL_UPDATE:
+      return "MESSAGE_TYPE_CHANNEL_UPDATE";
+    case MessageType.CHANNEL_MEMBER:
+      return "MESSAGE_TYPE_CHANNEL_MEMBER";
+    case MessageType.CHANNEL_PIN:
+      return "MESSAGE_TYPE_CHANNEL_PIN";
+    case MessageType.CHANNEL_MODERATE:
+      return "MESSAGE_TYPE_CHANNEL_MODERATE";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum MessageType");
   }
@@ -504,6 +528,199 @@ export function storageUnitTypeToJSON(object: StorageUnitType): string {
 }
 
 /**
+ * ADVISORY metadata only: the protocol accepts casts into a channel regardless
+ * of mode, and never enforces it at cast merge. Clients may enforce it.
+ */
+export enum CastingMode {
+  NONE = 0,
+  EVERYONE = 1,
+  MEMBERS_ONLY = 2,
+  RECOMMENDED = 3,
+}
+
+export function castingModeFromJSON(object: any): CastingMode {
+  switch (object) {
+    case 0:
+    case "CASTING_MODE_NONE":
+      return CastingMode.NONE;
+    case 1:
+    case "CASTING_MODE_EVERYONE":
+      return CastingMode.EVERYONE;
+    case 2:
+    case "CASTING_MODE_MEMBERS_ONLY":
+      return CastingMode.MEMBERS_ONLY;
+    case 3:
+    case "CASTING_MODE_RECOMMENDED":
+      return CastingMode.RECOMMENDED;
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum CastingMode");
+  }
+}
+
+export function castingModeToJSON(object: CastingMode): string {
+  switch (object) {
+    case CastingMode.NONE:
+      return "CASTING_MODE_NONE";
+    case CastingMode.EVERYONE:
+      return "CASTING_MODE_EVERYONE";
+    case CastingMode.MEMBERS_ONLY:
+      return "CASTING_MODE_MEMBERS_ONLY";
+    case CastingMode.RECOMMENDED:
+      return "CASTING_MODE_RECOMMENDED";
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum CastingMode");
+  }
+}
+
+/**
+ * Protocol-relevant, unlike CastingMode: this gates whether an fid may add
+ * itself as a member (a ChannelMemberBody with CHANNEL_MEMBER_ACTION_ADD_MEMBER
+ * whose fid equals the sending message's fid).
+ *
+ * Under OPEN an fid may self-add, but only from no membership at all or from
+ * REMOVED: a banned fid stays banned, and one already MEMBER or MODERATOR is
+ * rejected rather than re-added. Under APPROVAL the add must come from the
+ * channel OWNER or a MODERATOR — an owner satisfies it directly and does not
+ * need a moderator role. Either mode still rejects an add whose target is
+ * banned.
+ *
+ * NONE is the proto3 zero value, not a third policy: an absent or explicitly
+ * zero mode folds to APPROVAL, so a cosmetic-only ChannelUpdate closes
+ * membership rather than opening it.
+ *
+ * Enforced at shard-0 admission wherever channel messages are active (they are
+ * version-gated and inert on networks below that version).
+ */
+export enum MembershipMode {
+  NONE = 0,
+  OPEN = 1,
+  APPROVAL = 2,
+}
+
+export function membershipModeFromJSON(object: any): MembershipMode {
+  switch (object) {
+    case 0:
+    case "MEMBERSHIP_MODE_NONE":
+      return MembershipMode.NONE;
+    case 1:
+    case "MEMBERSHIP_MODE_OPEN":
+      return MembershipMode.OPEN;
+    case 2:
+    case "MEMBERSHIP_MODE_APPROVAL":
+      return MembershipMode.APPROVAL;
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum MembershipMode");
+  }
+}
+
+export function membershipModeToJSON(object: MembershipMode): string {
+  switch (object) {
+    case MembershipMode.NONE:
+      return "MEMBERSHIP_MODE_NONE";
+    case MembershipMode.OPEN:
+      return "MEMBERSHIP_MODE_OPEN";
+    case MembershipMode.APPROVAL:
+      return "MEMBERSHIP_MODE_APPROVAL";
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum MembershipMode");
+  }
+}
+
+export enum ChannelMemberAction {
+  NONE = 0,
+  ADD_MEMBER = 1,
+  REMOVE_MEMBER = 2,
+  ADD_MODERATOR = 3,
+  REMOVE_MODERATOR = 4,
+  BAN = 5,
+  UNBAN = 6,
+}
+
+export function channelMemberActionFromJSON(object: any): ChannelMemberAction {
+  switch (object) {
+    case 0:
+    case "CHANNEL_MEMBER_ACTION_NONE":
+      return ChannelMemberAction.NONE;
+    case 1:
+    case "CHANNEL_MEMBER_ACTION_ADD_MEMBER":
+      return ChannelMemberAction.ADD_MEMBER;
+    case 2:
+    case "CHANNEL_MEMBER_ACTION_REMOVE_MEMBER":
+      return ChannelMemberAction.REMOVE_MEMBER;
+    case 3:
+    case "CHANNEL_MEMBER_ACTION_ADD_MODERATOR":
+      return ChannelMemberAction.ADD_MODERATOR;
+    case 4:
+    case "CHANNEL_MEMBER_ACTION_REMOVE_MODERATOR":
+      return ChannelMemberAction.REMOVE_MODERATOR;
+    case 5:
+    case "CHANNEL_MEMBER_ACTION_BAN":
+      return ChannelMemberAction.BAN;
+    case 6:
+    case "CHANNEL_MEMBER_ACTION_UNBAN":
+      return ChannelMemberAction.UNBAN;
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum ChannelMemberAction");
+  }
+}
+
+export function channelMemberActionToJSON(object: ChannelMemberAction): string {
+  switch (object) {
+    case ChannelMemberAction.NONE:
+      return "CHANNEL_MEMBER_ACTION_NONE";
+    case ChannelMemberAction.ADD_MEMBER:
+      return "CHANNEL_MEMBER_ACTION_ADD_MEMBER";
+    case ChannelMemberAction.REMOVE_MEMBER:
+      return "CHANNEL_MEMBER_ACTION_REMOVE_MEMBER";
+    case ChannelMemberAction.ADD_MODERATOR:
+      return "CHANNEL_MEMBER_ACTION_ADD_MODERATOR";
+    case ChannelMemberAction.REMOVE_MODERATOR:
+      return "CHANNEL_MEMBER_ACTION_REMOVE_MODERATOR";
+    case ChannelMemberAction.BAN:
+      return "CHANNEL_MEMBER_ACTION_BAN";
+    case ChannelMemberAction.UNBAN:
+      return "CHANNEL_MEMBER_ACTION_UNBAN";
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum ChannelMemberAction");
+  }
+}
+
+export enum ChannelModerateAction {
+  NONE = 0,
+  HIDE = 1,
+  UNHIDE = 2,
+}
+
+export function channelModerateActionFromJSON(object: any): ChannelModerateAction {
+  switch (object) {
+    case 0:
+    case "CHANNEL_MODERATE_ACTION_NONE":
+      return ChannelModerateAction.NONE;
+    case 1:
+    case "CHANNEL_MODERATE_ACTION_HIDE":
+      return ChannelModerateAction.HIDE;
+    case 2:
+    case "CHANNEL_MODERATE_ACTION_UNHIDE":
+      return ChannelModerateAction.UNHIDE;
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum ChannelModerateAction");
+  }
+}
+
+export function channelModerateActionToJSON(object: ChannelModerateAction): string {
+  switch (object) {
+    case ChannelModerateAction.NONE:
+      return "CHANNEL_MODERATE_ACTION_NONE";
+    case ChannelModerateAction.HIDE:
+      return "CHANNEL_MODERATE_ACTION_HIDE";
+    case ChannelModerateAction.UNHIDE:
+      return "CHANNEL_MODERATE_ACTION_UNHIDE";
+    default:
+      throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum ChannelModerateAction");
+  }
+}
+
+/**
  * A Message is a delta operation on the Farcaster network. The message protobuf is an envelope
  * that wraps a MessageData object and contains a hash and signature which can verify its authenticity.
  */
@@ -561,6 +778,10 @@ export interface MessageData {
   lendStorageBody?: LendStorageBody | undefined;
   keyAddBody?: KeyAddBody | undefined;
   keyRemoveBody?: KeyRemoveBody | undefined;
+  channelUpdateBody?: ChannelUpdateBody | undefined;
+  channelMemberBody?: ChannelMemberBody | undefined;
+  channelPinBody?: ChannelPinBody | undefined;
+  channelModerateBody?: ChannelModerateBody | undefined;
 }
 
 /** Adds metadata about a user */
@@ -733,6 +954,61 @@ export interface KeyRemoveBody {
   nonce: number;
 }
 
+/**
+ * WHOLE-REPLACE, NOT MERGE-PATCH. The winning ChannelUpdate is the channel's
+ * entire configuration: a field omitted here reads as unset, it is NOT inherited
+ * from the update this one supersedes. Sending `{channel_id, name}` to rename a
+ * channel therefore CLEARS its description, image_url, header, rules, and both
+ * modes (which fold back to the restrictive defaults). Clients must send the
+ * full desired state on every update, not just the fields they are changing.
+ */
+export interface ChannelUpdateBody {
+  /**
+   * 32-byte keccak256 of the channel key (the verbatim registry name), equal to
+   * the ERC-721 tokenId and to ChannelRegisterBody.label in onchain_event.proto
+   * — the join key tying a channel's registry events and messages together.
+   */
+  channelId: Uint8Array;
+  name?: string | undefined;
+  description?: string | undefined;
+  imageUrl?: string | undefined;
+  header?: string | undefined;
+  rules?: string | undefined;
+  castingMode?: CastingMode | undefined;
+  membershipMode?: MembershipMode | undefined;
+}
+
+export interface ChannelMemberBody {
+  /**
+   * 32-byte keccak256 of the channel key (the verbatim registry name), equal to
+   * the ERC-721 tokenId and to ChannelRegisterBody.label in onchain_event.proto.
+   */
+  channelId: Uint8Array;
+  fid: number;
+  action: ChannelMemberAction;
+}
+
+/** A single pin per channel; a new pin replaces the previous one. */
+export interface ChannelPinBody {
+  /**
+   * 32-byte keccak256 of the channel key (the verbatim registry name), equal to
+   * the ERC-721 tokenId and to ChannelRegisterBody.label in onchain_event.proto.
+   */
+  channelId: Uint8Array;
+  /** The pinned cast. An empty cast_hash unpins. */
+  castHash: Uint8Array;
+}
+
+export interface ChannelModerateBody {
+  /**
+   * 32-byte keccak256 of the channel key (the verbatim registry name), equal to
+   * the ERC-721 tokenId and to ChannelRegisterBody.label in onchain_event.proto.
+   */
+  channelId: Uint8Array;
+  castHash: Uint8Array;
+  action: ChannelModerateAction;
+}
+
 function createBaseMessage(): Message {
   return {
     data: undefined,
@@ -902,6 +1178,10 @@ function createBaseMessageData(): MessageData {
     lendStorageBody: undefined,
     keyAddBody: undefined,
     keyRemoveBody: undefined,
+    channelUpdateBody: undefined,
+    channelMemberBody: undefined,
+    channelPinBody: undefined,
+    channelModerateBody: undefined,
   };
 }
 
@@ -957,6 +1237,18 @@ export const MessageData = {
     }
     if (message.keyRemoveBody !== undefined) {
       KeyRemoveBody.encode(message.keyRemoveBody, writer.uint32(162).fork()).ldelim();
+    }
+    if (message.channelUpdateBody !== undefined) {
+      ChannelUpdateBody.encode(message.channelUpdateBody, writer.uint32(170).fork()).ldelim();
+    }
+    if (message.channelMemberBody !== undefined) {
+      ChannelMemberBody.encode(message.channelMemberBody, writer.uint32(178).fork()).ldelim();
+    }
+    if (message.channelPinBody !== undefined) {
+      ChannelPinBody.encode(message.channelPinBody, writer.uint32(186).fork()).ldelim();
+    }
+    if (message.channelModerateBody !== undefined) {
+      ChannelModerateBody.encode(message.channelModerateBody, writer.uint32(194).fork()).ldelim();
     }
     return writer;
   },
@@ -1087,6 +1379,34 @@ export const MessageData = {
 
           message.keyRemoveBody = KeyRemoveBody.decode(reader, reader.uint32());
           continue;
+        case 21:
+          if (tag != 170) {
+            break;
+          }
+
+          message.channelUpdateBody = ChannelUpdateBody.decode(reader, reader.uint32());
+          continue;
+        case 22:
+          if (tag != 178) {
+            break;
+          }
+
+          message.channelMemberBody = ChannelMemberBody.decode(reader, reader.uint32());
+          continue;
+        case 23:
+          if (tag != 186) {
+            break;
+          }
+
+          message.channelPinBody = ChannelPinBody.decode(reader, reader.uint32());
+          continue;
+        case 24:
+          if (tag != 194) {
+            break;
+          }
+
+          message.channelModerateBody = ChannelModerateBody.decode(reader, reader.uint32());
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -1121,6 +1441,16 @@ export const MessageData = {
       lendStorageBody: isSet(object.lendStorageBody) ? LendStorageBody.fromJSON(object.lendStorageBody) : undefined,
       keyAddBody: isSet(object.keyAddBody) ? KeyAddBody.fromJSON(object.keyAddBody) : undefined,
       keyRemoveBody: isSet(object.keyRemoveBody) ? KeyRemoveBody.fromJSON(object.keyRemoveBody) : undefined,
+      channelUpdateBody: isSet(object.channelUpdateBody)
+        ? ChannelUpdateBody.fromJSON(object.channelUpdateBody)
+        : undefined,
+      channelMemberBody: isSet(object.channelMemberBody)
+        ? ChannelMemberBody.fromJSON(object.channelMemberBody)
+        : undefined,
+      channelPinBody: isSet(object.channelPinBody) ? ChannelPinBody.fromJSON(object.channelPinBody) : undefined,
+      channelModerateBody: isSet(object.channelModerateBody)
+        ? ChannelModerateBody.fromJSON(object.channelModerateBody)
+        : undefined,
     };
   },
 
@@ -1159,6 +1489,17 @@ export const MessageData = {
       (obj.keyAddBody = message.keyAddBody ? KeyAddBody.toJSON(message.keyAddBody) : undefined);
     message.keyRemoveBody !== undefined &&
       (obj.keyRemoveBody = message.keyRemoveBody ? KeyRemoveBody.toJSON(message.keyRemoveBody) : undefined);
+    message.channelUpdateBody !== undefined && (obj.channelUpdateBody = message.channelUpdateBody
+      ? ChannelUpdateBody.toJSON(message.channelUpdateBody)
+      : undefined);
+    message.channelMemberBody !== undefined && (obj.channelMemberBody = message.channelMemberBody
+      ? ChannelMemberBody.toJSON(message.channelMemberBody)
+      : undefined);
+    message.channelPinBody !== undefined &&
+      (obj.channelPinBody = message.channelPinBody ? ChannelPinBody.toJSON(message.channelPinBody) : undefined);
+    message.channelModerateBody !== undefined && (obj.channelModerateBody = message.channelModerateBody
+      ? ChannelModerateBody.toJSON(message.channelModerateBody)
+      : undefined);
     return obj;
   },
 
@@ -1212,6 +1553,18 @@ export const MessageData = {
       : undefined;
     message.keyRemoveBody = (object.keyRemoveBody !== undefined && object.keyRemoveBody !== null)
       ? KeyRemoveBody.fromPartial(object.keyRemoveBody)
+      : undefined;
+    message.channelUpdateBody = (object.channelUpdateBody !== undefined && object.channelUpdateBody !== null)
+      ? ChannelUpdateBody.fromPartial(object.channelUpdateBody)
+      : undefined;
+    message.channelMemberBody = (object.channelMemberBody !== undefined && object.channelMemberBody !== null)
+      ? ChannelMemberBody.fromPartial(object.channelMemberBody)
+      : undefined;
+    message.channelPinBody = (object.channelPinBody !== undefined && object.channelPinBody !== null)
+      ? ChannelPinBody.fromPartial(object.channelPinBody)
+      : undefined;
+    message.channelModerateBody = (object.channelModerateBody !== undefined && object.channelModerateBody !== null)
+      ? ChannelModerateBody.fromPartial(object.channelModerateBody)
       : undefined;
     return message;
   },
@@ -2713,6 +3066,412 @@ export const KeyRemoveBody = {
     message.signatureType = object.signatureType ?? 0;
     message.deadline = object.deadline ?? 0;
     message.nonce = object.nonce ?? 0;
+    return message;
+  },
+};
+
+function createBaseChannelUpdateBody(): ChannelUpdateBody {
+  return {
+    channelId: new Uint8Array(),
+    name: undefined,
+    description: undefined,
+    imageUrl: undefined,
+    header: undefined,
+    rules: undefined,
+    castingMode: undefined,
+    membershipMode: undefined,
+  };
+}
+
+export const ChannelUpdateBody = {
+  encode(message: ChannelUpdateBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.channelId.length !== 0) {
+      writer.uint32(10).bytes(message.channelId);
+    }
+    if (message.name !== undefined) {
+      writer.uint32(18).string(message.name);
+    }
+    if (message.description !== undefined) {
+      writer.uint32(26).string(message.description);
+    }
+    if (message.imageUrl !== undefined) {
+      writer.uint32(34).string(message.imageUrl);
+    }
+    if (message.header !== undefined) {
+      writer.uint32(42).string(message.header);
+    }
+    if (message.rules !== undefined) {
+      writer.uint32(50).string(message.rules);
+    }
+    if (message.castingMode !== undefined) {
+      writer.uint32(56).int32(message.castingMode);
+    }
+    if (message.membershipMode !== undefined) {
+      writer.uint32(64).int32(message.membershipMode);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelUpdateBody {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelUpdateBody();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.channelId = reader.bytes();
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.name = reader.string();
+          continue;
+        case 3:
+          if (tag != 26) {
+            break;
+          }
+
+          message.description = reader.string();
+          continue;
+        case 4:
+          if (tag != 34) {
+            break;
+          }
+
+          message.imageUrl = reader.string();
+          continue;
+        case 5:
+          if (tag != 42) {
+            break;
+          }
+
+          message.header = reader.string();
+          continue;
+        case 6:
+          if (tag != 50) {
+            break;
+          }
+
+          message.rules = reader.string();
+          continue;
+        case 7:
+          if (tag != 56) {
+            break;
+          }
+
+          message.castingMode = reader.int32() as any;
+          continue;
+        case 8:
+          if (tag != 64) {
+            break;
+          }
+
+          message.membershipMode = reader.int32() as any;
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelUpdateBody {
+    return {
+      channelId: isSet(object.channelId) ? bytesFromBase64(object.channelId) : new Uint8Array(),
+      name: isSet(object.name) ? String(object.name) : undefined,
+      description: isSet(object.description) ? String(object.description) : undefined,
+      imageUrl: isSet(object.imageUrl) ? String(object.imageUrl) : undefined,
+      header: isSet(object.header) ? String(object.header) : undefined,
+      rules: isSet(object.rules) ? String(object.rules) : undefined,
+      castingMode: isSet(object.castingMode) ? castingModeFromJSON(object.castingMode) : undefined,
+      membershipMode: isSet(object.membershipMode) ? membershipModeFromJSON(object.membershipMode) : undefined,
+    };
+  },
+
+  toJSON(message: ChannelUpdateBody): unknown {
+    const obj: any = {};
+    message.channelId !== undefined &&
+      (obj.channelId = base64FromBytes(message.channelId !== undefined ? message.channelId : new Uint8Array()));
+    message.name !== undefined && (obj.name = message.name);
+    message.description !== undefined && (obj.description = message.description);
+    message.imageUrl !== undefined && (obj.imageUrl = message.imageUrl);
+    message.header !== undefined && (obj.header = message.header);
+    message.rules !== undefined && (obj.rules = message.rules);
+    message.castingMode !== undefined &&
+      (obj.castingMode = message.castingMode !== undefined ? castingModeToJSON(message.castingMode) : undefined);
+    message.membershipMode !== undefined && (obj.membershipMode = message.membershipMode !== undefined
+      ? membershipModeToJSON(message.membershipMode)
+      : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelUpdateBody>, I>>(base?: I): ChannelUpdateBody {
+    return ChannelUpdateBody.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelUpdateBody>, I>>(object: I): ChannelUpdateBody {
+    const message = createBaseChannelUpdateBody();
+    message.channelId = object.channelId ?? new Uint8Array();
+    message.name = object.name ?? undefined;
+    message.description = object.description ?? undefined;
+    message.imageUrl = object.imageUrl ?? undefined;
+    message.header = object.header ?? undefined;
+    message.rules = object.rules ?? undefined;
+    message.castingMode = object.castingMode ?? undefined;
+    message.membershipMode = object.membershipMode ?? undefined;
+    return message;
+  },
+};
+
+function createBaseChannelMemberBody(): ChannelMemberBody {
+  return { channelId: new Uint8Array(), fid: 0, action: 0 };
+}
+
+export const ChannelMemberBody = {
+  encode(message: ChannelMemberBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.channelId.length !== 0) {
+      writer.uint32(10).bytes(message.channelId);
+    }
+    if (message.fid !== 0) {
+      writer.uint32(16).uint64(message.fid);
+    }
+    if (message.action !== 0) {
+      writer.uint32(24).int32(message.action);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelMemberBody {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelMemberBody();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.channelId = reader.bytes();
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.fid = longToNumber(reader.uint64() as Long);
+          continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.action = reader.int32() as any;
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelMemberBody {
+    return {
+      channelId: isSet(object.channelId) ? bytesFromBase64(object.channelId) : new Uint8Array(),
+      fid: isSet(object.fid) ? Number(object.fid) : 0,
+      action: isSet(object.action) ? channelMemberActionFromJSON(object.action) : 0,
+    };
+  },
+
+  toJSON(message: ChannelMemberBody): unknown {
+    const obj: any = {};
+    message.channelId !== undefined &&
+      (obj.channelId = base64FromBytes(message.channelId !== undefined ? message.channelId : new Uint8Array()));
+    message.fid !== undefined && (obj.fid = Math.round(message.fid));
+    message.action !== undefined && (obj.action = channelMemberActionToJSON(message.action));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelMemberBody>, I>>(base?: I): ChannelMemberBody {
+    return ChannelMemberBody.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelMemberBody>, I>>(object: I): ChannelMemberBody {
+    const message = createBaseChannelMemberBody();
+    message.channelId = object.channelId ?? new Uint8Array();
+    message.fid = object.fid ?? 0;
+    message.action = object.action ?? 0;
+    return message;
+  },
+};
+
+function createBaseChannelPinBody(): ChannelPinBody {
+  return { channelId: new Uint8Array(), castHash: new Uint8Array() };
+}
+
+export const ChannelPinBody = {
+  encode(message: ChannelPinBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.channelId.length !== 0) {
+      writer.uint32(10).bytes(message.channelId);
+    }
+    if (message.castHash.length !== 0) {
+      writer.uint32(18).bytes(message.castHash);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelPinBody {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelPinBody();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.channelId = reader.bytes();
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.castHash = reader.bytes();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelPinBody {
+    return {
+      channelId: isSet(object.channelId) ? bytesFromBase64(object.channelId) : new Uint8Array(),
+      castHash: isSet(object.castHash) ? bytesFromBase64(object.castHash) : new Uint8Array(),
+    };
+  },
+
+  toJSON(message: ChannelPinBody): unknown {
+    const obj: any = {};
+    message.channelId !== undefined &&
+      (obj.channelId = base64FromBytes(message.channelId !== undefined ? message.channelId : new Uint8Array()));
+    message.castHash !== undefined &&
+      (obj.castHash = base64FromBytes(message.castHash !== undefined ? message.castHash : new Uint8Array()));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelPinBody>, I>>(base?: I): ChannelPinBody {
+    return ChannelPinBody.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelPinBody>, I>>(object: I): ChannelPinBody {
+    const message = createBaseChannelPinBody();
+    message.channelId = object.channelId ?? new Uint8Array();
+    message.castHash = object.castHash ?? new Uint8Array();
+    return message;
+  },
+};
+
+function createBaseChannelModerateBody(): ChannelModerateBody {
+  return { channelId: new Uint8Array(), castHash: new Uint8Array(), action: 0 };
+}
+
+export const ChannelModerateBody = {
+  encode(message: ChannelModerateBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.channelId.length !== 0) {
+      writer.uint32(10).bytes(message.channelId);
+    }
+    if (message.castHash.length !== 0) {
+      writer.uint32(18).bytes(message.castHash);
+    }
+    if (message.action !== 0) {
+      writer.uint32(24).int32(message.action);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChannelModerateBody {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChannelModerateBody();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.channelId = reader.bytes();
+          continue;
+        case 2:
+          if (tag != 18) {
+            break;
+          }
+
+          message.castHash = reader.bytes();
+          continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.action = reader.int32() as any;
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChannelModerateBody {
+    return {
+      channelId: isSet(object.channelId) ? bytesFromBase64(object.channelId) : new Uint8Array(),
+      castHash: isSet(object.castHash) ? bytesFromBase64(object.castHash) : new Uint8Array(),
+      action: isSet(object.action) ? channelModerateActionFromJSON(object.action) : 0,
+    };
+  },
+
+  toJSON(message: ChannelModerateBody): unknown {
+    const obj: any = {};
+    message.channelId !== undefined &&
+      (obj.channelId = base64FromBytes(message.channelId !== undefined ? message.channelId : new Uint8Array()));
+    message.castHash !== undefined &&
+      (obj.castHash = base64FromBytes(message.castHash !== undefined ? message.castHash : new Uint8Array()));
+    message.action !== undefined && (obj.action = channelModerateActionToJSON(message.action));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChannelModerateBody>, I>>(base?: I): ChannelModerateBody {
+    return ChannelModerateBody.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChannelModerateBody>, I>>(object: I): ChannelModerateBody {
+    const message = createBaseChannelModerateBody();
+    message.channelId = object.channelId ?? new Uint8Array();
+    message.castHash = object.castHash ?? new Uint8Array();
+    message.action = object.action ?? 0;
     return message;
   },
 };
