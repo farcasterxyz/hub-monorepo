@@ -11,13 +11,15 @@ import {
   UserDataType,
   ID_GATEWAY_ADDRESS,
   idGatewayABI,
-  KEY_GATEWAY_ADDRESS,
-  keyGatewayABI,
   ID_REGISTRY_ADDRESS,
   idRegistryABI,
   ViemLocalEip712Signer,
   makeCastRemove,
   makeUserNameProofClaim,
+  makeKeyAddBody,
+  makeKeyAdd,
+  getFarcasterTime,
+  MessageType,
 } from "@farcaster/hub-nodejs";
 import { mnemonicToAccount, toAccount } from "viem/accounts";
 import {
@@ -34,6 +36,7 @@ import {
 } from "viem";
 import { optimism } from "viem/chains";
 import { ed25519 } from "@noble/curves/ed25519";
+import { randomBytes } from "node:crypto";
 import axios from "axios";
 import {
   readContract,
@@ -63,7 +66,18 @@ const FC_NETWORK = FarcasterNetwork.TESTNET; // Network of the Hub
 const CHAIN = optimism;
 const IdGateway = { abi: idGatewayABI, address: ID_GATEWAY_ADDRESS, chain: CHAIN };
 const IdContract = { abi: idRegistryABI, address: ID_REGISTRY_ADDRESS, chain: CHAIN };
-const KeyContract = { abi: keyGatewayABI, address: KEY_GATEWAY_ADDRESS, chain: CHAIN };
+
+// Message types the new signer may sign. KEY_ADD and KEY_REMOVE are never admissible.
+const SCOPES = [
+  MessageType.CAST_ADD,
+  MessageType.CAST_REMOVE,
+  MessageType.REACTION_ADD,
+  MessageType.REACTION_REMOVE,
+  MessageType.LINK_ADD,
+  MessageType.LINK_REMOVE,
+  MessageType.USER_DATA_ADD,
+];
+const TTL = 30 * 24 * 60 * 60; // Sliding window, refreshed every time the key signs. Max 90 days.
 
 const account = mnemonicToAccount(MNEMONIC);
 
@@ -130,42 +144,44 @@ const getOrRegisterFid = async (): Promise<number> => {
 
 const getOrRegisterSigner = async (fid: number) => {
   if (SIGNER_PRIVATE_KEY !== zeroAddress) {
-    // If a private key is provided, we assume the signer is already in the key registry
+    // If a private key is provided, we assume the signer was already added for this fid
     const privateKeyBytes = fromHex(SIGNER_PRIVATE_KEY, "bytes");
     const publicKeyBytes = ed25519.getPublicKey(privateKeyBytes);
     console.log(`Using existing signer with public key: ${toHex(publicKeyBytes)}`);
     return privateKeyBytes;
   }
 
-  const privateKey = ed25519.utils.randomPrivateKey();
+  const privateKey = new Uint8Array(randomBytes(32));
   const publicKey = toHex(ed25519.getPublicKey(privateKey));
 
   console.log(`Created new signer for test with private key: ${toHex(privateKey)}`);
 
-  // To add a key, we need to sign the metadata with the fid of the app we're adding the key on behalf of
-  // We'll use our own fid and custody address for simplicity. This can also be a separate App specific fid.
-  const localAccount = toAccount(account);
-  const eip712signer = new ViemLocalEip712Signer(localAccount);
-  const metadata = await eip712signer.getSignedKeyRequestMetadata({
-    requestFid: BigInt(fid),
-    key: fromHex(publicKey, "bytes"),
-    deadline: BigInt(Math.floor(Date.now() / 1000) + 60 * 60), // 1 hour from now
-  });
+  // Gasless signer: no KeyGateway transaction and no ETH. The custody address signs an EIP-712
+  // authorization, and the key is registered by submitting a KEY_ADD message to the node.
+  // We use our own fid as the requesting app for simplicity; a real app uses its own fid.
+  const signers = await hubClient.getSignersByFid({ fid, requesterFids: [] }, metadata);
+  if (signers.isErr()) {
+    throw new Error(`Error reading signers: ${signers.error}`);
+  }
 
-  const metadataHex = toHex(metadata.unwrapOr(new Uint8Array()));
+  const body = await makeKeyAddBody(
+    {
+      fid: BigInt(fid),
+      key: fromHex(publicKey, "bytes"),
+      scopes: SCOPES,
+      ttl: TTL,
+      nonce: signers.value.currentUserNonce + 1, // nonces are strictly increasing per fid
+      deadline: getFarcasterTime()._unsafeUnwrap() + 60 * 60, // Farcaster time, 1 hour from now
+    },
+    new ViemLocalEip712Signer(toAccount(account)),
+  );
+  if (body.isErr()) {
+    throw new Error(`Error building KEY_ADD: ${body.error}`);
+  }
 
-  const { request: signerAddRequest } = await simulateContract(walletClient, {
-    ...KeyContract,
-    functionName: "add",
-    args: [1, publicKey, 1, metadataHex], // keyType, publicKey, metadataType, metadata
-  });
-
-  const signerAddTxHash = await writeContract(walletClient, signerAddRequest);
-  console.log(`Waiting for signer add tx to confirm: ${signerAddTxHash}`);
-  await waitForTransactionReceipt(walletClient, { hash: signerAddTxHash });
-  console.log(`Registered new signer with public key: ${publicKey}`);
-  console.log("Sleeping 30 seconds to allow hubs to pick up the signer tx");
-  await new Promise((resolve) => setTimeout(resolve, 30000));
+  // The envelope is signed by the new key itself, as proof that we hold it.
+  await submitMessage(makeKeyAdd(body.value, { fid, network: FC_NETWORK }, new NobleEd25519Signer(privateKey)));
+  console.log(`Registered new gasless signer with public key: ${publicKey}`);
   return privateKey;
 };
 
