@@ -1,5 +1,18 @@
 # @farcaster/hub-nodejs
 
+## 0.18.0
+
+### Minor Changes
+
+- f38c4c97: Regenerate protobufs for `CastAddBody.formatVersion` and the optional `CastAddBody.chain` field (`ChainCast`) from FIP: Cast Format and Chained Casts. Like `type`, `formatVersion` is a required property of `CastAddBody`. An object literal passed to `makeCastAdd` needs `formatVersion: 0` (plain text). `CastAddBody.create()` sets it to 0. Before protocol version V22, nodes accept any bytes in field 10. `MessageData.decode` throws on a cast whose field 10 does not decode as a `ChainCast`.
+
+### Patch Changes
+
+- 6130d622: chore: pull in Snapchain v0.14.3 protos
+- Updated dependencies [f38c4c97]
+- Updated dependencies [6130d622]
+  - @farcaster/core@0.21.0
+
 ## 0.17.0
 
 ### Minor Changes
