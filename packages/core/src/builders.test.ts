@@ -76,6 +76,25 @@ describe("makeCastAdd", () => {
     const isValid = await validations.validateMessage(message._unsafeUnwrap());
     expect(isValid.isOk()).toBeTruthy();
   });
+
+  test("keeps formatVersion and chain through signing, bytes and JSON", async () => {
+    const chain = { root: Factories.CastId.build(), index: 1, count: 3 };
+    const message = await builders.makeCastAdd(
+      protobufs.CastAddBody.create({ text: "part 2", formatVersion: 1, chain }),
+      { fid, network },
+      ed25519Signer,
+    );
+    expect(message.isOk()).toBeTruthy();
+    const isValid = await validations.validateMessage(message._unsafeUnwrap());
+    expect(isValid.isOk()).toBeTruthy();
+
+    const decoded = protobufs.Message.decode(protobufs.Message.encode(message._unsafeUnwrap()).finish());
+    const body = decoded.data?.castAddBody ?? protobufs.CastAddBody.create();
+    expect(body.formatVersion).toEqual(1);
+    const json = protobufs.CastAddBody.toJSON(body);
+    expect(json).toMatchObject({ formatVersion: 1, chain: protobufs.ChainCast.toJSON(chain) });
+    expect(protobufs.CastAddBody.toJSON(protobufs.CastAddBody.fromJSON(json))).toEqual(json);
+  });
 });
 
 describe("makeCastRemove", () => {
