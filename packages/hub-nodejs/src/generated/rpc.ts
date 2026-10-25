@@ -20,6 +20,28 @@ import { OnChainEvent } from "./onchain_event";
 import {
   BlocksRequest,
   CastsByParentRequest,
+  ChannelFollowerCountRequest,
+  ChannelFollowerCountResponse,
+  ChannelFollowersRequest,
+  ChannelFollowersResponse,
+  ChannelFollowsRequest,
+  ChannelFollowsResponse,
+  ChannelMemberRequest,
+  ChannelMemberResponse,
+  ChannelMembershipsByFidRequest,
+  ChannelMembershipsResponse,
+  ChannelMembersRequest,
+  ChannelMembersResponse,
+  ChannelMetadataResponse,
+  ChannelModerationsRequest,
+  ChannelModerationsResponse,
+  ChannelOwnerRequest,
+  ChannelOwnerResponse,
+  ChannelPinResponse,
+  ChannelRequest,
+  ChannelsByAddressRequest,
+  ChannelsByFidRequest,
+  ChannelsResponse,
   EventRequest,
   EventsRequest,
   EventsResponse,
@@ -33,10 +55,15 @@ import {
   GetConnectedPeersResponse,
   GetInfoRequest,
   GetInfoResponse,
+  GetMeshViewRequest,
   IdRegistryEventByAddressRequest,
+  IsFollowingChannelRequest,
+  IsFollowingChannelResponse,
   LinkRequest,
   LinksByFidRequest,
   LinksByTargetRequest,
+  MeshTopology,
+  MeshView,
   MessagesResponse,
   OnChainEventRequest,
   OnChainEventResponse,
@@ -142,6 +169,29 @@ export const HubServiceService = {
     responseSerialize: (value: GetConnectedPeersResponse) =>
       Buffer.from(GetConnectedPeersResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer) => GetConnectedPeersResponse.decode(value),
+  },
+  /** Mesh health & topology: this node's local view of the gossip mesh. Admin-gated. */
+  getMeshView: {
+    path: "/HubService/GetMeshView",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: GetMeshViewRequest) => Buffer.from(GetMeshViewRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => GetMeshViewRequest.decode(value),
+    responseSerialize: (value: MeshView) => Buffer.from(MeshView.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => MeshView.decode(value),
+  },
+  /**
+   * Network-wide topology: centralized crawl of connected validators over the
+   * gossip port, aggregating each validator's local mesh view. Admin-gated.
+   */
+  getMeshTopology: {
+    path: "/HubService/GetMeshTopology",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: GetMeshViewRequest) => Buffer.from(GetMeshViewRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => GetMeshViewRequest.decode(value),
+    responseSerialize: (value: MeshTopology) => Buffer.from(MeshTopology.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => MeshTopology.decode(value),
   },
   /** Events */
   subscribe: {
@@ -358,6 +408,247 @@ export const HubServiceService = {
     responseSerialize: (value: OnChainEventResponse) => Buffer.from(OnChainEventResponse.encode(value).finish()),
     responseDeserialize: (value: Buffer) => OnChainEventResponse.decode(value),
   },
+  /**
+   * Resolves the current channel registry owner address to an fid using the
+   * shard-0 verification replica. The owner is the winning verifier of the
+   * address in that replica (greatest ts_hash, ties to the lower fid);
+   * verifications that exist only in pre-activation data-shard history do not
+   * participate. This read is not consensus.
+   *
+   * An fid of 0 means the owner's verification has not landed on shard 0 yet.
+   * It is a normal, expected state — not an error and not a lookup failure. The
+   * registration exists and the owner address is known; nothing binds that
+   * address to an fid on shard 0 yet, so there is no one to authorize.
+   *
+   * Two situations produce it: the address was never verified, or it was
+   * verified only before activation, which the shard-0 admission timestamp
+   * floor deliberately excludes. The node cannot tell them apart — both are the
+   * same absent replica row — and does not need to, because the remedy is the
+   * same either way. Surface fid 0 as "not yet", never as "abandoned".
+   *
+   * RE-VERIFICATION IS REQUIRED. There is no backfill of pre-activation
+   * verification history into the shard-0 replica, so an owner who verified
+   * their address before activation MUST submit a fresh verification of the
+   * same address afterwards for their channel to become manageable. Until they
+   * do, every permissioned write on the channel is rejected exactly as if it
+   * were unclaimed. Clients should present fid 0 as an actionable "verify your
+   * address to manage this channel" state rather than an error.
+   *
+   * Expiry is returned as-is and may be in the past. The registry contract
+   * emits no onchain event when a lapsed registration's grace period ends, so
+   * this endpoint reports the last known registration (owner address + expiry)
+   * until a later registration supersedes it; it never computes grace or
+   * release state. Callers interpret `expiry` themselves (e.g. against the
+   * deployed grace period). NOT_FOUND is returned only for a channel key with
+   * no registration record at all.
+   */
+  getChannelOwner: {
+    path: "/HubService/GetChannelOwner",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: ChannelOwnerRequest) => Buffer.from(ChannelOwnerRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => ChannelOwnerRequest.decode(value),
+    responseSerialize: (value: ChannelOwnerResponse) => Buffer.from(ChannelOwnerResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => ChannelOwnerResponse.decode(value),
+  },
+  /**
+   * Lists channels for a raw 20-byte EVM owner address, including lapsed
+   * registrations (expiry in the past) until a later registration supersedes
+   * them — see GetChannelOwner's expiry note; callers interpret `expiry`
+   * themselves. Owner resolution uses the shard-0 verification replica, as in
+   * GetChannelOwner.
+   * This read is not consensus. `page_token` is opaque bytes; callers page until
+   * `next_page_token` is unset, which marks the end of enumeration. A page that
+   * lands exactly on the last entry may return a token that yields one final
+   * empty page, so a present token means "page again", not "results guaranteed".
+   */
+  getChannelsByAddress: {
+    path: "/HubService/GetChannelsByAddress",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: ChannelsByAddressRequest) => Buffer.from(ChannelsByAddressRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => ChannelsByAddressRequest.decode(value),
+    responseSerialize: (value: ChannelsResponse) => Buffer.from(ChannelsResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => ChannelsResponse.decode(value),
+  },
+  /**
+   * Lists channels that currently resolve to `fid`, including lapsed
+   * registrations (see GetChannelOwner's expiry note). The node must host the
+   * fid's home shard to enumerate its verified addresses, following existing
+   * fid-routed read behavior. The final owner-winner filter uses the shard-0
+   * verification replica, as in GetChannelOwner. This read is not consensus.
+   *
+   * This is a joined read over the fid's verified EVM addresses and the channel
+   * owner-address index. The verified addresses are enumerated in ascending
+   * order, making the owner-address index key a globally ordered composite
+   * cursor across the join. `page_token` is opaque bytes and the paging contract
+   * is identical to GetChannelsByAddress: page until `next_page_token` is unset
+   * (a boundary-aligned page may return one final empty page). There is no
+   * `reverse` (addresses iterate ascending only).
+   */
+  getChannelsByFid: {
+    path: "/HubService/GetChannelsByFid",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: ChannelsByFidRequest) => Buffer.from(ChannelsByFidRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => ChannelsByFidRequest.decode(value),
+    responseSerialize: (value: ChannelsResponse) => Buffer.from(ChannelsResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => ChannelsResponse.decode(value),
+  },
+  /**
+   * Channel-message reads use shard-0 stores. All channel_id values are the raw
+   * 32-byte registry labels; any other width is INVALID_ARGUMENT, not NOT_FOUND.
+   *
+   * The five channel_id-keyed reads below require a registered channel and
+   * return NOT_FOUND otherwise; a registered channel with no matching state
+   * returns an empty/default response or page. GetChannelMembershipsByFid is
+   * the exception: it is keyed by fid alone, performs no registration check,
+   * and therefore never returns NOT_FOUND — it can list memberships for
+   * channels the caller cannot look up individually. It and GetChannelMember
+   * reject an fid that is zero or exceeds u32 with INVALID_ARGUMENT.
+   *
+   * Paging on the three list reads follows GetChannelsByAddress: `page_token`
+   * is opaque bytes, page until `next_page_token` is unset, and a
+   * boundary-aligned page may yield one final empty page. Unlike the reads
+   * above, a token is scoped to the index that minted it — passing one channel's
+   * token to another channel (or another fid's to GetChannelMembershipsByFid)
+   * is INVALID_ARGUMENT rather than a silent cross-channel read. `page_size` is
+   * clamped to the server maximum without signalling, and `page_size: 0` is
+   * INVALID_ARGUMENT rather than an empty terminal page — omit it for the default.
+   */
+  getChannelMember: {
+    path: "/HubService/GetChannelMember",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: ChannelMemberRequest) => Buffer.from(ChannelMemberRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => ChannelMemberRequest.decode(value),
+    responseSerialize: (value: ChannelMemberResponse) => Buffer.from(ChannelMemberResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => ChannelMemberResponse.decode(value),
+  },
+  getChannelMembers: {
+    path: "/HubService/GetChannelMembers",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: ChannelMembersRequest) => Buffer.from(ChannelMembersRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => ChannelMembersRequest.decode(value),
+    responseSerialize: (value: ChannelMembersResponse) => Buffer.from(ChannelMembersResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => ChannelMembersResponse.decode(value),
+  },
+  getChannelPin: {
+    path: "/HubService/GetChannelPin",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: ChannelRequest) => Buffer.from(ChannelRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => ChannelRequest.decode(value),
+    responseSerialize: (value: ChannelPinResponse) => Buffer.from(ChannelPinResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => ChannelPinResponse.decode(value),
+  },
+  getChannelModerations: {
+    path: "/HubService/GetChannelModerations",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: ChannelModerationsRequest) =>
+      Buffer.from(ChannelModerationsRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => ChannelModerationsRequest.decode(value),
+    responseSerialize: (value: ChannelModerationsResponse) =>
+      Buffer.from(ChannelModerationsResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => ChannelModerationsResponse.decode(value),
+  },
+  getChannelMetadata: {
+    path: "/HubService/GetChannelMetadata",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: ChannelRequest) => Buffer.from(ChannelRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => ChannelRequest.decode(value),
+    responseSerialize: (value: ChannelMetadataResponse) => Buffer.from(ChannelMetadataResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => ChannelMetadataResponse.decode(value),
+  },
+  getChannelMembershipsByFid: {
+    path: "/HubService/GetChannelMembershipsByFid",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: ChannelMembershipsByFidRequest) =>
+      Buffer.from(ChannelMembershipsByFidRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => ChannelMembershipsByFidRequest.decode(value),
+    responseSerialize: (value: ChannelMembershipsResponse) =>
+      Buffer.from(ChannelMembershipsResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => ChannelMembershipsResponse.decode(value),
+  },
+  /**
+   * Channel follows. Unlike everything above, these read DATA SHARDS, not shard 0:
+   * a follow is an ordinary reaction living on its author's own shard (see
+   * ChannelFollower in request_response.proto for the message shape and for the
+   * pruning caveat).
+   *
+   * No registration check, deliberately, and so NEVER NOT_FOUND for an unknown
+   * channel — only INVALID_ARGUMENT for a channel_id that is not 32 bytes.
+   * Registration lives on shard 0, which a data-shard-only node need not host, and
+   * a follow row can legitimately exist for a tokenId that was never minted;
+   * returning NOT_FOUND would make GetChannelFollowerCount disagree with
+   * IsFollowingChannel for the same channel. An unfollowed or unknown channel
+   * returns an empty page and a count of zero.
+   *
+   * GetChannelFollowers and GetChannelFollowerCount FAN OUT across every shard,
+   * because no single shard holds a channel's whole follower set. Two consequences:
+   *
+   *   * A node that does not host all shards returns FAILED_PRECONDITION rather
+   *     than answering from the shards it has. A partial follower list is
+   *     indistinguishable from a small one, so it must not be served silently.
+   *   * `page_size` is per shard, so a page may hold up to page_size * num_shards
+   *     entries, and `page_token` encodes one cursor per shard. A token is rejected
+   *     with INVALID_ARGUMENT if its shard set does not match the node's. Page until
+   *     `next_page_token` is unset; a boundary-aligned page may yield one final
+   *     empty page. As above, `page_size: 0` is INVALID_ARGUMENT — omit it for the
+   *     default.
+   *
+   * A summed count and an enumerated follower list are read from each shard at
+   * slightly different instants, so under concurrent writes they can disagree by a
+   * few entries. Neither is stale in itself; there is just no cross-shard snapshot.
+   *
+   * GetChannelFollows and IsFollowingChannel are keyed by fid, so they answer from
+   * that fid's home shard alone and have none of the above caveats.
+   */
+  getChannelFollowers: {
+    path: "/HubService/GetChannelFollowers",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: ChannelFollowersRequest) => Buffer.from(ChannelFollowersRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => ChannelFollowersRequest.decode(value),
+    responseSerialize: (value: ChannelFollowersResponse) =>
+      Buffer.from(ChannelFollowersResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => ChannelFollowersResponse.decode(value),
+  },
+  getChannelFollowerCount: {
+    path: "/HubService/GetChannelFollowerCount",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: ChannelFollowerCountRequest) =>
+      Buffer.from(ChannelFollowerCountRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => ChannelFollowerCountRequest.decode(value),
+    responseSerialize: (value: ChannelFollowerCountResponse) =>
+      Buffer.from(ChannelFollowerCountResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => ChannelFollowerCountResponse.decode(value),
+  },
+  getChannelFollows: {
+    path: "/HubService/GetChannelFollows",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: ChannelFollowsRequest) => Buffer.from(ChannelFollowsRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => ChannelFollowsRequest.decode(value),
+    responseSerialize: (value: ChannelFollowsResponse) => Buffer.from(ChannelFollowsResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => ChannelFollowsResponse.decode(value),
+  },
+  isFollowingChannel: {
+    path: "/HubService/IsFollowingChannel",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: IsFollowingChannelRequest) =>
+      Buffer.from(IsFollowingChannelRequest.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => IsFollowingChannelRequest.decode(value),
+    responseSerialize: (value: IsFollowingChannelResponse) =>
+      Buffer.from(IsFollowingChannelResponse.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => IsFollowingChannelResponse.decode(value),
+  },
   getIdRegistryOnChainEvent: {
     path: "/HubService/GetIdRegistryOnChainEvent",
     requestStream: false,
@@ -511,6 +802,13 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   getInfo: handleUnaryCall<GetInfoRequest, GetInfoResponse>;
   getFids: handleUnaryCall<FidsRequest, FidsResponse>;
   getConnectedPeers: handleUnaryCall<GetConnectedPeersRequest, GetConnectedPeersResponse>;
+  /** Mesh health & topology: this node's local view of the gossip mesh. Admin-gated. */
+  getMeshView: handleUnaryCall<GetMeshViewRequest, MeshView>;
+  /**
+   * Network-wide topology: centralized crawl of connected validators over the
+   * gossip port, aggregating each validator's local mesh view. Admin-gated.
+   */
+  getMeshTopology: handleUnaryCall<GetMeshViewRequest, MeshTopology>;
   /** Events */
   subscribe: handleServerStreamingCall<SubscribeRequest, HubEvent>;
   getEvent: handleUnaryCall<EventRequest, HubEvent>;
@@ -550,6 +848,134 @@ export interface HubServiceServer extends UntypedServiceImplementation {
   getSigner: handleUnaryCall<SignerRequest, SignerResponse>;
   getSignersByFid: handleUnaryCall<SignersByFidRequest, SignersByFidResponse>;
   getOnChainEvents: handleUnaryCall<OnChainEventRequest, OnChainEventResponse>;
+  /**
+   * Resolves the current channel registry owner address to an fid using the
+   * shard-0 verification replica. The owner is the winning verifier of the
+   * address in that replica (greatest ts_hash, ties to the lower fid);
+   * verifications that exist only in pre-activation data-shard history do not
+   * participate. This read is not consensus.
+   *
+   * An fid of 0 means the owner's verification has not landed on shard 0 yet.
+   * It is a normal, expected state — not an error and not a lookup failure. The
+   * registration exists and the owner address is known; nothing binds that
+   * address to an fid on shard 0 yet, so there is no one to authorize.
+   *
+   * Two situations produce it: the address was never verified, or it was
+   * verified only before activation, which the shard-0 admission timestamp
+   * floor deliberately excludes. The node cannot tell them apart — both are the
+   * same absent replica row — and does not need to, because the remedy is the
+   * same either way. Surface fid 0 as "not yet", never as "abandoned".
+   *
+   * RE-VERIFICATION IS REQUIRED. There is no backfill of pre-activation
+   * verification history into the shard-0 replica, so an owner who verified
+   * their address before activation MUST submit a fresh verification of the
+   * same address afterwards for their channel to become manageable. Until they
+   * do, every permissioned write on the channel is rejected exactly as if it
+   * were unclaimed. Clients should present fid 0 as an actionable "verify your
+   * address to manage this channel" state rather than an error.
+   *
+   * Expiry is returned as-is and may be in the past. The registry contract
+   * emits no onchain event when a lapsed registration's grace period ends, so
+   * this endpoint reports the last known registration (owner address + expiry)
+   * until a later registration supersedes it; it never computes grace or
+   * release state. Callers interpret `expiry` themselves (e.g. against the
+   * deployed grace period). NOT_FOUND is returned only for a channel key with
+   * no registration record at all.
+   */
+  getChannelOwner: handleUnaryCall<ChannelOwnerRequest, ChannelOwnerResponse>;
+  /**
+   * Lists channels for a raw 20-byte EVM owner address, including lapsed
+   * registrations (expiry in the past) until a later registration supersedes
+   * them — see GetChannelOwner's expiry note; callers interpret `expiry`
+   * themselves. Owner resolution uses the shard-0 verification replica, as in
+   * GetChannelOwner.
+   * This read is not consensus. `page_token` is opaque bytes; callers page until
+   * `next_page_token` is unset, which marks the end of enumeration. A page that
+   * lands exactly on the last entry may return a token that yields one final
+   * empty page, so a present token means "page again", not "results guaranteed".
+   */
+  getChannelsByAddress: handleUnaryCall<ChannelsByAddressRequest, ChannelsResponse>;
+  /**
+   * Lists channels that currently resolve to `fid`, including lapsed
+   * registrations (see GetChannelOwner's expiry note). The node must host the
+   * fid's home shard to enumerate its verified addresses, following existing
+   * fid-routed read behavior. The final owner-winner filter uses the shard-0
+   * verification replica, as in GetChannelOwner. This read is not consensus.
+   *
+   * This is a joined read over the fid's verified EVM addresses and the channel
+   * owner-address index. The verified addresses are enumerated in ascending
+   * order, making the owner-address index key a globally ordered composite
+   * cursor across the join. `page_token` is opaque bytes and the paging contract
+   * is identical to GetChannelsByAddress: page until `next_page_token` is unset
+   * (a boundary-aligned page may return one final empty page). There is no
+   * `reverse` (addresses iterate ascending only).
+   */
+  getChannelsByFid: handleUnaryCall<ChannelsByFidRequest, ChannelsResponse>;
+  /**
+   * Channel-message reads use shard-0 stores. All channel_id values are the raw
+   * 32-byte registry labels; any other width is INVALID_ARGUMENT, not NOT_FOUND.
+   *
+   * The five channel_id-keyed reads below require a registered channel and
+   * return NOT_FOUND otherwise; a registered channel with no matching state
+   * returns an empty/default response or page. GetChannelMembershipsByFid is
+   * the exception: it is keyed by fid alone, performs no registration check,
+   * and therefore never returns NOT_FOUND — it can list memberships for
+   * channels the caller cannot look up individually. It and GetChannelMember
+   * reject an fid that is zero or exceeds u32 with INVALID_ARGUMENT.
+   *
+   * Paging on the three list reads follows GetChannelsByAddress: `page_token`
+   * is opaque bytes, page until `next_page_token` is unset, and a
+   * boundary-aligned page may yield one final empty page. Unlike the reads
+   * above, a token is scoped to the index that minted it — passing one channel's
+   * token to another channel (or another fid's to GetChannelMembershipsByFid)
+   * is INVALID_ARGUMENT rather than a silent cross-channel read. `page_size` is
+   * clamped to the server maximum without signalling, and `page_size: 0` is
+   * INVALID_ARGUMENT rather than an empty terminal page — omit it for the default.
+   */
+  getChannelMember: handleUnaryCall<ChannelMemberRequest, ChannelMemberResponse>;
+  getChannelMembers: handleUnaryCall<ChannelMembersRequest, ChannelMembersResponse>;
+  getChannelPin: handleUnaryCall<ChannelRequest, ChannelPinResponse>;
+  getChannelModerations: handleUnaryCall<ChannelModerationsRequest, ChannelModerationsResponse>;
+  getChannelMetadata: handleUnaryCall<ChannelRequest, ChannelMetadataResponse>;
+  getChannelMembershipsByFid: handleUnaryCall<ChannelMembershipsByFidRequest, ChannelMembershipsResponse>;
+  /**
+   * Channel follows. Unlike everything above, these read DATA SHARDS, not shard 0:
+   * a follow is an ordinary reaction living on its author's own shard (see
+   * ChannelFollower in request_response.proto for the message shape and for the
+   * pruning caveat).
+   *
+   * No registration check, deliberately, and so NEVER NOT_FOUND for an unknown
+   * channel — only INVALID_ARGUMENT for a channel_id that is not 32 bytes.
+   * Registration lives on shard 0, which a data-shard-only node need not host, and
+   * a follow row can legitimately exist for a tokenId that was never minted;
+   * returning NOT_FOUND would make GetChannelFollowerCount disagree with
+   * IsFollowingChannel for the same channel. An unfollowed or unknown channel
+   * returns an empty page and a count of zero.
+   *
+   * GetChannelFollowers and GetChannelFollowerCount FAN OUT across every shard,
+   * because no single shard holds a channel's whole follower set. Two consequences:
+   *
+   *   * A node that does not host all shards returns FAILED_PRECONDITION rather
+   *     than answering from the shards it has. A partial follower list is
+   *     indistinguishable from a small one, so it must not be served silently.
+   *   * `page_size` is per shard, so a page may hold up to page_size * num_shards
+   *     entries, and `page_token` encodes one cursor per shard. A token is rejected
+   *     with INVALID_ARGUMENT if its shard set does not match the node's. Page until
+   *     `next_page_token` is unset; a boundary-aligned page may yield one final
+   *     empty page. As above, `page_size: 0` is INVALID_ARGUMENT — omit it for the
+   *     default.
+   *
+   * A summed count and an enumerated follower list are read from each shard at
+   * slightly different instants, so under concurrent writes they can disagree by a
+   * few entries. Neither is stale in itself; there is just no cross-shard snapshot.
+   *
+   * GetChannelFollows and IsFollowingChannel are keyed by fid, so they answer from
+   * that fid's home shard alone and have none of the above caveats.
+   */
+  getChannelFollowers: handleUnaryCall<ChannelFollowersRequest, ChannelFollowersResponse>;
+  getChannelFollowerCount: handleUnaryCall<ChannelFollowerCountRequest, ChannelFollowerCountResponse>;
+  getChannelFollows: handleUnaryCall<ChannelFollowsRequest, ChannelFollowsResponse>;
+  isFollowingChannel: handleUnaryCall<IsFollowingChannelRequest, IsFollowingChannelResponse>;
   getIdRegistryOnChainEvent: handleUnaryCall<FidRequest, OnChainEvent>;
   getIdRegistryOnChainEventByAddress: handleUnaryCall<IdRegistryEventByAddressRequest, OnChainEvent>;
   getCurrentStorageLimitsByFid: handleUnaryCall<FidRequest, StorageLimitsResponse>;
@@ -676,6 +1102,41 @@ export interface HubServiceClient extends Client {
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: GetConnectedPeersResponse) => void,
+  ): ClientUnaryCall;
+  /** Mesh health & topology: this node's local view of the gossip mesh. Admin-gated. */
+  getMeshView(
+    request: GetMeshViewRequest,
+    callback: (error: ServiceError | null, response: MeshView) => void,
+  ): ClientUnaryCall;
+  getMeshView(
+    request: GetMeshViewRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: MeshView) => void,
+  ): ClientUnaryCall;
+  getMeshView(
+    request: GetMeshViewRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: MeshView) => void,
+  ): ClientUnaryCall;
+  /**
+   * Network-wide topology: centralized crawl of connected validators over the
+   * gossip port, aggregating each validator's local mesh view. Admin-gated.
+   */
+  getMeshTopology(
+    request: GetMeshViewRequest,
+    callback: (error: ServiceError | null, response: MeshTopology) => void,
+  ): ClientUnaryCall;
+  getMeshTopology(
+    request: GetMeshViewRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: MeshTopology) => void,
+  ): ClientUnaryCall;
+  getMeshTopology(
+    request: GetMeshViewRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: MeshTopology) => void,
   ): ClientUnaryCall;
   /** Events */
   subscribe(request: SubscribeRequest, options?: Partial<CallOptions>): ClientReadableStream<HubEvent>;
@@ -1008,6 +1469,316 @@ export interface HubServiceClient extends Client {
     metadata: Metadata,
     options: Partial<CallOptions>,
     callback: (error: ServiceError | null, response: OnChainEventResponse) => void,
+  ): ClientUnaryCall;
+  /**
+   * Resolves the current channel registry owner address to an fid using the
+   * shard-0 verification replica. The owner is the winning verifier of the
+   * address in that replica (greatest ts_hash, ties to the lower fid);
+   * verifications that exist only in pre-activation data-shard history do not
+   * participate. This read is not consensus.
+   *
+   * An fid of 0 means the owner's verification has not landed on shard 0 yet.
+   * It is a normal, expected state — not an error and not a lookup failure. The
+   * registration exists and the owner address is known; nothing binds that
+   * address to an fid on shard 0 yet, so there is no one to authorize.
+   *
+   * Two situations produce it: the address was never verified, or it was
+   * verified only before activation, which the shard-0 admission timestamp
+   * floor deliberately excludes. The node cannot tell them apart — both are the
+   * same absent replica row — and does not need to, because the remedy is the
+   * same either way. Surface fid 0 as "not yet", never as "abandoned".
+   *
+   * RE-VERIFICATION IS REQUIRED. There is no backfill of pre-activation
+   * verification history into the shard-0 replica, so an owner who verified
+   * their address before activation MUST submit a fresh verification of the
+   * same address afterwards for their channel to become manageable. Until they
+   * do, every permissioned write on the channel is rejected exactly as if it
+   * were unclaimed. Clients should present fid 0 as an actionable "verify your
+   * address to manage this channel" state rather than an error.
+   *
+   * Expiry is returned as-is and may be in the past. The registry contract
+   * emits no onchain event when a lapsed registration's grace period ends, so
+   * this endpoint reports the last known registration (owner address + expiry)
+   * until a later registration supersedes it; it never computes grace or
+   * release state. Callers interpret `expiry` themselves (e.g. against the
+   * deployed grace period). NOT_FOUND is returned only for a channel key with
+   * no registration record at all.
+   */
+  getChannelOwner(
+    request: ChannelOwnerRequest,
+    callback: (error: ServiceError | null, response: ChannelOwnerResponse) => void,
+  ): ClientUnaryCall;
+  getChannelOwner(
+    request: ChannelOwnerRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: ChannelOwnerResponse) => void,
+  ): ClientUnaryCall;
+  getChannelOwner(
+    request: ChannelOwnerRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: ChannelOwnerResponse) => void,
+  ): ClientUnaryCall;
+  /**
+   * Lists channels for a raw 20-byte EVM owner address, including lapsed
+   * registrations (expiry in the past) until a later registration supersedes
+   * them — see GetChannelOwner's expiry note; callers interpret `expiry`
+   * themselves. Owner resolution uses the shard-0 verification replica, as in
+   * GetChannelOwner.
+   * This read is not consensus. `page_token` is opaque bytes; callers page until
+   * `next_page_token` is unset, which marks the end of enumeration. A page that
+   * lands exactly on the last entry may return a token that yields one final
+   * empty page, so a present token means "page again", not "results guaranteed".
+   */
+  getChannelsByAddress(
+    request: ChannelsByAddressRequest,
+    callback: (error: ServiceError | null, response: ChannelsResponse) => void,
+  ): ClientUnaryCall;
+  getChannelsByAddress(
+    request: ChannelsByAddressRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: ChannelsResponse) => void,
+  ): ClientUnaryCall;
+  getChannelsByAddress(
+    request: ChannelsByAddressRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: ChannelsResponse) => void,
+  ): ClientUnaryCall;
+  /**
+   * Lists channels that currently resolve to `fid`, including lapsed
+   * registrations (see GetChannelOwner's expiry note). The node must host the
+   * fid's home shard to enumerate its verified addresses, following existing
+   * fid-routed read behavior. The final owner-winner filter uses the shard-0
+   * verification replica, as in GetChannelOwner. This read is not consensus.
+   *
+   * This is a joined read over the fid's verified EVM addresses and the channel
+   * owner-address index. The verified addresses are enumerated in ascending
+   * order, making the owner-address index key a globally ordered composite
+   * cursor across the join. `page_token` is opaque bytes and the paging contract
+   * is identical to GetChannelsByAddress: page until `next_page_token` is unset
+   * (a boundary-aligned page may return one final empty page). There is no
+   * `reverse` (addresses iterate ascending only).
+   */
+  getChannelsByFid(
+    request: ChannelsByFidRequest,
+    callback: (error: ServiceError | null, response: ChannelsResponse) => void,
+  ): ClientUnaryCall;
+  getChannelsByFid(
+    request: ChannelsByFidRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: ChannelsResponse) => void,
+  ): ClientUnaryCall;
+  getChannelsByFid(
+    request: ChannelsByFidRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: ChannelsResponse) => void,
+  ): ClientUnaryCall;
+  /**
+   * Channel-message reads use shard-0 stores. All channel_id values are the raw
+   * 32-byte registry labels; any other width is INVALID_ARGUMENT, not NOT_FOUND.
+   *
+   * The five channel_id-keyed reads below require a registered channel and
+   * return NOT_FOUND otherwise; a registered channel with no matching state
+   * returns an empty/default response or page. GetChannelMembershipsByFid is
+   * the exception: it is keyed by fid alone, performs no registration check,
+   * and therefore never returns NOT_FOUND — it can list memberships for
+   * channels the caller cannot look up individually. It and GetChannelMember
+   * reject an fid that is zero or exceeds u32 with INVALID_ARGUMENT.
+   *
+   * Paging on the three list reads follows GetChannelsByAddress: `page_token`
+   * is opaque bytes, page until `next_page_token` is unset, and a
+   * boundary-aligned page may yield one final empty page. Unlike the reads
+   * above, a token is scoped to the index that minted it — passing one channel's
+   * token to another channel (or another fid's to GetChannelMembershipsByFid)
+   * is INVALID_ARGUMENT rather than a silent cross-channel read. `page_size` is
+   * clamped to the server maximum without signalling, and `page_size: 0` is
+   * INVALID_ARGUMENT rather than an empty terminal page — omit it for the default.
+   */
+  getChannelMember(
+    request: ChannelMemberRequest,
+    callback: (error: ServiceError | null, response: ChannelMemberResponse) => void,
+  ): ClientUnaryCall;
+  getChannelMember(
+    request: ChannelMemberRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: ChannelMemberResponse) => void,
+  ): ClientUnaryCall;
+  getChannelMember(
+    request: ChannelMemberRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: ChannelMemberResponse) => void,
+  ): ClientUnaryCall;
+  getChannelMembers(
+    request: ChannelMembersRequest,
+    callback: (error: ServiceError | null, response: ChannelMembersResponse) => void,
+  ): ClientUnaryCall;
+  getChannelMembers(
+    request: ChannelMembersRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: ChannelMembersResponse) => void,
+  ): ClientUnaryCall;
+  getChannelMembers(
+    request: ChannelMembersRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: ChannelMembersResponse) => void,
+  ): ClientUnaryCall;
+  getChannelPin(
+    request: ChannelRequest,
+    callback: (error: ServiceError | null, response: ChannelPinResponse) => void,
+  ): ClientUnaryCall;
+  getChannelPin(
+    request: ChannelRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: ChannelPinResponse) => void,
+  ): ClientUnaryCall;
+  getChannelPin(
+    request: ChannelRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: ChannelPinResponse) => void,
+  ): ClientUnaryCall;
+  getChannelModerations(
+    request: ChannelModerationsRequest,
+    callback: (error: ServiceError | null, response: ChannelModerationsResponse) => void,
+  ): ClientUnaryCall;
+  getChannelModerations(
+    request: ChannelModerationsRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: ChannelModerationsResponse) => void,
+  ): ClientUnaryCall;
+  getChannelModerations(
+    request: ChannelModerationsRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: ChannelModerationsResponse) => void,
+  ): ClientUnaryCall;
+  getChannelMetadata(
+    request: ChannelRequest,
+    callback: (error: ServiceError | null, response: ChannelMetadataResponse) => void,
+  ): ClientUnaryCall;
+  getChannelMetadata(
+    request: ChannelRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: ChannelMetadataResponse) => void,
+  ): ClientUnaryCall;
+  getChannelMetadata(
+    request: ChannelRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: ChannelMetadataResponse) => void,
+  ): ClientUnaryCall;
+  getChannelMembershipsByFid(
+    request: ChannelMembershipsByFidRequest,
+    callback: (error: ServiceError | null, response: ChannelMembershipsResponse) => void,
+  ): ClientUnaryCall;
+  getChannelMembershipsByFid(
+    request: ChannelMembershipsByFidRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: ChannelMembershipsResponse) => void,
+  ): ClientUnaryCall;
+  getChannelMembershipsByFid(
+    request: ChannelMembershipsByFidRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: ChannelMembershipsResponse) => void,
+  ): ClientUnaryCall;
+  /**
+   * Channel follows. Unlike everything above, these read DATA SHARDS, not shard 0:
+   * a follow is an ordinary reaction living on its author's own shard (see
+   * ChannelFollower in request_response.proto for the message shape and for the
+   * pruning caveat).
+   *
+   * No registration check, deliberately, and so NEVER NOT_FOUND for an unknown
+   * channel — only INVALID_ARGUMENT for a channel_id that is not 32 bytes.
+   * Registration lives on shard 0, which a data-shard-only node need not host, and
+   * a follow row can legitimately exist for a tokenId that was never minted;
+   * returning NOT_FOUND would make GetChannelFollowerCount disagree with
+   * IsFollowingChannel for the same channel. An unfollowed or unknown channel
+   * returns an empty page and a count of zero.
+   *
+   * GetChannelFollowers and GetChannelFollowerCount FAN OUT across every shard,
+   * because no single shard holds a channel's whole follower set. Two consequences:
+   *
+   *   * A node that does not host all shards returns FAILED_PRECONDITION rather
+   *     than answering from the shards it has. A partial follower list is
+   *     indistinguishable from a small one, so it must not be served silently.
+   *   * `page_size` is per shard, so a page may hold up to page_size * num_shards
+   *     entries, and `page_token` encodes one cursor per shard. A token is rejected
+   *     with INVALID_ARGUMENT if its shard set does not match the node's. Page until
+   *     `next_page_token` is unset; a boundary-aligned page may yield one final
+   *     empty page. As above, `page_size: 0` is INVALID_ARGUMENT — omit it for the
+   *     default.
+   *
+   * A summed count and an enumerated follower list are read from each shard at
+   * slightly different instants, so under concurrent writes they can disagree by a
+   * few entries. Neither is stale in itself; there is just no cross-shard snapshot.
+   *
+   * GetChannelFollows and IsFollowingChannel are keyed by fid, so they answer from
+   * that fid's home shard alone and have none of the above caveats.
+   */
+  getChannelFollowers(
+    request: ChannelFollowersRequest,
+    callback: (error: ServiceError | null, response: ChannelFollowersResponse) => void,
+  ): ClientUnaryCall;
+  getChannelFollowers(
+    request: ChannelFollowersRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: ChannelFollowersResponse) => void,
+  ): ClientUnaryCall;
+  getChannelFollowers(
+    request: ChannelFollowersRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: ChannelFollowersResponse) => void,
+  ): ClientUnaryCall;
+  getChannelFollowerCount(
+    request: ChannelFollowerCountRequest,
+    callback: (error: ServiceError | null, response: ChannelFollowerCountResponse) => void,
+  ): ClientUnaryCall;
+  getChannelFollowerCount(
+    request: ChannelFollowerCountRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: ChannelFollowerCountResponse) => void,
+  ): ClientUnaryCall;
+  getChannelFollowerCount(
+    request: ChannelFollowerCountRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: ChannelFollowerCountResponse) => void,
+  ): ClientUnaryCall;
+  getChannelFollows(
+    request: ChannelFollowsRequest,
+    callback: (error: ServiceError | null, response: ChannelFollowsResponse) => void,
+  ): ClientUnaryCall;
+  getChannelFollows(
+    request: ChannelFollowsRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: ChannelFollowsResponse) => void,
+  ): ClientUnaryCall;
+  getChannelFollows(
+    request: ChannelFollowsRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: ChannelFollowsResponse) => void,
+  ): ClientUnaryCall;
+  isFollowingChannel(
+    request: IsFollowingChannelRequest,
+    callback: (error: ServiceError | null, response: IsFollowingChannelResponse) => void,
+  ): ClientUnaryCall;
+  isFollowingChannel(
+    request: IsFollowingChannelRequest,
+    metadata: Metadata,
+    callback: (error: ServiceError | null, response: IsFollowingChannelResponse) => void,
+  ): ClientUnaryCall;
+  isFollowingChannel(
+    request: IsFollowingChannelRequest,
+    metadata: Metadata,
+    options: Partial<CallOptions>,
+    callback: (error: ServiceError | null, response: IsFollowingChannelResponse) => void,
   ): ClientUnaryCall;
   getIdRegistryOnChainEvent(
     request: FidRequest,

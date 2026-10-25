@@ -38,6 +38,14 @@ export function voteTypeToJSON(object: VoteType): string {
 export enum BlockEventType {
   HEARTBEAT = 0,
   MERGE_MESSAGE = 1,
+  /**
+   * MERGE_ON_CHAIN_EVENT - Fans a shard-0 onchain-event merge (e.g. a channel registration) out to
+   * every data shard so each can maintain a derived replica. Emitted by shard 0
+   * only when the ChannelOwnershipEvents feature (>= V20) is active; applied by
+   * every data shard's replica fold. No code path mints this type below V20, so
+   * it stays absent on any network where the feature is inactive.
+   */
+  MERGE_ON_CHAIN_EVENT = 2,
 }
 
 export function blockEventTypeFromJSON(object: any): BlockEventType {
@@ -48,6 +56,9 @@ export function blockEventTypeFromJSON(object: any): BlockEventType {
     case 1:
     case "BLOCK_EVENT_TYPE_MERGE_MESSAGE":
       return BlockEventType.MERGE_MESSAGE;
+    case 2:
+    case "BLOCK_EVENT_TYPE_MERGE_ON_CHAIN_EVENT":
+      return BlockEventType.MERGE_ON_CHAIN_EVENT;
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum BlockEventType");
   }
@@ -59,6 +70,8 @@ export function blockEventTypeToJSON(object: BlockEventType): string {
       return "BLOCK_EVENT_TYPE_HEARTBEAT";
     case BlockEventType.MERGE_MESSAGE:
       return "BLOCK_EVENT_TYPE_MERGE_MESSAGE";
+    case BlockEventType.MERGE_ON_CHAIN_EVENT:
+      return "BLOCK_EVENT_TYPE_MERGE_ON_CHAIN_EVENT";
     default:
       throw new tsProtoGlobalThis.Error("Unrecognized enum value " + object + " for enum BlockEventType");
   }
@@ -150,6 +163,16 @@ export interface MergeMessageEventBody {
   message: Message | undefined;
 }
 
+/**
+ * Carries the whole original OnChainEvent (carry-the-original convention,
+ * mirroring MergeMessageEventBody): data shards replay the same input shard 0
+ * saw and the existing channel fold consumes it unmodified (see the enum
+ * comment above — gated at V20).
+ */
+export interface MergeOnChainEventEventBody {
+  onChainEvent: OnChainEvent | undefined;
+}
+
 export interface BlockEventData {
   seqnum: number;
   type: BlockEventType;
@@ -158,6 +181,7 @@ export interface BlockEventData {
   blockTimestamp: number;
   heartbeatEventBody?: HeartbeatEventBody | undefined;
   mergeMessageEventBody?: MergeMessageEventBody | undefined;
+  mergeOnChainEventEventBody?: MergeOnChainEventEventBody | undefined;
 }
 
 export interface BlockEvent {
@@ -1438,6 +1462,65 @@ export const MergeMessageEventBody = {
   },
 };
 
+function createBaseMergeOnChainEventEventBody(): MergeOnChainEventEventBody {
+  return { onChainEvent: undefined };
+}
+
+export const MergeOnChainEventEventBody = {
+  encode(message: MergeOnChainEventEventBody, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.onChainEvent !== undefined) {
+      OnChainEvent.encode(message.onChainEvent, writer.uint32(10).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): MergeOnChainEventEventBody {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseMergeOnChainEventEventBody();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.onChainEvent = OnChainEvent.decode(reader, reader.uint32());
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): MergeOnChainEventEventBody {
+    return { onChainEvent: isSet(object.onChainEvent) ? OnChainEvent.fromJSON(object.onChainEvent) : undefined };
+  },
+
+  toJSON(message: MergeOnChainEventEventBody): unknown {
+    const obj: any = {};
+    message.onChainEvent !== undefined &&
+      (obj.onChainEvent = message.onChainEvent ? OnChainEvent.toJSON(message.onChainEvent) : undefined);
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MergeOnChainEventEventBody>, I>>(base?: I): MergeOnChainEventEventBody {
+    return MergeOnChainEventEventBody.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<MergeOnChainEventEventBody>, I>>(object: I): MergeOnChainEventEventBody {
+    const message = createBaseMergeOnChainEventEventBody();
+    message.onChainEvent = (object.onChainEvent !== undefined && object.onChainEvent !== null)
+      ? OnChainEvent.fromPartial(object.onChainEvent)
+      : undefined;
+    return message;
+  },
+};
+
 function createBaseBlockEventData(): BlockEventData {
   return {
     seqnum: 0,
@@ -1447,6 +1530,7 @@ function createBaseBlockEventData(): BlockEventData {
     blockTimestamp: 0,
     heartbeatEventBody: undefined,
     mergeMessageEventBody: undefined,
+    mergeOnChainEventEventBody: undefined,
   };
 }
 
@@ -1472,6 +1556,9 @@ export const BlockEventData = {
     }
     if (message.mergeMessageEventBody !== undefined) {
       MergeMessageEventBody.encode(message.mergeMessageEventBody, writer.uint32(58).fork()).ldelim();
+    }
+    if (message.mergeOnChainEventEventBody !== undefined) {
+      MergeOnChainEventEventBody.encode(message.mergeOnChainEventEventBody, writer.uint32(66).fork()).ldelim();
     }
     return writer;
   },
@@ -1532,6 +1619,13 @@ export const BlockEventData = {
 
           message.mergeMessageEventBody = MergeMessageEventBody.decode(reader, reader.uint32());
           continue;
+        case 8:
+          if (tag != 66) {
+            break;
+          }
+
+          message.mergeOnChainEventEventBody = MergeOnChainEventEventBody.decode(reader, reader.uint32());
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -1554,6 +1648,9 @@ export const BlockEventData = {
       mergeMessageEventBody: isSet(object.mergeMessageEventBody)
         ? MergeMessageEventBody.fromJSON(object.mergeMessageEventBody)
         : undefined,
+      mergeOnChainEventEventBody: isSet(object.mergeOnChainEventEventBody)
+        ? MergeOnChainEventEventBody.fromJSON(object.mergeOnChainEventEventBody)
+        : undefined,
     };
   },
 
@@ -1570,6 +1667,10 @@ export const BlockEventData = {
     message.mergeMessageEventBody !== undefined && (obj.mergeMessageEventBody = message.mergeMessageEventBody
       ? MergeMessageEventBody.toJSON(message.mergeMessageEventBody)
       : undefined);
+    message.mergeOnChainEventEventBody !== undefined &&
+      (obj.mergeOnChainEventEventBody = message.mergeOnChainEventEventBody
+        ? MergeOnChainEventEventBody.toJSON(message.mergeOnChainEventEventBody)
+        : undefined);
     return obj;
   },
 
@@ -1590,6 +1691,10 @@ export const BlockEventData = {
     message.mergeMessageEventBody =
       (object.mergeMessageEventBody !== undefined && object.mergeMessageEventBody !== null)
         ? MergeMessageEventBody.fromPartial(object.mergeMessageEventBody)
+        : undefined;
+    message.mergeOnChainEventEventBody =
+      (object.mergeOnChainEventEventBody !== undefined && object.mergeOnChainEventEventBody !== null)
+        ? MergeOnChainEventEventBody.fromPartial(object.mergeOnChainEventEventBody)
         : undefined;
     return message;
   },
