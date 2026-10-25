@@ -1,6 +1,6 @@
 PROTO_REPO=https://github.com/farcasterxyz/snapchain
 PROTO_PATH=proto/definitions
-PROTO_REV=fc87f2686472598143062a00e1c2b2633b2d87ab # Update this if you want to generate off updated snapchain protos
+PROTO_REV=83c75b4f5f1c57b8fb6ab72d06eba48c26c4fbba # Update this if you want to generate off updated snapchain protos
 
 TMPDIR=tmp-protogen
 git clone --no-single-branch $PROTO_REPO $TMPDIR

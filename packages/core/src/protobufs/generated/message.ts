@@ -819,6 +819,22 @@ export interface CastAddBody {
   embeds: Embed[];
   /** Type of cast */
   type: CastType;
+  /** How to read the text. 0 = plain text */
+  formatVersion: number;
+  /** Set on every cast of a chain */
+  chain?: ChainCast | undefined;
+}
+
+/** Places a cast in an ordered chain of casts by one author */
+export interface ChainCast {
+  /** The first cast of the chain. Absent on that cast itself (index 0) */
+  root:
+    | CastId
+    | undefined;
+  /** Position in the chain, from 0 */
+  index: number;
+  /** Number of casts in the chain. 0 = the chain is still growing */
+  count: number;
 }
 
 /** Removes an existing Cast */
@@ -1724,6 +1740,8 @@ function createBaseCastAddBody(): CastAddBody {
     mentionsPositions: [],
     embeds: [],
     type: 0,
+    formatVersion: 0,
+    chain: undefined,
   };
 }
 
@@ -1756,6 +1774,12 @@ export const CastAddBody = {
     }
     if (message.type !== 0) {
       writer.uint32(64).int32(message.type);
+    }
+    if (message.formatVersion !== 0) {
+      writer.uint32(72).uint32(message.formatVersion);
+    }
+    if (message.chain !== undefined) {
+      ChainCast.encode(message.chain, writer.uint32(82).fork()).ldelim();
     }
     return writer;
   },
@@ -1841,6 +1865,20 @@ export const CastAddBody = {
 
           message.type = reader.int32() as any;
           continue;
+        case 9:
+          if (tag != 72) {
+            break;
+          }
+
+          message.formatVersion = reader.uint32();
+          continue;
+        case 10:
+          if (tag != 82) {
+            break;
+          }
+
+          message.chain = ChainCast.decode(reader, reader.uint32());
+          continue;
       }
       if ((tag & 7) == 4 || tag == 0) {
         break;
@@ -1864,6 +1902,8 @@ export const CastAddBody = {
         : [],
       embeds: Array.isArray(object?.embeds) ? object.embeds.map((e: any) => Embed.fromJSON(e)) : [],
       type: isSet(object.type) ? castTypeFromJSON(object.type) : 0,
+      formatVersion: isSet(object.formatVersion) ? Number(object.formatVersion) : 0,
+      chain: isSet(object.chain) ? ChainCast.fromJSON(object.chain) : undefined,
     };
   },
 
@@ -1894,6 +1934,8 @@ export const CastAddBody = {
       obj.embeds = [];
     }
     message.type !== undefined && (obj.type = castTypeToJSON(message.type));
+    message.formatVersion !== undefined && (obj.formatVersion = Math.round(message.formatVersion));
+    message.chain !== undefined && (obj.chain = message.chain ? ChainCast.toJSON(message.chain) : undefined);
     return obj;
   },
 
@@ -1913,6 +1955,94 @@ export const CastAddBody = {
     message.mentionsPositions = object.mentionsPositions?.map((e) => e) || [];
     message.embeds = object.embeds?.map((e) => Embed.fromPartial(e)) || [];
     message.type = object.type ?? 0;
+    message.formatVersion = object.formatVersion ?? 0;
+    message.chain = (object.chain !== undefined && object.chain !== null)
+      ? ChainCast.fromPartial(object.chain)
+      : undefined;
+    return message;
+  },
+};
+
+function createBaseChainCast(): ChainCast {
+  return { root: undefined, index: 0, count: 0 };
+}
+
+export const ChainCast = {
+  encode(message: ChainCast, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.root !== undefined) {
+      CastId.encode(message.root, writer.uint32(10).fork()).ldelim();
+    }
+    if (message.index !== 0) {
+      writer.uint32(16).uint32(message.index);
+    }
+    if (message.count !== 0) {
+      writer.uint32(24).uint32(message.count);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ChainCast {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChainCast();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag != 10) {
+            break;
+          }
+
+          message.root = CastId.decode(reader, reader.uint32());
+          continue;
+        case 2:
+          if (tag != 16) {
+            break;
+          }
+
+          message.index = reader.uint32();
+          continue;
+        case 3:
+          if (tag != 24) {
+            break;
+          }
+
+          message.count = reader.uint32();
+          continue;
+      }
+      if ((tag & 7) == 4 || tag == 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChainCast {
+    return {
+      root: isSet(object.root) ? CastId.fromJSON(object.root) : undefined,
+      index: isSet(object.index) ? Number(object.index) : 0,
+      count: isSet(object.count) ? Number(object.count) : 0,
+    };
+  },
+
+  toJSON(message: ChainCast): unknown {
+    const obj: any = {};
+    message.root !== undefined && (obj.root = message.root ? CastId.toJSON(message.root) : undefined);
+    message.index !== undefined && (obj.index = Math.round(message.index));
+    message.count !== undefined && (obj.count = Math.round(message.count));
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ChainCast>, I>>(base?: I): ChainCast {
+    return ChainCast.fromPartial(base ?? {});
+  },
+
+  fromPartial<I extends Exact<DeepPartial<ChainCast>, I>>(object: I): ChainCast {
+    const message = createBaseChainCast();
+    message.root = (object.root !== undefined && object.root !== null) ? CastId.fromPartial(object.root) : undefined;
+    message.index = object.index ?? 0;
+    message.count = object.count ?? 0;
     return message;
   },
 };
