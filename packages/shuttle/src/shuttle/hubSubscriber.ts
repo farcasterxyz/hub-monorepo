@@ -212,6 +212,10 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
   private beforeProcess?: PreProcessHandler;
   private afterProcess?: PostProcessHandler;
   private hub: string;
+  private flushTimer: ReturnType<typeof setTimeout> | undefined;
+  // Kept across flushes so a timer flush cannot finish after a newer one and move the resume id backwards.
+  private flushChain: Promise<void> = Promise.resolve();
+  private closed = false;
 
   constructor(
     label: string,
@@ -247,27 +251,83 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
     return await this.redis.getLastProcessedEvent(this.redisKey);
   }
 
+  public override stop() {
+    this.closed = true;
+    this.clearFlushTimer();
+    super.stop();
+  }
+
   public override async processHubEvent(event: HubEvent): Promise<boolean> {
+    if (this.closed) return true;
+
     const eventBytes = Buffer.from(HubEvent.encode(event).finish());
 
     this.eventBatchBytes += eventBytes.length;
     this.eventsToAdd.push([event, eventBytes]);
-    if (
+    if (this.batchReadyToFlush()) {
+      this.clearFlushTimer();
+      await this.enqueueFlush(false);
+    } else {
+      this.armFlushTimer();
+    }
+
+    return true;
+  }
+
+  private batchReadyToFlush(): boolean {
+    return (
       this.eventsToAdd.length >= this.eventBatchSize ||
       this.eventBatchBytes >= this.maxBatchBytesBeforeForceFlush ||
       Date.now() - this.eventBatchLastFlushedAt > this.maxTimeBetweenBatchFlushes
-    ) {
-      const startTime = Date.now();
-      // Empties the current batch
-      const eventBatch = this.eventsToAdd.splice(0, this.eventsToAdd.length);
-      const events = eventBatch.map(([evt, _evtBytes]) => evt);
-      this.eventBatchBytes = 0;
+    );
+  }
 
+  private armFlushTimer() {
+    if (this.flushTimer !== undefined || this.closed) return;
+
+    const elapsed = Date.now() - this.eventBatchLastFlushedAt;
+    const remaining = this.maxTimeBetweenBatchFlushes - elapsed;
+    this.flushTimer = setTimeout(() => {
+      this.flushTimer = undefined;
+      void this.enqueueFlush(true).catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        this.log.error(`HubSubscriber ${this.label} failed to flush event batch: ${message}`);
+      });
+    }, Math.max(0, remaining));
+  }
+
+  private clearFlushTimer() {
+    if (this.flushTimer === undefined) return;
+    clearTimeout(this.flushTimer);
+    this.flushTimer = undefined;
+  }
+
+  private enqueueFlush(retryOnError: boolean): Promise<void> {
+    const run = this.flushChain.then(() => this.flushEventBatch(retryOnError));
+    this.flushChain = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
+  }
+
+  private async flushEventBatch(retryOnError: boolean): Promise<void> {
+    if (this.closed || this.eventsToAdd.length === 0) return;
+
+    const startTime = Date.now();
+    // Empties the current batch
+    const eventBatch = this.eventsToAdd.splice(0, this.eventsToAdd.length);
+    let wroteResumeId = false;
+    const events = eventBatch.map(([evt, _evtBytes]) => evt);
+    this.eventBatchBytes = 0;
+    this.clearFlushTimer();
+
+    try {
       let eventsToWriteBatch = eventBatch;
       if (this.beforeProcess) {
         const eventBytesBatch = eventBatch.map(([_evt, evtBytes]) => evtBytes);
         const preprocessResult = await this.beforeProcess.call(this, events, eventBytesBatch);
-        eventsToWriteBatch = eventBatch.filter((evt, idx) => !preprocessResult[idx]?.skipped);
+        eventsToWriteBatch = eventBatch.filter((_evt, idx) => !preprocessResult[idx]?.skipped);
       }
 
       const eventToWriteBatch = eventsToWriteBatch.map(([evt, _evtBytes]) => evt);
@@ -278,37 +338,49 @@ export class EventStreamHubSubscriber extends BaseHubSubscriber {
       this.eventBatchLastFlushedAt = Date.now();
 
       // biome-ignore lint/style/noNonNullAssertion: batch always has at least one event
-      const [evt, eventBytes] = eventBatch[eventBatch.length - 1]!;
+      const [evt, _eventBytes] = eventBatch[eventBatch.length - 1]!;
       const lastEventId = evt.id;
       await this.redis.setLastProcessedEvent(this.redisKey, lastEventId);
+      wroteResumeId = true;
 
       if (this.afterProcess) {
         await this.afterProcess.call(this, eventToWriteBatch, eventBytesToWriteBatch);
       }
-
-      const processTime = Date.now() - startTime;
-
-      if (events[0]) {
-        const startEventTimestamp = extractTimestampFromEvent(events[0]);
-        statsd.gauge("hub.event.subscriber.last_batch_earliest_event_timestamp", startEventTimestamp, {
-          source: this.shardKey,
-          hub: this.hub,
-        });
+    } catch (error) {
+      // The hub will not send these again until the subscriber restarts. A timer flush has no
+      // restart, so put them back and try once the batch window elapses. Skip that once the
+      // resume id is saved: those events are already durable, and putting them back would write
+      // them twice.
+      if (retryOnError && !this.closed && !wroteResumeId) {
+        const restoredBytes = eventBatch.reduce((sum, [, bytes]) => sum + bytes.length, 0);
+        this.eventsToAdd = eventBatch.concat(this.eventsToAdd);
+        this.eventBatchBytes += restoredBytes;
+        this.eventBatchLastFlushedAt = Date.now();
+        this.armFlushTimer();
       }
+      throw error;
+    }
 
-      statsd.gauge("hub.event.subscriber.last_batch_size", events.length, { source: this.shardKey, hub: this.hub });
+    const processTime = Date.now() - startTime;
 
-      statsd.timing("hub.event.subscriber.process_time.per_event", processTime / events.length, {
-        source: this.shardKey,
-        hub: this.hub,
-      });
-
-      statsd.timing("hub.event.subscriber.process_time.per_batch", processTime, {
+    if (events[0]) {
+      const startEventTimestamp = extractTimestampFromEvent(events[0]);
+      statsd.gauge("hub.event.subscriber.last_batch_earliest_event_timestamp", startEventTimestamp, {
         source: this.shardKey,
         hub: this.hub,
       });
     }
 
-    return true;
+    statsd.gauge("hub.event.subscriber.last_batch_size", events.length, { source: this.shardKey, hub: this.hub });
+
+    statsd.timing("hub.event.subscriber.process_time.per_event", processTime / events.length, {
+      source: this.shardKey,
+      hub: this.hub,
+    });
+
+    statsd.timing("hub.event.subscriber.process_time.per_batch", processTime, {
+      source: this.shardKey,
+      hub: this.hub,
+    });
   }
 }
