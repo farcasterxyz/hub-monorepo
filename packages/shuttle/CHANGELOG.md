@@ -1,5 +1,11 @@
 # @farcaster/hub-shuttle
 
+## 1.0.5
+
+### Patch Changes
+
+- 29d60f15: Flush a Shuttle event batch when the hub goes quiet, instead of holding it until the next event.
+
 ## 1.0.4
 
 ### Patch Changes
