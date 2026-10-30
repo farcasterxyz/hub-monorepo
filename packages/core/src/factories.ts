@@ -29,16 +29,15 @@ import {
   VerificationAddressClaimSolana,
 } from "./verifications";
 import { bytesToHex, hexToBytes, isHex, LocalAccount } from "viem";
-import { toBigInt } from "ethers";
 
 /** Scalars */
 
 const FidFactory = Factory.define<number>(() => {
-  return faker.datatype.number({ min: 1 });
+  return faker.number.int({ min: 1, max: 100_000 });
 });
 
 const BytesFactory = Factory.define<Uint8Array, { length?: number }>(({ transientParams }) => {
-  const length = transientParams.length ?? faker.datatype.number({ max: 64, min: 1 });
+  const length = transientParams.length ?? faker.number.int({ max: 64, min: 1 });
   return randomBytes(length);
 });
 
@@ -47,17 +46,12 @@ const MessageHashFactory = Factory.define<Uint8Array>(() => {
 });
 
 const FnameFactory = Factory.define<Uint8Array>(() => {
-  const length = faker.datatype.number({ min: 1, max: 16 });
+  const length = faker.number.int({ min: 1, max: 16 });
   const bytes = new Uint8Array(length);
 
   //  The name begins with [a-z 0-9] or the ascii numbers [48-57, 97-122] inclusive
   bytes.set(
-    [
-      faker.helpers.arrayElement([
-        faker.datatype.number({ min: 48, max: 57 }),
-        faker.datatype.number({ min: 97, max: 122 }),
-      ]),
-    ],
+    [faker.helpers.arrayElement([faker.number.int({ min: 48, max: 57 }), faker.number.int({ min: 97, max: 122 })])],
     0,
   );
 
@@ -67,8 +61,8 @@ const FnameFactory = Factory.define<Uint8Array>(() => {
       [
         faker.helpers.arrayElement([
           45,
-          faker.datatype.number({ min: 48, max: 57 }),
-          faker.datatype.number({ min: 97, max: 122 }),
+          faker.number.int({ min: 48, max: 57 }),
+          faker.number.int({ min: 97, max: 122 }),
         ]),
       ],
       i,
@@ -79,7 +73,7 @@ const FnameFactory = Factory.define<Uint8Array>(() => {
 });
 
 const EnsNameFactory = Factory.define<Uint8Array>(() => {
-  const ensName = faker.random.alphaNumeric(faker.datatype.number({ min: 3, max: 16 }));
+  const ensName = faker.string.alphanumeric({ length: { min: 3, max: 16 }, casing: "lower" });
   return utf8StringToBytes(ensName.concat(".eth"))._unsafeUnwrap();
 });
 
@@ -486,7 +480,7 @@ const VerificationAddAddressBodyFactory = Factory.define<
           const network = transientParams.network ?? FarcasterNetworkFactory.build();
           const blockHash = body.blockHash;
           const claim = VerificationSolAddressClaimFactory.build({
-            fid: toBigInt(fid),
+            fid: BigInt(fid),
             network: network,
             blockHash: bytesToBase58(blockHash)._unsafeUnwrap(),
             address: bytesToBase58(body.address)._unsafeUnwrap(),
@@ -644,7 +638,7 @@ const VerificationRemoveMessageFactory = MessageFactory.params({
 const UserDataBodyFactory = Factory.define<protobufs.UserDataBody>(() => {
   return protobufs.UserDataBody.create({
     type: UserDataTypeFactory.build(),
-    value: faker.random.alphaNumeric(16), // 16 chars to stay within range for all UserDataAdd types
+    value: faker.string.alphanumeric({ length: 16, casing: "lower" }), // 16 chars to stay within range for all UserDataAdd types
   });
 });
 
@@ -698,7 +692,7 @@ const UsernameProofMessageFactory = Factory.define<protobufs.UsernameProofMessag
 const FrameActionBodyFactory = Factory.define<protobufs.FrameActionBody>(() => {
   return protobufs.FrameActionBody.create({
     url: Buffer.from(faker.internet.url()),
-    buttonIndex: faker.datatype.number({ min: 1, max: 4 }),
+    buttonIndex: faker.number.int({ min: 1, max: 4 }),
     castId: CastIdFactory.build(),
   });
 });
@@ -726,7 +720,7 @@ const FrameActionMessageFactory = Factory.define<protobufs.FrameActionMessage, {
 const LendStorageBodyFactory = Factory.define<protobufs.LendStorageBody>(() => {
   return protobufs.LendStorageBody.create({
     toFid: FidFactory.build(),
-    numUnits: faker.datatype.number({ min: 1, max: 10 }),
+    numUnits: faker.number.int({ min: 1, max: 10 }),
     unitType: protobufs.StorageUnitType.UNIT_TYPE_2025,
   });
 });
@@ -756,12 +750,12 @@ const KeyAddBodyFactory = Factory.define<protobufs.KeyAddBody>(() => {
     key: Ed25519PublicKeyFactory.build(),
     keyType: 1,
     custodySignature: Eip712SignatureFactory.build(),
-    deadline: faker.datatype.number({ min: 1, max: 2 ** 31 - 1 }),
-    nonce: faker.datatype.number({ min: 1, max: 2 ** 31 - 1 }),
+    deadline: faker.number.int({ min: 1, max: 2 ** 31 - 1 }),
+    nonce: faker.number.int({ min: 1, max: 2 ** 31 - 1 }),
     metadata: BytesFactory.build({}, { transient: { length: 64 } }),
     metadataType: 1,
     scopes: [protobufs.MessageType.CAST_ADD as number],
-    ttl: faker.datatype.number({ min: 1, max: 60 * 60 * 24 * 365 }),
+    ttl: faker.number.int({ min: 1, max: 60 * 60 * 24 * 365 }),
   });
 });
 
@@ -790,8 +784,8 @@ const KeyRemoveBodyFactory = Factory.define<protobufs.KeyRemoveBody>(() => {
     key: Ed25519PublicKeyFactory.build(),
     signature: Eip712SignatureFactory.build(),
     signatureType: 1,
-    deadline: faker.datatype.number({ min: 1, max: 2 ** 31 - 1 }),
-    nonce: faker.datatype.number({ min: 1, max: 2 ** 31 - 1 }),
+    deadline: faker.number.int({ min: 1, max: 2 ** 31 - 1 }),
+    nonce: faker.number.int({ min: 1, max: 2 ** 31 - 1 }),
   });
 });
 
@@ -820,11 +814,11 @@ const OnChainEventFactory = Factory.define<protobufs.OnChainEvent>(() => {
     type: OnChainEventType.EVENT_TYPE_SIGNER,
     chainId: 1,
     fid: FidFactory.build(),
-    blockNumber: faker.datatype.number({ min: 1, max: 100_000 }),
+    blockNumber: faker.number.int({ min: 1, max: 100_000 }),
     blockHash: BlockHashFactory.build(),
-    blockTimestamp: Math.floor(faker.datatype.datetime({ min: FARCASTER_EPOCH, max: Date.now() }).getTime() / 1000),
+    blockTimestamp: Math.floor(faker.date.between({ from: FARCASTER_EPOCH, to: Date.now() }).getTime() / 1000),
     transactionHash: TransactionHashFactory.build(),
-    logIndex: faker.datatype.number({ min: 0, max: 1_000 }),
+    logIndex: faker.number.int({ min: 0, max: 1_000 }),
   });
 });
 
@@ -888,7 +882,7 @@ const SignerMigratedOnChainEventFactory = Factory.define<SignerMigratedOnChainEv
 const StorageRentEventBodyFactory = Factory.define<protobufs.StorageRentEventBody>(() => {
   return StorageRentEventBody.create({
     payer: EthAddressFactory.build(),
-    units: faker.datatype.number({ min: 1, max: 10 }),
+    units: faker.number.int({ min: 1, max: 10 }),
     expiry: getFarcasterTime()._unsafeUnwrap() + 60 * 60 * 24 * 365, // a year
   });
 });
@@ -899,7 +893,7 @@ const StorageRentOnChainEventFactory = Factory.define<StorageRentOnChainEvent, {
     oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    const randomDate = faker.date.between(oneYearAgo, yesterday);
+    const randomDate = faker.date.between({ from: oneYearAgo, to: yesterday });
     const randomDateInSeconds = Math.floor(randomDate.getTime() / 1000);
 
     return OnChainEventFactory.build({

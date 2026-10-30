@@ -21,7 +21,7 @@
   },
   "engines": {
     "npm": ">=8.0.0",
-    "node": ">=20.11"
+    "node": ">=22.13"
   },
   "devDependencies": {
     "@changesets/changelog-git": "0.1.14",
@@ -36,8 +36,8 @@
     "lint-staged": "13.2.2",
     "rimraf": "6.0.1",
     "ts-node": "10.9.1",
-    "tsup": "6.6.3",
-    "turbo": "1.10.3",
+    "tsup": "8.5.1",
+    "turbo": "2.11.10",
     "typescript": "5.4.5"
   },
   "resolutions": {
