@@ -46,23 +46,23 @@ jobs:
         with:
           toolchain: 1.77.0
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node_version }}
 
       - name: Restore cached dependencies for Node modules.
         id: module-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ github.workspace }}/node_modules
           key: ${{ runner.os }}-${{ runner.arch }}--node--${{ matrix.node_version}}--${{ hashFiles('yarn.lock') }}
 
       - name: Install Protocol Buffer Compiler
-        uses: arduino/setup-protoc@v3
+        uses: taiki-e/install-action@v2
         with:
-          version: "24.4"
+          tool: protoc@3.24.4
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
@@ -82,7 +82,7 @@ jobs:
         run: yarn test:ci
 
       - name: Upload coverage results
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v7
         continue-on-error: true # Don't fail the build if codecov fails
         timeout-minutes: 1
 
