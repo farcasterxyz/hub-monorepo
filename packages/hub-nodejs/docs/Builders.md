@@ -27,7 +27,7 @@ Before you can build messages, you'll need to construct the following objects:
 
 ### Ed25519Signer
 
-A Ed25519Signer is an EdDSA key pair which is necessary for signing most messages on behalf of an fid. This example below shows how to construct a new `NobleEd25519Signer` using the [@noble](https://paulmillr.com/noble/) library:
+An Ed25519Signer is an EdDSA key pair which is necessary for signing most messages on behalf of an fid. This example below shows how to construct a new `NobleEd25519Signer` using the [@noble](https://paulmillr.com/noble/) library:
 
 ```typescript
 import { NobleEd25519Signer } from '@farcaster/hub-nodejs';
@@ -40,7 +40,7 @@ const ed25519Signer = new NobleEd25519Signer(privateKey);
 
 ### Eip712Signer
 
-An Eip712Signer is an ECDSA key pair that is necessary signing for some messages like `SignerAdds` and `Verifications`. This example shows how to construct an `EthersEip712Signer` from a wallet's recovery phrase:
+An Eip712Signer is an ECDSA key pair that is necessary for signing some messages like `SignerAdds` and `Verifications`. This example shows how to construct an `EthersEip712Signer` from a wallet's recovery phrase:
 
 ```typescript
 import { EthersEip712Signer } from '@farcaster/hub-nodejs';
