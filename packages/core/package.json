@@ -39,14 +39,14 @@
     "prepublishOnly": "yarn run build"
   },
   "devDependencies": {
-    "@ethersproject/abstract-signer": "^5.7.0",
+    "@ethersproject/abstract-signer": "5.8.0",
     "@farcaster/fishery": "2.2.3",
-    "@noble/ed25519": "^1.7.3",
+    "@noble/ed25519": "1.7.3",
     "biome-config-custom": "*",
-    "ethers": "^6.6.1",
-    "ethers5": "npm:ethers@^5.7.0",
+    "ethers": "6.17.0",
+    "ethers5": "npm:ethers@5.8.0",
     "node-gyp": "12.2.0",
     "prettier-config-custom": "*",
-    "ts-proto": "^1.146.0"
+    "ts-proto": "1.181.2"
   }
 }

@@ -9,15 +9,16 @@
     "typecheck": "yarn tsc --noEmit"
   },
   "dependencies": {
-    "@farcaster/hub-nodejs": "^0.13.0",
-    "javascript-time-ago": "^2.5.9",
-    "protobufjs": "^7.5.5"
+    "@farcaster/hub-nodejs": "0.13.6",
+    "javascript-time-ago": "2.6.4",
+    "protobufjs": "7.6.6"
   },
   "devDependencies": {
-    "tsx": "^3.12.5",
-    "typescript": "^5.0.0"
+    "tsx": "4.23.15",
+    "typescript": "5.9.3"
   },
   "resolutions": {
-    "protobufjs": "^7.5.5"
+    "protobufjs": "7.6.6",
+    "@grpc/grpc-js": "1.13.7"
   }
 }

@@ -10,16 +10,17 @@
     "chain:start": "yarn hardhat node"
   },
   "dependencies": {
-    "@farcaster/hub-nodejs": "^0.13.0",
-    "protobufjs": "^7.5.5",
-    "viem": "^2.17.4"
+    "@farcaster/hub-nodejs": "0.13.6",
+    "protobufjs": "7.6.6",
+    "viem": "2.57.13"
   },
   "devDependencies": {
-    "hardhat": "^2.19.2",
-    "tsx": "^3.12.5",
-    "typescript": "^5.0.0"
+    "hardhat": "2.29.1",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3"
   },
   "resolutions": {
-    "protobufjs": "^7.5.5"
+    "protobufjs": "7.6.6",
+    "@grpc/grpc-js": "1.13.7"
   }
 }
