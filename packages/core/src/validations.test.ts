@@ -856,7 +856,7 @@ describe("validateVerificationAddEthAddressSignature", () => {
       { transient: { protocol: Protocol.ETHEREUM } },
     );
     const result = await validations.validateVerificationAddEthAddressSignature(body, fid, network);
-    expect(result).toEqual(err(new HubError("unknown", "Cannot convert 0x to a BigInt")));
+    expect(result).toEqual(err(new HubError("unknown", "invalid signature length")));
   });
 
   test("fails with invalid verificationType", async () => {

@@ -16,10 +16,10 @@ importers:
         version: link:../..
     devDependencies:
       tsx:
-        specifier: ^4.20.3
+        specifier: 4.20.3
         version: 4.20.3
       typescript:
-        specifier: ^5.0.0
+        specifier: 5.8.3
         version: 5.8.3
 
 packages:

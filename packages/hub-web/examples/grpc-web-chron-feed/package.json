@@ -8,11 +8,14 @@
     "start": "tsx index.ts"
   },
   "dependencies": {
-    "@farcaster/hub-web": "^0.4.2",
-    "javascript-time-ago": "^2.5.9"
+    "@farcaster/hub-web": "0.4.2",
+    "javascript-time-ago": "2.6.4"
   },
   "devDependencies": {
-    "tsx": "^3.12.5",
-    "typescript": "^5.0.0"
+    "tsx": "4.23.15",
+    "typescript": "5.9.3"
+  },
+  "resolutions": {
+    "**/viem/ws": "8.21.0"
   }
 }

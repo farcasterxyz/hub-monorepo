@@ -47,12 +47,12 @@
   },
   "devDependencies": {
     "@commander-js/extra-typings": "11.0.0",
-    "@types/humanize-duration": "^3.27.1",
-    "@types/pg": "^8.10.3",
-    "@types/pg-cursor": "^2.7.0",
-    "@types/node": "^20.11.30",
+    "@types/humanize-duration": "3.27.1",
+    "@types/pg": "8.10.3",
+    "@types/pg-cursor": "2.7.0",
+    "@types/node": "20.11.30",
     "biome-config-custom": "*",
-    "bullmq": "^5.7.1",
+    "bullmq": "5.81.5",
     "prettier-config-custom": "*"
   }
 }

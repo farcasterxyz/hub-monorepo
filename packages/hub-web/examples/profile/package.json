@@ -8,12 +8,15 @@
     "start": "tsx index.ts"
   },
   "dependencies": {
-    "@farcaster/core": "^0.12.10",
-    "axios": "^1.7.4"
+    "@farcaster/core": "0.12.15",
+    "axios": "1.21.0"
   },
   "devDependencies": {
-    "@types/axios": "^0.14.0",
-    "tsx": "^3.12.5",
-    "typescript": "^5.0.0"
+    "@types/axios": "0.14.4",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3"
+  },
+  "resolutions": {
+    "**/viem/ws": "8.21.0"
   }
 }
