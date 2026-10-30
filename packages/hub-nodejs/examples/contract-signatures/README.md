@@ -6,12 +6,13 @@ Every onchain action in the Farcaster protocol can be performed by a third party
 
 The structured format of EIP-712 signatures makes them more secure for the end user and easier for wallets to parse, but they can be difficult to construct and work with as an application developer. This demo app shows how to call every signature based function in the Farcaster contracts, including registering an account, transferring an fid, and adding/removing signer keys.
 
-This example uses [Hardhat](https://hardhat.org/) to run a local node that simulates OP Mainnet, where the Farcaster contracts are deployed.
+This example uses [Anvil](https://getfoundry.sh/anvil/overview) to run a local fork of OP Mainnet, where the Farcaster contracts are deployed.
 
 ### Run locally
 
 1. Clone the repo locally
-2. Navigate to this folder with `cd packages/hub-nodejs/examples/make-cast`
-3. Run `yarn install` to install dependencies
-4. Run `yarn chain:start` to start Hardhat
-5. Run `yarn start`
+2. [Install Foundry](https://getfoundry.sh/introduction/installation), which provides `anvil`
+3. Navigate to this folder with `cd packages/hub-nodejs/examples/contract-signatures`
+4. Run `yarn install` to install dependencies
+5. Run `yarn chain:start` to start Anvil
+6. Run `yarn start`

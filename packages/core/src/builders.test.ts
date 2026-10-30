@@ -36,7 +36,7 @@ describe("makeCastAddData", () => {
   test("succeeds", async () => {
     const data = await builders.makeCastAddData(
       protobufs.CastAddBody.create({
-        text: faker.random.alphaNumeric(200),
+        text: faker.string.alphanumeric({ length: 200, casing: "lower" }),
         mentions: [Factories.Fid.build(), Factories.Fid.build()],
         mentionsPositions: [10, 20],
         parentCastId: { fid: Factories.Fid.build(), hash: Factories.MessageHash.build() },
@@ -63,7 +63,7 @@ describe("makeCastAdd", () => {
   test("succeeds", async () => {
     const message = await builders.makeCastAdd(
       protobufs.CastAddBody.create({
-        text: faker.random.alphaNumeric(200),
+        text: faker.string.alphanumeric({ length: 200, casing: "lower" }),
         mentions: [Factories.Fid.build(), Factories.Fid.build()],
         mentionsPositions: [10, 20],
         parentCastId: { fid: Factories.Fid.build(), hash: Factories.MessageHash.build() },
@@ -260,7 +260,7 @@ describe("makeUserDataAddData", () => {
 describe("makeUserDataAdd", () => {
   test("succeeds", async () => {
     const message = await builders.makeUserDataAdd(
-      { type: protobufs.UserDataType.PFP, value: faker.random.alphaNumeric(100) },
+      { type: protobufs.UserDataType.PFP, value: faker.string.alphanumeric({ length: 100, casing: "lower" }) },
       { fid, network },
       ed25519Signer,
     );
@@ -272,7 +272,7 @@ describe("makeUserDataAdd", () => {
 describe("makeMessageHash", () => {
   test("succeeds", async () => {
     const body = protobufs.CastAddBody.create({
-      text: faker.random.alphaNumeric(200),
+      text: faker.string.alphanumeric({ length: 200, casing: "lower" }),
     });
     const message = await builders.makeCastAdd(body, { fid, network }, ed25519Signer);
     expect(message.isOk()).toBeTruthy();

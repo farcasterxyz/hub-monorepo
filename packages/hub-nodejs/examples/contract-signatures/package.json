@@ -7,15 +7,15 @@
   "scripts": {
     "start": "tsx index.ts",
     "typecheck": "yarn tsc --noEmit",
-    "chain:start": "yarn hardhat node"
+    "chain:start": "anvil --fork-url https://mainnet.optimism.io --chain-id 10"
   },
   "dependencies": {
     "@farcaster/hub-nodejs": "0.13.6",
+    "@noble/ed25519": "2.3.0",
     "protobufjs": "7.6.6",
     "viem": "2.57.13"
   },
   "devDependencies": {
-    "hardhat": "2.29.1",
     "tsx": "4.23.15",
     "typescript": "5.9.3"
   },

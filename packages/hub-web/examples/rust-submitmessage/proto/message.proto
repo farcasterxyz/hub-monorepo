@@ -1,0 +1,370 @@
+syntax = "proto3";
+
+import "username_proof.proto";
+
+
+/**
+  * A Message is a delta operation on the Farcaster network. The message protobuf is an envelope
+  * that wraps a MessageData object and contains a hash and signature which can verify its authenticity.
+  */
+message Message {
+  MessageData data = 1; // Contents of the message
+  bytes hash = 2; // Hash digest of data
+  HashScheme hash_scheme = 3; // Hash scheme that produced the hash digest
+  bytes signature = 4; // Signature of the hash digest
+  SignatureScheme signature_scheme = 5; // Signature scheme that produced the signature
+  bytes signer = 6; // Public key or address of the key pair that produced the signature
+  optional bytes data_bytes = 7; // MessageData serialized to bytes if using protobuf serialization other than ts-proto
+}
+
+/**
+* A MessageData object contains properties common to all messages and wraps a body object which
+* contains properties specific to the MessageType.
+*/
+message MessageData {
+  MessageType type = 1; // Type of message contained in the body
+  uint64 fid = 2; // Farcaster ID of the user producing the message
+  uint32 timestamp = 3; // Farcaster epoch timestamp in seconds
+  FarcasterNetwork network = 4; // Farcaster network the message is intended for
+  oneof body {
+    CastAddBody cast_add_body = 5;
+    CastRemoveBody cast_remove_body = 6;
+    ReactionBody reaction_body = 7;
+    VerificationAddAddressBody verification_add_address_body = 9;
+    VerificationRemoveBody verification_remove_body = 10;
+    // SignerAddBody signer_add_body = 11; // Deprecated
+    UserDataBody user_data_body = 12;
+    // SignerRemoveBody signer_remove_body = 13; // Deprecated
+    LinkBody link_body = 14;
+    UserNameProof username_proof_body = 15;
+    FrameActionBody frame_action_body = 16;
+
+    // Compaction messages
+    LinkCompactStateBody link_compact_state_body = 17;
+
+    LendStorageBody lend_storage_body = 18;
+    KeyAddBody key_add_body = 19;
+    KeyRemoveBody key_remove_body = 20;
+    ChannelUpdateBody channel_update_body = 21;
+    ChannelMemberBody channel_member_body = 22;
+    ChannelPinBody channel_pin_body = 23;
+    ChannelModerateBody channel_moderate_body = 24;
+  } // Properties specific to the MessageType
+}
+
+/** Type of hashing scheme used to produce a digest of MessageData */
+enum HashScheme {
+  HASH_SCHEME_NONE = 0;
+  HASH_SCHEME_BLAKE3 = 1; // Default scheme for hashing MessageData
+}
+
+/** Type of signature scheme used to sign the Message hash  */
+enum SignatureScheme {
+  SIGNATURE_SCHEME_NONE = 0;
+  SIGNATURE_SCHEME_ED25519 = 1; // Ed25519 signature (default)
+  SIGNATURE_SCHEME_EIP712 = 2; // ECDSA signature using EIP-712 scheme
+}
+
+/** Type of the MessageBody */
+enum MessageType {
+  MESSAGE_TYPE_NONE = 0;
+  MESSAGE_TYPE_CAST_ADD = 1; // Add a new Cast
+  MESSAGE_TYPE_CAST_REMOVE = 2; // Remove an existing Cast
+  MESSAGE_TYPE_REACTION_ADD = 3; // Add a Reaction to a Cast
+  MESSAGE_TYPE_REACTION_REMOVE = 4; // Remove a Reaction from a Cast
+  MESSAGE_TYPE_LINK_ADD = 5; // Add a new Link
+  MESSAGE_TYPE_LINK_REMOVE = 6; // Remove an existing Link
+  MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS = 7; // Add a Verification of an Ethereum Address
+  MESSAGE_TYPE_VERIFICATION_REMOVE = 8; // Remove a Verification
+  //  Deprecated
+  //  MESSAGE_TYPE_SIGNER_ADD = 9; // Add a new Ed25519 key pair that signs messages for a user
+  //  MESSAGE_TYPE_SIGNER_REMOVE = 10; // Remove an Ed25519 key pair that signs messages for a user
+  MESSAGE_TYPE_USER_DATA_ADD = 11; // Add metadata about a user
+  MESSAGE_TYPE_USERNAME_PROOF = 12; // Add or replace a username proof
+  MESSAGE_TYPE_FRAME_ACTION = 13; // A Farcaster Frame action
+  MESSAGE_TYPE_LINK_COMPACT_STATE = 14; // Link Compaction State Message
+  MESSAGE_TYPE_LEND_STORAGE = 15;
+  MESSAGE_TYPE_KEY_ADD = 16; // Register an Ed25519 key via custody-authenticated message
+  MESSAGE_TYPE_KEY_REMOVE = 17; // Revoke an Ed25519 key via custody signature or self-revocation
+  MESSAGE_TYPE_CHANNEL_UPDATE = 18;
+  MESSAGE_TYPE_CHANNEL_MEMBER = 19;
+  MESSAGE_TYPE_CHANNEL_PIN = 20;
+  MESSAGE_TYPE_CHANNEL_MODERATE = 21;
+}
+
+/** Farcaster network the message is intended for */
+enum FarcasterNetwork {
+  FARCASTER_NETWORK_NONE = 0;
+  FARCASTER_NETWORK_MAINNET = 1; // Public primary network
+  FARCASTER_NETWORK_TESTNET = 2; // Public test network
+  FARCASTER_NETWORK_DEVNET = 3; // Private test network
+}
+
+/** Adds metadata about a user */
+message UserDataBody {
+  UserDataType type = 1; // Type of metadata
+  string value = 2; // Value of the metadata
+}
+
+/** Type of UserData */
+enum UserDataType {
+  USER_DATA_TYPE_NONE = 0;
+  USER_DATA_TYPE_PFP = 1; // Profile Picture for the user
+  USER_DATA_TYPE_DISPLAY = 2; // Display Name for the user
+  USER_DATA_TYPE_BIO = 3; // Bio for the user
+  USER_DATA_TYPE_URL = 5; // URL of the user
+  USER_DATA_TYPE_USERNAME = 6; // Preferred Name for the user
+  USER_DATA_TYPE_LOCATION = 7; // Current location for the user
+  USER_DATA_TYPE_TWITTER = 8; // Username of user on twitter
+  USER_DATA_TYPE_GITHUB = 9; // Username of user on github
+  USER_DATA_TYPE_BANNER = 10; // Banner image for the user
+  USER_DATA_PRIMARY_ADDRESS_ETHEREUM = 11; // Primary address for the user on Ethereum
+  USER_DATA_PRIMARY_ADDRESS_SOLANA = 12; // Primary address for the user on Solana
+  USER_DATA_TYPE_PROFILE_TOKEN = 13; // Profile token in CAIP-19 format
+  USER_DATA_TYPE_LIVE_AT = 14; // URL of the user's live activity
+}
+
+message Embed {
+  oneof embed {
+    string url = 1;
+    CastId cast_id = 2;
+  }
+}
+
+/** Type of cast */
+enum CastType {
+  CAST = 0;
+  LONG_CAST = 1;
+  TEN_K_CAST = 2;
+}
+
+
+/** Adds a new Cast */
+message CastAddBody {
+  repeated string embeds_deprecated = 1; // URLs to be embedded in the cast
+  repeated uint64 mentions = 2; // Fids mentioned in the cast
+  oneof parent {
+    CastId parent_cast_id = 3; // Parent cast of the cast
+    string parent_url = 7; // Parent URL
+  };
+  string text = 4; // Text of the cast
+  repeated uint32 mentions_positions = 5; // Positions of the mentions in the text
+  repeated Embed embeds = 6; // URLs or cast ids to be embedded in the cast
+  CastType type = 8; // Type of cast
+  uint32 format_version = 9; // How to read the text. 0 = plain text
+  optional ChainCast chain = 10; // Set on every cast of a chain
+}
+
+/** Places a cast in an ordered chain of casts by one author */
+message ChainCast {
+  CastId root = 1; // The first cast of the chain. Absent on that cast itself (index 0)
+  uint32 index = 2; // Position in the chain, from 0
+  uint32 count = 3; // Number of casts in the chain. 0 = the chain is still growing
+}
+
+/** Removes an existing Cast */
+message CastRemoveBody {
+  bytes target_hash = 1; // Hash of the cast to remove
+}
+
+/** Identifier used to look up a Cast */
+message CastId {
+  uint64 fid = 1; // Fid of the user who created the cast
+  bytes hash = 2; // Hash of the cast
+}
+
+/** Adds or removes a Reaction from a Cast */
+message ReactionBody {
+  ReactionType type = 1; // Type of reaction
+  oneof target {
+    CastId target_cast_id = 2; // CastId of the Cast to react to
+    string target_url = 3; // URL to react to
+  }
+}
+
+/** Type of Reaction */
+enum ReactionType {
+  REACTION_TYPE_NONE = 0;
+  REACTION_TYPE_LIKE = 1; // Like the target cast
+  REACTION_TYPE_RECAST = 2; // Share target cast to the user's audience
+}
+
+/** Type of Protocol to disambiguate verification addresses */
+enum Protocol {
+  PROTOCOL_ETHEREUM = 0;
+  PROTOCOL_SOLANA = 1;
+}
+
+/** Adds a Verification of ownership of an Address based on Protocol */
+message VerificationAddAddressBody {
+  bytes address = 1; // Address being verified for a given Protocol
+  bytes claim_signature = 2; // Signature produced by the user's address for a given Protocol
+  bytes block_hash = 3; // Hash of the latest Ethereum block when the signature was produced
+  uint32 verification_type = 4; // Type of verification. 0 = EOA, 1 = contract
+  uint32 chain_id = 5; // 0 for EOA verifications, 1 or 10 for contract verifications
+  Protocol protocol = 7; // Protocol of the Verification
+}
+
+/** Removes a Verification of a given protocol */
+message VerificationRemoveBody {
+  bytes address = 1; // Address of the Verification to remove
+  Protocol protocol = 2; // Protocol of the Verification to remove
+}
+
+/** Adds or removes a Link */
+message LinkBody {
+  string type = 1; // Type of link, <= 8 characters
+  optional uint32 displayTimestamp = 2; // User-defined timestamp that preserves original timestamp when message.data.timestamp needs to be updated for compaction
+  oneof target {
+    uint64 target_fid = 3;  // The fid the link relates to
+  }
+}
+
+/** A Compaction message for the Link Store */
+message LinkCompactStateBody {
+  string type = 1; // Type of link, <= 8 characters
+  repeated uint64 target_fids = 2;
+}
+
+/** A Farcaster Frame action */
+message FrameActionBody {
+  bytes url = 1; // URL of the Frame triggering the action
+  uint32 button_index = 2; // The index of the button pressed (1-4)
+  CastId cast_id = 3; // The cast which contained the frame url
+  bytes input_text = 4; // Text input from the user, if present
+  bytes state = 5; // Serialized frame state value
+  bytes transaction_id = 6; // Chain-specific transaction ID for tx actions
+  bytes address = 7; // Chain-specific address for tx actions
+}
+
+enum StorageUnitType {
+  UNIT_TYPE_LEGACY = 0;
+  UNIT_TYPE_2024 = 1;
+  UNIT_TYPE_2025 = 2;
+}
+
+message LendStorageBody {
+  uint64 to_fid = 1;
+  uint64 num_units = 2;
+  StorageUnitType unit_type = 3;
+}
+
+/** Registers an Ed25519 key for an FID via custody-authenticated message */
+message KeyAddBody {
+  bytes key = 1; // Ed25519 public key (32 bytes)
+  uint32 key_type = 2; // 1 = Ed25519
+  bytes custody_signature = 3; // EIP-712 signature from custody address
+  uint32 deadline = 4; // Farcaster epoch timestamp after which the custody signature is invalid
+  uint32 nonce = 5; // Monotonically increasing per-FID user nonce
+  bytes metadata = 6; // ABI-encoded SignedKeyRequestMetadata
+  uint32 metadata_type = 7; // Must be 1 (SignedKeyRequest)
+  bytes registration_tx_hash = 8; // Optional: tx hash of the FID registration transaction
+  repeated int32 scopes = 9; // Allowed MessageType values; required and non-empty
+  uint32 ttl = 10; // Seconds; must be > 0. Sliding expiry window; max enforced at validation.
+}
+
+/** Revokes an Ed25519 key via custody signature or self-revocation */
+message KeyRemoveBody {
+  bytes key = 1; // Ed25519 public key to remove
+  bytes signature = 2; // EIP-712 (custody) or Ed25519 (self-revocation) signature
+  uint32 signature_type = 3; // 1 = custody (EIP-712), 2 = self (Ed25519)
+  uint32 deadline = 4; // Farcaster epoch timestamp after which the signature is invalid
+  uint32 nonce = 5; // Monotonically increasing nonce (user nonce for custody, app nonce for self)
+}
+
+/**
+ * ADVISORY metadata only: the protocol accepts casts into a channel regardless
+ * of mode, and never enforces it at cast merge. Clients may enforce it.
+ */
+enum CastingMode {
+  CASTING_MODE_NONE = 0;
+  CASTING_MODE_EVERYONE = 1;
+  CASTING_MODE_MEMBERS_ONLY = 2;
+  CASTING_MODE_RECOMMENDED = 3;
+}
+
+/**
+ * Protocol-relevant, unlike CastingMode: this gates whether an fid may add
+ * itself as a member (a ChannelMemberBody with CHANNEL_MEMBER_ACTION_ADD_MEMBER
+ * whose fid equals the sending message's fid).
+ *
+ * Under OPEN an fid may self-add, but only from no membership at all or from
+ * REMOVED: a banned fid stays banned, and one already MEMBER or MODERATOR is
+ * rejected rather than re-added. Under APPROVAL the add must come from the
+ * channel OWNER or a MODERATOR — an owner satisfies it directly and does not
+ * need a moderator role. Either mode still rejects an add whose target is
+ * banned.
+ *
+ * NONE is the proto3 zero value, not a third policy: an absent or explicitly
+ * zero mode folds to APPROVAL, so a cosmetic-only ChannelUpdate closes
+ * membership rather than opening it.
+ *
+ * Enforced at shard-0 admission wherever channel messages are active (they are
+ * version-gated and inert on networks below that version).
+ */
+enum MembershipMode {
+  MEMBERSHIP_MODE_NONE = 0;
+  MEMBERSHIP_MODE_OPEN = 1;
+  MEMBERSHIP_MODE_APPROVAL = 2;
+}
+
+enum ChannelMemberAction {
+  CHANNEL_MEMBER_ACTION_NONE = 0;
+  CHANNEL_MEMBER_ACTION_ADD_MEMBER = 1;
+  CHANNEL_MEMBER_ACTION_REMOVE_MEMBER = 2;
+  CHANNEL_MEMBER_ACTION_ADD_MODERATOR = 3;
+  CHANNEL_MEMBER_ACTION_REMOVE_MODERATOR = 4;
+  CHANNEL_MEMBER_ACTION_BAN = 5;
+  CHANNEL_MEMBER_ACTION_UNBAN = 6;
+}
+
+enum ChannelModerateAction {
+  CHANNEL_MODERATE_ACTION_NONE = 0;
+  CHANNEL_MODERATE_ACTION_HIDE = 1;
+  CHANNEL_MODERATE_ACTION_UNHIDE = 2;
+}
+
+// WHOLE-REPLACE, NOT MERGE-PATCH. The winning ChannelUpdate is the channel's
+// entire configuration: a field omitted here reads as unset, it is NOT inherited
+// from the update this one supersedes. Sending `{channel_id, name}` to rename a
+// channel therefore CLEARS its description, image_url, header, rules, and both
+// modes (which fold back to the restrictive defaults). Clients must send the
+// full desired state on every update, not just the fields they are changing.
+message ChannelUpdateBody {
+  // 32-byte keccak256 of the channel key (the verbatim registry name), equal to
+  // the ERC-721 tokenId and to ChannelRegisterBody.label in onchain_event.proto
+  // — the join key tying a channel's registry events and messages together.
+  bytes channel_id = 1;
+  optional string name = 2;
+  optional string description = 3;
+  optional string image_url = 4;
+  optional string header = 5;
+  optional string rules = 6;
+  optional CastingMode casting_mode = 7;
+  optional MembershipMode membership_mode = 8;
+}
+
+message ChannelMemberBody {
+  // 32-byte keccak256 of the channel key (the verbatim registry name), equal to
+  // the ERC-721 tokenId and to ChannelRegisterBody.label in onchain_event.proto.
+  bytes channel_id = 1;
+  uint64 fid = 2;
+  ChannelMemberAction action = 3;
+}
+
+/** A single pin per channel; a new pin replaces the previous one. */
+message ChannelPinBody {
+  // 32-byte keccak256 of the channel key (the verbatim registry name), equal to
+  // the ERC-721 tokenId and to ChannelRegisterBody.label in onchain_event.proto.
+  bytes channel_id = 1;
+  // The pinned cast. An empty cast_hash unpins.
+  bytes cast_hash = 2;
+}
+
+message ChannelModerateBody {
+  // 32-byte keccak256 of the channel key (the verbatim registry name), equal to
+  // the ERC-721 tokenId and to ChannelRegisterBody.label in onchain_event.proto.
+  bytes channel_id = 1;
+  bytes cast_hash = 2;
+  ChannelModerateAction action = 3;
+}

@@ -42,7 +42,7 @@ Before you get down to coding, take a minute to consider this:
 
 First, ensure that the following are installed globally on your machine:
 
-- [Node.js 20.11+](https://nodejs.org/en/download/releases) using [nvm](https://github.com/nvm-sh/nvm)
+- [Node.js 22.13+](https://nodejs.org/en/download/releases) (24 recommended) using [nvm](https://github.com/nvm-sh/nvm)
 - [Yarn](https://classic.yarnpkg.com/lang/en/docs/install)
 - [Foundry](https://book.getfoundry.sh/getting-started/installation#using-foundryup)
 - [Protobuf compiler](https://protobuf.dev/downloads/)
