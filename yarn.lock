@@ -1055,7 +1055,7 @@
   resolved "https://registry.npmjs.org/@gar/promise-retry/-/promise-retry-1.0.3.tgz#65e726428e794bc4453948e0a41e6de4215ce8b0"
   integrity sha512-GmzA9ckNokPypTg10pgpeHNQe7ph+iIKKmhKu3Ob9ANkswreCx7R3cKmY781K8QK3AqVL3xVh9A42JvIAbkkSA==
 
-"@grpc/grpc-js@~1.13.6":
+"@grpc/grpc-js@~1.13.7":
   version "1.13.7"
   resolved "https://registry.npmjs.org/@grpc/grpc-js/-/grpc-js-1.13.7.tgz#5c8081376aa81a6f2a94b36e0602cbad51853ef9"
   integrity sha512-Q6KuzM6QCvNbVWOxf9gHCedUUByhVWsfg6QTN/Jk0KJooG5WfJC3HkHDiVGjCmQFo6mhovEX+8B4phpIOaCr/A==
