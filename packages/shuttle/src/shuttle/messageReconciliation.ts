@@ -134,7 +134,7 @@ export class MessageReconciliation {
       const dbMessages = await this.db
         .selectFrom("messages")
         .select(["prunedAt", "revokedAt", "hash", "fid", "type", "raw"])
-        .where("hash", "=", sql`any(${messageHashes})`)
+        .where("hash", "=", sql<Uint8Array>`any(${messageHashes})`)
         .execute();
 
       const dbMessageHashes = dbMessages.reduce((acc, msg) => {
