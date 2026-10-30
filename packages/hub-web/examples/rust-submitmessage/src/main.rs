@@ -63,7 +63,7 @@ async fn main() {
     let client = Client::new();
 
     // Define your endpoint URL
-    let url = "http://127.0.0.1:2281/v1/submitMessage";
+    let url = "http://127.0.0.1:3381/v1/submitMessage";
 
     // Make the POST request
     let res = client

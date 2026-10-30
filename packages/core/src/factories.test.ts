@@ -1,7 +1,28 @@
 import * as protobufs from "./protobufs";
 import { ok } from "neverthrow";
+import { bytesToUtf8String } from "./bytes";
 import { Factories } from "./factories";
 import * as validations from "./validations";
+
+const SAMPLES = 200;
+
+describe("FidFactory", () => {
+  test("generates fids between 1 and 100,000", () => {
+    for (const fid of Factories.Fid.buildList(SAMPLES)) {
+      expect(Number.isInteger(fid)).toBe(true);
+      expect(fid).toBeGreaterThanOrEqual(1);
+      expect(fid).toBeLessThanOrEqual(100_000);
+    }
+  });
+});
+
+describe("EnsNameFactory", () => {
+  test("generates lowercase alphanumeric .eth names of 3 to 16 characters", () => {
+    for (const bytes of Factories.EnsName.buildList(SAMPLES)) {
+      expect(bytesToUtf8String(bytes)._unsafeUnwrap()).toMatch(/^[a-z0-9]{3,16}\.eth$/);
+    }
+  });
+});
 
 describe("CastAddMessageFactory", () => {
   test("generates a valid CastAdd", async () => {
