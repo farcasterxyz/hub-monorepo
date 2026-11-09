@@ -18,6 +18,6 @@ You can try out a web version of this at https://farcaster-signup-demo-wkulikows
 ### Run locally
 
 1. Clone the repo locally
-2. Navigate to this folder with `cd packages/hub-nodejs/examples/write-data`
+2. Navigate to this folder with `cd packages/hub-nodejs/examples/hello-world`
 3. Run `yarn install` to install dependencies
 4. Run `yarn start`
