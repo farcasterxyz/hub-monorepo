@@ -12,8 +12,7 @@
     "@farcaster/hub-nodejs": "0.13.6",
     "axios": "1.21.0",
     "protobufjs": "7.6.6",
-    "viem": "2.57.13",
-    "wagmi": "2.19.5"
+    "viem": "2.57.13"
   },
   "devDependencies": {
     "tsx": "4.23.15",
@@ -21,7 +20,6 @@
   },
   "resolutions": {
     "protobufjs": "7.6.6",
-    "@grpc/grpc-js": "1.13.7",
-    "**/viem/ws": "8.21.0"
+    "@grpc/grpc-js": "1.13.7"
   }
 }

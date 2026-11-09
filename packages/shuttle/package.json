@@ -20,6 +20,9 @@
     "url": "https://github.com/farcasterxyz/hub-monorepo.git",
     "directory": "packages/shuttle"
   },
+  "engines": {
+    "node": ">=22.13"
+  },
   "dependencies": {
     "@farcaster/hot-shots": "^10.0.0",
     "@farcaster/hub-nodejs": "^0.18.0",

@@ -20,6 +20,9 @@
     "url": "https://github.com/farcasterxyz/hub-monorepo.git",
     "directory": "packages/hub-nodejs"
   },
+  "engines": {
+    "node": ">=22.13"
+  },
   "dependencies": {
     "@farcaster/core": "0.21.0",
     "@grpc/grpc-js": "~1.13.7",
@@ -37,7 +40,7 @@
     "prepublishOnly": "yarn run build"
   },
   "devDependencies": {
-    "@faker-js/faker": "7.6.0",
+    "@faker-js/faker": "10.6.0",
     "biome-config-custom": "*",
     "ts-proto": "1.181.2"
   },

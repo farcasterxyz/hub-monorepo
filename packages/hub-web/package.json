@@ -20,6 +20,9 @@
     "url": "https://github.com/farcasterxyz/hub-monorepo.git",
     "directory": "packages/hub-web"
   },
+  "engines": {
+    "node": ">=22.13"
+  },
   "scripts": {
     "build": "tsup --config tsup.config.ts",
     "clean": "rimraf ./dist",

@@ -1,12 +1,13 @@
-mod message; // Generated protobuf code
-mod username_proof; // Generated protobuf code
+mod protos {
+    include!(concat!(env!("OUT_DIR"), "/protos/mod.rs"));
+}
 
 use ed25519_dalek::{SecretKey, Signer, SigningKey};
 use hex::FromHex;
 use reqwest::Client;
 
-use message::{CastAddBody, FarcasterNetwork, MessageData};
 use protobuf::Message;
+use protos::message::{self, CastAddBody, FarcasterNetwork, MessageData};
 
 const FARCASTER_EPOCH: u64 = 1609459200; // January 1, 2021 UTC
 
@@ -17,21 +18,19 @@ async fn main() {
 
     // Construct the cast add message
     let mut cast_add = CastAddBody::new();
-    cast_add.set_text("Welcome to Rust!".to_string());
+    cast_add.text = "Welcome to Rust!".to_string();
 
     // Construct the cast add message data object
     let mut msg_data = MessageData::new();
-    msg_data.set_field_type(message::MessageType::MESSAGE_TYPE_CAST_ADD);
-    msg_data.set_fid(fid);
+    msg_data.type_ = message::MessageType::MESSAGE_TYPE_CAST_ADD.into();
+    msg_data.fid = fid;
     // Set the timestamp to the current time
-    msg_data.set_timestamp(
-        (std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs()
-            - FARCASTER_EPOCH) as u32,
-    );
-    msg_data.set_network(network);
+    msg_data.timestamp = (std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs()
+        - FARCASTER_EPOCH) as u32;
+    msg_data.network = network.into();
     msg_data.set_cast_add_body(cast_add);
 
     let msg_data_bytes = msg_data.write_to_bytes().unwrap();
@@ -40,8 +39,8 @@ async fn main() {
 
     // Construct the actual message
     let mut msg = message::Message::new();
-    msg.set_hash_scheme(message::HashScheme::HASH_SCHEME_BLAKE3);
-    msg.set_hash(hash);
+    msg.hash_scheme = message::HashScheme::HASH_SCHEME_BLAKE3.into();
+    msg.hash = hash.clone();
 
     // Sign the message. You need to use a signing key that corresponds to the FID you are adding.
     // REPLACE THE PRIVATE KEY WITH YOUR OWN
@@ -50,12 +49,12 @@ async fn main() {
     );
     let signature = private_key.sign(&hash).to_bytes();
 
-    msg.set_signature_scheme(message::SignatureScheme::SIGNATURE_SCHEME_ED25519);
-    msg.set_signature(signature.to_vec());
-    msg.set_signer(private_key.verifying_key().to_bytes().to_vec());
+    msg.signature_scheme = message::SignatureScheme::SIGNATURE_SCHEME_ED25519.into();
+    msg.signature = signature.to_vec();
+    msg.signer = private_key.verifying_key().to_bytes().to_vec();
 
     // Serialize the message
-    msg.set_data_bytes(msg_data_bytes.to_vec());
+    msg.data_bytes = Some(msg_data_bytes.to_vec());
     let msg_bytes = msg.write_to_bytes().unwrap();
 
     // Finally, submit the message to the network
@@ -64,7 +63,7 @@ async fn main() {
     let client = Client::new();
 
     // Define your endpoint URL
-    let url = "http://127.0.0.1:2281/v1/submitMessage";
+    let url = "http://127.0.0.1:3381/v1/submitMessage";
 
     // Make the POST request
     let res = client

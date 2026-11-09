@@ -66,7 +66,7 @@ describe("validateFname", () => {
   });
 
   test("fails when greater than 16 characters", () => {
-    const fname = faker.random.alpha(17);
+    const fname = faker.string.alpha({ length: 17, casing: "lower" });
     expect(validations.validateFname(fname)).toEqual(
       err(new HubError("bad_request.validation_failure", `fname "${fname}" > 16 characters`)),
     );
@@ -124,7 +124,7 @@ describe("validateENSname", () => {
   });
 
   test("fails when greater than 25 characters", () => {
-    const ensName = faker.random.alpha(22).concat(".eth");
+    const ensName = faker.string.alpha({ length: 22, casing: "lower" }).concat(".eth");
     expect(validations.validateEnsName(ensName)).toEqual(
       err(new HubError("bad_request.validation_failure", `ensName "${ensName}" > 20 characters`)),
     );
@@ -302,14 +302,14 @@ describe("validateCastAddBody", () => {
   describe("long casts", () => {
     test("succeeds with 1024 ASCII characters", () => {
       const body = Factories.CastAddBody.build({
-        text: faker.random.alphaNumeric(1024),
+        text: faker.string.alphanumeric({ length: 1024, casing: "lower" }),
         type: CastType.LONG_CAST,
       });
       expect(validations.validateCastAddBody(body)).toEqual(ok(body));
     });
     test("fails with 1025 ASCII characters", () => {
       const body = Factories.CastAddBody.build({
-        text: faker.random.alphaNumeric(1025),
+        text: faker.string.alphanumeric({ length: 1025, casing: "lower" }),
         type: CastType.LONG_CAST,
       });
       expect(validations.validateCastAddBody(body)).toEqual(
@@ -374,7 +374,7 @@ describe("validateCastAddBody", () => {
       test("with an embed url string over 256 ASCII characters", () => {
         body = Factories.CastAddBody.build({
           embeds: [],
-          embedsDeprecated: [faker.random.alphaNumeric(257)],
+          embedsDeprecated: [faker.string.alphanumeric({ length: 257, casing: "lower" })],
         });
         hubErrorMessage = "url > 256 bytes";
       });
@@ -382,7 +382,7 @@ describe("validateCastAddBody", () => {
       test("with an embed url string over 256 bytes", () => {
         body = Factories.CastAddBody.build({
           embeds: [],
-          embedsDeprecated: [`${faker.random.alphaNumeric(254)}🤓`],
+          embedsDeprecated: [`${faker.string.alphanumeric({ length: 254, casing: "lower" })}🤓`],
         });
         hubErrorMessage = "url > 256 bytes";
       });
@@ -424,13 +424,13 @@ describe("validateCastAddBody", () => {
 
     test("when text is longer than 320 ASCII characters", () => {
       body = Factories.CastAddBody.build({
-        text: faker.random.alphaNumeric(321),
+        text: faker.string.alphanumeric({ length: 321, casing: "lower" }),
       });
       hubErrorMessage = "text > 320 bytes";
     });
 
     test("when text is longer than 320 bytes", () => {
-      const text = `${faker.random.alphaNumeric(318)}🤓`;
+      const text = `${faker.string.alphanumeric({ length: 318, casing: "lower" })}🤓`;
       expect(text.length).toEqual(320);
       body = Factories.CastAddBody.build({ text });
       hubErrorMessage = "text > 320 bytes";
@@ -458,14 +458,14 @@ describe("validateCastAddBody", () => {
 
     test("with an embed url string over 256 ASCII characters", () => {
       body = Factories.CastAddBody.build({
-        embeds: [{ url: faker.random.alphaNumeric(257) }],
+        embeds: [{ url: faker.string.alphanumeric({ length: 257, casing: "lower" }) }],
       });
       hubErrorMessage = "url > 256 bytes";
     });
 
     test("with an embed url string over 256 bytes", () => {
       body = Factories.CastAddBody.build({
-        embeds: [{ url: `${faker.random.alphaNumeric(254)}🤓` }],
+        embeds: [{ url: `${faker.string.alphanumeric({ length: 254, casing: "lower" })}🤓` }],
       });
       hubErrorMessage = "url > 256 bytes";
     });
@@ -501,7 +501,7 @@ describe("validateCastAddBody", () => {
 
     test("with a parentUrl over 256 bytes", () => {
       body = Factories.CastAddBody.build({
-        parentUrl: faker.random.alphaNumeric(257),
+        parentUrl: faker.string.alphanumeric({ length: 257, casing: "lower" }),
         parentCastId: undefined,
       });
       hubErrorMessage = "url > 256 bytes";
@@ -676,7 +676,7 @@ describe("validateReactionBody", () => {
 
     test("with a targetUrl over 256 bytes", () => {
       body = Factories.ReactionBody.build({
-        targetUrl: faker.random.alphaNumeric(257),
+        targetUrl: faker.string.alphanumeric({ length: 257, casing: "lower" }),
         targetCastId: undefined,
       });
       hubErrorMessage = "url > 256 bytes";
@@ -1180,7 +1180,7 @@ describe("validateUserDataAddBody", () => {
     test("when pfp > 256", () => {
       body = Factories.UserDataBody.build({
         type: protobufs.UserDataType.PFP,
-        value: faker.random.alphaNumeric(257),
+        value: faker.string.alphanumeric({ length: 257, casing: "lower" }),
       });
       hubErrorMessage = "pfp value > 256";
     });
@@ -1188,7 +1188,7 @@ describe("validateUserDataAddBody", () => {
     test("when display > 32", () => {
       body = Factories.UserDataBody.build({
         type: protobufs.UserDataType.DISPLAY,
-        value: faker.random.alphaNumeric(33),
+        value: faker.string.alphanumeric({ length: 33, casing: "lower" }),
       });
       hubErrorMessage = "display value > 32";
     });
@@ -1196,7 +1196,7 @@ describe("validateUserDataAddBody", () => {
     test("when bio > 256", () => {
       body = Factories.UserDataBody.build({
         type: protobufs.UserDataType.BIO,
-        value: faker.random.alphaNumeric(257),
+        value: faker.string.alphanumeric({ length: 257, casing: "lower" }),
       });
       hubErrorMessage = "bio value > 256";
     });
@@ -1204,7 +1204,7 @@ describe("validateUserDataAddBody", () => {
     test("when url > 256", () => {
       body = Factories.UserDataBody.build({
         type: protobufs.UserDataType.URL,
-        value: faker.random.alphaNumeric(257),
+        value: faker.string.alphanumeric({ length: 257, casing: "lower" }),
       });
       hubErrorMessage = "url value > 256";
     });
@@ -1212,7 +1212,7 @@ describe("validateUserDataAddBody", () => {
     test("when live_at > 256", () => {
       body = Factories.UserDataBody.build({
         type: protobufs.UserDataType.LIVE_AT,
-        value: faker.random.alphaNumeric(257),
+        value: faker.string.alphanumeric({ length: 257, casing: "lower" }),
       });
       hubErrorMessage = "live_at value > 256";
     });
@@ -1654,35 +1654,35 @@ describe("validateFrameActionBody", () => {
   });
   test("fails when url is too long", async () => {
     const body = Factories.FrameActionBody.build({
-      url: Buffer.from(faker.datatype.string(1025)),
+      url: Buffer.from(faker.string.sample(1025)),
     });
     const result = validations.validateFrameActionBody(body);
     expect(result._unsafeUnwrapErr().message).toMatch("invalid url");
   });
   test("fails when text input is too long", async () => {
     const body = Factories.FrameActionBody.build({
-      inputText: Buffer.from(faker.datatype.string(257)),
+      inputText: Buffer.from(faker.string.sample(257)),
     });
     const result = validations.validateFrameActionBody(body);
     expect(result._unsafeUnwrapErr().message).toMatch("invalid input text");
   });
   test("fails when state is too long", async () => {
     const body = Factories.FrameActionBody.build({
-      state: Buffer.from(faker.datatype.string(4097)),
+      state: Buffer.from(faker.string.sample(4097)),
     });
     const result = validations.validateFrameActionBody(body);
     expect(result._unsafeUnwrapErr().message).toMatch("invalid state");
   });
   test("fails when transaction ID is too long", async () => {
     const body = Factories.FrameActionBody.build({
-      transactionId: Buffer.from(faker.datatype.string(257)),
+      transactionId: Buffer.from(faker.string.sample(257)),
     });
     const result = validations.validateFrameActionBody(body);
     expect(result._unsafeUnwrapErr().message).toMatch("invalid transaction ID");
   });
   test("fails when address is too long", async () => {
     const body = Factories.FrameActionBody.build({
-      address: Buffer.from(faker.datatype.string(65)),
+      address: Buffer.from(faker.string.sample(65)),
     });
     const result = validations.validateFrameActionBody(body);
     expect(result._unsafeUnwrapErr().message).toMatch("invalid address");
