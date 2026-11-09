@@ -34,14 +34,15 @@
     "husky": "9.0.11",
     "jest": "29.6.1",
     "lint-staged": "13.2.2",
-    "rimraf": "6.0.1",
+    "rimraf": "6.1.4",
     "ts-node": "10.9.1",
     "tsup": "8.5.1",
     "turbo": "2.11.10",
     "typescript": "5.4.5"
   },
   "resolutions": {
-    "**/@ethersproject/providers/ws": "8.21.0"
+    "**/@ethersproject/providers/ws": "8.21.0",
+    "**/cacache/glob": "14.0.4"
   },
   "lint-staged": {
     "*.ts": ["biome check"],
