@@ -1,6 +1,6 @@
 import { err, ok } from "neverthrow";
 import { HubError } from "./errors";
-import { FARCASTER_EPOCH, fromFarcasterTime, toFarcasterTime } from "./time";
+import { farcasterTimeToDate, FARCASTER_EPOCH, fromFarcasterTime, toFarcasterTime } from "./time";
 
 describe("toFarcasterTime", () => {
   test("returns seconds since 01/01/2021", () => {
@@ -28,5 +28,26 @@ describe("fromFarcasterTime", () => {
     const farcasterTime = toFarcasterTime(time)._unsafeUnwrap();
     const roundedTime = Math.round(time / 1000) * 1000;
     expect(fromFarcasterTime(farcasterTime)).toEqual(ok(roundedTime));
+  });
+});
+
+describe("farcasterTimeToDate", () => {
+  test("round-trips through toFarcasterTime for the current time", () => {
+    const time = Date.now();
+    const farcasterTime = toFarcasterTime(time)._unsafeUnwrap();
+    const roundedTime = Math.round(time / 1000) * 1000;
+    expect(farcasterTimeToDate(farcasterTime)).toEqual(new Date(roundedTime));
+  });
+
+  test("converts the Farcaster epoch itself to the corresponding unix Date", () => {
+    expect(farcasterTimeToDate(0)).toEqual(new Date(FARCASTER_EPOCH));
+  });
+
+  test("passes null through unchanged", () => {
+    expect(farcasterTimeToDate(null)).toBeNull();
+  });
+
+  test("passes undefined through unchanged", () => {
+    expect(farcasterTimeToDate(undefined)).toBeUndefined();
   });
 });
