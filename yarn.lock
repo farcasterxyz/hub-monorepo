@@ -1058,13 +1058,6 @@
   resolved "https://registry.npmjs.org/@faker-js/faker/-/faker-10.6.0.tgz#b6b0248f0f59e0ac69ad6803167d58bb824f929d"
   integrity sha512-3RQHgEtvL1Frl/d1cSreo7qhJ3Gk1OdNUai/CtZ8G+wYeRQnJih3s9xJ9/kgYekPQRdwgh0HXRPqMlzWGwivIQ==
 
-"@farcaster/fishery@2.2.3":
-  version "2.2.3"
-  resolved "https://registry.npmjs.org/@farcaster/fishery/-/fishery-2.2.3.tgz#7a81f7d06f7d81f5feb644dec2c73c623ef6d9af"
-  integrity sha512-BFiDZQYO6pGaJ6GKlei4AO6xAM6yvi9YUOcc1fVBeuirnkjr81xunj7i5wmvBuxwKsbm8c/g91EAloQg+zCm7g==
-  dependencies:
-    lodash.mergewith "^4.6.2"
-
 "@farcaster/hot-shots@^10.0.0":
   version "10.0.0"
   resolved "https://registry.npmjs.org/@farcaster/hot-shots/-/hot-shots-10.0.0.tgz#6a2f4374c19bb69c0cd271be36f90cfc3bd10d74"
@@ -3363,6 +3356,13 @@ find-versions@^5.0.0:
   integrity sha512-+iwzCJ7C5v5KgcBuueqVoNiHVoQpwiUK5XFLjf0affFTep+Wcw93tPvmb8tqujDNmzhBDPddnWV/qgWSXgq+Hg==
   dependencies:
     semver-regex "^4.0.5"
+
+fishery@2.4.0:
+  version "2.4.0"
+  resolved "https://registry.npmjs.org/fishery/-/fishery-2.4.0.tgz#181dc640968de88ed497dacc50a14eb39805c24a"
+  integrity sha512-QgeTlvgNhVGuMztrfAhlSIBs3rD3l9RMjl9I15yb/lnrx3njrOhvegr2L3LWdqvXwYfQjdQGpglyAfHH2J8DRA==
+  dependencies:
+    lodash.mergewith "^4.6.2"
 
 fix-dts-default-cjs-exports@^1.0.0:
   version "1.0.1"

@@ -43,7 +43,7 @@
   },
   "devDependencies": {
     "@ethersproject/abstract-signer": "5.8.0",
-    "@farcaster/fishery": "2.2.3",
+    "fishery": "2.4.0",
     "@noble/ed25519": "1.7.3",
     "biome-config-custom": "*",
     "ethers": "6.17.0",

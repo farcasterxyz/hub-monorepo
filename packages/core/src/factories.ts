@@ -1,5 +1,5 @@
 import { faker } from "@faker-js/faker";
-import { Factory } from "@farcaster/fishery";
+import { Factory } from "fishery";
 import { ed25519 } from "@noble/curves/ed25519";
 import { blake3 } from "@noble/hashes/blake3";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
