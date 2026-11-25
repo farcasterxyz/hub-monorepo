@@ -250,10 +250,10 @@ const claimResult = makeVerificationAddressClaim(1, addressBytes, FarcasterNetwo
 
 #### Parameters
 
-| Name         | Type               | Description                                         |
-| :----------- | :----------------- | :-------------------------------------------------- |
-| `fidNumber`  | `number`           | The Farcaster ID to verify.                         |
-| `ethAddress` | `Uint8Array`       | The Ethereum address to verify.                     |
-| `network`    | `FarcasterNetwork` | The Farcaster network value as defined in protobuf. |
-| `blockHash`  | `Uint8Array`       | The hash of a recent Ethereum block.                |
-| `protocol`   | `Protocol`         | `Protocol.ETHEREUM` or `Protocol.SOLANA`.           |
+| Name        | Type               | Description                                                                                                   |
+| :---------- | :----------------- | :------------------------------------------------------------------------------------------------------------ |
+| `fidNumber` | `number`           | The Farcaster ID to verify.                                                                                   |
+| `address`   | `Uint8Array`       | The address to verify: an Ethereum address for `Protocol.ETHEREUM` or a Solana address for `Protocol.SOLANA`. |
+| `network`   | `FarcasterNetwork` | The Farcaster network value as defined in protobuf.                                                           |
+| `blockHash` | `Uint8Array`       | The hash of a recent block on the chain of `protocol` (Ethereum or Solana).                                   |
+| `protocol`  | `Protocol`         | `Protocol.ETHEREUM` or `Protocol.SOLANA`.                                                                     |
