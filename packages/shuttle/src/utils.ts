@@ -3,6 +3,9 @@ import { format as formatSql } from "sql-formatter";
 import { bytesToBase58, fromFarcasterTime, Message, MessageType, Protocol } from "@farcaster/hub-nodejs";
 import { MessageBodyJson, VerificationProtocol } from "./shuttle/db";
 
+export const MESSAGE_TYPE_KEY_ADD = 16 as MessageType;
+export const MESSAGE_TYPE_KEY_REMOVE = 17 as MessageType;
+
 export function extendStackTrace(
   err: unknown,
   stackError: Error,
@@ -264,6 +267,11 @@ export function convertProtobufMessageBodyToJson(message: Message): MessageBodyJ
         numUnits,
         unitType,
       };
+      break;
+    }
+    case MESSAGE_TYPE_KEY_ADD:
+    case MESSAGE_TYPE_KEY_REMOVE: {
+      body = { unsupportedMessageType: message.data.type };
       break;
     }
     default:
