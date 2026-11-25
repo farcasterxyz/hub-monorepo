@@ -344,7 +344,8 @@ import {
   FarcasterNetwork,
   hexStringToBytes,
   makeVerificationAddEthAddress,
-  makeVerificationEthAddressClaim,
+  makeVerificationAddressClaim,
+  Protocol,
 } from '@farcaster/hub-nodejs';
 
 // Safety: eip712Signer is known and can't error
@@ -354,7 +355,7 @@ const fid = 1;
 const blockHashHex = '0x1d3b0456c920eb503450c7efdcf9b5cf1f5184bf04e5d8ecbcead188a0d02018';
 const blockHashBytes = hexStringToBytes(blockHashHex)._unsafeUnwrap();
 
-const claimResult = makeVerificationEthAddressClaim(fid, addressBytes, FarcasterNetwork.DEVNET, blockHashBytes);
+const claimResult = makeVerificationAddressClaim(fid, addressBytes, FarcasterNetwork.DEVNET, blockHashBytes, Protocol.ETHEREUM);
 
 if (claimResult.isOk()) {
   const claim = claimResult.value;
@@ -368,6 +369,9 @@ if (claimResult.isOk()) {
     address: addressBytes,
     claimSignature: ethSignature,
     blockHash: blockHashBytes,
+    verificationType: 0, // 0 = EOA, 1 = contract
+    chainId: 0, // 0 for EOA verifications
+    protocol: Protocol.ETHEREUM,
   };
 
   const verificationMessage = await makeVerificationAddEthAddress(verificationBody, dataOptions, ed25519Signer);

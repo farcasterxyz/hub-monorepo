@@ -91,7 +91,7 @@ Generates a 256-bit signature for a VerificationClaim and returns the bytes.
 #### Usage
 
 ```typescript
-import { FarcasterNetwork, hexStringToBytes, makeVerificationEthAddressClaim } from '@farcaster/hub-nodejs';
+import { FarcasterNetwork, hexStringToBytes, makeVerificationAddressClaim, Protocol } from '@farcaster/hub-nodejs';
 
 const blockHashHex = '0x1d3b0456c920eb503450c7efdcf9b5cf1f5184bf04e5d8ecbcead188a0d02018';
 const blockHashBytes = hexStringToBytes(blockHashHex)._unsafeUnwrap(); // Safety: blockHashHex is known and can't error
@@ -99,11 +99,12 @@ const blockHashBytes = hexStringToBytes(blockHashHex)._unsafeUnwrap(); // Safety
 const ethereumAddressResult = await eip712Signer.getSignerKey();
 
 if (ethereumAddressResult.isOk()) {
-  const claimResult = makeVerificationEthAddressClaim(
+  const claimResult = makeVerificationAddressClaim(
     1,
     ethereumAddressResult.value,
     FarcasterNetwork.DEVNET,
-    blockHashBytes
+    blockHashBytes,
+    Protocol.ETHEREUM
   );
 
   if (claimResult.isOk()) {
