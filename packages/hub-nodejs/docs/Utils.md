@@ -14,7 +14,7 @@ Helpers to manage Farcaster Messages.
   - [toFarcasterTime](#toFarcasterTime)
   - [fromFarcasterTime](#fromFarcasterTime)
 - **Verifications**
-  - [makeVerificationEthAddressClaim](#makeVerificationEthAddressClaim)
+  - [makeVerificationAddressClaim](#makeVerificationAddressClaim)
 
 ## Bytes
 
@@ -215,7 +215,7 @@ console.log(msTimestamp); // 1679620102000
 
 ## Verifications
 
-### makeVerificationEthAddressClaim
+### makeVerificationAddressClaim
 
 #### Usage
 
@@ -224,7 +224,8 @@ import {
   EthersEip712Signer,
   FarcasterNetwork,
   hexStringToBytes,
-  makeVerificationEthAddressClaim,
+  makeVerificationAddressClaim,
+  Protocol,
 } from '@farcaster/hub-nodejs';
 import { Wallet } from 'ethers';
 
@@ -238,14 +239,14 @@ const blockHashHex = '0x1d3b0456c920eb503450c7efdcf9b5cf1f5184bf04e5d8ecbcead188
 const blockHashBytes = hexStringToBytes(blockHashHex)._unsafeUnwrap(); // Safety: blockHashHex is known and can't error
 
 const addressBytes = (await eip712Signer.getSignerKey())._unsafeUnwrap(); // Safety: eip712Signer is known and can't error
-const claimResult = makeVerificationEthAddressClaim(1, addressBytes, FarcasterNetwork.DEVNET, blockHashBytes);
+const claimResult = makeVerificationAddressClaim(1, addressBytes, FarcasterNetwork.DEVNET, blockHashBytes, Protocol.ETHEREUM);
 ```
 
 #### Returns
 
-| Value                                    | Description                                                         |
-| :--------------------------------------- | :------------------------------------------------------------------ |
-| `HubResult<VerificationEthAddressClaim>` | `VerificationEthAddressClaim object that can be submitted to Hubs.` |
+| Value                                 | Description                                                      |
+| :------------------------------------ | :--------------------------------------------------------------- |
+| `HubResult<VerificationAddressClaim>` | `VerificationAddressClaim object that can be submitted to Hubs.` |
 
 #### Parameters
 
@@ -255,3 +256,4 @@ const claimResult = makeVerificationEthAddressClaim(1, addressBytes, FarcasterNe
 | `ethAddress` | `Uint8Array`       | The Ethereum address to verify.                     |
 | `network`    | `FarcasterNetwork` | The Farcaster network value as defined in protobuf. |
 | `blockHash`  | `Uint8Array`       | The hash of a recent Ethereum block.                |
+| `protocol`   | `Protocol`         | `Protocol.ETHEREUM` or `Protocol.SOLANA`.           |
