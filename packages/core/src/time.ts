@@ -44,9 +44,7 @@ const SEQUENCE_BITS = 12;
  * @deprecated: Snapchain event ids use block numbers. Use the timestamp field in the event instead.
  * */
 export const extractEventTimestamp = (eventId: number): number => {
-  const binaryEventId = eventId.toString(2);
-  const binaryTimestamp = binaryEventId.slice(0, binaryEventId.length - SEQUENCE_BITS);
-  return parseInt(binaryTimestamp, 2) + FARCASTER_EPOCH;
+  return (eventId >> SEQUENCE_BITS) + FARCASTER_EPOCH;
 };
 
 /** Extracts a unix timestamp (ms resolution) from an hub event. */
