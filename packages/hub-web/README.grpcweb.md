@@ -27,7 +27,7 @@ pnpm install @farcaster/hub-web
 
 The @farcaster/hub-web APIs are largely the same as @farcaster/hub-nodejs. Read the [@farcaster/hub-nodejs documentation](https://github.com/farcasterxyz/hubble/tree/main/packages/hub-nodejs/docs) and browse code [examples](https://github.com/farcasterxyz/hubble/tree/main/packages/hub-nodejs/examples). We're also including sample @farcaster/hub-web code below as well as a list of differences with the other package.
 
-### Getting start: fetching casts
+### Getting started: fetching casts
 
 ```typescript
 import { getHubRpcClient } from '@farcaster/hub-web';
